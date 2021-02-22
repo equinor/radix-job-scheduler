@@ -12,9 +12,9 @@ import (
 const apiVersionRoute = "/api/v1"
 
 // NewServer creates a new Radix job scheduler REST service
-func NewServer(kubeUtil models.KubeUtil, controllers ...models.Controller) http.Handler {
+func NewServer(controllers ...models.Controller) http.Handler {
 	router := mux.NewRouter().StrictSlash(true)
-	initializeAPIServer(kubeUtil, router, controllers)
+	initializeAPIServer(router, controllers)
 
 	serveMux := http.NewServeMux()
 	serveMux.Handle(apiVersionRoute+"/", router)
@@ -27,16 +27,16 @@ func NewServer(kubeUtil models.KubeUtil, controllers ...models.Controller) http.
 	return n
 }
 
-func initializeAPIServer(kubeUtil models.KubeUtil, router *mux.Router, controllers []models.Controller) {
+func initializeAPIServer(router *mux.Router, controllers []models.Controller) {
 	for _, controller := range controllers {
 		for _, route := range controller.GetRoutes() {
-			addHandlerRoute(kubeUtil, router, route)
+			addHandlerRoute(router, route)
 		}
 	}
 }
 
-func addHandlerRoute(kubeUtil models.KubeUtil, router *mux.Router, route models.Route) {
+func addHandlerRoute(router *mux.Router, route models.Route) {
 	path := apiVersionRoute + route.Path
 	router.HandleFunc(path,
-		utils.NewRadixMiddleware(path, route.Method, route.HandlerFunc, kubeUtil).Handle).Methods(route.Method)
+		utils.NewRadixMiddleware(path, route.Method, route.HandlerFunc).Handle).Methods(route.Method)
 }

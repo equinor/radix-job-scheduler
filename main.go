@@ -25,6 +25,6 @@ func startHTTPListener(address string, errs chan error) {
 	log.Infof("listening for requests on %s", address)
 	kubeUtil := models.NewKubeUtil()
 	jobController := jc.New(jh.New(kubeUtil))
-	router := router.NewServer(kubeUtil, jobController)
+	router := router.NewServer(jobController)
 	errs <- http.ListenAndServe(address, router)
 }

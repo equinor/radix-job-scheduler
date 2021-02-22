@@ -8,18 +8,16 @@ import (
 
 // RadixMiddleware The middleware between router and radix handler functions
 type RadixMiddleware struct {
-	path     string
-	method   string
-	handler  models.RadixHandlerFunc
-	kubeUtil models.KubeUtil
+	path    string
+	method  string
+	handler models.RadixHandlerFunc
 }
 
-func NewRadixMiddleware(path, method string, handler models.RadixHandlerFunc, kubeUtil models.KubeUtil) *RadixMiddleware {
+func NewRadixMiddleware(path, method string, handler models.RadixHandlerFunc) *RadixMiddleware {
 	mw := &RadixMiddleware{
 		path,
 		method,
 		handler,
-		kubeUtil,
 	}
 
 	return mw
@@ -27,7 +25,5 @@ func NewRadixMiddleware(path, method string, handler models.RadixHandlerFunc, ku
 
 // Handle Wraps radix handler methods
 func (mw *RadixMiddleware) Handle(w http.ResponseWriter, r *http.Request) {
-	// w.Header().Add("Access-Control-Allow-Origin", "*")
-
-	mw.handler(w, r, mw.kubeUtil)
+	mw.handler(w, r)
 }

@@ -10,7 +10,6 @@ import (
 	"github.com/equinor/radix-job-scheduler/utils"
 	"github.com/google/martian/log"
 	"github.com/gorilla/mux"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const jobNameParam = "name"
@@ -52,30 +51,29 @@ func (controller *jobController) GetRoutes() models.Routes {
 	return routes
 }
 
-func (controller *jobController) CreateJob(w http.ResponseWriter, r *http.Request, kubeUtil models.KubeUtil) {
+func (controller *jobController) CreateJob(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("job created"))
 }
 
-func (controller *jobController) GetJobs(w http.ResponseWriter, r *http.Request, kubeUtil models.KubeUtil) {
-	kubeClient := kubeUtil.Client()
-	ns, err := kubeClient.CoreV1().Namespaces().List(context.Background(), v1.ListOptions{})
+func (controller *jobController) GetJobs(w http.ResponseWriter, r *http.Request) {
+	jobs, err := controller.jobHandler.GetJobs(context.Background())
 	if err != nil {
 		log.Errorf("failed: %v", err)
 		utils.ErrorResult(w, r, http.StatusInternalServerError)
 		return
 	}
 
-	utils.JSONResult(w, r, ns)
+	utils.JSONResult(w, r, jobs)
 }
 
-func (controller *jobController) GetJob(w http.ResponseWriter, r *http.Request, kubeUtil models.KubeUtil) {
+func (controller *jobController) GetJob(w http.ResponseWriter, r *http.Request) {
 	jobName := mux.Vars(r)[jobNameParam]
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(fmt.Sprintf("job %s returned", jobName)))
 }
 
-func (controller *jobController) DeleteJob(w http.ResponseWriter, r *http.Request, kubeUtil models.KubeUtil) {
+func (controller *jobController) DeleteJob(w http.ResponseWriter, r *http.Request) {
 	jobName := mux.Vars(r)[jobNameParam]
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(fmt.Sprintf("job %s deleted", jobName)))
