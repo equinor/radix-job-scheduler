@@ -5,10 +5,10 @@ import (
 	"net/http"
 )
 
-func JSONResult(w http.ResponseWriter, r *http.Request, result interface{}) {
+func JSONResponse(w http.ResponseWriter, r *http.Request, result interface{}) {
 	body, err := json.Marshal(result)
 	if err != nil {
-		ErrorResult(w, r, http.StatusInternalServerError)
+		ErrorResponse(w, r, http.StatusInternalServerError)
 		return
 	}
 
@@ -17,6 +17,6 @@ func JSONResult(w http.ResponseWriter, r *http.Request, result interface{}) {
 	w.Write(body)
 }
 
-func ErrorResult(w http.ResponseWriter, r *http.Request, statusCode int) {
+func ErrorResponse(w http.ResponseWriter, r *http.Request, statusCode int) {
 	w.WriteHeader(statusCode)
 }
