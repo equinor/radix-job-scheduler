@@ -71,5 +71,5 @@ func parseFlagsFromArgs(fs *pflag.FlagSet) {
 }
 
 func defaultPort() string {
-	return "3004"
+	return "8080"
 }

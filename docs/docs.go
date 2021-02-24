@@ -13,14 +13,5 @@
 //     Produces:
 //     - jobs/json
 //
-//     Security:
-//     - bearer:
-//
-//     SecurityDefinitions:
-//     bearer:
-//          type: apiKey
-//          name: Authorization
-//          in: header
-//
 // swagger:meta
 package docs
