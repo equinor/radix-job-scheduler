@@ -38,13 +38,10 @@ swagger:
 
 .PHONY: docker-build
 docker-build:
-	docker build -t $(DOCKER_REGISTRY)/radix-job-scheduler:$(VERSION) -t $(DOCKER_REGISTRY)/radix-job-scheduler:$(BRANCH)-$(VERSION) -t $(DOCKER_REGISTRY)/radix-job-scheduler:$(TAG) -f Dockerfile .
+	docker build -t $(DOCKER_REGISTRY)/radix-job-scheduler:$(BRANCH)-$(VERSION) -f Dockerfile .
 
 .PHONY: docker-push
 docker-push:
 	az acr login --name $(CONTAINER_REPO)
 	make docker-build
 	docker push $(DOCKER_REGISTRY)/radix-job-scheduler:$(BRANCH)-$(VERSION)
-	docker push $(DOCKER_REGISTRY)/radix-job-scheduler:$(VERSION)
-	docker push $(DOCKER_REGISTRY)/radix-job-scheduler:$(TAG)
-

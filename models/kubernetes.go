@@ -1,6 +1,7 @@
 package models
 
 import (
+	"io/ioutil"
 	"os"
 
 	log "github.com/sirupsen/logrus"
@@ -11,16 +12,24 @@ import (
 
 type KubeUtil interface {
 	Client() kubernetes.Interface
+	CurrentNamespace() string
 }
 
 type kubeUtil struct {
-	config *rest.Config
+	config    *rest.Config
+	namespace string
 }
 
 func NewKubeUtil() KubeUtil {
 	return &kubeUtil{
-		config: getInClusterClientConfig(),
+		config:    getInClusterClientConfig(),
+		namespace: getCurrentNamespace(),
 	}
+}
+
+func getCurrentNamespace() string {
+	namespace, _ := ioutil.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/namespace")
+	return string(namespace)
 }
 
 func (kube *kubeUtil) Client() kubernetes.Interface {
@@ -29,6 +38,10 @@ func (kube *kubeUtil) Client() kubernetes.Interface {
 		log.Fatalf("failed to create k8s client: %v", err)
 	}
 	return client
+}
+
+func (kube *kubeUtil) CurrentNamespace() string {
+	return kube.namespace
 }
 
 func getInClusterClientConfig() *rest.Config {
@@ -41,6 +54,5 @@ func getInClusterClientConfig() *rest.Config {
 			log.Fatalf("getClusterConfig InClusterConfig: %v", err)
 		}
 	}
-
 	return config
 }
