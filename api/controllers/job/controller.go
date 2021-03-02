@@ -78,15 +78,20 @@ func (controller *jobController) GetJobs(w http.ResponseWriter, r *http.Request)
 		utils.ErrorResponse(w, r, http.StatusInternalServerError)
 		return
 	}
-	log.Debugf("Found %d jobs", len(jobs))
+	log.Debugf("Found %d jobs", len(*jobs))
 	utils.JSONResponse(w, r, jobs)
 }
 
 func (controller *jobController) GetJob(w http.ResponseWriter, r *http.Request) {
 	jobName := mux.Vars(r)[jobNameParam]
 	log.Debugf("Get job %s", jobName)
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(fmt.Sprintf("job %s returned", jobName)))
+	job, err := controller.jobHandler.GetJob(context.Background(), jobName)
+	if err != nil {
+		log.Errorf("failed: %v", err)
+		utils.ErrorResponse(w, r, http.StatusInternalServerError)
+		return
+	}
+	utils.JSONResponse(w, r, job)
 }
 
 func (controller *jobController) DeleteJob(w http.ResponseWriter, r *http.Request) {
