@@ -6,6 +6,8 @@ import (
 	ch "github.com/equinor/radix-job-scheduler/api/handlers/job"
 	"github.com/equinor/radix-job-scheduler/models"
 	"github.com/equinor/radix-job-scheduler/router"
+	"github.com/equinor/radix-operator/pkg/apis/kube"
+	"github.com/equinor/radix-operator/pkg/apis/utils"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/pflag"
 	"net/http"
@@ -39,9 +41,10 @@ func main() {
 }
 
 func getControllers(env *models.Env) []models.Controller {
-	kubeUtil := models.NewKubeUtil(env)
+	kubeClient, radixClient, _ := utils.GetKubernetesClient()
+	kubeUtil, _ := kube.New(kubeClient, radixClient)
 	return []models.Controller{
-		cj.New(ch.New(kubeUtil)),
+		cj.New(ch.New(env, kubeUtil, &kubeClient, &radixClient)),
 	}
 }
 
