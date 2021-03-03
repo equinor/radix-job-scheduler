@@ -5,7 +5,7 @@ import (
 	"net/http"
 )
 
-func JSONResponse(w http.ResponseWriter, r *http.Request, result interface{}) {
+func JSONResponse(w http.ResponseWriter, result interface{}) {
 	body, err := json.Marshal(result)
 	if err != nil {
 		WriteResponse(w, http.StatusInternalServerError)
@@ -22,6 +22,11 @@ func WriteResponse(w http.ResponseWriter, statusCode int, response ...string) {
 	for _, responseText := range response {
 		w.Write([]byte(responseText))
 	}
+}
+
+func ErrorResponse(w http.ResponseWriter, err error) {
+	w.WriteHeader(http.StatusInternalServerError)
+	w.Write([]byte(err.Error()))
 }
 
 func SuccessResponse(w http.ResponseWriter, r *http.Request, statusCode int) {

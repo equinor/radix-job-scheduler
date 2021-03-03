@@ -3,6 +3,8 @@ package models
 import (
 	"os"
 
+	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
+	radixv1 "github.com/equinor/radix-operator/pkg/client/clientset/versioned/typed/radix/v1"
 	log "github.com/sirupsen/logrus"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -10,28 +12,44 @@ import (
 )
 
 type KubeUtil interface {
-	Client() kubernetes.Interface
+	KubeClient() *kubernetes.Interface
+	RadixV1() *radixv1.RadixV1Interface
 	CurrentNamespace() string
 }
 
 type kubeUtil struct {
-	config    *rest.Config
-	namespace string
+	kubeClient *kubernetes.Interface
+	radixv1    *radixv1.RadixV1Interface
+	namespace  string
 }
 
 func NewKubeUtil(env *Env) KubeUtil {
-	return &kubeUtil{
-		config:    getInClusterClientConfig(),
-		namespace: env.RadixDeploymentNamespace,
-	}
-}
-
-func (kube *kubeUtil) Client() kubernetes.Interface {
-	client, err := kubernetes.NewForConfig(kube.config)
+	config := getInClusterClientConfig()
+	kubeClientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
 		log.Fatalf("failed to create k8s client: %v", err)
 	}
-	return client
+	kubeClient := kubernetes.Interface(kubeClientset)
+
+	radixClientset, err := radixclient.NewForConfig(config)
+	if err != nil {
+		log.Fatalf("failed to create Radix client: %v", err)
+	}
+	radixV1 := radixClientset.RadixV1()
+
+	return &kubeUtil{
+		kubeClient: &kubeClient,
+		radixv1:    &radixV1,
+		namespace:  env.RadixDeploymentNamespace,
+	}
+}
+
+func (kube *kubeUtil) KubeClient() *kubernetes.Interface {
+	return kube.kubeClient
+}
+
+func (kube *kubeUtil) RadixV1() *radixv1.RadixV1Interface {
+	return kube.radixv1
 }
 
 func (kube *kubeUtil) CurrentNamespace() string {

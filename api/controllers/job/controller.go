@@ -73,21 +73,19 @@ func (controller *jobController) GetRoutes() models.Routes {
 //   "404":
 //     description: "Not found"
 func (controller *jobController) CreateJob(w http.ResponseWriter, r *http.Request) {
-	var application models.JobStatus
-	if err := json.NewDecoder(r.Body).Decode(&application); err != nil {
-		utils.ErrorResponse(w, r, err)
+	var appjobScheduleDescriptionication models.JobScheduleDescription
+	if err := json.NewDecoder(r.Body).Decode(&appjobScheduleDescriptionication); err != nil {
+		utils.ErrorResponse(w, err)
 		return
 	}
 
-	// Need in cluster Radix client in order to validate registration using sufficient priviledges
-	handler := Init(accounts)
-	appRegistration, err := handler.RegisterApplication(application)
+	jobState, err := controller.jobHandler.CreateJob(context.Background(), &appjobScheduleDescriptionication)
 	if err != nil {
-		utils.ErrorResponse(w, r, err)
+		utils.ErrorResponse(w, err)
 		return
 	}
 
-	utils.JSONResponse(w, r, &appRegistration)
+	utils.JSONResponse(w, &jobState)
 }
 
 // swagger:operation GET /jobs/ job getJobs
@@ -112,7 +110,7 @@ func (controller *jobController) GetJobs(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	log.Debugf("Found %d jobs", len(*jobs))
-	utils.JSONResponse(w, r, jobs)
+	utils.JSONResponse(w, jobs)
 }
 
 // swagger:operation GET /jobs/{jobName} job getJobs
@@ -142,7 +140,7 @@ func (controller *jobController) GetJob(w http.ResponseWriter, r *http.Request) 
 		utils.WriteResponse(w, http.StatusInternalServerError)
 		return
 	}
-	utils.JSONResponse(w, r, job)
+	utils.JSONResponse(w, job)
 }
 
 // swagger:operation DELETE /jobs/{jobName} job deleteJob
