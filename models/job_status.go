@@ -5,13 +5,12 @@ import (
 	v1 "k8s.io/api/batch/v1"
 )
 
-// Job holds general information about job
-// swagger:model Job
-type Job struct {
+// JobStatus holds general information about job status
+// swagger:model JobStatus
+type JobStatus struct {
 	// Name of the job
-	//
-	// required: false
-	// example: radix-pipeline-20181029135644-algpv-6hznh
+	// required: true
+	// example: radix-component-algpv-6hznh
 	Name string `json:"name"`
 
 	// Started timestamp
@@ -34,9 +33,9 @@ type Job struct {
 	Status string `json:"status"`
 }
 
-// GetJobFromK8sJob Gets job from a k8s job
-func GetJobFromK8sJob(job *v1.Job) *Job {
-	return &Job{
+// GetJobStatusFromJob Gets job from a k8s job
+func GetJobStatusFromJob(job *v1.Job) *JobStatus {
+	return &JobStatus{
 		Name:    job.GetName(),
 		Started: utils.FormatTime(job.Status.StartTime),
 		Ended:   utils.FormatTime(job.Status.CompletionTime),

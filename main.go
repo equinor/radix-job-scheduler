@@ -28,7 +28,7 @@ func main() {
 
 	go func() {
 		log.Infof("Radix job scheduler API is serving on port %s", *port)
-		err := http.ListenAndServe(fmt.Sprintf(":%s", *port), router.NewServer(env, getControllers()...))
+		err := http.ListenAndServe(fmt.Sprintf(":%s", *port), router.NewServer(env, getControllers(env)...))
 		errs <- err
 	}()
 
@@ -38,8 +38,8 @@ func main() {
 	}
 }
 
-func getControllers() []models.Controller {
-	kubeUtil := models.NewKubeUtil()
+func getControllers(env *models.Env) []models.Controller {
+	kubeUtil := models.NewKubeUtil(env)
 	return []models.Controller{
 		cj.New(ch.New(kubeUtil)),
 	}

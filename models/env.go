@@ -8,7 +8,9 @@ import (
 
 // Env instance variables
 type Env struct {
-	UseSwagger bool
+	UseSwagger               bool
+	RadixDeployment          string
+	RadixDeploymentNamespace string
 }
 
 // NewEnv Constructor
@@ -20,10 +22,14 @@ func NewEnv() *Env {
 		log.SetLevel(log.InfoLevel)
 	}
 	var (
-		useSwagger = envVarIsTrueOrYes(os.Getenv("USE_SWAGGER"))
+		useSwagger               = envVarIsTrueOrYes(os.Getenv("USE_SWAGGER"))
+		radixDeployment          = strings.TrimSpace(os.Getenv("RADIX_DEPLOYMENT"))
+		radixDeploymentNamespace = strings.TrimSpace(os.Getenv("RADIX_DEPLOYMENT_NAMESPACE"))
 	)
 	return &Env{
-		UseSwagger: useSwagger,
+		RadixDeployment:          radixDeployment,
+		RadixDeploymentNamespace: radixDeploymentNamespace,
+		UseSwagger:               useSwagger,
 	}
 }
 

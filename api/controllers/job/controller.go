@@ -2,6 +2,7 @@ package job
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 
@@ -12,7 +13,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-const jobNameParam = "name"
+const jobNameParam = "jobName"
 
 type jobController struct {
 	jobHandler jh.Handler
@@ -52,9 +53,41 @@ func (controller *jobController) GetRoutes() models.Routes {
 	return routes
 }
 
+// swagger:operation POST /jobs/{jobName} job createJob
+// ---
+// summary: Gets jobs
+// parameters:
+// - name: jobCreation
+//   in: body
+//   description: Job to create
+//   required: true
+//   schema:
+//       "$ref": "#/definitions/ApplicationRegistration"
+// responses:
+//   "200":
+//     description: "Successful create job"
+//     schema:
+//        "$ref": "#/definitions/JobStatus"
+//   "401":
+//     description: "Unauthorized"
+//   "404":
+//     description: "Not found"
 func (controller *jobController) CreateJob(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("job created"))
+	var application models.JobStatus
+	if err := json.NewDecoder(r.Body).Decode(&application); err != nil {
+		utils.ErrorResponse(w, r, err)
+		return
+	}
+
+	// Need in cluster Radix client in order to validate registration using sufficient priviledges
+	handler := Init(accounts)
+	appRegistration, err := handler.RegisterApplication(application)
+	if err != nil {
+		utils.ErrorResponse(w, r, err)
+		return
+	}
+
+	utils.JSONResponse(w, r, &appRegistration)
 }
 
 // swagger:operation GET /jobs/ job getJobs
@@ -65,7 +98,7 @@ func (controller *jobController) CreateJob(w http.ResponseWriter, r *http.Reques
 //   "200":
 //     description: "Successful get jobs"
 //     schema:
-//        "$ref": "#/definitions/Job"
+//        "$ref": "#/definitions/JobStatus"
 //   "401":
 //     description: "Unauthorized"
 //   "404":
@@ -75,28 +108,69 @@ func (controller *jobController) GetJobs(w http.ResponseWriter, r *http.Request)
 	jobs, err := controller.jobHandler.GetJobs(context.Background())
 	if err != nil {
 		log.Errorf("failed: %v", err)
-		utils.ErrorResponse(w, r, http.StatusInternalServerError)
+		utils.WriteResponse(w, http.StatusInternalServerError)
 		return
 	}
 	log.Debugf("Found %d jobs", len(*jobs))
 	utils.JSONResponse(w, r, jobs)
 }
 
+// swagger:operation GET /jobs/{jobName} job getJobs
+// ---
+// summary: Gets jobs
+// parameters:
+// - name: jobName
+//   in: path
+//   description: Name of job
+//   type: string
+//   required: true
+// responses:
+//   "200":
+//     description: "Successful get job"
+//     schema:
+//        "$ref": "#/definitions/JobStatus"
+//   "401":
+//     description: "Unauthorized"
+//   "404":
+//     description: "Not found"
 func (controller *jobController) GetJob(w http.ResponseWriter, r *http.Request) {
 	jobName := mux.Vars(r)[jobNameParam]
 	log.Debugf("Get job %s", jobName)
 	job, err := controller.jobHandler.GetJob(context.Background(), jobName)
 	if err != nil {
 		log.Errorf("failed: %v", err)
-		utils.ErrorResponse(w, r, http.StatusInternalServerError)
+		utils.WriteResponse(w, http.StatusInternalServerError)
 		return
 	}
 	utils.JSONResponse(w, r, job)
 }
 
+// swagger:operation DELETE /jobs/{jobName} job deleteJob
+// ---
+// summary: Delete job
+// parameters:
+// - name: jobName
+//   in: path
+//   description: Name of job
+//   type: string
+//   required: true
+// responses:
+//   "200":
+//     description: "Successful delete job"
+//     schema:
+//        "$ref": "#/definitions/JobStatus"
+//   "401":
+//     description: "Unauthorized"
+//   "404":
+//     description: "Not found"
 func (controller *jobController) DeleteJob(w http.ResponseWriter, r *http.Request) {
 	jobName := mux.Vars(r)[jobNameParam]
 	log.Debugf("Delete job %s", jobName)
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(fmt.Sprintf("job %s deleted", jobName)))
+	err := controller.jobHandler.DeleteJob(context.Background(), jobName)
+	if err != nil {
+		log.Errorf("failed: %v", err)
+		utils.WriteResponse(w, http.StatusInternalServerError)
+		return
+	}
+	utils.WriteResponse(w, http.StatusOK, fmt.Sprintf("job %s deleted", jobName))
 }

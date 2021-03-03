@@ -12,13 +12,13 @@ const (
 	// Running Active
 	Running ProgressStatus = iota
 
-	// Succeeded Job/step succeeded
+	// Succeeded JobStatus/step succeeded
 	Succeeded
 
-	// Failed Job/step failed
+	// Failed JobStatus/step failed
 	Failed
 
-	// Waiting Job/step pending
+	// Waiting JobStatus/step pending
 	Waiting
 
 	// Stopping job

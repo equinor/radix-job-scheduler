@@ -1,7 +1,6 @@
 package models
 
 import (
-	"io/ioutil"
 	"os"
 
 	log "github.com/sirupsen/logrus"
@@ -20,16 +19,11 @@ type kubeUtil struct {
 	namespace string
 }
 
-func NewKubeUtil() KubeUtil {
+func NewKubeUtil(env *Env) KubeUtil {
 	return &kubeUtil{
 		config:    getInClusterClientConfig(),
-		namespace: getCurrentNamespace(),
+		namespace: env.RadixDeploymentNamespace,
 	}
-}
-
-func getCurrentNamespace() string {
-	namespace, _ := ioutil.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/namespace")
-	return string(namespace)
 }
 
 func (kube *kubeUtil) Client() kubernetes.Interface {

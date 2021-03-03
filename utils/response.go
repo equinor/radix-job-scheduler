@@ -8,7 +8,7 @@ import (
 func JSONResponse(w http.ResponseWriter, r *http.Request, result interface{}) {
 	body, err := json.Marshal(result)
 	if err != nil {
-		ErrorResponse(w, r, http.StatusInternalServerError)
+		WriteResponse(w, http.StatusInternalServerError)
 		return
 	}
 
@@ -17,6 +17,13 @@ func JSONResponse(w http.ResponseWriter, r *http.Request, result interface{}) {
 	w.Write(body)
 }
 
-func ErrorResponse(w http.ResponseWriter, r *http.Request, statusCode int) {
+func WriteResponse(w http.ResponseWriter, statusCode int, response ...string) {
+	w.WriteHeader(statusCode)
+	for _, responseText := range response {
+		w.Write([]byte(responseText))
+	}
+}
+
+func SuccessResponse(w http.ResponseWriter, r *http.Request, statusCode int) {
 	w.WriteHeader(statusCode)
 }
