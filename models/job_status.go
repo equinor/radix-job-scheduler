@@ -10,7 +10,7 @@ import (
 type JobStatus struct {
 	// Name of the job
 	// required: true
-	// example: radix-component-algpv-6hznh
+	// example: calculator
 	Name string `json:"name"`
 
 	// Started timestamp

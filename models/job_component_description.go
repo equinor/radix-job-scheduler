@@ -22,6 +22,6 @@ type JobScheduleDescription struct {
 	// Payload holding json data to be mapped to component
 	//
 	// required: false
-	// example: {"data":""}
+	// example: {'data':'value'}
 	Payload string `json:"payload"`
 }

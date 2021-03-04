@@ -1,7 +1,6 @@
 package job
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -53,16 +52,16 @@ func (controller *jobController) GetRoutes() models.Routes {
 	return routes
 }
 
-// swagger:operation POST /jobs/{jobName} job createJob
+// swagger:operation POST /jobs Job createJob
 // ---
-// summary: Gets jobs
+// summary: Create job
 // parameters:
 // - name: jobCreation
 //   in: body
 //   description: Job to create
 //   required: true
 //   schema:
-//       "$ref": "#/definitions/ApplicationRegistration"
+//       "$ref": "#/definitions/JobScheduleDescription"
 // responses:
 //   "200":
 //     description: "Successful create job"
@@ -73,13 +72,13 @@ func (controller *jobController) GetRoutes() models.Routes {
 //   "404":
 //     description: "Not found"
 func (controller *jobController) CreateJob(w http.ResponseWriter, r *http.Request) {
-	var appjobScheduleDescriptionication models.JobScheduleDescription
-	if err := json.NewDecoder(r.Body).Decode(&appjobScheduleDescriptionication); err != nil {
+	var jobScheduleDescription models.JobScheduleDescription
+	if err := json.NewDecoder(r.Body).Decode(&jobScheduleDescription); err != nil {
 		utils.ErrorResponse(w, err)
 		return
 	}
 
-	jobState, err := controller.jobHandler.CreateJob(context.Background(), &appjobScheduleDescriptionication)
+	jobState, err := controller.jobHandler.CreateJob(&jobScheduleDescription)
 	if err != nil {
 		utils.ErrorResponse(w, err)
 		return
@@ -88,7 +87,7 @@ func (controller *jobController) CreateJob(w http.ResponseWriter, r *http.Reques
 	utils.JSONResponse(w, &jobState)
 }
 
-// swagger:operation GET /jobs/ job getJobs
+// swagger:operation GET /jobs/ Job getJobs
 // ---
 // summary: Gets jobs
 // parameters:
@@ -103,7 +102,7 @@ func (controller *jobController) CreateJob(w http.ResponseWriter, r *http.Reques
 //     description: "Not found"
 func (controller *jobController) GetJobs(w http.ResponseWriter, r *http.Request) {
 	log.Debug("Get job list")
-	jobs, err := controller.jobHandler.GetJobs(context.Background())
+	jobs, err := controller.jobHandler.GetJobs()
 	if err != nil {
 		log.Errorf("failed: %v", err)
 		utils.WriteResponse(w, http.StatusInternalServerError)
@@ -113,7 +112,7 @@ func (controller *jobController) GetJobs(w http.ResponseWriter, r *http.Request)
 	utils.JSONResponse(w, jobs)
 }
 
-// swagger:operation GET /jobs/{jobName} job getJobs
+// swagger:operation GET /jobs/{jobName} Job getJobs
 // ---
 // summary: Gets jobs
 // parameters:
@@ -134,16 +133,16 @@ func (controller *jobController) GetJobs(w http.ResponseWriter, r *http.Request)
 func (controller *jobController) GetJob(w http.ResponseWriter, r *http.Request) {
 	jobName := mux.Vars(r)[jobNameParam]
 	log.Debugf("Get job %s", jobName)
-	job, err := controller.jobHandler.GetJob(context.Background(), jobName)
+	job, err := controller.jobHandler.GetJob(jobName)
 	if err != nil {
 		log.Errorf("failed: %v", err)
-		utils.WriteResponse(w, http.StatusInternalServerError)
+		utils.WriteResponse(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 	utils.JSONResponse(w, job)
 }
 
-// swagger:operation DELETE /jobs/{jobName} job deleteJob
+// swagger:operation DELETE /jobs/{jobName} Job deleteJob
 // ---
 // summary: Delete job
 // parameters:
@@ -164,7 +163,7 @@ func (controller *jobController) GetJob(w http.ResponseWriter, r *http.Request) 
 func (controller *jobController) DeleteJob(w http.ResponseWriter, r *http.Request) {
 	jobName := mux.Vars(r)[jobNameParam]
 	log.Debugf("Delete job %s", jobName)
-	err := controller.jobHandler.DeleteJob(context.Background(), jobName)
+	err := controller.jobHandler.DeleteJob(jobName)
 	if err != nil {
 		log.Errorf("failed: %v", err)
 		utils.WriteResponse(w, http.StatusInternalServerError)
