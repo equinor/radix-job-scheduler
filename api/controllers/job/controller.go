@@ -83,7 +83,11 @@ func (controller *jobController) CreateJob(w http.ResponseWriter, r *http.Reques
 		utils.ErrorResponse(w, err)
 		return
 	}
-
+	err = controller.jobHandler.MaintainHistoryLimit()
+	if err != nil {
+		utils.ErrorResponse(w, err)
+		return
+	}
 	utils.JSONResponse(w, &jobState)
 }
 

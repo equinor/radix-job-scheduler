@@ -13,7 +13,11 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/fields"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes"
+	"sort"
+	strconv "strconv"
 	"strings"
 	"time"
 )
@@ -28,6 +32,7 @@ type Handler interface {
 	GetJobs() (*[]models.JobStatus, error)
 	GetJob(name string) (*models.JobStatus, error)
 	CreateJob(jobScheduleDescription *models.JobScheduleDescription) (*models.JobStatus, error)
+	MaintainHistoryLimit() error
 	DeleteJob(jobName string) error
 }
 
@@ -104,6 +109,69 @@ func (jh *jobHandler) CreateJob(jobScheduleDescription *models.JobScheduleDescri
 
 	log.Debug(fmt.Sprintf("created job for component %s, environment %s, in namespace: %s", jobScheduleDescription.ComponentName, radixDeployment.Spec.Environment, namespace))
 	return models.GetJobStatusFromJob(createdJob), nil
+}
+
+func (jh *jobHandler) MaintainHistoryLimit() error {
+	kubeClient := *jh.kubeClient
+	namespace := jh.env.RadixDeploymentNamespace
+	jobList, err := kubeClient.BatchV1().Jobs(namespace).List(metav1.ListOptions{
+		LabelSelector: getLabelSelectorForJobComponent(),
+		FieldSelector: getFieldSelectorForCompletedJobComponent(),
+	})
+	if err != nil {
+		log.Warnf("failed to get all Radix Job Schedulers: %v", err)
+		return err
+	}
+
+	numToDelete := len(jobList.Items) - jh.env.RadixJobSchedulersPerEnvironmentHistoryLimit
+	if numToDelete <= 0 {
+		log.Debug("no history jobs to delete")
+		return nil
+	}
+	log.Debugf("history jobs to delete: %v", numToDelete)
+
+	sortedJobs := sortRJSchByCompletionTimeAsc(jobList.Items)
+	for i := 0; i < numToDelete; i++ {
+		job := (sortedJobs)[i]
+		log.Infof("Removing Radix Job Schedule %s from %s", job.Name, namespace)
+		fg := metav1.DeletePropagationBackground
+		err := kubeClient.BatchV1().Jobs(namespace).Delete(job.Name, &metav1.DeleteOptions{PropagationPolicy: &fg})
+		if err != nil {
+			log.Warnf("failed to delete old Radix Job Scheduler %s: %v", job.Name, err)
+		}
+	}
+	return nil
+}
+
+func sortRJSchByCompletionTimeAsc(jobs []batchv1.Job) []batchv1.Job {
+	sort.Slice(jobs, func(i, j int) bool {
+		job1 := (jobs)[i]
+		job2 := (jobs)[j]
+		return isRJS1CompletedBeforeRJS2(&job1, &job2)
+	})
+	return jobs
+}
+
+func isRJS1CompletedBeforeRJS2(job1 *batchv1.Job, job2 *batchv1.Job) bool {
+	rd1ActiveFrom := getCompletionTimeFrom(job1)
+	rd2ActiveFrom := getCompletionTimeFrom(job2)
+
+	return rd1ActiveFrom.Before(rd2ActiveFrom)
+}
+
+func getCompletionTimeFrom(job *batchv1.Job) *metav1.Time {
+	if job.Status.CompletionTime.IsZero() {
+		return &job.CreationTimestamp
+	}
+	return job.Status.CompletionTime
+}
+
+func getLabelSelectorForJobComponent() string {
+	return labels.SelectorFromSet(labels.Set(map[string]string{kube.RadixJobTypeLabel: kube.RadixJobTypeJobSchedule})).String()
+}
+
+func getFieldSelectorForCompletedJobComponent() string {
+	return fields.SelectorFromSet(fields.Set{"status.successful": strconv.Itoa(1)}).String()
 }
 
 func createPayloadSecret(job *batchv1.Job, jobScheduleDescription *models.JobScheduleDescription) *corev1.Secret {

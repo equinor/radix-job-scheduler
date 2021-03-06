@@ -19,7 +19,8 @@
                 "RADIX_DNS_ZONE":"dev.radix.equinor.com",
                 "RADIX_CONTAINER_REGISTRY":"radixdev.azurecr.io",
                 "RADIX_ENVIRONMENT":"dev",
-                "RADIX_APP":"radix-job-example"
+                "RADIX_APP":"radix-job-example",
+                "RADIX_JOB_SCHEDULERS_PER_ENVIRONMENT_HISTORY_LIMIT": "2"
             }
         }
     ]
