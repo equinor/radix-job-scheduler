@@ -192,7 +192,8 @@ func (jh *jobHandler) DeleteJob(jobName string) error {
 	kubeClient := *jh.kubeClient
 	namespace := jh.env.RadixDeploymentNamespace
 	log.Debugf("delete job %s for namespace: %s", jobName, namespace)
-	err := kubeClient.BatchV1().Jobs(namespace).Delete(jobName, &metav1.DeleteOptions{})
+	fg := metav1.DeletePropagationBackground
+	err := kubeClient.BatchV1().Jobs(namespace).Delete(jobName, &metav1.DeleteOptions{PropagationPolicy: &fg})
 	if err != nil {
 		return err
 	}
