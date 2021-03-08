@@ -86,15 +86,16 @@ func (jh *jobHandler) GetJob(jobName string) (*models.JobStatus, error) {
 func (jh *jobHandler) CreateJob(jobScheduleDescription *models.JobScheduleDescription) (*models.JobStatus, error) {
 	kubeClient := *jh.kubeClient
 	radixV1 := *jh.radixClient
-	namespace := jh.env.RadixDeploymentNamespace
+	env := jh.env
+	namespace := env.RadixDeploymentNamespace
 	log.Debugf("create job for namespace: %s", namespace)
 
-	radixDeployment, err := radixV1.RadixV1().RadixDeployments(namespace).Get(jobScheduleDescription.RadixDeploymentName, metav1.GetOptions{})
+	radixDeployment, err := radixV1.RadixV1().RadixDeployments(namespace).Get(env.RadixDeploymentName, metav1.GetOptions{})
 	if err != nil {
-		return nil, errors.New(fmt.Sprintf("fail to get Radix deployment %s for namespace: %s", jobScheduleDescription.RadixDeploymentName, namespace))
+		return nil, errors.New(fmt.Sprintf("fail to get Radix deployment %s for namespace: %s", env.RadixDeploymentName, namespace))
 	}
 
-	job, _ := buildJob(jh.kube, radixDeployment, jobScheduleDescription)
+	job, _ := buildJob(jh.kube, radixDeployment, env.RadixComponentName, jobScheduleDescription)
 
 	secret := createPayloadSecret(job, jobScheduleDescription)
 	_, err = kubeClient.CoreV1().Secrets(namespace).Create(secret)
@@ -107,7 +108,7 @@ func (jh *jobHandler) CreateJob(jobScheduleDescription *models.JobScheduleDescri
 		return nil, err
 	}
 
-	log.Debug(fmt.Sprintf("created job for component %s, environment %s, in namespace: %s", jobScheduleDescription.ComponentName, radixDeployment.Spec.Environment, namespace))
+	log.Debug(fmt.Sprintf("created job for component %s, environment %s, in namespace: %s", env.RadixComponentName, radixDeployment.Spec.Environment, namespace))
 	return models.GetJobStatusFromJob(createdJob), nil
 }
 
@@ -201,8 +202,7 @@ func (jh *jobHandler) DeleteJob(jobName string) error {
 	return nil
 }
 
-func buildJob(kubeutil *kube.Kube, rd *radixv1.RadixDeployment, jobDesc *models.JobScheduleDescription) (*batchv1.Job, error) {
-	jobComponentName := jobDesc.ComponentName
+func buildJob(kubeutil *kube.Kube, rd *radixv1.RadixDeployment, jobComponentName string, jobDesc *models.JobScheduleDescription) (*batchv1.Job, error) {
 	radixJobComponent := getRadixJobComponentBy(rd, jobComponentName)
 	if radixJobComponent == nil {
 		return nil, errors.New(fmt.Sprintf("radix Job Component %s not found in Radix Deployment %s", jobComponentName, rd.Name))
