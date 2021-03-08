@@ -1,0 +1,15 @@
+.vscode
+charts
+
+# Vendor folders
+vendor
+
+.git
+.github
+bin
+Makefile
+charts
+.idea/
+debug
+swaggerui_src/swagger.json
+swaggerui/statik.go
