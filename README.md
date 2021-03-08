@@ -49,4 +49,3 @@ By default `Info` and `Error` messages are logged. This can be configured via en
 By default `swagger UI` is not available. This can be configured via environment variable `USE_SWAGGER`
 * `USE_SWAGGER=true` - allows to use swagger UI with URL `<api-endpoint>/swaggerui`
 
-
