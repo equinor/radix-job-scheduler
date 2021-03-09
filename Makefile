@@ -44,8 +44,8 @@ docker-push:
 	make docker-build
 	docker push $(DOCKER_REGISTRY)/radix-job-scheduler:$(TAG)
 
-.PHONY: docker-push-master
-docker-push-master:
-	docker build -t $(DOCKER_REGISTRY)/radix-job-scheduler:master-latest -f Dockerfile .
+.PHONY: docker-push-main
+docker-push-main:
+	docker build -t $(DOCKER_REGISTRY)/radix-job-scheduler:main-latest -f Dockerfile .
 	az acr login --name $(CONTAINER_REPO)
-	docker push $(DOCKER_REGISTRY)/radix-job-scheduler:master-latest
+	docker push $(DOCKER_REGISTRY)/radix-job-scheduler:main-latest
