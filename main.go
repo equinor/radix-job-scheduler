@@ -19,7 +19,7 @@ func main() {
 	fs := initializeFlagSet()
 
 	var (
-		port = fs.StringP("port", "p", defaultPort(), "Port where API will be served")
+		port = fs.StringP("port", "p", string(env.RadixPort), "Port where API will be served")
 		//useOutClusterClient = fs.Bool("useOutClusterClient", true, "In case of testing on local machine you may want to set this to false")
 	)
 
@@ -71,8 +71,4 @@ func parseFlagsFromArgs(fs *pflag.FlagSet) {
 		fs.Usage()
 		os.Exit(2)
 	}
-}
-
-func defaultPort() string {
-	return "8080"
 }
