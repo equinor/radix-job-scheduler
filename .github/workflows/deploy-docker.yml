@@ -2,7 +2,7 @@ name: Docker Image CI
 
 on:
   push:
-    branches: [main, release, 72391-job-scheduler]
+    branches: [main, release]
 
 jobs:
   build-deploy-image-main:
