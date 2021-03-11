@@ -19,7 +19,7 @@ func main() {
 	fs := initializeFlagSet()
 
 	var (
-		port = fs.StringP("port", "p", string(env.RadixPort), "Port where API will be served")
+		port = fs.StringP("port", "p", env.RadixPort, "Port where API will be served")
 		//useOutClusterClient = fs.Bool("useOutClusterClient", true, "In case of testing on local machine you may want to set this to false")
 	)
 

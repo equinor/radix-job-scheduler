@@ -15,7 +15,7 @@ type Env struct {
 	RadixDeploymentName                          string
 	RadixDeploymentNamespace                     string
 	RadixJobSchedulersPerEnvironmentHistoryLimit int
-	RadixPort                                    int
+	RadixPort                                    string
 }
 
 // NewEnv Constructor
@@ -55,12 +55,12 @@ func setHistoryLimit(radixJobSchedulersPerEnvironmentHistoryLimit string, env En
 }
 
 func setPort(radixPorts string, env *Env) {
+	radixPorts = strings.ReplaceAll(radixPorts, "(", "")
+	radixPorts = strings.ReplaceAll(radixPorts, ")", "")
 	ports := strings.Split(radixPorts, ",")
 	if len(ports) > 0 {
-		if port, err := strconv.Atoi(ports[0]); err == nil {
-			env.RadixPort = port
-			return
-		}
+		env.RadixPort = ports[0]
+		return
 	}
 	panic(fmt.Errorf("RADIX_PORTS not set"))
 }
