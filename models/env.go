@@ -2,6 +2,7 @@ package models
 
 import (
 	"fmt"
+	"github.com/equinor/radix-operator/pkg/apis/utils"
 	log "github.com/sirupsen/logrus"
 	"os"
 	"strconv"
@@ -28,16 +29,17 @@ func NewEnv() *Env {
 	}
 	var (
 		useSwagger                                   = envVarIsTrueOrYes(os.Getenv("USE_SWAGGER"))
+		radixApp                                     = strings.TrimSpace(os.Getenv("RADIX_APP"))
+		radixEnv                                     = strings.TrimSpace(os.Getenv("RADIX_ENVIRONMENT"))
 		radixComponentName                           = strings.TrimSpace(os.Getenv("RADIX_COMPONENT"))
 		radixDeployment                              = strings.TrimSpace(os.Getenv("RADIX_DEPLOYMENT"))
-		radixDeploymentNamespace                     = strings.TrimSpace(os.Getenv("RADIX_DEPLOYMENT_NAMESPACE"))
 		radixJobSchedulersPerEnvironmentHistoryLimit = strings.TrimSpace(os.Getenv("RADIX_JOB_SCHEDULERS_PER_ENVIRONMENT_HISTORY_LIMIT"))
 		radixPorts                                   = strings.TrimSpace(os.Getenv("RADIX_PORTS"))
 	)
 	env := Env{
 		RadixComponentName:       radixComponentName,
 		RadixDeploymentName:      radixDeployment,
-		RadixDeploymentNamespace: radixDeploymentNamespace,
+		RadixDeploymentNamespace: utils.GetEnvironmentNamespace(radixApp, radixEnv),
 		UseSwagger:               useSwagger,
 		RadixJobSchedulersPerEnvironmentHistoryLimit: 10,
 	}
