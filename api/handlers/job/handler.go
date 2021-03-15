@@ -228,7 +228,7 @@ func buildJob(kubeutil *kube.Kube, rd *radixv1.RadixDeployment, jobComponentName
 }
 
 func getVolumes(namespace string, environment string, component *radixv1.RadixDeployJobComponent) []corev1.Volume {
-	return deployment.GetVolumes(namespace, environment, component.Name, &component.VolumeMounts)
+	return deployment.GetVolumes(namespace, environment, component.Name, component.GetVolumeMounts())
 }
 
 func createJob(appName string, namespace string, jobComponentName string) batchv1.Job {
@@ -300,14 +300,14 @@ func getRadixJobComponentBy(rd *radixv1.RadixDeployment, componentName string) *
 }
 
 func getContainers(kube *kube.Kube, rd *radixv1.RadixDeployment, radixJobComponent *radixv1.RadixDeployJobComponent) []corev1.Container {
-	environmentVariables := deployment.GetEnvironmentVariablesFromRadixDeployJobComponent(rd.Spec.AppName, kube, rd, radixJobComponent)
+	environmentVariables := deployment.GetEnvironmentVariablesFrom(rd.Spec.AppName, kube, rd, radixJobComponent)
 	container := corev1.Container{
 		Name:  radixJobComponent.Name,
 		Image: radixJobComponent.Image,
 		//TODO: add setting to be PullAlways, PullIfNotPresent, PullNever. Image should be pulled on job's InitContainer
 		ImagePullPolicy: corev1.PullAlways,
 		Env:             environmentVariables,
-		VolumeMounts:    deployment.GetRadixDeployJobComponentVolumeMounts(radixJobComponent),
+		VolumeMounts:    deployment.GetRadixDeployComponentVolumeMounts(radixJobComponent),
 	}
 	return []corev1.Container{container}
 }

@@ -13,7 +13,6 @@
             "env": {
                 "LOG_LEVEL":"DEBUG",
                 "USE_SWAGGER":"true",
-                "RADIX_DEPLOYMENT_NAMESPACE":"test",
                 "DNS_ZONE":"dev.radix.equinor.com",
                 "RADIXOPERATOR_CLUSTER_TYPE": "development",
                 "RADIX_DNS_ZONE":"dev.radix.equinor.com",
