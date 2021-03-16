@@ -3,6 +3,7 @@ package job
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/equinor/radix-job-scheduler/api/controllers"
 	"net/http"
 
 	jh "github.com/equinor/radix-job-scheduler/api/handlers/job"
@@ -15,6 +16,7 @@ import (
 const jobNameParam = "jobName"
 
 type jobController struct {
+	*controllers.ControllerBase
 	jobHandler jh.Handler
 }
 
@@ -80,12 +82,12 @@ func (controller *jobController) CreateJob(w http.ResponseWriter, r *http.Reques
 
 	jobState, err := controller.jobHandler.CreateJob(&jobScheduleDescription)
 	if err != nil {
-		utils.ErrorResponse(w, err)
+		controller.HandleError(w, r, err)
 		return
 	}
 	err = controller.jobHandler.MaintainHistoryLimit()
 	if err != nil {
-		utils.ErrorResponse(w, err)
+		controller.HandleError(w, r, err)
 		return
 	}
 	utils.JSONResponse(w, &jobState)
@@ -108,8 +110,7 @@ func (controller *jobController) GetJobs(w http.ResponseWriter, r *http.Request)
 	log.Debug("Get job list")
 	jobs, err := controller.jobHandler.GetJobs()
 	if err != nil {
-		log.Errorf("failed: %v", err)
-		utils.WriteResponse(w, http.StatusInternalServerError)
+		controller.HandleError(w, r, err)
 		return
 	}
 	log.Debugf("Found %d jobs", len(*jobs))
@@ -139,8 +140,7 @@ func (controller *jobController) GetJob(w http.ResponseWriter, r *http.Request) 
 	log.Debugf("Get job %s", jobName)
 	job, err := controller.jobHandler.GetJob(jobName)
 	if err != nil {
-		log.Errorf("failed: %v", err)
-		utils.WriteResponse(w, http.StatusInternalServerError, err.Error())
+		controller.HandleError(w, r, err)
 		return
 	}
 	utils.JSONResponse(w, job)
@@ -169,8 +169,7 @@ func (controller *jobController) DeleteJob(w http.ResponseWriter, r *http.Reques
 	log.Debugf("Delete job %s", jobName)
 	err := controller.jobHandler.DeleteJob(jobName)
 	if err != nil {
-		log.Errorf("failed: %v", err)
-		utils.WriteResponse(w, http.StatusInternalServerError)
+		controller.HandleError(w, r, err)
 		return
 	}
 	utils.WriteResponse(w, http.StatusOK, fmt.Sprintf("job %s deleted", jobName))
