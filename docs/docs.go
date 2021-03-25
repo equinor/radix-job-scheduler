@@ -8,7 +8,7 @@
 //     Contact: https://equinor.slack.com/messages/CBKM6N2JY
 //
 //     Consumes:
-//     - application/jsonk config us
+//     - application/json
 //
 //     Produces:
 //     - application/json
