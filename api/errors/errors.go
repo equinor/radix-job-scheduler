@@ -1,6 +1,7 @@
 package errors
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -51,12 +52,13 @@ func NewInvalid(name string) *StatusError {
 	}
 }
 
-func NewUnknown() *StatusError {
+func NewUnknown(err error) *StatusError {
 	return &StatusError{
 		models.Status{
-			Status: models.StatusFailure,
-			Reason: models.StatusReasonUnknown,
-			Code:   http.StatusInternalServerError,
+			Status:  models.StatusFailure,
+			Reason:  models.StatusReasonUnknown,
+			Code:    http.StatusInternalServerError,
+			Message: err.Error(),
 		},
 	}
 }
@@ -68,7 +70,7 @@ func NewFromError(err error) *StatusError {
 	case k8sErrors.APIStatus:
 		return NewFromKubernetesAPIStatus(t)
 	default:
-		return NewUnknown()
+		return NewUnknown(err)
 	}
 }
 
@@ -79,6 +81,6 @@ func NewFromKubernetesAPIStatus(apiStatus k8sErrors.APIStatus) *StatusError {
 	case v1.StatusReasonInvalid:
 		return NewInvalid(apiStatus.Status().Details.Name)
 	default:
-		return NewUnknown()
+		return NewUnknown(errors.New(apiStatus.Status().Message))
 	}
 }

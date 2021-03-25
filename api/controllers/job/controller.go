@@ -131,9 +131,9 @@ func (controller *jobController) GetJobs(w http.ResponseWriter, r *http.Request)
 	utils.JSONResponse(w, jobs)
 }
 
-// swagger:operation GET /jobs/{jobName} Job getJobs
+// swagger:operation GET /jobs/{jobName} Job getJob
 // ---
-// summary: Gets jobs
+// summary: Gets job
 // parameters:
 // - name: jobName
 //   in: path
