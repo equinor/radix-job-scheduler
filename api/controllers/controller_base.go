@@ -1,20 +1,29 @@
 package controllers
 
 import (
+	"net/http"
+
+	"github.com/equinor/radix-job-scheduler/models"
 	"github.com/equinor/radix-job-scheduler/utils"
 	log "github.com/sirupsen/logrus"
-	apiErrors "k8s.io/apimachinery/pkg/api/errors"
-	"net/http"
+
+	jobErrors "github.com/equinor/radix-job-scheduler/api/errors"
 )
 
 type ControllerBase struct {
 }
 
-func (controller *ControllerBase) HandleError(w http.ResponseWriter, r *http.Request, err error) {
-	statusCode := http.StatusInternalServerError
-	if apiErrors.IsNotFound(err) {
-		statusCode = http.StatusNotFound
+func (controller *ControllerBase) HandleError(w http.ResponseWriter, err error) {
+	var status *models.Status
+
+	switch t := err.(type) {
+	case jobErrors.APIStatus:
+		status = t.Status()
+	default:
+		status = jobErrors.NewFromError(err).Status()
 	}
+
 	log.Errorf("failed: %v", err)
-	utils.WriteResponse(w, statusCode, err.Error())
+	utils.StatusResponse(w, status)
+
 }

@@ -3,9 +3,11 @@ package job
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/equinor/radix-job-scheduler/api/controllers"
 	"net/http"
 
+	"github.com/equinor/radix-job-scheduler/api/controllers"
+
+	jobErrors "github.com/equinor/radix-job-scheduler/api/errors"
 	jh "github.com/equinor/radix-job-scheduler/api/handlers/job"
 	"github.com/equinor/radix-job-scheduler/models"
 	"github.com/equinor/radix-job-scheduler/utils"
@@ -69,27 +71,39 @@ func (controller *jobController) GetRoutes() models.Routes {
 //     description: "Successful create job"
 //     schema:
 //        "$ref": "#/definitions/JobStatus"
-//   "401":
-//     description: "Unauthorized"
+//   "400":
+//     description: "Bad request"
+//     schema:
+//        "$ref": "#/definitions/Status"
 //   "404":
 //     description: "Not found"
+//     schema:
+//        "$ref": "#/definitions/Status"
+//   "422":
+//     description: "Invalid data in request"
+//     schema:
+//        "$ref": "#/definitions/Status"
+//   "500":
+//     description: "Internal server error"
+//     schema:
+//        "$ref": "#/definitions/Status"
 func (controller *jobController) CreateJob(w http.ResponseWriter, r *http.Request) {
 	var jobScheduleDescription models.JobScheduleDescription
 	if err := json.NewDecoder(r.Body).Decode(&jobScheduleDescription); err != nil {
-		utils.ErrorResponse(w, err)
+		controller.HandleError(w, jobErrors.NewInvalid("payload"))
 		return
 	}
 
 	jobState, err := controller.jobHandler.CreateJob(&jobScheduleDescription)
 	if err != nil {
-		controller.HandleError(w, r, err)
+		controller.HandleError(w, err)
 		return
 	}
 	err = controller.jobHandler.MaintainHistoryLimit()
 	if err != nil {
-		controller.HandleError(w, r, err)
-		return
+		log.Warnf("failed to maintain job history: %v", err)
 	}
+
 	utils.JSONResponse(w, &jobState)
 }
 
@@ -102,15 +116,15 @@ func (controller *jobController) CreateJob(w http.ResponseWriter, r *http.Reques
 //     description: "Successful get jobs"
 //     schema:
 //        "$ref": "#/definitions/JobStatus"
-//   "401":
-//     description: "Unauthorized"
-//   "404":
-//     description: "Not found"
+//   "500":
+//     description: "Internal server error"
+//     schema:
+//        "$ref": "#/definitions/Status"
 func (controller *jobController) GetJobs(w http.ResponseWriter, r *http.Request) {
 	log.Debug("Get job list")
 	jobs, err := controller.jobHandler.GetJobs()
 	if err != nil {
-		controller.HandleError(w, r, err)
+		controller.HandleError(w, err)
 		return
 	}
 	log.Debugf("Found %d jobs", len(*jobs))
@@ -131,16 +145,20 @@ func (controller *jobController) GetJobs(w http.ResponseWriter, r *http.Request)
 //     description: "Successful get job"
 //     schema:
 //        "$ref": "#/definitions/JobStatus"
-//   "401":
-//     description: "Unauthorized"
 //   "404":
 //     description: "Not found"
+//     schema:
+//        "$ref": "#/definitions/Status"
+//   "500":
+//     description: "Internal server error"
+//     schema:
+//        "$ref": "#/definitions/Status"
 func (controller *jobController) GetJob(w http.ResponseWriter, r *http.Request) {
 	jobName := mux.Vars(r)[jobNameParam]
 	log.Debugf("Get job %s", jobName)
 	job, err := controller.jobHandler.GetJob(jobName)
 	if err != nil {
-		controller.HandleError(w, r, err)
+		controller.HandleError(w, err)
 		return
 	}
 	utils.JSONResponse(w, job)
@@ -159,18 +177,28 @@ func (controller *jobController) GetJob(w http.ResponseWriter, r *http.Request) 
 //   "200":
 //     description: "Successful delete job"
 //     schema:
-//        "$ref": "#/definitions/JobStatus"
-//   "401":
-//     description: "Unauthorized"
+//        "$ref": "#/definitions/Status"
 //   "404":
 //     description: "Not found"
+//     schema:
+//        "$ref": "#/definitions/Status"
+//   "500":
+//     description: "Internal server error"
+//     schema:
+//        "$ref": "#/definitions/Status"
 func (controller *jobController) DeleteJob(w http.ResponseWriter, r *http.Request) {
 	jobName := mux.Vars(r)[jobNameParam]
 	log.Debugf("Delete job %s", jobName)
 	err := controller.jobHandler.DeleteJob(jobName)
 	if err != nil {
-		controller.HandleError(w, r, err)
+		controller.HandleError(w, err)
 		return
 	}
-	utils.WriteResponse(w, http.StatusOK, fmt.Sprintf("job %s deleted", jobName))
+
+	status := models.Status{
+		Status:  "Success",
+		Code:    http.StatusOK,
+		Message: fmt.Sprintf("job %s successfully deleted", jobName),
+	}
+	utils.StatusResponse(w, &status)
 }

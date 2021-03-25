@@ -2,11 +2,12 @@ package models
 
 import (
 	"fmt"
-	"github.com/equinor/radix-operator/pkg/apis/utils"
-	log "github.com/sirupsen/logrus"
 	"os"
 	"strconv"
 	"strings"
+
+	"github.com/equinor/radix-operator/pkg/apis/utils"
+	log "github.com/sirupsen/logrus"
 )
 
 // Env instance variables
