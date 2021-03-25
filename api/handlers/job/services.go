@@ -10,9 +10,12 @@ import (
 )
 
 func (jh *jobHandler) createService(jobName string, jobComponent *v1.RadixDeployJobComponent, rd *v1.RadixDeployment) error {
-	serviceName := jobName
-	service := buildServiceSpec(serviceName, jobName, jobComponent.Name, rd.Spec.AppName, jobComponent.GetPorts())
-	return jh.kube.ApplyService(jh.env.RadixDeploymentNamespace, service)
+	if len(jobComponent.GetPorts()) > 0 {
+		serviceName := jobName
+		service := buildServiceSpec(serviceName, jobName, jobComponent.Name, rd.Spec.AppName, jobComponent.GetPorts())
+		return jh.kube.ApplyService(jh.env.RadixDeploymentNamespace, service)
+	}
+	return nil
 }
 
 func (jh *jobHandler) getServiceForJob(jobName string) (*corev1.ServiceList, error) {

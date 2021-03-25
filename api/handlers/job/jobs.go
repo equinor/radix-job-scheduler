@@ -74,8 +74,6 @@ func buildJobSpec(jobName string, rd *radixv1.RadixDeployment, radixJobComponent
 				kube.RadixAppLabel:       rd.Spec.AppName,
 				kube.RadixComponentLabel: radixJobComponent.Name,
 				kube.RadixJobTypeLabel:   kube.RadixJobTypeJobSchedule,
-				// kube.RadixJobNameLabel:   jobName,
-				// OBSOLETE_RADIX_APP_NAME_LABEL_NAME: rd.Spec.AppName, // For backwards compatibility. Remove when cluster is migrated
 			},
 		},
 		Spec: batchv1.JobSpec{
@@ -83,7 +81,8 @@ func buildJobSpec(jobName string, rd *radixv1.RadixDeployment, radixJobComponent
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
-						kube.RadixJobNameLabel: jobName,
+						kube.RadixComponentLabel: radixJobComponent.Name,
+						kube.RadixJobTypeLabel:   kube.RadixJobTypeJobSchedule,
 					},
 					Namespace: rd.ObjectMeta.Namespace,
 				},
