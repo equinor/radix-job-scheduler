@@ -15,7 +15,6 @@ import (
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 	log "github.com/sirupsen/logrus"
 	batchv1 "k8s.io/api/batch/v1"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
@@ -82,23 +81,19 @@ func (jh *jobHandler) CreateJob(jobScheduleDescription *models.JobScheduleDescri
 
 	radixDeployment, err := jh.radixClient.RadixV1().RadixDeployments(jh.env.RadixDeploymentNamespace).Get(jh.env.RadixDeploymentName, metav1.GetOptions{})
 	if err != nil {
-		//return nil, errors.New(fmt.Sprintf("failed to get Radix Deployment %s for namespace: %s", jh.env.RadixDeploymentName, jh.env.RadixDeploymentNamespace))
 		return nil, jobErrors.NewNotFound("radix deployment", jh.env.RadixDeploymentName)
 	}
 
 	jobComponent := radixDeployment.GetJobComponentByName(jh.env.RadixComponentName)
 	if jobComponent == nil {
-		//return nil, errors.New(fmt.Sprintf("job component %s does not exist in Radix deployment %s", jh.env.RadixComponentName, radixDeployment.Name))
 		return nil, jobErrors.NewNotFound("job component", jh.env.RadixComponentName)
 	}
 
 	jobName := generateJobName(jobComponent)
 
-	var payloadSecret *corev1.Secret
-	if isPayloadDefinedForJobComponent(jobComponent) {
-		if payloadSecret, err = jh.createPayloadSecret(jobName, jobComponent, radixDeployment, jobScheduleDescription); err != nil {
-			return nil, jobErrors.NewFromError(err)
-		}
+	payloadSecret, err := jh.createPayloadSecret(jobName, jobComponent, radixDeployment, jobScheduleDescription)
+	if err != nil {
+		return nil, jobErrors.NewFromError(err)
 	}
 
 	if err = jh.createService(jobName, jobComponent, radixDeployment); err != nil {

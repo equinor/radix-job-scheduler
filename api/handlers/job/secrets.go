@@ -12,6 +12,10 @@ import (
 )
 
 func (jh *jobHandler) createPayloadSecret(jobName string, jobComponent *v1.RadixDeployJobComponent, rd *v1.RadixDeployment, jobScheduleDescription *models.JobScheduleDescription) (*corev1.Secret, error) {
+	if !isPayloadDefinedForJobComponent(jobComponent) {
+		return nil, nil
+	}
+
 	secretName := getPayloadSecretName(jobName)
 	secret := buildPayloadSecretSpec(secretName, jobScheduleDescription.Payload, jobName, rd.Spec.AppName, jobComponent.Name)
 	return jh.kube.ApplySecret(jh.env.RadixDeploymentNamespace, secret)
