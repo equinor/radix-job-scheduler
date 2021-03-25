@@ -8,10 +8,10 @@
 //     Contact: https://equinor.slack.com/messages/CBKM6N2JY
 //
 //     Consumes:
-//     - jobs/json
+//     - application/jsonk config us
 //
 //     Produces:
-//     - jobs/json
+//     - application/json
 //
 // swagger:meta
 package docs

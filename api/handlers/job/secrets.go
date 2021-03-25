@@ -30,7 +30,6 @@ func (jh *jobHandler) deleteSecret(secret *corev1.Secret) error {
 func getLabelSelectorForSecret(jobName, componentName string) string {
 	return labels.SelectorFromSet(labels.Set(map[string]string{
 		kube.RadixComponentLabel: componentName,
-		kube.RadixJobTypeLabel:   kube.RadixJobTypeJobSchedule,
 		kube.RadixJobNameLabel:   jobName,
 	})).String()
 }
@@ -43,7 +42,6 @@ func buildPayloadSecretSpec(secretName, payload, jobName, appName, componentName
 			Labels: map[string]string{
 				kube.RadixAppLabel:       appName,
 				kube.RadixComponentLabel: componentName,
-				kube.RadixJobTypeLabel:   kube.RadixJobTypeJobSchedule,
 				kube.RadixJobNameLabel:   jobName,
 			},
 		},

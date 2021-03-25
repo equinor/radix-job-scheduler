@@ -1,9 +1,9 @@
 package job
 
 import (
-	"fmt"
 	strconv "strconv"
 
+	jobErrors "github.com/equinor/radix-job-scheduler/api/errors"
 	"github.com/equinor/radix-operator/pkg/apis/deployment"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
@@ -52,7 +52,7 @@ func (jh *jobHandler) getJobByName(jobName string) (*batchv1.Job, error) {
 		}
 	}
 
-	return nil, fmt.Errorf("job %s not found", jobName)
+	return nil, jobErrors.NewNotFound("job", jobName)
 }
 
 func (jh *jobHandler) getJobsWithFieldSelector(fieldSelector string) (*batchv1.JobList, error) {
@@ -83,7 +83,7 @@ func buildJobSpec(jobName string, rd *radixv1.RadixDeployment, radixJobComponent
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
-						kube.RadixComponentLabel: jobName,
+						kube.RadixJobNameLabel: jobName,
 					},
 					Namespace: rd.ObjectMeta.Namespace,
 				},

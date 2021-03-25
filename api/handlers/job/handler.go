@@ -1,12 +1,12 @@
 package job
 
 import (
-	"errors"
 	"fmt"
 	"sort"
 	"strings"
 	"time"
 
+	jobErrors "github.com/equinor/radix-job-scheduler/api/errors"
 	"github.com/equinor/radix-job-scheduler/models"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
@@ -82,12 +82,14 @@ func (jh *jobHandler) CreateJob(jobScheduleDescription *models.JobScheduleDescri
 
 	radixDeployment, err := jh.radixClient.RadixV1().RadixDeployments(jh.env.RadixDeploymentNamespace).Get(jh.env.RadixDeploymentName, metav1.GetOptions{})
 	if err != nil {
-		return nil, errors.New(fmt.Sprintf("failed to get Radix Deployment %s for namespace: %s", jh.env.RadixDeploymentName, jh.env.RadixDeploymentNamespace))
+		//return nil, errors.New(fmt.Sprintf("failed to get Radix Deployment %s for namespace: %s", jh.env.RadixDeploymentName, jh.env.RadixDeploymentNamespace))
+		return nil, jobErrors.NewNotFound("radix deployment", jh.env.RadixDeploymentName)
 	}
 
 	jobComponent := radixDeployment.GetJobComponentByName(jh.env.RadixComponentName)
 	if jobComponent == nil {
-		return nil, errors.New(fmt.Sprintf("job component %s does not exist in Radix deployment %s", jh.env.RadixComponentName, radixDeployment.Name))
+		//return nil, errors.New(fmt.Sprintf("job component %s does not exist in Radix deployment %s", jh.env.RadixComponentName, radixDeployment.Name))
+		return nil, jobErrors.NewNotFound("job component", jh.env.RadixComponentName)
 	}
 
 	jobName := generateJobName(jobComponent)
@@ -95,51 +97,31 @@ func (jh *jobHandler) CreateJob(jobScheduleDescription *models.JobScheduleDescri
 	var payloadSecret *corev1.Secret
 	if isPayloadDefinedForJobComponent(jobComponent) {
 		if payloadSecret, err = jh.createPayloadSecret(jobName, jobComponent, radixDeployment, jobScheduleDescription); err != nil {
-			return nil, err
+			return nil, jobErrors.NewFromError(err)
 		}
+	}
+
+	if err = jh.createService(jobName, jobComponent, radixDeployment); err != nil {
+		return nil, jobErrors.NewFromError(err)
 	}
 
 	job, err := jh.createJob(jobName, jobComponent, radixDeployment, payloadSecret)
 	if err != nil {
-		return nil, err
+		return nil, jobErrors.NewFromError(err)
 	}
 
 	log.Debug(fmt.Sprintf("created job %s for component %s, environment %s, in namespace: %s", job.Name, jh.env.RadixComponentName, radixDeployment.Spec.Environment, jh.env.RadixDeploymentNamespace))
 	return models.GetJobStatusFromJob(job), nil
 }
 
-func (jh *jobHandler) DeleteJob(jobName string) (err error) {
+func (jh *jobHandler) DeleteJob(jobName string) error {
 	log.Debugf("delete job %s for namespace: %s", jobName, jh.env.RadixDeploymentNamespace)
-
-	job, err := jh.getJobByName(jobName)
-	if err != nil {
-		return
-	}
-
-	secrets, err := jh.getSecretsForJob(jobName)
-	if err != nil {
-		return
-	}
-
-	for _, secret := range secrets.Items {
-		if err = jh.deleteSecret(&secret); err != nil {
-			return err
-		}
-	}
-
-	jh.deleteJob(job)
-	if err != nil {
-		return
-	}
-	log.Debugf("deleted job %s for namespace: %s", jobName, jh.env.RadixDeploymentNamespace)
-	return
+	return jh.garbageCollectJob(jobName)
 }
 
 func (jh *jobHandler) MaintainHistoryLimit() error {
-	namespace := jh.env.RadixDeploymentNamespace
 	jobList, err := jh.getCompletedJobs()
 	if err != nil {
-		log.Warnf("failed to get list of jobs: %v", err)
 		return err
 	}
 
@@ -153,12 +135,48 @@ func (jh *jobHandler) MaintainHistoryLimit() error {
 	sortedJobs := sortRJSchByCompletionTimeAsc(jobList.Items)
 	for i := 0; i < numToDelete; i++ {
 		job := sortedJobs[i]
-		log.Infof("Removing Radix Job Schedule %s from %s", job.Name, namespace)
-		if err := jh.deleteJob(&job); err != nil {
-			log.Warnf("failed to delete old Radix Job Scheduler %s: %v", job.Name, err)
+		log.Debugf("deleting job %s", job.Name)
+		if err = jh.garbageCollectJob(job.Name); err != nil {
+			return err
 		}
 	}
 	return nil
+}
+
+func (jh *jobHandler) garbageCollectJob(jobName string) (err error) {
+	job, err := jh.getJobByName(jobName)
+	if err != nil {
+		return
+	}
+
+	secrets, err := jh.getSecretsForJob(jobName)
+	if err != nil {
+		return
+	}
+
+	for _, secret := range secrets.Items {
+		if err = jh.deleteSecret(&secret); err != nil {
+			return
+		}
+	}
+
+	services, err := jh.getServiceForJob(jobName)
+	if err != nil {
+		return
+	}
+
+	for _, service := range services.Items {
+		if err = jh.deleteService(&service); err != nil {
+			return
+		}
+	}
+
+	err = jh.deleteJob(job)
+	if err != nil {
+		return err
+	}
+
+	return
 }
 
 func sortRJSchByCompletionTimeAsc(jobs []batchv1.Job) []batchv1.Job {

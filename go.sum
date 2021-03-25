@@ -100,8 +100,6 @@ github.com/emicklei/go-restful v0.0.0-20170410110728-ff4f55a20633/go.mod h1:otzb
 github.com/emicklei/go-restful v2.6.0+incompatible/go.mod h1:otzb+WCGbkyDHkqmQmT5YD2WR4BBwUdeQoFo8l/7tVs=
 github.com/emicklei/go-restful v2.11.0+incompatible h1:XfJYmBrweXijz6u2n8jWVAH10Vt7AsYahtOAZepjmGA=
 github.com/emicklei/go-restful v2.11.0+incompatible/go.mod h1:otzb+WCGbkyDHkqmQmT5YD2WR4BBwUdeQoFo8l/7tVs=
-github.com/equinor/radix-operator v1.9.0 h1:FSlqFnr4JrfrI4H1xf//o8xVAdJX4KF8E4UCq1Nsf6k=
-github.com/equinor/radix-operator v1.9.0/go.mod h1:zHDzi3bBE+YTQvXLxDuIxjBCczKLbaqXca2fZAAS95o=
 github.com/equinor/radix-operator v1.10.0 h1:LnnyAnZ01YObcpAYYPXm8exE2NSil1UqDrxzfz2AeZw=
 github.com/equinor/radix-operator v1.10.0/go.mod h1:zHDzi3bBE+YTQvXLxDuIxjBCczKLbaqXca2fZAAS95o=
 github.com/evanphx/json-patch v0.0.0-20190203023257-5858425f7550/go.mod h1:50XU6AFN0ol/bzJsmQLiYLvXMP4fmwYFNcr97nuDLSk=
