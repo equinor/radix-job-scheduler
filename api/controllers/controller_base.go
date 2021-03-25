@@ -25,5 +25,4 @@ func (controller *ControllerBase) HandleError(w http.ResponseWriter, err error) 
 
 	log.Errorf("failed: %v", err)
 	utils.StatusResponse(w, status)
-
 }

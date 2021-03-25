@@ -20,7 +20,7 @@
                 "RADIX_ENVIRONMENT":"qa",
                 "RADIX_APP":"radix-job-demo",
                 "RADIX_JOB_SCHEDULERS_PER_ENVIRONMENT_HISTORY_LIMIT": "2",
-                "RADIX_DEPLOYMENT": "qa-bzcul-z3w2j61e",
+                "RADIX_DEPLOYMENT": "qa-ptjfz-fxgan1bc",
                 "RADIX_COMPONENT": "compute",
                 "RADIX_PORTS": "8081"
             }
