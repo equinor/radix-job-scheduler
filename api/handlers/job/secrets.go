@@ -46,6 +46,7 @@ func buildPayloadSecretSpec(secretName, payload, jobName, appName, componentName
 			Labels: map[string]string{
 				kube.RadixAppLabel:       appName,
 				kube.RadixComponentLabel: componentName,
+				kube.RadixJobTypeLabel:   kube.RadixJobTypeJobSchedule,
 				kube.RadixJobNameLabel:   jobName,
 			},
 		},
