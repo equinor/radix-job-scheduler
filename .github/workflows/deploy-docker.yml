@@ -53,4 +53,4 @@ jobs:
       - name: Push to radixprod
         run: |
           az acr login -n radixprod -g common
-          docker push radixprod.azurecr.io/$IMAGE_NAME:relese-latest
+          docker push radixprod.azurecr.io/$IMAGE_NAME:release-latest
