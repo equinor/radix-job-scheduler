@@ -1,0 +1,56 @@
+name: Docker Image CI
+
+on:
+  push:
+    branches: [main, release]
+
+jobs:
+  build-deploy-image-main:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    env:
+      IMAGE_NAME: radix-job-scheduler
+    steps:
+      - uses: actions/checkout@v2
+      - name: Build Docker image
+        run: |
+          docker build -t radixdev.azurecr.io/$IMAGE_NAME:main-latest .
+      - name: Azure login
+        run: |
+          az login --service-principal --username ${{secrets.DEV_AZURE_CREDENTIALS_CLIENT_ID}}  --password "${{secrets.DEV_AZURE_CREDENTIALS_CLIENT_SECRET}}" --tenant ${{secrets.AZURE_TENANT_ID}}
+          az account set -s "${{secrets.DEV_AZURE_SUBSCRIPTION_ID}}"
+      - name: Push to radixdev
+        run: |
+          az acr login -n radixdev -g common
+          docker push radixdev.azurecr.io/$IMAGE_NAME:main-latest
+          az logout
+  build-deploy-image-release:
+    if: github.ref == 'refs/heads/release'
+    runs-on: ubuntu-latest
+    env:
+      IMAGE_NAME: radix-job-scheduler
+    steps:
+      - uses: actions/checkout@v2
+      - name: Build Docker image dev
+        run: |
+          docker build -t radixdev.azurecr.io/$IMAGE_NAME:main-latest .
+      - name: Azure login dev
+        run: |
+          az login --service-principal --username ${{secrets.DEV_AZURE_CREDENTIALS_CLIENT_ID}}  --password "${{secrets.DEV_AZURE_CREDENTIALS_CLIENT_SECRET}}" --tenant ${{secrets.AZURE_TENANT_ID}}
+          az account set -s "${{secrets.DEV_AZURE_SUBSCRIPTION_ID}}"
+      - name: Push to radixdev
+        run: |
+          az acr login -n radixdev -g common
+          docker push radixdev.azurecr.io/$IMAGE_NAME:main-latest
+          az logout
+      - name: Build Docker image prod
+        run: |
+          docker build -t radixprod.azurecr.io/$IMAGE_NAME:release-latest .
+      - name: Azure login prod
+        run: |
+          az login --service-principal --username ${{secrets.PROD_AZURE_CREDENTIALS_CLIENT_ID}}  --password "${{secrets.PROD_AZURE_CREDENTIALS_CLIENT_SECRET}}" --tenant ${{secrets.AZURE_TENANT_ID}}
+          az account set -s "${{secrets.PROD_AZURE_SUBSCRIPTION_ID}}"
+      - name: Push to radixprod
+        run: |
+          az acr login -n radixprod -g common
+          docker push radixprod.azurecr.io/$IMAGE_NAME:relese-latest
