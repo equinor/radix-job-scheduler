@@ -90,7 +90,7 @@ func buildJobSpec(jobName string, rd *radixv1.RadixDeployment, radixJobComponent
 					Containers:      containers,
 					Volumes:         volumes,
 					SecurityContext: podSecurityContext,
-					RestartPolicy:   corev1.RestartPolicyOnFailure, //TODO: decide what to do with failed job
+					RestartPolicy:   corev1.RestartPolicyNever, //TODO: decide what to do with failed job
 				},
 			},
 		},
