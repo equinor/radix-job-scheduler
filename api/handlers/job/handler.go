@@ -25,7 +25,7 @@ const (
 )
 
 type Handler interface {
-	GetJobs() (*[]models.JobStatus, error)
+	GetJobs() ([]models.JobStatus, error)
 	GetJob(name string) (*models.JobStatus, error)
 	CreateJob(jobScheduleDescription *models.JobScheduleDescription) (*models.JobStatus, error)
 	MaintainHistoryLimit() error
@@ -48,7 +48,7 @@ func New(env *models.Env, kube *kube.Kube, kubeClient kubernetes.Interface, radi
 	}
 }
 
-func (jh *jobHandler) GetJobs() (*[]models.JobStatus, error) {
+func (jh *jobHandler) GetJobs() ([]models.JobStatus, error) {
 	log.Debugf("Get Jobs for namespace: %s", jh.env.RadixDeploymentNamespace)
 
 	kubeJobs, err := jh.getAllJobs()
@@ -56,13 +56,13 @@ func (jh *jobHandler) GetJobs() (*[]models.JobStatus, error) {
 		return nil, err
 	}
 
-	jobs := make([]models.JobStatus, len(kubeJobs.Items))
-	for idx, k8sJob := range kubeJobs.Items {
-		jobs[idx] = *models.GetJobStatusFromJob(&k8sJob)
+	jobs := make([]models.JobStatus, len(kubeJobs))
+	for idx, k8sJob := range kubeJobs {
+		jobs[idx] = *models.GetJobStatusFromJob(k8sJob)
 	}
 
 	log.Debugf("Found %v jobs for namespace %s", len(jobs), jh.env.RadixDeploymentNamespace)
-	return &jobs, nil
+	return jobs, nil
 }
 
 func (jh *jobHandler) GetJob(jobName string) (*models.JobStatus, error) {
@@ -115,23 +115,39 @@ func (jh *jobHandler) DeleteJob(jobName string) error {
 }
 
 func (jh *jobHandler) MaintainHistoryLimit() error {
-	jobList, err := jh.getCompletedJobs()
+	jobList, err := jh.getAllJobs()
 	if err != nil {
 		return err
 	}
 
-	numToDelete := len(jobList.Items) - jh.env.RadixJobSchedulersPerEnvironmentHistoryLimit
+	log.Debug("maintain history limit for succeeded jobs")
+	succeededJobs := jobList.Where(func(j *batchv1.Job) bool { return j.Status.Succeeded > 0 })
+	if err = jh.maintainHistoryLimitForJobs(succeededJobs, jh.env.RadixJobSchedulersPerEnvironmentHistoryLimit); err != nil {
+		return err
+	}
+
+	log.Debug("maintain history limit for failed jobs")
+	failedJobs := jobList.Where(func(j *batchv1.Job) bool { return j.Status.Failed > 0 })
+	if err = jh.maintainHistoryLimitForJobs(failedJobs, jh.env.RadixJobSchedulersPerEnvironmentHistoryLimit); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (jh *jobHandler) maintainHistoryLimitForJobs(jobs []*batchv1.Job, historyLimit int) error {
+	numToDelete := len(jobs) - historyLimit
 	if numToDelete <= 0 {
 		log.Debug("no history jobs to delete")
 		return nil
 	}
 	log.Debugf("history jobs to delete: %v", numToDelete)
 
-	sortedJobs := sortRJSchByCompletionTimeAsc(jobList.Items)
+	sortedJobs := sortRJSchByCompletionTimeAsc(jobs)
 	for i := 0; i < numToDelete; i++ {
 		job := sortedJobs[i]
 		log.Debugf("deleting job %s", job.Name)
-		if err = jh.garbageCollectJob(job.Name); err != nil {
+		if err := jh.garbageCollectJob(job.Name); err != nil {
 			return err
 		}
 	}
@@ -174,11 +190,11 @@ func (jh *jobHandler) garbageCollectJob(jobName string) (err error) {
 	return
 }
 
-func sortRJSchByCompletionTimeAsc(jobs []batchv1.Job) []batchv1.Job {
+func sortRJSchByCompletionTimeAsc(jobs []*batchv1.Job) []*batchv1.Job {
 	sort.Slice(jobs, func(i, j int) bool {
 		job1 := (jobs)[i]
 		job2 := (jobs)[j]
-		return isRJS1CompletedBeforeRJS2(&job1, &job2)
+		return isRJS1CompletedBeforeRJS2(job1, job2)
 	})
 	return jobs
 }
