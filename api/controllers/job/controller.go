@@ -127,7 +127,7 @@ func (controller *jobController) GetJobs(w http.ResponseWriter, r *http.Request)
 		controller.HandleError(w, err)
 		return
 	}
-	log.Debugf("Found %d jobs", len(*jobs))
+	log.Debugf("Found %d jobs", len(jobs))
 	utils.JSONResponse(w, jobs)
 }
 

@@ -1,8 +1,6 @@
 package job
 
 import (
-	strconv "strconv"
-
 	jobErrors "github.com/equinor/radix-job-scheduler/api/errors"
 	"github.com/equinor/radix-operator/pkg/apis/deployment"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
@@ -10,10 +8,10 @@ import (
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/equinor/radix-operator/pkg/apis/utils"
 	"github.com/equinor/radix-operator/pkg/apis/utils/numbers"
+	"github.com/equinor/radix-operator/pkg/apis/utils/slice"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 )
 
@@ -32,34 +30,34 @@ func (jh *jobHandler) deleteJob(job *batchv1.Job) error {
 	return jh.kubeClient.BatchV1().Jobs(job.Namespace).Delete(job.Name, &metav1.DeleteOptions{PropagationPolicy: &fg})
 }
 
-func (jh *jobHandler) getCompletedJobs() (*batchv1.JobList, error) {
-	return jh.getJobsWithFieldSelector(getFieldSelectorForCompletedJobComponent())
-}
-
-func (jh *jobHandler) getAllJobs() (*batchv1.JobList, error) {
-	return jh.getJobsWithFieldSelector("")
-}
-
 func (jh *jobHandler) getJobByName(jobName string) (*batchv1.Job, error) {
-	jobs, err := jh.getJobsWithFieldSelector("")
+	jobs, err := jh.getAllJobs()
 	if err != nil {
 		return nil, err
 	}
 
-	for _, job := range jobs.Items {
-		if job.Name == jobName {
-			return &job, nil
-		}
+	jobs = jobs.Where(func(j *batchv1.Job) bool { return j.Name == jobName })
+
+	if len(jobs) == 1 {
+		return jobs[0], nil
 	}
 
 	return nil, jobErrors.NewNotFound("job", jobName)
 }
 
-func (jh *jobHandler) getJobsWithFieldSelector(fieldSelector string) (*batchv1.JobList, error) {
-	return jh.kubeClient.BatchV1().Jobs(jh.env.RadixDeploymentNamespace).List(metav1.ListOptions{
-		LabelSelector: getLabelSelectorForJobComponent(jh.env.RadixComponentName),
-		FieldSelector: fieldSelector,
-	})
+func (jh *jobHandler) getAllJobs() (jobList, error) {
+	kubeJobs, err := jh.kubeClient.
+		BatchV1().
+		Jobs(jh.env.RadixDeploymentNamespace).
+		List(metav1.ListOptions{
+			LabelSelector: getLabelSelectorForJobComponent(jh.env.RadixComponentName),
+		})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return jobList(slice.PointersOf(kubeJobs.Items).([]*batchv1.Job)), nil
 }
 
 func buildJobSpec(jobName string, rd *radixv1.RadixDeployment, radixJobComponent *radixv1.RadixDeployJobComponent, payloadSecret *corev1.Secret, kubeutil *kube.Kube) *batchv1.Job {
@@ -104,9 +102,8 @@ func getContainers(kube *kube.Kube, rd *radixv1.RadixDeployment, radixJobCompone
 	volumeMounts := getVolumeMounts(radixJobComponent, payloadSecret)
 
 	container := corev1.Container{
-		Name:  radixJobComponent.Name,
-		Image: radixJobComponent.Image,
-		//TODO: add setting to be PullAlways, PullIfNotPresent, PullNever. Image should be pulled on job's InitContainer
+		Name:            radixJobComponent.Name,
+		Image:           radixJobComponent.Image,
 		ImagePullPolicy: corev1.PullAlways,
 		Env:             environmentVariables,
 		Ports:           ports,
@@ -186,8 +183,4 @@ func getLabelSelectorForJobComponent(componentName string) string {
 		kube.RadixComponentLabel: componentName,
 		kube.RadixJobTypeLabel:   kube.RadixJobTypeJobSchedule,
 	})).String()
-}
-
-func getFieldSelectorForCompletedJobComponent() string {
-	return fields.SelectorFromSet(fields.Set{"status.successful": strconv.Itoa(1)}).String()
 }
