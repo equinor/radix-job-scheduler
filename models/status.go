@@ -7,7 +7,7 @@ const (
 	StatusFailure = "Failure"
 	// StatusReasonUnknown means the server has declined to indicate a specific reason.
 	// Status code 500.
-	StatusReasonUnknown StatusReason = ""
+	StatusReasonUnknown StatusReason = "InternalError"
 	// StatusReasonNotFound means one or more resources required for this operation
 	// could not be found.
 	// Status code 404

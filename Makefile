@@ -49,3 +49,7 @@ docker-push-main:
 	docker build -t $(DOCKER_REGISTRY)/radix-job-scheduler:main-latest -f Dockerfile .
 	az acr login --name $(CONTAINER_REPO)
 	docker push $(DOCKER_REGISTRY)/radix-job-scheduler:main-latest
+
+.PHONY: generate-mock
+generate-mock:
+	mockgen -source ./api/handlers/job/handler.go -destination ./api/handlers/job/test/handler_mock.go -package mock

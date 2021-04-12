@@ -3,6 +3,7 @@ package job
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 
 	"github.com/equinor/radix-job-scheduler/api/controllers"
@@ -89,9 +90,12 @@ func (controller *jobController) GetRoutes() models.Routes {
 //        "$ref": "#/definitions/Status"
 func (controller *jobController) CreateJob(w http.ResponseWriter, r *http.Request) {
 	var jobScheduleDescription models.JobScheduleDescription
-	if err := json.NewDecoder(r.Body).Decode(&jobScheduleDescription); err != nil {
-		controller.HandleError(w, jobErrors.NewInvalid("payload"))
-		return
+
+	if body, _ := ioutil.ReadAll(r.Body); len(body) > 0 {
+		if err := json.Unmarshal(body, &jobScheduleDescription); err != nil {
+			controller.HandleError(w, jobErrors.NewInvalid("payload"))
+			return
+		}
 	}
 
 	jobState, err := controller.jobHandler.CreateJob(&jobScheduleDescription)
@@ -196,7 +200,7 @@ func (controller *jobController) DeleteJob(w http.ResponseWriter, r *http.Reques
 	}
 
 	status := models.Status{
-		Status:  "Success",
+		Status:  models.StatusSuccess,
 		Code:    http.StatusOK,
 		Message: fmt.Sprintf("job %s successfully deleted", jobName),
 	}

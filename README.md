@@ -19,6 +19,13 @@ Also needed:
 
 Clone the repo into your `GOPATH` and run `go mod download`.
 
+### Generating mocks
+We use gomock to generate mocks used in unit test. [https://github.com/golang/mock](https://github.com/golang/mock)
+
+You need to regenerate mocks if you make changes to any of the interfaces in the code, e.g. the job Handler interface
+
+Run `make generate-mock` to regenerate mocks
+
 #### Update version
 We follow the [semantic version](https://semver.org/) as recommended by [go](https://blog.golang.org/publishing-go-modules).
 `radix-api` has three places to set version
