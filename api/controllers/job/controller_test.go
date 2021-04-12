@@ -86,7 +86,7 @@ func TestGetJobs(t *testing.T) {
 }
 
 func TestGetJob(t *testing.T) {
-	t.Run("Get job - success", func(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
 		t.Parallel()
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
@@ -120,19 +120,20 @@ func TestGetJob(t *testing.T) {
 		}
 	})
 
-	t.Run("Get job - not found", func(t *testing.T) {
+	t.Run("not found", func(t *testing.T) {
 		t.Parallel()
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
+		jobName, kind := "anyjob", "job"
 		jobHandler := jobHandlersTest.NewMockHandler(ctrl)
 		jobHandler.
 			EXPECT().
 			GetJob(gomock.Any()).
-			Return(nil, jobErrors.NewNotFound("job", "jobname")).
+			Return(nil, jobErrors.NewNotFound(kind, jobName)).
 			Times(1)
 
 		controllerTestUtils := setupTest(jobHandler)
-		responseChannel := controllerTestUtils.ExecuteRequest(http.MethodGet, fmt.Sprintf("/api/v1/jobs/%s", "anyjob"))
+		responseChannel := controllerTestUtils.ExecuteRequest(http.MethodGet, fmt.Sprintf("/api/v1/jobs/%s", jobName))
 		response := <-responseChannel
 		assert.NotNil(t, response)
 
@@ -143,10 +144,11 @@ func TestGetJob(t *testing.T) {
 			assert.Equal(t, http.StatusNotFound, returnedStatus.Code)
 			assert.Equal(t, models.StatusFailure, returnedStatus.Status)
 			assert.Equal(t, models.StatusReasonNotFound, returnedStatus.Reason)
+			assert.Equal(t, jobErrors.NotFoundMessage(kind, jobName), returnedStatus.Message)
 		}
 	})
 
-	t.Run("Get job - internal error", func(t *testing.T) {
+	t.Run("internal error", func(t *testing.T) {
 		t.Parallel()
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
@@ -174,7 +176,45 @@ func TestGetJob(t *testing.T) {
 }
 
 func TestCreateJob(t *testing.T) {
-	t.Run("create job with valid payload body - successful", func(t *testing.T) {
+	t.Run("empty body - successful", func(t *testing.T) {
+		t.Parallel()
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+		jobScheduleDescription := models.JobScheduleDescription{}
+		createdJob := models.JobStatus{
+			Name:    "newjob",
+			Started: utils.FormatTimestamp(time.Now()),
+			Ended:   utils.FormatTimestamp(time.Now().Add(1 * time.Minute)),
+			Status:  "jobstatus",
+		}
+		jobHandler := jobHandlersTest.NewMockHandler(ctrl)
+		jobHandler.
+			EXPECT().
+			CreateJob(&jobScheduleDescription).
+			Return(&createdJob, nil).
+			Times(1)
+		jobHandler.
+			EXPECT().
+			MaintainHistoryLimit().
+			Return(nil).
+			Times(1)
+		controllerTestUtils := setupTest(jobHandler)
+		responseChannel := controllerTestUtils.ExecuteRequestWithBody(http.MethodPost, "/api/v1/jobs", nil)
+		response := <-responseChannel
+		assert.NotNil(t, response)
+
+		if response != nil {
+			assert.Equal(t, http.StatusOK, response.StatusCode)
+			var returnedJob models.JobStatus
+			testutils.GetResponseBody(response, &returnedJob)
+			assert.Equal(t, createdJob.Name, returnedJob.Name)
+			assert.Equal(t, createdJob.Started, returnedJob.Started)
+			assert.Equal(t, createdJob.Ended, returnedJob.Ended)
+			assert.Equal(t, createdJob.Status, returnedJob.Status)
+		}
+	})
+
+	t.Run("valid payload body - successful", func(t *testing.T) {
 		t.Parallel()
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
@@ -214,7 +254,7 @@ func TestCreateJob(t *testing.T) {
 		}
 	})
 
-	t.Run("create job with valid payload body - error from MaintainHistoryLimit should not fail request", func(t *testing.T) {
+	t.Run("valid payload body - error from MaintainHistoryLimit should not fail request", func(t *testing.T) {
 		t.Parallel()
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
@@ -254,7 +294,7 @@ func TestCreateJob(t *testing.T) {
 		}
 	})
 
-	t.Run("create job with invalid request body - unprocessable", func(t *testing.T) {
+	t.Run("invalid request body - unprocessable", func(t *testing.T) {
 		t.Parallel()
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
@@ -280,6 +320,150 @@ func TestCreateJob(t *testing.T) {
 			assert.Equal(t, http.StatusUnprocessableEntity, returnedStatus.Code)
 			assert.Equal(t, models.StatusFailure, returnedStatus.Status)
 			assert.Equal(t, models.StatusReasonInvalid, returnedStatus.Reason)
+			assert.Equal(t, jobErrors.InvalidMessage("payload"), returnedStatus.Message)
+		}
+	})
+
+	t.Run("handler returning NotFound error - 404 not found", func(t *testing.T) {
+		t.Parallel()
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+		jobScheduleDescription := models.JobScheduleDescription{}
+		jobHandler := jobHandlersTest.NewMockHandler(ctrl)
+		anyKind, anyName := "anyKind", "anyName"
+		jobHandler.
+			EXPECT().
+			CreateJob(&jobScheduleDescription).
+			Return(nil, jobErrors.NewNotFound(anyKind, anyName)).
+			Times(1)
+		jobHandler.
+			EXPECT().
+			MaintainHistoryLimit().
+			Times(0)
+		controllerTestUtils := setupTest(jobHandler)
+		responseChannel := controllerTestUtils.ExecuteRequest(http.MethodPost, "/api/v1/jobs")
+		response := <-responseChannel
+		assert.NotNil(t, response)
+
+		if response != nil {
+			assert.Equal(t, http.StatusNotFound, response.StatusCode)
+			var returnedStatus models.Status
+			testutils.GetResponseBody(response, &returnedStatus)
+			assert.Equal(t, http.StatusNotFound, returnedStatus.Code)
+			assert.Equal(t, models.StatusFailure, returnedStatus.Status)
+			assert.Equal(t, models.StatusReasonNotFound, returnedStatus.Reason)
+			assert.Equal(t, jobErrors.NotFoundMessage(anyKind, anyName), returnedStatus.Message)
+		}
+	})
+
+	t.Run("handler returning unhandled error - 500 internal server error", func(t *testing.T) {
+		t.Parallel()
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+		jobScheduleDescription := models.JobScheduleDescription{}
+		jobHandler := jobHandlersTest.NewMockHandler(ctrl)
+		jobHandler.
+			EXPECT().
+			CreateJob(&jobScheduleDescription).
+			Return(nil, errors.New("any error")).
+			Times(1)
+		jobHandler.
+			EXPECT().
+			MaintainHistoryLimit().
+			Times(0)
+		controllerTestUtils := setupTest(jobHandler)
+		responseChannel := controllerTestUtils.ExecuteRequest(http.MethodPost, "/api/v1/jobs")
+		response := <-responseChannel
+		assert.NotNil(t, response)
+
+		if response != nil {
+			assert.Equal(t, http.StatusInternalServerError, response.StatusCode)
+			var returnedStatus models.Status
+			testutils.GetResponseBody(response, &returnedStatus)
+			assert.Equal(t, http.StatusInternalServerError, returnedStatus.Code)
+			assert.Equal(t, models.StatusFailure, returnedStatus.Status)
+			assert.Equal(t, models.StatusReasonUnknown, returnedStatus.Reason)
+		}
+	})
+}
+
+func TestDeleteJob(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		t.Parallel()
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+		jobName := "anyjob"
+		jobHandler := jobHandlersTest.NewMockHandler(ctrl)
+		jobHandler.
+			EXPECT().
+			DeleteJob(jobName).
+			Return(nil).
+			Times(1)
+		controllerTestUtils := setupTest(jobHandler)
+		responseChannel := controllerTestUtils.ExecuteRequest(http.MethodDelete, fmt.Sprintf("/api/v1/jobs/%s", jobName))
+		response := <-responseChannel
+		assert.NotNil(t, response)
+
+		if response != nil {
+			assert.Equal(t, http.StatusOK, response.StatusCode)
+			var returnedStatus models.Status
+			testutils.GetResponseBody(response, &returnedStatus)
+			assert.Equal(t, http.StatusOK, returnedStatus.Code)
+			assert.Equal(t, models.StatusSuccess, returnedStatus.Status)
+			assert.Empty(t, returnedStatus.Reason)
+		}
+	})
+
+	t.Run("handler returning not found - 404 not found", func(t *testing.T) {
+		t.Parallel()
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+		jobName := "anyjob"
+		jobHandler := jobHandlersTest.NewMockHandler(ctrl)
+		jobHandler.
+			EXPECT().
+			DeleteJob(jobName).
+			Return(jobErrors.NewNotFound("job", jobName)).
+			Times(1)
+		controllerTestUtils := setupTest(jobHandler)
+		responseChannel := controllerTestUtils.ExecuteRequest(http.MethodDelete, fmt.Sprintf("/api/v1/jobs/%s", jobName))
+		response := <-responseChannel
+		assert.NotNil(t, response)
+
+		if response != nil {
+			assert.Equal(t, http.StatusNotFound, response.StatusCode)
+			var returnedStatus models.Status
+			testutils.GetResponseBody(response, &returnedStatus)
+			assert.Equal(t, http.StatusNotFound, returnedStatus.Code)
+			assert.Equal(t, models.StatusFailure, returnedStatus.Status)
+			assert.Equal(t, models.StatusReasonNotFound, returnedStatus.Reason)
+			assert.Equal(t, jobErrors.NotFoundMessage("job", jobName), returnedStatus.Message)
+		}
+	})
+
+	t.Run("handler returning unhandled error - 500 internal server error", func(t *testing.T) {
+		t.Parallel()
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+		jobName := "anyjob"
+		jobHandler := jobHandlersTest.NewMockHandler(ctrl)
+		jobHandler.
+			EXPECT().
+			DeleteJob(jobName).
+			Return(errors.New("any error")).
+			Times(1)
+		controllerTestUtils := setupTest(jobHandler)
+		responseChannel := controllerTestUtils.ExecuteRequest(http.MethodDelete, fmt.Sprintf("/api/v1/jobs/%s", jobName))
+		response := <-responseChannel
+		assert.NotNil(t, response)
+
+		if response != nil {
+			assert.Equal(t, http.StatusInternalServerError, response.StatusCode)
+			var returnedStatus models.Status
+			testutils.GetResponseBody(response, &returnedStatus)
+			assert.Equal(t, http.StatusInternalServerError, returnedStatus.Code)
+			assert.Equal(t, models.StatusFailure, returnedStatus.Status)
+			assert.Equal(t, models.StatusReasonUnknown, returnedStatus.Reason)
 		}
 	})
 }

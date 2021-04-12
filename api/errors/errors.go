@@ -20,6 +20,18 @@ type StatusError struct {
 
 var _ error = &StatusError{}
 
+func NotFoundMessage(kind, name string) string {
+	return fmt.Sprintf("%s %s not found", kind, name)
+}
+
+func InvalidMessage(name string) string {
+	return fmt.Sprintf("%s is invalid", name)
+}
+
+func UnknownMessage(err error) string {
+	return err.Error()
+}
+
 // Error implements the Error interface.
 func (e *StatusError) Error() string {
 	return e.ErrStatus.Message
@@ -36,7 +48,7 @@ func NewNotFound(kind, name string) *StatusError {
 			Status:  models.StatusFailure,
 			Reason:  models.StatusReasonNotFound,
 			Code:    http.StatusNotFound,
-			Message: fmt.Sprintf("%s %s not found", kind, name),
+			Message: NotFoundMessage(kind, name),
 		},
 	}
 }
@@ -47,7 +59,7 @@ func NewInvalid(name string) *StatusError {
 			Status:  models.StatusFailure,
 			Reason:  models.StatusReasonInvalid,
 			Code:    http.StatusUnprocessableEntity,
-			Message: fmt.Sprintf("%s is invalid", name),
+			Message: InvalidMessage(name),
 		},
 	}
 }
@@ -58,7 +70,7 @@ func NewUnknown(err error) *StatusError {
 			Status:  models.StatusFailure,
 			Reason:  models.StatusReasonUnknown,
 			Code:    http.StatusInternalServerError,
-			Message: err.Error(),
+			Message: UnknownMessage(err),
 		},
 	}
 }
