@@ -96,3 +96,12 @@ func NewFromKubernetesAPIStatus(apiStatus k8sErrors.APIStatus) *StatusError {
 		return NewUnknown(errors.New(apiStatus.Status().Message))
 	}
 }
+
+func ReasonForError(err error) models.StatusReason {
+	switch t := err.(type) {
+	case APIStatus:
+		return t.Status().Reason
+	default:
+		return models.StatusReasonUnknown
+	}
+}
