@@ -1,6 +1,7 @@
 package job
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/equinor/radix-job-scheduler/models"
@@ -22,13 +23,16 @@ func (jh *jobHandler) createPayloadSecret(jobName string, jobComponent *v1.Radix
 }
 
 func (jh *jobHandler) getSecretsForJob(jobName string) (*corev1.SecretList, error) {
-	return jh.kubeClient.CoreV1().Secrets(jh.env.RadixDeploymentNamespace).List(metav1.ListOptions{
-		LabelSelector: getLabelSelectorForSecret(jobName, jh.env.RadixComponentName),
-	})
+	return jh.kubeClient.CoreV1().Secrets(jh.env.RadixDeploymentNamespace).List(
+		context.TODO(),
+		metav1.ListOptions{
+			LabelSelector: getLabelSelectorForSecret(jobName, jh.env.RadixComponentName),
+		},
+	)
 }
 
 func (jh *jobHandler) deleteSecret(secret *corev1.Secret) error {
-	return jh.kubeClient.CoreV1().Secrets(secret.Namespace).Delete(secret.Name, &metav1.DeleteOptions{})
+	return jh.kubeClient.CoreV1().Secrets(secret.Namespace).Delete(context.TODO(), secret.Name, metav1.DeleteOptions{})
 }
 
 func getLabelSelectorForSecret(jobName, componentName string) string {

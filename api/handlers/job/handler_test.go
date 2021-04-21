@@ -1,6 +1,7 @@
 package job
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strings"
@@ -8,12 +9,17 @@ import (
 
 	"github.com/equinor/radix-job-scheduler/api/errors"
 	"github.com/equinor/radix-job-scheduler/models"
+	"github.com/equinor/radix-operator/pkg/apis/defaults"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
+	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/equinor/radix-operator/pkg/apis/utils"
+	"github.com/equinor/radix-operator/pkg/apis/utils/numbers"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 	radixfake "github.com/equinor/radix-operator/pkg/client/clientset/versioned/fake"
 	"github.com/stretchr/testify/assert"
-	v1 "k8s.io/api/batch/v1"
+	batchv1 "k8s.io/api/batch/v1"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	kubefake "k8s.io/client-go/kubernetes/fake"
@@ -25,6 +31,8 @@ func setupTest(appName, appEnvironment, appComponent, appDeployment string, hist
 	os.Setenv("RADIX_COMPONENT", appComponent)
 	os.Setenv("RADIX_DEPLOYMENT", appDeployment)
 	os.Setenv("RADIX_JOB_SCHEDULERS_PER_ENVIRONMENT_HISTORY_LIMIT", fmt.Sprint(historyLimit))
+	os.Setenv(defaults.OperatorEnvLimitDefaultCPUEnvironmentVariable, "200m")
+	os.Setenv(defaults.OperatorEnvLimitDefaultMemoryEnvironmentVariable, "500M")
 	kubeclient := kubefake.NewSimpleClientset()
 	radixclient := radixfake.NewSimpleClientset()
 	kubeUtil, _ := kube.New(kubeclient, radixclient)
@@ -42,17 +50,16 @@ func addKubeJob(kubeClient kubernetes.Interface, jobName, componentName, jobType
 		labels[kube.RadixJobTypeLabel] = jobType
 	}
 
-	j, err := kubeClient.BatchV1().Jobs(namespace).Create(
-		&v1.Job{
+	kubeClient.BatchV1().Jobs(namespace).Create(
+		context.TODO(),
+		&batchv1.Job{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:   jobName,
 				Labels: labels,
 			},
 		},
+		metav1.CreateOptions{},
 	)
-
-	fmt.Println(j)
-	fmt.Println(err)
 }
 
 func TestGetJobs(t *testing.T) {
@@ -138,11 +145,97 @@ func TestGetJob(t *testing.T) {
 
 func TestCreateJob(t *testing.T) {
 
-	// RD job without ports - service not created
-	// RD job with resources
-	// RD job validate job and container labels, image, pull policy, environment variables, restart policy, security context
-	// RD does not exist - notfound error
-	// RD does not container job name - notfound error
+	// RD job runAsNonRoot (security context)
+	t.Run("RD job - static configuration", func(t *testing.T) {
+		t.Parallel()
+		appName, appEnvironment, appJobComponent, appDeployment := "app", "qa", "compute", "app-deploy-1"
+		envNamespace := utils.GetEnvironmentNamespace(appName, appEnvironment)
+		rd := utils.ARadixDeployment().
+			WithDeploymentName(appDeployment).
+			WithAppName(appName).
+			WithEnvironment(appEnvironment).
+			WithComponents().
+			WithJobComponents(
+				utils.NewDeployJobComponentBuilder().
+					WithName(appJobComponent),
+			).
+			BuildRD()
+
+		radixClient, kubeClient, kubeUtil := setupTest(appName, appEnvironment, appJobComponent, appDeployment, 1)
+		radixClient.RadixV1().RadixDeployments(envNamespace).Create(context.TODO(), rd, metav1.CreateOptions{})
+		handler := New(models.NewEnv(), kubeUtil, kubeClient, radixClient)
+		jobStatus, err := handler.CreateJob(nil)
+		assert.Nil(t, err)
+		assert.NotNil(t, jobStatus)
+		job, _ := kubeClient.BatchV1().Jobs(envNamespace).Get(context.TODO(), jobStatus.Name, metav1.GetOptions{})
+		assert.Len(t, job.Labels, 3)
+		assert.Equal(t, appName, job.Labels[kube.RadixAppLabel])
+		assert.Equal(t, appJobComponent, job.Labels[kube.RadixComponentLabel])
+		assert.Equal(t, kube.RadixJobTypeJobSchedule, job.Labels[kube.RadixJobTypeLabel])
+		assert.Len(t, job.Spec.Template.Labels, 2)
+		assert.Equal(t, appJobComponent, job.Spec.Template.Labels[kube.RadixComponentLabel])
+		assert.Equal(t, kube.RadixJobTypeJobSchedule, job.Spec.Template.Labels[kube.RadixJobTypeLabel])
+		assert.Equal(t, numbers.Int32Ptr(0), job.Spec.BackoffLimit)
+		assert.Equal(t, corev1.RestartPolicyNever, job.Spec.Template.Spec.RestartPolicy)
+		assert.Equal(t, corev1.PullAlways, job.Spec.Template.Spec.Containers[0].ImagePullPolicy)
+	})
+
+	t.Run("RD job image", func(t *testing.T) {
+		t.Parallel()
+		appName, appEnvironment, appJobComponent, appDeployment, image := "app", "qa", "compute", "app-deploy-1", "image:xyz"
+		envNamespace := utils.GetEnvironmentNamespace(appName, appEnvironment)
+		rd := utils.ARadixDeployment().
+			WithDeploymentName(appDeployment).
+			WithAppName(appName).
+			WithEnvironment(appEnvironment).
+			WithComponents().
+			WithJobComponents(
+				utils.NewDeployJobComponentBuilder().
+					WithName(appJobComponent).
+					WithImage(image),
+			).
+			BuildRD()
+
+		radixClient, kubeClient, kubeUtil := setupTest(appName, appEnvironment, appJobComponent, appDeployment, 1)
+		radixClient.RadixV1().RadixDeployments(envNamespace).Create(context.TODO(), rd, metav1.CreateOptions{})
+		handler := New(models.NewEnv(), kubeUtil, kubeClient, radixClient)
+		jobStatus, err := handler.CreateJob(nil)
+		assert.Nil(t, err)
+		assert.NotNil(t, jobStatus)
+		job, _ := kubeClient.BatchV1().Jobs(envNamespace).Get(context.TODO(), jobStatus.Name, metav1.GetOptions{})
+		assert.Equal(t, image, job.Spec.Template.Spec.Containers[0].Image)
+	})
+
+	t.Run("RD job with env vars", func(t *testing.T) {
+		t.Parallel()
+		appName, appEnvironment, appJobComponent, appDeployment := "app", "qa", "compute", "app-deploy-1"
+		envNamespace := utils.GetEnvironmentNamespace(appName, appEnvironment)
+		rd := utils.ARadixDeployment().
+			WithDeploymentName(appDeployment).
+			WithAppName(appName).
+			WithEnvironment(appEnvironment).
+			WithComponents().
+			WithJobComponents(
+				utils.NewDeployJobComponentBuilder().
+					WithName(appJobComponent).
+					WithEnvironmentVariables(map[string]string{"ENV1": "value1", "ENV2": "value2"}),
+			).
+			BuildRD()
+
+		radixClient, kubeClient, kubeUtil := setupTest(appName, appEnvironment, appJobComponent, appDeployment, 1)
+		radixClient.RadixV1().RadixDeployments(envNamespace).Create(context.TODO(), rd, metav1.CreateOptions{})
+		handler := New(models.NewEnv(), kubeUtil, kubeClient, radixClient)
+		jobStatus, err := handler.CreateJob(nil)
+		assert.Nil(t, err)
+		assert.NotNil(t, jobStatus)
+		// Test environment variables
+		job, _ := kubeClient.BatchV1().Jobs(envNamespace).Get(context.TODO(), jobStatus.Name, metav1.GetOptions{})
+		assert.Len(t, job.Spec.Template.Spec.Containers[0].Env, 2)
+		env1 := getEnvByName(job.Spec.Template.Spec.Containers[0].Env, "ENV1")
+		assert.Equal(t, "value1", env1.Value)
+		env2 := getEnvByName(job.Spec.Template.Spec.Containers[0].Env, "ENV2")
+		assert.Equal(t, "value2", env2.Value)
+	})
 
 	t.Run("RD job with payload path - secret exists and mounted", func(t *testing.T) {
 		t.Parallel()
@@ -161,14 +254,14 @@ func TestCreateJob(t *testing.T) {
 			BuildRD()
 
 		radixClient, kubeClient, kubeUtil := setupTest(appName, appEnvironment, appJobComponent, appDeployment, 1)
-		radixClient.RadixV1().RadixDeployments(envNamespace).Create(rd)
+		radixClient.RadixV1().RadixDeployments(envNamespace).Create(context.TODO(), rd, metav1.CreateOptions{})
 		handler := New(models.NewEnv(), kubeUtil, kubeClient, radixClient)
 		jobStatus, err := handler.CreateJob(&models.JobScheduleDescription{Payload: payloadString})
 		assert.Nil(t, err)
 		assert.NotNil(t, jobStatus)
 		// Test secret spec
 		secretName := getPayloadSecretName(jobStatus.Name)
-		secret, _ := kubeClient.CoreV1().Secrets(envNamespace).Get(secretName, metav1.GetOptions{})
+		secret, _ := kubeClient.CoreV1().Secrets(envNamespace).Get(context.TODO(), secretName, metav1.GetOptions{})
 		assert.NotNil(t, secret)
 		assert.Len(t, secret.Labels, 4)
 		assert.Equal(t, appName, secret.Labels[kube.RadixAppLabel])
@@ -178,7 +271,7 @@ func TestCreateJob(t *testing.T) {
 		payloadBytes := secret.Data[JOB_PAYLOAD_PROPERTY_NAME]
 		assert.Equal(t, payloadString, string(payloadBytes))
 		// Test secret mounted
-		job, _ := kubeClient.BatchV1().Jobs(envNamespace).Get(jobStatus.Name, metav1.GetOptions{})
+		job, _ := kubeClient.BatchV1().Jobs(envNamespace).Get(context.TODO(), jobStatus.Name, metav1.GetOptions{})
 		assert.NotNil(t, job)
 		assert.Len(t, job.Spec.Template.Spec.Volumes, 1)
 		assert.Equal(t, JOB_PAYLOAD_PROPERTY_NAME, job.Spec.Template.Spec.Volumes[0].Name)
@@ -204,17 +297,17 @@ func TestCreateJob(t *testing.T) {
 			BuildRD()
 
 		radixClient, kubeClient, kubeUtil := setupTest(appName, appEnvironment, appJobComponent, appDeployment, 1)
-		radixClient.RadixV1().RadixDeployments(envNamespace).Create(rd)
+		radixClient.RadixV1().RadixDeployments(envNamespace).Create(context.TODO(), rd, metav1.CreateOptions{})
 		handler := New(models.NewEnv(), kubeUtil, kubeClient, radixClient)
 		jobStatus, err := handler.CreateJob(&models.JobScheduleDescription{Payload: payloadString})
 		assert.Nil(t, err)
 		assert.NotNil(t, jobStatus)
 		// Test secret does not exist
 		secretName := getPayloadSecretName(jobStatus.Name)
-		secret, _ := kubeClient.CoreV1().Secrets(envNamespace).Get(secretName, metav1.GetOptions{})
+		secret, _ := kubeClient.CoreV1().Secrets(envNamespace).Get(context.TODO(), secretName, metav1.GetOptions{})
 		assert.Nil(t, secret)
 		// Test no volume mounts
-		job, _ := kubeClient.BatchV1().Jobs(envNamespace).Get(jobStatus.Name, metav1.GetOptions{})
+		job, _ := kubeClient.BatchV1().Jobs(envNamespace).Get(context.TODO(), jobStatus.Name, metav1.GetOptions{})
 		assert.NotNil(t, job)
 		assert.Len(t, job.Spec.Template.Spec.Volumes, 0)
 		assert.Len(t, job.Spec.Template.Spec.Containers[0].VolumeMounts, 0)
@@ -237,13 +330,13 @@ func TestCreateJob(t *testing.T) {
 			BuildRD()
 
 		radixClient, kubeClient, kubeUtil := setupTest(appName, appEnvironment, appJobComponent, appDeployment, 1)
-		radixClient.RadixV1().RadixDeployments(envNamespace).Create(rd)
+		radixClient.RadixV1().RadixDeployments(envNamespace).Create(context.TODO(), rd, metav1.CreateOptions{})
 		handler := New(models.NewEnv(), kubeUtil, kubeClient, radixClient)
 		jobStatus, err := handler.CreateJob(nil)
 		assert.Nil(t, err)
 		assert.NotNil(t, jobStatus)
 		// Test service spec
-		service, _ := kubeClient.CoreV1().Services(envNamespace).Get(jobStatus.Name, metav1.GetOptions{})
+		service, _ := kubeClient.CoreV1().Services(envNamespace).Get(context.TODO(), jobStatus.Name, metav1.GetOptions{})
 		assert.NotNil(t, service)
 		assert.Len(t, service.Labels, 4)
 		assert.Equal(t, appName, service.Labels[kube.RadixAppLabel])
@@ -257,6 +350,513 @@ func TestCreateJob(t *testing.T) {
 		assert.Equal(t, int32(8000), service.Spec.Ports[0].Port)
 	})
 
+	t.Run("RD job without ports - no service created", func(t *testing.T) {
+		t.Parallel()
+		appName, appEnvironment, appJobComponent, appDeployment := "app", "qa", "compute", "app-deploy-1"
+		envNamespace := utils.GetEnvironmentNamespace(appName, appEnvironment)
+		rd := utils.ARadixDeployment().
+			WithDeploymentName(appDeployment).
+			WithAppName(appName).
+			WithEnvironment(appEnvironment).
+			WithComponents().
+			WithJobComponents(
+				utils.NewDeployJobComponentBuilder().
+					WithName(appJobComponent),
+			).
+			BuildRD()
+
+		radixClient, kubeClient, kubeUtil := setupTest(appName, appEnvironment, appJobComponent, appDeployment, 1)
+		radixClient.RadixV1().RadixDeployments(envNamespace).Create(context.TODO(), rd, metav1.CreateOptions{})
+		handler := New(models.NewEnv(), kubeUtil, kubeClient, radixClient)
+		jobStatus, err := handler.CreateJob(nil)
+		assert.Nil(t, err)
+		assert.NotNil(t, jobStatus)
+		// Test service spec
+		service, _ := kubeClient.CoreV1().Services(envNamespace).Get(context.TODO(), jobStatus.Name, metav1.GetOptions{})
+		assert.Nil(t, service)
+	})
+
+	t.Run("RD job with resources", func(t *testing.T) {
+		t.Parallel()
+		appName, appEnvironment, appJobComponent, appDeployment := "app", "qa", "compute", "app-deploy-1"
+		envNamespace := utils.GetEnvironmentNamespace(appName, appEnvironment)
+		rd := utils.ARadixDeployment().
+			WithDeploymentName(appDeployment).
+			WithAppName(appName).
+			WithEnvironment(appEnvironment).
+			WithComponents().
+			WithJobComponents(
+				utils.NewDeployJobComponentBuilder().
+					WithName(appJobComponent).
+					WithResource(
+						map[string]string{"cpu": "10m", "memory": "20M"},
+						map[string]string{"cpu": "30m", "memory": "40M"},
+					),
+			).
+			BuildRD()
+
+		radixClient, kubeClient, kubeUtil := setupTest(appName, appEnvironment, appJobComponent, appDeployment, 1)
+		radixClient.RadixV1().RadixDeployments(envNamespace).Create(context.TODO(), rd, metav1.CreateOptions{})
+		handler := New(models.NewEnv(), kubeUtil, kubeClient, radixClient)
+		jobStatus, err := handler.CreateJob(nil)
+		assert.Nil(t, err)
+		assert.NotNil(t, jobStatus)
+		// Test resources defined
+		job, _ := kubeClient.BatchV1().Jobs(envNamespace).Get(context.TODO(), jobStatus.Name, metav1.GetOptions{})
+		assert.NotNil(t, job)
+		assert.Len(t, job.Spec.Template.Spec.Containers, 1)
+		assert.Len(t, job.Spec.Template.Spec.Containers[0].Resources.Requests, 2)
+		assert.Equal(t, int64(10), job.Spec.Template.Spec.Containers[0].Resources.Requests.Cpu().MilliValue())
+		assert.Equal(t, int64(20), job.Spec.Template.Spec.Containers[0].Resources.Requests.Memory().ScaledValue(resource.Mega))
+		assert.Len(t, job.Spec.Template.Spec.Containers[0].Resources.Limits, 2)
+		assert.Equal(t, int64(30), job.Spec.Template.Spec.Containers[0].Resources.Limits.Cpu().MilliValue())
+		assert.Equal(t, int64(40), job.Spec.Template.Spec.Containers[0].Resources.Limits.Memory().ScaledValue(resource.Mega))
+	})
+
+	t.Run("RD job without resources", func(t *testing.T) {
+		t.Parallel()
+		appName, appEnvironment, appJobComponent, appDeployment := "app", "qa", "compute", "app-deploy-1"
+		envNamespace := utils.GetEnvironmentNamespace(appName, appEnvironment)
+		rd := utils.ARadixDeployment().
+			WithDeploymentName(appDeployment).
+			WithAppName(appName).
+			WithEnvironment(appEnvironment).
+			WithComponents().
+			WithJobComponents(
+				utils.NewDeployJobComponentBuilder().
+					WithName(appJobComponent),
+			).
+			BuildRD()
+
+		radixClient, kubeClient, kubeUtil := setupTest(appName, appEnvironment, appJobComponent, appDeployment, 1)
+		radixClient.RadixV1().RadixDeployments(envNamespace).Create(context.TODO(), rd, metav1.CreateOptions{})
+		handler := New(models.NewEnv(), kubeUtil, kubeClient, radixClient)
+		jobStatus, err := handler.CreateJob(nil)
+		assert.Nil(t, err)
+		assert.NotNil(t, jobStatus)
+
+		job, _ := kubeClient.BatchV1().Jobs(envNamespace).Get(context.TODO(), jobStatus.Name, metav1.GetOptions{})
+		assert.NotNil(t, job)
+		assert.Len(t, job.Spec.Template.Spec.Containers, 1)
+		assert.Len(t, job.Spec.Template.Spec.Containers[0].Resources.Requests, 0)
+		assert.Len(t, job.Spec.Template.Spec.Containers[0].Resources.Limits, 0)
+	})
+
+	t.Run("RD job with only request resources, not exceeding default limit", func(t *testing.T) {
+		t.Parallel()
+		appName, appEnvironment, appJobComponent, appDeployment := "app", "qa", "compute", "app-deploy-1"
+		envNamespace := utils.GetEnvironmentNamespace(appName, appEnvironment)
+		rd := utils.ARadixDeployment().
+			WithDeploymentName(appDeployment).
+			WithAppName(appName).
+			WithEnvironment(appEnvironment).
+			WithComponents().
+			WithJobComponents(
+				utils.NewDeployJobComponentBuilder().
+					WithName(appJobComponent).
+					WithResource(
+						map[string]string{"cpu": "50m", "memory": "60M"},
+						map[string]string{},
+					),
+			).
+			BuildRD()
+
+		radixClient, kubeClient, kubeUtil := setupTest(appName, appEnvironment, appJobComponent, appDeployment, 1)
+		radixClient.RadixV1().RadixDeployments(envNamespace).Create(context.TODO(), rd, metav1.CreateOptions{})
+		handler := New(models.NewEnv(), kubeUtil, kubeClient, radixClient)
+		jobStatus, err := handler.CreateJob(nil)
+		assert.Nil(t, err)
+		assert.NotNil(t, jobStatus)
+
+		job, _ := kubeClient.BatchV1().Jobs(envNamespace).Get(context.TODO(), jobStatus.Name, metav1.GetOptions{})
+		assert.NotNil(t, job)
+		assert.Len(t, job.Spec.Template.Spec.Containers, 1)
+		assert.Len(t, job.Spec.Template.Spec.Containers[0].Resources.Requests, 2)
+		assert.Equal(t, int64(50), job.Spec.Template.Spec.Containers[0].Resources.Requests.Cpu().MilliValue())
+		assert.Equal(t, int64(60), job.Spec.Template.Spec.Containers[0].Resources.Requests.Memory().ScaledValue(resource.Mega))
+		assert.Len(t, job.Spec.Template.Spec.Containers[0].Resources.Limits, 0)
+	})
+
+	t.Run("RD job with only request resources, exceeding default limit", func(t *testing.T) {
+		t.Parallel()
+		appName, appEnvironment, appJobComponent, appDeployment := "app", "qa", "compute", "app-deploy-1"
+		envNamespace := utils.GetEnvironmentNamespace(appName, appEnvironment)
+		rd := utils.ARadixDeployment().
+			WithDeploymentName(appDeployment).
+			WithAppName(appName).
+			WithEnvironment(appEnvironment).
+			WithComponents().
+			WithJobComponents(
+				utils.NewDeployJobComponentBuilder().
+					WithName(appJobComponent).
+					WithResource(
+						map[string]string{"cpu": "400m", "memory": "600M"},
+						map[string]string{},
+					),
+			).
+			BuildRD()
+
+		radixClient, kubeClient, kubeUtil := setupTest(appName, appEnvironment, appJobComponent, appDeployment, 1)
+		radixClient.RadixV1().RadixDeployments(envNamespace).Create(context.TODO(), rd, metav1.CreateOptions{})
+		handler := New(models.NewEnv(), kubeUtil, kubeClient, radixClient)
+		jobStatus, err := handler.CreateJob(nil)
+		assert.Nil(t, err)
+		assert.NotNil(t, jobStatus)
+
+		job, _ := kubeClient.BatchV1().Jobs(envNamespace).Get(context.TODO(), jobStatus.Name, metav1.GetOptions{})
+		assert.NotNil(t, job)
+		assert.Len(t, job.Spec.Template.Spec.Containers, 1)
+		assert.Len(t, job.Spec.Template.Spec.Containers[0].Resources.Requests, 2)
+		assert.Equal(t, int64(400), job.Spec.Template.Spec.Containers[0].Resources.Requests.Cpu().MilliValue())
+		assert.Equal(t, int64(600), job.Spec.Template.Spec.Containers[0].Resources.Requests.Memory().ScaledValue(resource.Mega))
+		assert.Len(t, job.Spec.Template.Spec.Containers[0].Resources.Limits, 2)
+		assert.Equal(t, int64(400), job.Spec.Template.Spec.Containers[0].Resources.Limits.Cpu().MilliValue())
+		assert.Equal(t, int64(600), job.Spec.Template.Spec.Containers[0].Resources.Limits.Memory().ScaledValue(resource.Mega))
+	})
+
+	t.Run("RD job not defined", func(t *testing.T) {
+		t.Parallel()
+		appName, appEnvironment, appJobComponent, appDeployment := "app", "qa", "compute", "app-deploy-1"
+		envNamespace := utils.GetEnvironmentNamespace(appName, appEnvironment)
+		rd := utils.ARadixDeployment().
+			WithDeploymentName(appDeployment).
+			WithAppName(appName).
+			WithEnvironment(appEnvironment).
+			WithComponents().
+			WithJobComponents(
+				utils.NewDeployJobComponentBuilder().
+					WithName("another-job"),
+			).
+			BuildRD()
+
+		radixClient, kubeClient, kubeUtil := setupTest(appName, appEnvironment, appJobComponent, appDeployment, 1)
+		radixClient.RadixV1().RadixDeployments(envNamespace).Create(context.TODO(), rd, metav1.CreateOptions{})
+		handler := New(models.NewEnv(), kubeUtil, kubeClient, radixClient)
+		jobStatus, err := handler.CreateJob(nil)
+		assert.Nil(t, jobStatus)
+		assert.NotNil(t, err)
+		assert.Equal(t, models.StatusReasonNotFound, errors.ReasonForError(err))
+		assert.Equal(t, errors.NotFoundMessage("job component", appJobComponent), err.Error())
+	})
+
+	t.Run("radix deployment does not exist", func(t *testing.T) {
+		t.Parallel()
+		appName, appEnvironment, appJobComponent, appDeployment := "app", "qa", "compute", "app-deploy-1"
+		envNamespace := utils.GetEnvironmentNamespace(appName, appEnvironment)
+		rd := utils.ARadixDeployment().
+			WithDeploymentName("another-deployment").
+			WithAppName(appName).
+			WithEnvironment(appEnvironment).
+			WithComponents().
+			WithJobComponents(
+				utils.NewDeployJobComponentBuilder().
+					WithName(appJobComponent),
+			).
+			BuildRD()
+
+		radixClient, kubeClient, kubeUtil := setupTest(appName, appEnvironment, appJobComponent, appDeployment, 1)
+		radixClient.RadixV1().RadixDeployments(envNamespace).Create(context.TODO(), rd, metav1.CreateOptions{})
+		handler := New(models.NewEnv(), kubeUtil, kubeClient, radixClient)
+		jobStatus, err := handler.CreateJob(nil)
+		assert.Nil(t, jobStatus)
+		assert.NotNil(t, err)
+		assert.Equal(t, models.StatusReasonNotFound, errors.ReasonForError(err))
+		assert.Equal(t, errors.NotFoundMessage("radix deployment", appDeployment), err.Error())
+	})
+
+	t.Run("RD job with secrets - env correctly set", func(t *testing.T) {
+		t.Parallel()
+		appName, appEnvironment, appJobComponent, appDeployment := "app", "qa", "compute", "app-deploy-1"
+		envNamespace := utils.GetEnvironmentNamespace(appName, appEnvironment)
+		rd := utils.ARadixDeployment().
+			WithDeploymentName(appDeployment).
+			WithAppName(appName).
+			WithEnvironment(appEnvironment).
+			WithComponents().
+			WithJobComponents(
+				utils.NewDeployJobComponentBuilder().
+					WithName(appJobComponent).
+					WithSecrets([]string{"SECRET1", "SECRET2"}),
+			).
+			BuildRD()
+
+		radixClient, kubeClient, kubeUtil := setupTest(appName, appEnvironment, appJobComponent, appDeployment, 1)
+		radixClient.RadixV1().RadixDeployments(envNamespace).Create(context.TODO(), rd, metav1.CreateOptions{})
+		handler := New(models.NewEnv(), kubeUtil, kubeClient, radixClient)
+		jobStatus, err := handler.CreateJob(nil)
+		assert.NotNil(t, jobStatus)
+		assert.Nil(t, err)
+		job, _ := kubeClient.BatchV1().Jobs(envNamespace).Get(context.TODO(), jobStatus.Name, metav1.GetOptions{})
+		assert.Len(t, job.Spec.Template.Spec.Containers[0].Env, 2)
+		env1 := getEnvByName(job.Spec.Template.Spec.Containers[0].Env, "SECRET1")
+		assert.Equal(t, "SECRET1", env1.ValueFrom.SecretKeyRef.Key)
+		assert.Equal(t, utils.GetComponentSecretName(appJobComponent), env1.ValueFrom.SecretKeyRef.LocalObjectReference.Name)
+		env2 := getEnvByName(job.Spec.Template.Spec.Containers[0].Env, "SECRET2")
+		assert.NotNil(t, env2)
+		assert.Equal(t, "SECRET2", env2.ValueFrom.SecretKeyRef.Key)
+		assert.Equal(t, utils.GetComponentSecretName(appJobComponent), env2.ValueFrom.SecretKeyRef.LocalObjectReference.Name)
+	})
+
+	t.Run("RD job with volume mount", func(t *testing.T) {
+		t.Parallel()
+		appName, appEnvironment, appJobComponent, appDeployment := "app", "qa", "compute", "app-deploy-1"
+		envNamespace := utils.GetEnvironmentNamespace(appName, appEnvironment)
+		rd := utils.ARadixDeployment().
+			WithDeploymentName(appDeployment).
+			WithAppName(appName).
+			WithEnvironment(appEnvironment).
+			WithComponents().
+			WithJobComponents(
+				utils.NewDeployJobComponentBuilder().
+					WithName(appJobComponent).
+					WithVolumeMounts([]v1.RadixVolumeMount{
+						{
+							Type:      "blob",
+							Name:      "blobname",
+							Container: "blobcontainer",
+							Path:      "/blobpath",
+						},
+					}),
+			).
+			BuildRD()
+
+		radixClient, kubeClient, kubeUtil := setupTest(appName, appEnvironment, appJobComponent, appDeployment, 1)
+		radixClient.RadixV1().RadixDeployments(envNamespace).Create(context.TODO(), rd, metav1.CreateOptions{})
+		handler := New(models.NewEnv(), kubeUtil, kubeClient, radixClient)
+		jobStatus, err := handler.CreateJob(nil)
+		assert.NotNil(t, jobStatus)
+		assert.Nil(t, err)
+		job, _ := kubeClient.BatchV1().Jobs(envNamespace).Get(context.TODO(), jobStatus.Name, metav1.GetOptions{})
+		assert.Len(t, job.Spec.Template.Spec.Volumes, 1)
+		assert.Len(t, job.Spec.Template.Spec.Containers[0].VolumeMounts, 1)
+		assert.Equal(t, job.Spec.Template.Spec.Volumes[0].Name, job.Spec.Template.Spec.Containers[0].VolumeMounts[0].Name)
+		assert.Equal(t, "/blobpath", job.Spec.Template.Spec.Containers[0].VolumeMounts[0].MountPath)
+	})
+
+	t.Run("RD job with GPU", func(t *testing.T) {
+		t.Parallel()
+		appName, appEnvironment, appJobComponent, appDeployment := "app", "qa", "compute", "app-deploy-1"
+		envNamespace := utils.GetEnvironmentNamespace(appName, appEnvironment)
+		rd := utils.ARadixDeployment().
+			WithDeploymentName(appDeployment).
+			WithAppName(appName).
+			WithEnvironment(appEnvironment).
+			WithComponents().
+			WithJobComponents(
+				utils.NewDeployJobComponentBuilder().
+					WithName(appJobComponent).
+					WithNodeGpu("gpu1, gpu2").
+					WithNodeGpuCount("2"),
+			).
+			BuildRD()
+
+		radixClient, kubeClient, kubeUtil := setupTest(appName, appEnvironment, appJobComponent, appDeployment, 1)
+		radixClient.RadixV1().RadixDeployments(envNamespace).Create(context.TODO(), rd, metav1.CreateOptions{})
+		handler := New(models.NewEnv(), kubeUtil, kubeClient, radixClient)
+		jobStatus, err := handler.CreateJob(nil)
+		assert.NotNil(t, jobStatus)
+		assert.Nil(t, err)
+		job, _ := kubeClient.BatchV1().Jobs(envNamespace).Get(context.TODO(), jobStatus.Name, metav1.GetOptions{})
+		assert.Len(t, job.Spec.Template.Spec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms, 1)
+		assert.Len(t, job.Spec.Template.Spec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms[0].MatchExpressions, 2)
+		gpu := getNodeSelectorRequirementByKey(job.Spec.Template.Spec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms[0].MatchExpressions, kube.RadixGpuLabel)
+		assert.Equal(t, corev1.NodeSelectorOpIn, gpu.Operator)
+		assert.ElementsMatch(t, gpu.Values, []string{"gpu1", "gpu2"})
+		gpuCount := getNodeSelectorRequirementByKey(job.Spec.Template.Spec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms[0].MatchExpressions, kube.RadixGpuCountLabel)
+		assert.Equal(t, corev1.NodeSelectorOpGt, gpuCount.Operator)
+		assert.Equal(t, gpuCount.Values, []string{"1"})
+	})
+
+	t.Run("RD job with runAsNonRoot true", func(t *testing.T) {
+		t.Parallel()
+		appName, appEnvironment, appJobComponent, appDeployment := "app", "qa", "compute", "app-deploy-1"
+		envNamespace := utils.GetEnvironmentNamespace(appName, appEnvironment)
+		rd := utils.ARadixDeployment().
+			WithDeploymentName(appDeployment).
+			WithAppName(appName).
+			WithEnvironment(appEnvironment).
+			WithComponents().
+			WithJobComponents(
+				utils.NewDeployJobComponentBuilder().
+					WithName(appJobComponent).
+					WithRunAsNonRoot(true),
+			).
+			BuildRD()
+
+		radixClient, kubeClient, kubeUtil := setupTest(appName, appEnvironment, appJobComponent, appDeployment, 1)
+		radixClient.RadixV1().RadixDeployments(envNamespace).Create(context.TODO(), rd, metav1.CreateOptions{})
+		handler := New(models.NewEnv(), kubeUtil, kubeClient, radixClient)
+		jobStatus, err := handler.CreateJob(nil)
+		assert.NotNil(t, jobStatus)
+		assert.Nil(t, err)
+		job, _ := kubeClient.BatchV1().Jobs(envNamespace).Get(context.TODO(), jobStatus.Name, metav1.GetOptions{})
+		assert.Equal(t, utils.BoolPtr(true), job.Spec.Template.Spec.SecurityContext.RunAsNonRoot)
+		assert.Equal(t, utils.BoolPtr(true), job.Spec.Template.Spec.Containers[0].SecurityContext.RunAsNonRoot)
+		assert.Equal(t, utils.BoolPtr(false), job.Spec.Template.Spec.Containers[0].SecurityContext.AllowPrivilegeEscalation)
+		assert.Equal(t, utils.BoolPtr(false), job.Spec.Template.Spec.Containers[0].SecurityContext.Privileged)
+	})
+
+	t.Run("RD job with runAsNonRoot false", func(t *testing.T) {
+		t.Parallel()
+		appName, appEnvironment, appJobComponent, appDeployment := "app", "qa", "compute", "app-deploy-1"
+		envNamespace := utils.GetEnvironmentNamespace(appName, appEnvironment)
+		rd := utils.ARadixDeployment().
+			WithDeploymentName(appDeployment).
+			WithAppName(appName).
+			WithEnvironment(appEnvironment).
+			WithComponents().
+			WithJobComponents(
+				utils.NewDeployJobComponentBuilder().
+					WithName(appJobComponent).
+					WithRunAsNonRoot(false),
+			).
+			BuildRD()
+
+		radixClient, kubeClient, kubeUtil := setupTest(appName, appEnvironment, appJobComponent, appDeployment, 1)
+		radixClient.RadixV1().RadixDeployments(envNamespace).Create(context.TODO(), rd, metav1.CreateOptions{})
+		handler := New(models.NewEnv(), kubeUtil, kubeClient, radixClient)
+		jobStatus, err := handler.CreateJob(nil)
+		assert.NotNil(t, jobStatus)
+		assert.Nil(t, err)
+		job, _ := kubeClient.BatchV1().Jobs(envNamespace).Get(context.TODO(), jobStatus.Name, metav1.GetOptions{})
+		assert.Equal(t, utils.BoolPtr(false), job.Spec.Template.Spec.SecurityContext.RunAsNonRoot)
+		assert.Equal(t, utils.BoolPtr(false), job.Spec.Template.Spec.Containers[0].SecurityContext.RunAsNonRoot)
+		assert.Equal(t, utils.BoolPtr(false), job.Spec.Template.Spec.Containers[0].SecurityContext.AllowPrivilegeEscalation)
+		assert.Equal(t, utils.BoolPtr(false), job.Spec.Template.Spec.Containers[0].SecurityContext.Privileged)
+	})
+}
+
+func TestDeleteJob(t *testing.T) {
+	t.Run("delete job - cleanup resources for job", func(t *testing.T) {
+		t.Parallel()
+		appName, appEnvironment, appJobComponent, appDeployment, jobName := "app", "qa", "compute", "app-deploy-1", "job1"
+		envNamespace := utils.GetEnvironmentNamespace(appName, appEnvironment)
+		radixClient, kubeClient, kubeUtil := setupTest(appName, appEnvironment, appJobComponent, appDeployment, 1)
+		createJob(jobName, appJobComponent, kube.RadixJobTypeJobSchedule, envNamespace, kubeClient)
+		createSecret("secret1", jobName, appJobComponent, envNamespace, kubeClient)
+		createSecret("secret2", jobName, appJobComponent, envNamespace, kubeClient)
+		createSecret("secret3", "other-job", appJobComponent, envNamespace, kubeClient)
+		createSecret("secret4", jobName, "other-job-component", envNamespace, kubeClient)
+		createSecret("secret5", jobName, appJobComponent, "other-ns", kubeClient)
+		createService("service1", jobName, appJobComponent, envNamespace, kubeClient)
+		createService("service2", jobName, appJobComponent, envNamespace, kubeClient)
+		createService("service3", "other-job", appJobComponent, envNamespace, kubeClient)
+		createService("service4", jobName, "other-job-component", envNamespace, kubeClient)
+		createService("service5", jobName, appJobComponent, "other-ns", kubeClient)
+
+		handler := New(models.NewEnv(), kubeUtil, kubeClient, radixClient)
+		err := handler.DeleteJob(jobName)
+		assert.Nil(t, err)
+		secrets, _ := kubeClient.CoreV1().Secrets("").List(context.Background(), metav1.ListOptions{})
+		assert.Len(t, secrets.Items, 3)
+		assert.NotNil(t, getSecretByName(secrets.Items, "secret3"))
+		assert.NotNil(t, getSecretByName(secrets.Items, "secret4"))
+		assert.NotNil(t, getSecretByName(secrets.Items, "secret5"))
+		services, _ := kubeClient.CoreV1().Services("").List(context.Background(), metav1.ListOptions{})
+		assert.Len(t, services.Items, 3)
+		assert.NotNil(t, getServiceByName(services.Items, "service3"))
+		assert.NotNil(t, getServiceByName(services.Items, "service4"))
+		assert.NotNil(t, getServiceByName(services.Items, "service5"))
+	})
+
+	t.Run("delete job - job name does not exist", func(t *testing.T) {
+		t.Parallel()
+		appName, appEnvironment, appJobComponent, appDeployment, jobName := "app", "qa", "compute", "app-deploy-1", "job1"
+		envNamespace := utils.GetEnvironmentNamespace(appName, appEnvironment)
+		radixClient, kubeClient, kubeUtil := setupTest(appName, appEnvironment, appJobComponent, appDeployment, 1)
+		createJob("another-job", appJobComponent, kube.RadixJobTypeJobSchedule, envNamespace, kubeClient)
+
+		handler := New(models.NewEnv(), kubeUtil, kubeClient, radixClient)
+		err := handler.DeleteJob(jobName)
+		assert.NotNil(t, err)
+		assert.Equal(t, models.StatusReasonNotFound, errors.ReasonForError(err))
+	})
+
+	t.Run("delete job - another job component name", func(t *testing.T) {
+		t.Parallel()
+		appName, appEnvironment, appJobComponent, appDeployment, jobName := "app", "qa", "compute", "app-deploy-1", "job1"
+		envNamespace := utils.GetEnvironmentNamespace(appName, appEnvironment)
+		radixClient, kubeClient, kubeUtil := setupTest(appName, appEnvironment, appJobComponent, appDeployment, 1)
+		createJob(jobName, "another-job-component", kube.RadixJobTypeJobSchedule, envNamespace, kubeClient)
+
+		handler := New(models.NewEnv(), kubeUtil, kubeClient, radixClient)
+		err := handler.DeleteJob(jobName)
+		assert.NotNil(t, err)
+		assert.Equal(t, models.StatusReasonNotFound, errors.ReasonForError(err))
+	})
+
+	t.Run("delete job - another job type", func(t *testing.T) {
+		t.Parallel()
+		appName, appEnvironment, appJobComponent, appDeployment, jobName := "app", "qa", "compute", "app-deploy-1", "job1"
+		envNamespace := utils.GetEnvironmentNamespace(appName, appEnvironment)
+		radixClient, kubeClient, kubeUtil := setupTest(appName, appEnvironment, appJobComponent, appDeployment, 1)
+		createJob(jobName, appJobComponent, "another-type", envNamespace, kubeClient)
+
+		handler := New(models.NewEnv(), kubeUtil, kubeClient, radixClient)
+		err := handler.DeleteJob(jobName)
+		assert.NotNil(t, err)
+		assert.Equal(t, models.StatusReasonNotFound, errors.ReasonForError(err))
+	})
+
+	t.Run("delete job - another namespace", func(t *testing.T) {
+		t.Parallel()
+		appName, appEnvironment, appJobComponent, appDeployment, jobName := "app", "qa", "compute", "app-deploy-1", "job1"
+		radixClient, kubeClient, kubeUtil := setupTest(appName, appEnvironment, appJobComponent, appDeployment, 1)
+		createJob(jobName, appJobComponent, kube.RadixJobTypeJobSchedule, "another-ns", kubeClient)
+
+		handler := New(models.NewEnv(), kubeUtil, kubeClient, radixClient)
+		err := handler.DeleteJob(jobName)
+		assert.NotNil(t, err)
+		assert.Equal(t, models.StatusReasonNotFound, errors.ReasonForError(err))
+	})
+}
+
+func createJob(name, jobComponentLabel, jobTypeLabel, namespace string, kubeClient kubernetes.Interface) {
+	kubeClient.BatchV1().Jobs(namespace).Create(
+		context.Background(),
+		&batchv1.Job{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: name,
+				Labels: map[string]string{
+					kube.RadixComponentLabel: jobComponentLabel,
+					kube.RadixJobTypeLabel:   jobTypeLabel,
+				},
+			},
+		},
+		metav1.CreateOptions{},
+	)
+}
+
+func createSecret(name, jobNameLabel, jobComponentLabel, namespace string, kubeClient kubernetes.Interface) {
+	kubeClient.CoreV1().Secrets(namespace).Create(
+		context.Background(),
+		&corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: name,
+				Labels: map[string]string{
+					kube.RadixComponentLabel: jobComponentLabel,
+					kube.RadixJobNameLabel:   jobNameLabel,
+				},
+			},
+		},
+		metav1.CreateOptions{},
+	)
+}
+
+func createService(name, jobNameLabel, jobComponentLabel, namespace string, kubeClient kubernetes.Interface) {
+	kubeClient.CoreV1().Services(namespace).Create(
+		context.Background(),
+		&corev1.Service{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: name,
+				Labels: map[string]string{
+					kube.RadixComponentLabel: jobComponentLabel,
+					kube.RadixJobNameLabel:   jobNameLabel,
+				},
+			},
+		},
+		metav1.CreateOptions{},
+	)
 }
 
 func getJobStatusByName(jobs []models.JobStatus, name string) *models.JobStatus {
@@ -265,5 +865,44 @@ func getJobStatusByName(jobs []models.JobStatus, name string) *models.JobStatus 
 			return &job
 		}
 	}
+	return nil
+}
+
+func getNodeSelectorRequirementByKey(requirements []corev1.NodeSelectorRequirement, key string) *corev1.NodeSelectorRequirement {
+	for _, requirement := range requirements {
+		if requirement.Key == key {
+			return &requirement
+		}
+	}
+	return nil
+}
+
+func getEnvByName(envs []corev1.EnvVar, name string) *corev1.EnvVar {
+	for _, env := range envs {
+		if env.Name == name {
+			return &env
+		}
+	}
+
+	return nil
+}
+
+func getSecretByName(secrets []corev1.Secret, name string) *corev1.Secret {
+	for _, secret := range secrets {
+		if secret.Name == name {
+			return &secret
+		}
+	}
+
+	return nil
+}
+
+func getServiceByName(services []corev1.Service, name string) *corev1.Service {
+	for _, service := range services {
+		if service.Name == name {
+			return &service
+		}
+	}
+
 	return nil
 }

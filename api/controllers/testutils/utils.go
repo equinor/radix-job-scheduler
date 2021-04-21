@@ -43,7 +43,7 @@ func (ctrl *ControllerTestUtils) ExecuteRequestWithBody(method, path string, bod
 		router := router.NewServer(models.NewEnv(), ctrl.controllers...)
 		server := httptest.NewServer(router)
 		defer server.Close()
-		url := buildUrlFromServer(server, path)
+		url := buildURLFromServer(server, path)
 		request, _ := http.NewRequest(method, url, reader)
 		response, _ := http.DefaultClient.Do(request)
 		responseChan <- response
@@ -60,7 +60,7 @@ func GetResponseBody(response *http.Response, target interface{}) error {
 	return json.Unmarshal(body, target)
 }
 
-func buildUrlFromServer(server *httptest.Server, path string) string {
+func buildURLFromServer(server *httptest.Server, path string) string {
 	url, _ := url.Parse(server.URL)
 	url.Path = path
 	return url.String()
