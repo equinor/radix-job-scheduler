@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/equinor/radix-job-scheduler/api/errors"
 	"github.com/equinor/radix-job-scheduler/models"
@@ -76,9 +77,9 @@ func TestGetJobs(t *testing.T) {
 	jobs, err := handler.GetJobs()
 	assert.Nil(t, err)
 	assert.Len(t, jobs, 2)
-	job1 := getJobStatusByName(jobs, "job1")
+	job1 := getJobStatusByNameForTest(jobs, "job1")
 	assert.NotNil(t, job1)
-	job2 := getJobStatusByName(jobs, "job2")
+	job2 := getJobStatusByNameForTest(jobs, "job2")
 	assert.NotNil(t, job2)
 }
 
@@ -231,9 +232,9 @@ func TestCreateJob(t *testing.T) {
 		// Test environment variables
 		job, _ := kubeClient.BatchV1().Jobs(envNamespace).Get(context.TODO(), jobStatus.Name, metav1.GetOptions{})
 		assert.Len(t, job.Spec.Template.Spec.Containers[0].Env, 2)
-		env1 := getEnvByName(job.Spec.Template.Spec.Containers[0].Env, "ENV1")
+		env1 := getEnvByNameForTest(job.Spec.Template.Spec.Containers[0].Env, "ENV1")
 		assert.Equal(t, "value1", env1.Value)
-		env2 := getEnvByName(job.Spec.Template.Spec.Containers[0].Env, "ENV2")
+		env2 := getEnvByNameForTest(job.Spec.Template.Spec.Containers[0].Env, "ENV2")
 		assert.Equal(t, "value2", env2.Value)
 	})
 
@@ -588,10 +589,10 @@ func TestCreateJob(t *testing.T) {
 		assert.Nil(t, err)
 		job, _ := kubeClient.BatchV1().Jobs(envNamespace).Get(context.TODO(), jobStatus.Name, metav1.GetOptions{})
 		assert.Len(t, job.Spec.Template.Spec.Containers[0].Env, 2)
-		env1 := getEnvByName(job.Spec.Template.Spec.Containers[0].Env, "SECRET1")
+		env1 := getEnvByNameForTest(job.Spec.Template.Spec.Containers[0].Env, "SECRET1")
 		assert.Equal(t, "SECRET1", env1.ValueFrom.SecretKeyRef.Key)
 		assert.Equal(t, utils.GetComponentSecretName(appJobComponent), env1.ValueFrom.SecretKeyRef.LocalObjectReference.Name)
-		env2 := getEnvByName(job.Spec.Template.Spec.Containers[0].Env, "SECRET2")
+		env2 := getEnvByNameForTest(job.Spec.Template.Spec.Containers[0].Env, "SECRET2")
 		assert.NotNil(t, env2)
 		assert.Equal(t, "SECRET2", env2.ValueFrom.SecretKeyRef.Key)
 		assert.Equal(t, utils.GetComponentSecretName(appJobComponent), env2.ValueFrom.SecretKeyRef.LocalObjectReference.Name)
@@ -659,10 +660,10 @@ func TestCreateJob(t *testing.T) {
 		job, _ := kubeClient.BatchV1().Jobs(envNamespace).Get(context.TODO(), jobStatus.Name, metav1.GetOptions{})
 		assert.Len(t, job.Spec.Template.Spec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms, 1)
 		assert.Len(t, job.Spec.Template.Spec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms[0].MatchExpressions, 2)
-		gpu := getNodeSelectorRequirementByKey(job.Spec.Template.Spec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms[0].MatchExpressions, kube.RadixGpuLabel)
+		gpu := getNodeSelectorRequirementByKeyForTest(job.Spec.Template.Spec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms[0].MatchExpressions, kube.RadixGpuLabel)
 		assert.Equal(t, corev1.NodeSelectorOpIn, gpu.Operator)
 		assert.ElementsMatch(t, gpu.Values, []string{"gpu1", "gpu2"})
-		gpuCount := getNodeSelectorRequirementByKey(job.Spec.Template.Spec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms[0].MatchExpressions, kube.RadixGpuCountLabel)
+		gpuCount := getNodeSelectorRequirementByKeyForTest(job.Spec.Template.Spec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms[0].MatchExpressions, kube.RadixGpuCountLabel)
 		assert.Equal(t, corev1.NodeSelectorOpGt, gpuCount.Operator)
 		assert.Equal(t, gpuCount.Values, []string{"1"})
 	})
@@ -732,31 +733,35 @@ func TestDeleteJob(t *testing.T) {
 		appName, appEnvironment, appJobComponent, appDeployment, jobName := "app", "qa", "compute", "app-deploy-1", "job1"
 		envNamespace := utils.GetEnvironmentNamespace(appName, appEnvironment)
 		radixClient, kubeClient, kubeUtil := setupTest(appName, appEnvironment, appJobComponent, appDeployment, 1)
-		createJob(jobName, appJobComponent, kube.RadixJobTypeJobSchedule, envNamespace, kubeClient)
-		createSecret("secret1", jobName, appJobComponent, envNamespace, kubeClient)
-		createSecret("secret2", jobName, appJobComponent, envNamespace, kubeClient)
-		createSecret("secret3", "other-job", appJobComponent, envNamespace, kubeClient)
-		createSecret("secret4", jobName, "other-job-component", envNamespace, kubeClient)
-		createSecret("secret5", jobName, appJobComponent, "other-ns", kubeClient)
-		createService("service1", jobName, appJobComponent, envNamespace, kubeClient)
-		createService("service2", jobName, appJobComponent, envNamespace, kubeClient)
-		createService("service3", "other-job", appJobComponent, envNamespace, kubeClient)
-		createService("service4", jobName, "other-job-component", envNamespace, kubeClient)
-		createService("service5", jobName, appJobComponent, "other-ns", kubeClient)
+		createJobForTest(jobName, appJobComponent, kube.RadixJobTypeJobSchedule, envNamespace, kubeClient)
+		createJobForTest("another-job", appJobComponent, kube.RadixJobTypeJobSchedule, envNamespace, kubeClient)
+		createSecretForTest("secret1", jobName, appJobComponent, envNamespace, kubeClient)
+		createSecretForTest("secret2", jobName, appJobComponent, envNamespace, kubeClient)
+		createSecretForTest("secret3", "other-job", appJobComponent, envNamespace, kubeClient)
+		createSecretForTest("secret4", jobName, "other-job-component", envNamespace, kubeClient)
+		createSecretForTest("secret5", jobName, appJobComponent, "other-ns", kubeClient)
+		createServiceForTest("service1", jobName, appJobComponent, envNamespace, kubeClient)
+		createServiceForTest("service2", jobName, appJobComponent, envNamespace, kubeClient)
+		createServiceForTest("service3", "other-job", appJobComponent, envNamespace, kubeClient)
+		createServiceForTest("service4", jobName, "other-job-component", envNamespace, kubeClient)
+		createServiceForTest("service5", jobName, appJobComponent, "other-ns", kubeClient)
 
 		handler := New(models.NewEnv(), kubeUtil, kubeClient, radixClient)
 		err := handler.DeleteJob(jobName)
 		assert.Nil(t, err)
+		jobs, _ := kubeClient.BatchV1().Jobs("").List(context.TODO(), metav1.ListOptions{})
+		assert.Len(t, jobs.Items, 1)
+		assert.NotNil(t, getJobByNameForTest(jobs.Items, "another-job"))
 		secrets, _ := kubeClient.CoreV1().Secrets("").List(context.Background(), metav1.ListOptions{})
 		assert.Len(t, secrets.Items, 3)
-		assert.NotNil(t, getSecretByName(secrets.Items, "secret3"))
-		assert.NotNil(t, getSecretByName(secrets.Items, "secret4"))
-		assert.NotNil(t, getSecretByName(secrets.Items, "secret5"))
+		assert.NotNil(t, getSecretByNameForTest(secrets.Items, "secret3"))
+		assert.NotNil(t, getSecretByNameForTest(secrets.Items, "secret4"))
+		assert.NotNil(t, getSecretByNameForTest(secrets.Items, "secret5"))
 		services, _ := kubeClient.CoreV1().Services("").List(context.Background(), metav1.ListOptions{})
 		assert.Len(t, services.Items, 3)
-		assert.NotNil(t, getServiceByName(services.Items, "service3"))
-		assert.NotNil(t, getServiceByName(services.Items, "service4"))
-		assert.NotNil(t, getServiceByName(services.Items, "service5"))
+		assert.NotNil(t, getServiceByNameForTest(services.Items, "service3"))
+		assert.NotNil(t, getServiceByNameForTest(services.Items, "service4"))
+		assert.NotNil(t, getServiceByNameForTest(services.Items, "service5"))
 	})
 
 	t.Run("delete job - job name does not exist", func(t *testing.T) {
@@ -764,7 +769,7 @@ func TestDeleteJob(t *testing.T) {
 		appName, appEnvironment, appJobComponent, appDeployment, jobName := "app", "qa", "compute", "app-deploy-1", "job1"
 		envNamespace := utils.GetEnvironmentNamespace(appName, appEnvironment)
 		radixClient, kubeClient, kubeUtil := setupTest(appName, appEnvironment, appJobComponent, appDeployment, 1)
-		createJob("another-job", appJobComponent, kube.RadixJobTypeJobSchedule, envNamespace, kubeClient)
+		createJobForTest("another-job", appJobComponent, kube.RadixJobTypeJobSchedule, envNamespace, kubeClient)
 
 		handler := New(models.NewEnv(), kubeUtil, kubeClient, radixClient)
 		err := handler.DeleteJob(jobName)
@@ -777,7 +782,7 @@ func TestDeleteJob(t *testing.T) {
 		appName, appEnvironment, appJobComponent, appDeployment, jobName := "app", "qa", "compute", "app-deploy-1", "job1"
 		envNamespace := utils.GetEnvironmentNamespace(appName, appEnvironment)
 		radixClient, kubeClient, kubeUtil := setupTest(appName, appEnvironment, appJobComponent, appDeployment, 1)
-		createJob(jobName, "another-job-component", kube.RadixJobTypeJobSchedule, envNamespace, kubeClient)
+		createJobForTest(jobName, "another-job-component", kube.RadixJobTypeJobSchedule, envNamespace, kubeClient)
 
 		handler := New(models.NewEnv(), kubeUtil, kubeClient, radixClient)
 		err := handler.DeleteJob(jobName)
@@ -790,7 +795,7 @@ func TestDeleteJob(t *testing.T) {
 		appName, appEnvironment, appJobComponent, appDeployment, jobName := "app", "qa", "compute", "app-deploy-1", "job1"
 		envNamespace := utils.GetEnvironmentNamespace(appName, appEnvironment)
 		radixClient, kubeClient, kubeUtil := setupTest(appName, appEnvironment, appJobComponent, appDeployment, 1)
-		createJob(jobName, appJobComponent, "another-type", envNamespace, kubeClient)
+		createJobForTest(jobName, appJobComponent, "another-type", envNamespace, kubeClient)
 
 		handler := New(models.NewEnv(), kubeUtil, kubeClient, radixClient)
 		err := handler.DeleteJob(jobName)
@@ -802,7 +807,7 @@ func TestDeleteJob(t *testing.T) {
 		t.Parallel()
 		appName, appEnvironment, appJobComponent, appDeployment, jobName := "app", "qa", "compute", "app-deploy-1", "job1"
 		radixClient, kubeClient, kubeUtil := setupTest(appName, appEnvironment, appJobComponent, appDeployment, 1)
-		createJob(jobName, appJobComponent, kube.RadixJobTypeJobSchedule, "another-ns", kubeClient)
+		createJobForTest(jobName, appJobComponent, kube.RadixJobTypeJobSchedule, "another-ns", kubeClient)
 
 		handler := New(models.NewEnv(), kubeUtil, kubeClient, radixClient)
 		err := handler.DeleteJob(jobName)
@@ -811,23 +816,89 @@ func TestDeleteJob(t *testing.T) {
 	})
 }
 
-func createJob(name, jobComponentLabel, jobTypeLabel, namespace string, kubeClient kubernetes.Interface) {
-	kubeClient.BatchV1().Jobs(namespace).Create(
-		context.Background(),
-		&batchv1.Job{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: name,
-				Labels: map[string]string{
-					kube.RadixComponentLabel: jobComponentLabel,
-					kube.RadixJobTypeLabel:   jobTypeLabel,
-				},
+func TestMaintainHistoryLimit(t *testing.T) {
+	appName, appEnvironment, appJobComponent, appDeployment := "app", "qa", "compute", "app-deploy-1"
+	envNamespace := utils.GetEnvironmentNamespace(appName, appEnvironment)
+	radixClient, kubeClient, kubeUtil := setupTest(appName, appEnvironment, appJobComponent, appDeployment, 2)
+
+	createJobForTest("running1", appJobComponent, kube.RadixJobTypeJobSchedule, envNamespace, kubeClient)
+	createJobForTest("running2", appJobComponent, kube.RadixJobTypeJobSchedule, envNamespace, kubeClient)
+	createJobForTest("running3", appJobComponent, kube.RadixJobTypeJobSchedule, envNamespace, kubeClient)
+
+	createJobForTest("failed1", appJobComponent, kube.RadixJobTypeJobSchedule, envNamespace, kubeClient, SetJobFailedTestFunc,
+		SetJobCreatedTimeTestFunc(metav1.NewTime(time.Date(2020, 1, 4, 0, 0, 0, 0, time.UTC))))
+	createJobForTest("failed2", appJobComponent, kube.RadixJobTypeJobSchedule, envNamespace, kubeClient, SetJobFailedTestFunc,
+		SetJobCreatedTimeTestFunc(metav1.NewTime(time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC))))
+	createJobForTest("failed3", appJobComponent, kube.RadixJobTypeJobSchedule, envNamespace, kubeClient, SetJobFailedTestFunc,
+		SetJobCreatedTimeTestFunc(metav1.NewTime(time.Date(2020, 1, 3, 0, 0, 0, 0, time.UTC))))
+	createJobForTest("failed4", appJobComponent, kube.RadixJobTypeJobSchedule, envNamespace, kubeClient, SetJobFailedTestFunc,
+		SetJobCreatedTimeTestFunc(metav1.NewTime(time.Date(2020, 1, 2, 0, 0, 0, 0, time.UTC))))
+
+	createJobForTest("succeeded1", appJobComponent, kube.RadixJobTypeJobSchedule, envNamespace, kubeClient, SetJobSucceededTestFunc,
+		SetJobCompletionTimeTestFunc(metav1.NewTime(time.Date(2020, 1, 4, 0, 0, 0, 0, time.UTC))))
+	createJobForTest("succeeded2", appJobComponent, kube.RadixJobTypeJobSchedule, envNamespace, kubeClient, SetJobSucceededTestFunc,
+		SetJobCompletionTimeTestFunc(metav1.NewTime(time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC))))
+	createJobForTest("succeeded3", appJobComponent, kube.RadixJobTypeJobSchedule, envNamespace, kubeClient, SetJobSucceededTestFunc,
+		SetJobCompletionTimeTestFunc(metav1.NewTime(time.Date(2020, 1, 3, 0, 0, 0, 0, time.UTC))))
+	createJobForTest("succeeded4", appJobComponent, kube.RadixJobTypeJobSchedule, envNamespace, kubeClient, SetJobSucceededTestFunc,
+		SetJobCompletionTimeTestFunc(metav1.NewTime(time.Date(2020, 1, 2, 0, 0, 0, 0, time.UTC))))
+
+	handler := New(models.NewEnv(), kubeUtil, kubeClient, radixClient)
+	handler.MaintainHistoryLimit()
+	jobs, _ := kubeClient.BatchV1().Jobs("").List(context.TODO(), metav1.ListOptions{})
+	assert.Len(t, jobs.Items, 7)
+	assert.NotNil(t, getJobByNameForTest(jobs.Items, "running1"))
+	assert.NotNil(t, getJobByNameForTest(jobs.Items, "running2"))
+	assert.NotNil(t, getJobByNameForTest(jobs.Items, "running3"))
+	assert.NotNil(t, getJobByNameForTest(jobs.Items, "failed1"))
+	assert.NotNil(t, getJobByNameForTest(jobs.Items, "failed3"))
+	assert.NotNil(t, getJobByNameForTest(jobs.Items, "succeeded1"))
+	assert.NotNil(t, getJobByNameForTest(jobs.Items, "succeeded3"))
+}
+
+func SetJobSucceededTestFunc(job *batchv1.Job) {
+	job.Status.Succeeded = 1
+}
+
+func SetJobFailedTestFunc(job *batchv1.Job) {
+	job.Status.Failed = 1
+}
+
+func SetJobCreatedTimeTestFunc(createdTime metav1.Time) func(*batchv1.Job) {
+	return func(job *batchv1.Job) {
+		job.CreationTimestamp = createdTime
+	}
+}
+
+func SetJobCompletionTimeTestFunc(completionTime metav1.Time) func(*batchv1.Job) {
+	return func(job *batchv1.Job) {
+		job.Status.CompletionTime = &completionTime
+	}
+}
+
+func createJobForTest(name, jobComponentLabel, jobTypeLabel, namespace string, kubeClient kubernetes.Interface, jobFormatter ...func(*batchv1.Job)) {
+	job := &batchv1.Job{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+			Labels: map[string]string{
+				kube.RadixComponentLabel: jobComponentLabel,
+				kube.RadixJobTypeLabel:   jobTypeLabel,
 			},
 		},
+	}
+
+	for _, formatter := range jobFormatter {
+		formatter(job)
+	}
+
+	kubeClient.BatchV1().Jobs(namespace).Create(
+		context.Background(),
+		job,
 		metav1.CreateOptions{},
 	)
 }
 
-func createSecret(name, jobNameLabel, jobComponentLabel, namespace string, kubeClient kubernetes.Interface) {
+func createSecretForTest(name, jobNameLabel, jobComponentLabel, namespace string, kubeClient kubernetes.Interface) {
 	kubeClient.CoreV1().Secrets(namespace).Create(
 		context.Background(),
 		&corev1.Secret{
@@ -843,7 +914,7 @@ func createSecret(name, jobNameLabel, jobComponentLabel, namespace string, kubeC
 	)
 }
 
-func createService(name, jobNameLabel, jobComponentLabel, namespace string, kubeClient kubernetes.Interface) {
+func createServiceForTest(name, jobNameLabel, jobComponentLabel, namespace string, kubeClient kubernetes.Interface) {
 	kubeClient.CoreV1().Services(namespace).Create(
 		context.Background(),
 		&corev1.Service{
@@ -859,7 +930,7 @@ func createService(name, jobNameLabel, jobComponentLabel, namespace string, kube
 	)
 }
 
-func getJobStatusByName(jobs []models.JobStatus, name string) *models.JobStatus {
+func getJobStatusByNameForTest(jobs []models.JobStatus, name string) *models.JobStatus {
 	for _, job := range jobs {
 		if job.Name == name {
 			return &job
@@ -868,7 +939,7 @@ func getJobStatusByName(jobs []models.JobStatus, name string) *models.JobStatus 
 	return nil
 }
 
-func getNodeSelectorRequirementByKey(requirements []corev1.NodeSelectorRequirement, key string) *corev1.NodeSelectorRequirement {
+func getNodeSelectorRequirementByKeyForTest(requirements []corev1.NodeSelectorRequirement, key string) *corev1.NodeSelectorRequirement {
 	for _, requirement := range requirements {
 		if requirement.Key == key {
 			return &requirement
@@ -877,7 +948,7 @@ func getNodeSelectorRequirementByKey(requirements []corev1.NodeSelectorRequireme
 	return nil
 }
 
-func getEnvByName(envs []corev1.EnvVar, name string) *corev1.EnvVar {
+func getEnvByNameForTest(envs []corev1.EnvVar, name string) *corev1.EnvVar {
 	for _, env := range envs {
 		if env.Name == name {
 			return &env
@@ -887,7 +958,7 @@ func getEnvByName(envs []corev1.EnvVar, name string) *corev1.EnvVar {
 	return nil
 }
 
-func getSecretByName(secrets []corev1.Secret, name string) *corev1.Secret {
+func getSecretByNameForTest(secrets []corev1.Secret, name string) *corev1.Secret {
 	for _, secret := range secrets {
 		if secret.Name == name {
 			return &secret
@@ -897,10 +968,20 @@ func getSecretByName(secrets []corev1.Secret, name string) *corev1.Secret {
 	return nil
 }
 
-func getServiceByName(services []corev1.Service, name string) *corev1.Service {
+func getServiceByNameForTest(services []corev1.Service, name string) *corev1.Service {
 	for _, service := range services {
 		if service.Name == name {
 			return &service
+		}
+	}
+
+	return nil
+}
+
+func getJobByNameForTest(jobs []batchv1.Job, name string) *batchv1.Job {
+	for _, job := range jobs {
+		if job.Name == name {
+			return &job
 		}
 	}
 
