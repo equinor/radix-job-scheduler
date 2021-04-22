@@ -9,6 +9,7 @@ import (
 	ch "github.com/equinor/radix-job-scheduler/api/handlers/job"
 	"github.com/equinor/radix-job-scheduler/models"
 	"github.com/equinor/radix-job-scheduler/router"
+	_ "github.com/equinor/radix-job-scheduler/swaggerui"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	"github.com/equinor/radix-operator/pkg/apis/utils"
 	log "github.com/sirupsen/logrus"

@@ -45,11 +45,11 @@ func NewEnv() *Env {
 		RadixJobSchedulersPerEnvironmentHistoryLimit: 10,
 	}
 	setPort(radixPorts, &env)
-	setHistoryLimit(radixJobSchedulersPerEnvironmentHistoryLimit, env)
+	setHistoryLimit(radixJobSchedulersPerEnvironmentHistoryLimit, &env)
 	return &env
 }
 
-func setHistoryLimit(radixJobSchedulersPerEnvironmentHistoryLimit string, env Env) {
+func setHistoryLimit(radixJobSchedulersPerEnvironmentHistoryLimit string, env *Env) {
 	if len(radixJobSchedulersPerEnvironmentHistoryLimit) > 0 {
 		if historyLimit, err := strconv.Atoi(radixJobSchedulersPerEnvironmentHistoryLimit); err == nil && historyLimit > 0 {
 			env.RadixJobSchedulersPerEnvironmentHistoryLimit = historyLimit

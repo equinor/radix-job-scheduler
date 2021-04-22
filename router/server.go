@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	"github.com/equinor/radix-job-scheduler/models"
-	_ "github.com/equinor/radix-job-scheduler/swaggerui"
+
 	"github.com/equinor/radix-job-scheduler/utils"
 	"github.com/gorilla/mux"
 	"github.com/rakyll/statik/fs"

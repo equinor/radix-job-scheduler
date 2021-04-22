@@ -1,7 +1,6 @@
 package models
 
 import (
-	"fmt"
 	v1 "k8s.io/api/batch/v1"
 )
 
@@ -32,17 +31,6 @@ const (
 
 func (p ProgressStatus) String() string {
 	return [...]string{"Running", "Succeeded", "Failed", "Waiting", "Stopping", "Stopped"}[p]
-}
-
-// GetStatusFromName Gets status from name
-func GetStatusFromName(name string) (ProgressStatus, error) {
-	for status := Running; status < numStatuses; status++ {
-		if status.String() == name {
-			return status, nil
-		}
-	}
-
-	return numStatuses, fmt.Errorf("No progress status found by name %s", name)
 }
 
 // GetStatusFromJobStatus Gets status from kubernetes job status

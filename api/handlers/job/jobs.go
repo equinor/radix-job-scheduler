@@ -1,12 +1,14 @@
 package job
 
 import (
+	"context"
+
 	jobErrors "github.com/equinor/radix-job-scheduler/api/errors"
 	"github.com/equinor/radix-operator/pkg/apis/deployment"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
-	"github.com/equinor/radix-operator/pkg/apis/utils"
+	operatorUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	"github.com/equinor/radix-operator/pkg/apis/utils/numbers"
 	"github.com/equinor/radix-operator/pkg/apis/utils/slice"
 	batchv1 "k8s.io/api/batch/v1"
@@ -17,7 +19,7 @@ import (
 
 func (jh *jobHandler) createJob(jobName string, jobComponent *v1.RadixDeployJobComponent, rd *v1.RadixDeployment, payloadSecret *corev1.Secret) (*batchv1.Job, error) {
 	job := buildJobSpec(jobName, rd, jobComponent, payloadSecret, jh.kube)
-	createdJob, err := jh.kubeClient.BatchV1().Jobs(jh.env.RadixDeploymentNamespace).Create(job)
+	createdJob, err := jh.kubeClient.BatchV1().Jobs(jh.env.RadixDeploymentNamespace).Create(context.TODO(), job, metav1.CreateOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -27,7 +29,7 @@ func (jh *jobHandler) createJob(jobName string, jobComponent *v1.RadixDeployJobC
 
 func (jh *jobHandler) deleteJob(job *batchv1.Job) error {
 	fg := metav1.DeletePropagationBackground
-	return jh.kubeClient.BatchV1().Jobs(job.Namespace).Delete(job.Name, &metav1.DeleteOptions{PropagationPolicy: &fg})
+	return jh.kubeClient.BatchV1().Jobs(job.Namespace).Delete(context.TODO(), job.Name, metav1.DeleteOptions{PropagationPolicy: &fg})
 }
 
 func (jh *jobHandler) getJobByName(jobName string) (*batchv1.Job, error) {
@@ -49,9 +51,12 @@ func (jh *jobHandler) getAllJobs() (jobList, error) {
 	kubeJobs, err := jh.kubeClient.
 		BatchV1().
 		Jobs(jh.env.RadixDeploymentNamespace).
-		List(metav1.ListOptions{
-			LabelSelector: getLabelSelectorForJobComponent(jh.env.RadixComponentName),
-		})
+		List(
+			context.TODO(),
+			metav1.ListOptions{
+				LabelSelector: getLabelSelectorForJobComponent(jh.env.RadixComponentName),
+			},
+		)
 
 	if err != nil {
 		return nil, err
@@ -64,6 +69,7 @@ func buildJobSpec(jobName string, rd *radixv1.RadixDeployment, radixJobComponent
 	podSecurityContext := getSecurityContextForPod(radixJobComponent.RunAsNonRoot)
 	volumes := getVolumes(rd.ObjectMeta.Namespace, rd.Spec.Environment, jobName, rd, radixJobComponent, payloadSecret)
 	containers := getContainers(kubeutil, rd, radixJobComponent, payloadSecret)
+	affinity := operatorUtils.GetPodSpecAffinity(radixJobComponent)
 
 	return &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
@@ -85,10 +91,12 @@ func buildJobSpec(jobName string, rd *radixv1.RadixDeployment, radixJobComponent
 					Namespace: rd.ObjectMeta.Namespace,
 				},
 				Spec: corev1.PodSpec{
-					Containers:      containers,
-					Volumes:         volumes,
-					SecurityContext: podSecurityContext,
-					RestartPolicy:   corev1.RestartPolicyNever, //TODO: decide what to do with failed job
+					Containers:       containers,
+					Volumes:          volumes,
+					SecurityContext:  podSecurityContext,
+					RestartPolicy:    corev1.RestartPolicyNever, //TODO: decide what to do with failed job
+					ImagePullSecrets: rd.Spec.ImagePullSecrets,
+					Affinity:         affinity,
 				},
 			},
 		},
@@ -100,6 +108,7 @@ func getContainers(kube *kube.Kube, rd *radixv1.RadixDeployment, radixJobCompone
 	ports := getContainerPorts(radixJobComponent)
 	containerSecurityContext := getSecurityContextForContainer(radixJobComponent.RunAsNonRoot)
 	volumeMounts := getVolumeMounts(radixJobComponent, payloadSecret)
+	resources := operatorUtils.GetResourceRequirements(radixJobComponent)
 
 	container := corev1.Container{
 		Name:            radixJobComponent.Name,
@@ -109,6 +118,7 @@ func getContainers(kube *kube.Kube, rd *radixv1.RadixDeployment, radixJobCompone
 		Ports:           ports,
 		VolumeMounts:    volumeMounts,
 		SecurityContext: containerSecurityContext,
+		Resources:       resources,
 	}
 
 	return []corev1.Container{container}
@@ -165,16 +175,16 @@ func getContainerPorts(radixJobComponent *radixv1.RadixDeployJobComponent) []cor
 func getSecurityContextForContainer(runAsNonRoot bool) *corev1.SecurityContext {
 	// runAsNonRoot is false by default
 	return &corev1.SecurityContext{
-		AllowPrivilegeEscalation: utils.BoolPtr(false),
-		Privileged:               utils.BoolPtr(false),
-		RunAsNonRoot:             utils.BoolPtr(runAsNonRoot),
+		AllowPrivilegeEscalation: operatorUtils.BoolPtr(false),
+		Privileged:               operatorUtils.BoolPtr(false),
+		RunAsNonRoot:             operatorUtils.BoolPtr(runAsNonRoot),
 	}
 }
 
 func getSecurityContextForPod(runAsNonRoot bool) *corev1.PodSecurityContext {
 	// runAsNonRoot is false by default
 	return &corev1.PodSecurityContext{
-		RunAsNonRoot: utils.BoolPtr(runAsNonRoot),
+		RunAsNonRoot: operatorUtils.BoolPtr(runAsNonRoot),
 	}
 }
 

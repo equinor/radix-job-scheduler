@@ -1,6 +1,7 @@
 package job
 
 import (
+	"context"
 	"fmt"
 	"sort"
 	"strings"
@@ -79,7 +80,7 @@ func (jh *jobHandler) GetJob(jobName string) (*models.JobStatus, error) {
 func (jh *jobHandler) CreateJob(jobScheduleDescription *models.JobScheduleDescription) (*models.JobStatus, error) {
 	log.Debugf("create job for namespace: %s", jh.env.RadixDeploymentNamespace)
 
-	radixDeployment, err := jh.radixClient.RadixV1().RadixDeployments(jh.env.RadixDeploymentNamespace).Get(jh.env.RadixDeploymentName, metav1.GetOptions{})
+	radixDeployment, err := jh.radixClient.RadixV1().RadixDeployments(jh.env.RadixDeploymentNamespace).Get(context.TODO(), jh.env.RadixDeploymentName, metav1.GetOptions{})
 	if err != nil {
 		return nil, jobErrors.NewNotFound("radix deployment", jh.env.RadixDeploymentName)
 	}

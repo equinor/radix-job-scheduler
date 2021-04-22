@@ -1,6 +1,8 @@
 package job
 
 import (
+	"context"
+
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -19,13 +21,16 @@ func (jh *jobHandler) createService(jobName string, jobComponent *v1.RadixDeploy
 }
 
 func (jh *jobHandler) getServiceForJob(jobName string) (*corev1.ServiceList, error) {
-	return jh.kubeClient.CoreV1().Services(jh.env.RadixDeploymentNamespace).List(metav1.ListOptions{
-		LabelSelector: getLabelSelectorForService(jobName, jh.env.RadixComponentName),
-	})
+	return jh.kubeClient.CoreV1().Services(jh.env.RadixDeploymentNamespace).List(
+		context.TODO(),
+		metav1.ListOptions{
+			LabelSelector: getLabelSelectorForService(jobName, jh.env.RadixComponentName),
+		},
+	)
 }
 
 func (jh *jobHandler) deleteService(service *corev1.Service) error {
-	return jh.kubeClient.CoreV1().Services(service.Namespace).Delete(service.Name, &metav1.DeleteOptions{})
+	return jh.kubeClient.CoreV1().Services(service.Namespace).Delete(context.TODO(), service.Name, metav1.DeleteOptions{})
 }
 
 func getLabelSelectorForService(jobName, componentName string) string {
