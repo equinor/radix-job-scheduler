@@ -4,6 +4,7 @@ import (
 	"context"
 
 	jobErrors "github.com/equinor/radix-job-scheduler/api/errors"
+	"github.com/equinor/radix-job-scheduler/models"
 	"github.com/equinor/radix-operator/pkg/apis/deployment"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
@@ -17,8 +18,13 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 )
 
-func (jh *jobHandler) createJob(jobName string, jobComponent *v1.RadixDeployJobComponent, rd *v1.RadixDeployment, payloadSecret *corev1.Secret) (*batchv1.Job, error) {
-	job := buildJobSpec(jobName, rd, jobComponent, payloadSecret, jh.kube)
+func (jh *jobHandler) createJob(jobName string, jobComponent *v1.RadixDeployJobComponent, rd *v1.RadixDeployment, payloadSecret *corev1.Secret, jobScheduleDescription *models.JobScheduleDescription) (*batchv1.Job, error) {
+	var jobComponentConfig *models.RadixJobComponentConfig
+	if jobScheduleDescription != nil {
+		jobComponentConfig = &jobScheduleDescription.RadixJobComponentConfig
+	}
+
+	job := buildJobSpec(jobName, rd, jobComponent, payloadSecret, jh.kube, jobComponentConfig)
 	createdJob, err := jh.kubeClient.BatchV1().Jobs(jh.env.RadixDeploymentNamespace).Create(context.TODO(), job, metav1.CreateOptions{})
 	if err != nil {
 		return nil, err
@@ -65,11 +71,17 @@ func (jh *jobHandler) getAllJobs() (jobList, error) {
 	return jobList(slice.PointersOf(kubeJobs.Items).([]*batchv1.Job)), nil
 }
 
-func buildJobSpec(jobName string, rd *radixv1.RadixDeployment, radixJobComponent *radixv1.RadixDeployJobComponent, payloadSecret *corev1.Secret, kubeutil *kube.Kube) *batchv1.Job {
+func buildJobSpec(jobName string, rd *radixv1.RadixDeployment, radixJobComponent *radixv1.RadixDeployJobComponent, payloadSecret *corev1.Secret, kubeutil *kube.Kube, jobComponentConfig *models.RadixJobComponentConfig) *batchv1.Job {
 	podSecurityContext := getSecurityContextForPod(radixJobComponent.RunAsNonRoot)
 	volumes := getVolumes(rd.ObjectMeta.Namespace, rd.Spec.Environment, jobName, rd, radixJobComponent, payloadSecret)
-	containers := getContainers(kubeutil, rd, radixJobComponent, payloadSecret)
-	affinity := operatorUtils.GetPodSpecAffinity(radixJobComponent)
+	containers := getContainers(kubeutil, rd, radixJobComponent, payloadSecret, jobComponentConfig)
+
+	var affinity *corev1.Affinity
+	if jobComponentConfig != nil && jobComponentConfig.Node != nil {
+		affinity = operatorUtils.GetPodSpecAffinity(jobComponentConfig.Node)
+	} else {
+		affinity = operatorUtils.GetPodSpecAffinity(&radixJobComponent.Node)
+	}
 
 	return &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
@@ -104,12 +116,18 @@ func buildJobSpec(jobName string, rd *radixv1.RadixDeployment, radixJobComponent
 	}
 }
 
-func getContainers(kube *kube.Kube, rd *radixv1.RadixDeployment, radixJobComponent *radixv1.RadixDeployJobComponent, payloadSecret *corev1.Secret) []corev1.Container {
+func getContainers(kube *kube.Kube, rd *radixv1.RadixDeployment, radixJobComponent *radixv1.RadixDeployJobComponent, payloadSecret *corev1.Secret, jobComponentConfig *models.RadixJobComponentConfig) []corev1.Container {
 	environmentVariables := deployment.GetEnvironmentVariablesFrom(rd.Spec.AppName, kube, rd, radixJobComponent)
 	ports := getContainerPorts(radixJobComponent)
 	containerSecurityContext := getSecurityContextForContainer(radixJobComponent.RunAsNonRoot)
 	volumeMounts := getVolumeMounts(radixJobComponent, payloadSecret)
-	resources := operatorUtils.GetResourceRequirements(radixJobComponent)
+
+	var resources corev1.ResourceRequirements
+	if jobComponentConfig != nil && jobComponentConfig.Resources != nil {
+		resources = operatorUtils.BuildResourceRequirement(jobComponentConfig.Resources)
+	} else {
+		resources = operatorUtils.GetResourceRequirements(radixJobComponent)
+	}
 
 	container := corev1.Container{
 		Name:            radixJobComponent.Name,
