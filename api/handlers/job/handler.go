@@ -101,7 +101,7 @@ func (jh *jobHandler) CreateJob(jobScheduleDescription *models.JobScheduleDescri
 		return nil, jobErrors.NewFromError(err)
 	}
 
-	job, err := jh.createJob(jobName, jobComponent, radixDeployment, payloadSecret)
+	job, err := jh.createJob(jobName, jobComponent, radixDeployment, payloadSecret, jobScheduleDescription)
 	if err != nil {
 		return nil, jobErrors.NewFromError(err)
 	}
