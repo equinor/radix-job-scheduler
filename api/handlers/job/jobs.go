@@ -121,13 +121,7 @@ func getContainers(kube *kube.Kube, rd *radixv1.RadixDeployment, radixJobCompone
 	ports := getContainerPorts(radixJobComponent)
 	containerSecurityContext := getSecurityContextForContainer(radixJobComponent.RunAsNonRoot)
 	volumeMounts := getVolumeMounts(radixJobComponent, payloadSecret)
-
-	var resources corev1.ResourceRequirements
-	if jobComponentConfig != nil && jobComponentConfig.Resources != nil {
-		resources = operatorUtils.BuildResourceRequirement(jobComponentConfig.Resources)
-	} else {
-		resources = operatorUtils.GetResourceRequirements(radixJobComponent)
-	}
+	resources := getResourceRequirements(radixJobComponent, jobComponentConfig)
 
 	container := corev1.Container{
 		Name:            radixJobComponent.Name,
@@ -165,6 +159,14 @@ func getVolumes(namespace, environment, jobName string, rd *radixv1.RadixDeploym
 	}
 
 	return volumes
+}
+
+func getResourceRequirements(radixJobComponent *radixv1.RadixDeployJobComponent, jobComponentConfig *models.RadixJobComponentConfig) corev1.ResourceRequirements {
+	if jobComponentConfig != nil && jobComponentConfig.Resources != nil {
+		return operatorUtils.BuildResourceRequirement(jobComponentConfig.Resources)
+	} else {
+		return operatorUtils.GetResourceRequirements(radixJobComponent)
+	}
 }
 
 func getPayloadVolume(secretName string) *corev1.Volume {
