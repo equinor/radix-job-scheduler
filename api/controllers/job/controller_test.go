@@ -13,6 +13,7 @@ import (
 	jobHandlersTest "github.com/equinor/radix-job-scheduler/api/handlers/job/test"
 	"github.com/equinor/radix-job-scheduler/api/utils"
 	"github.com/equinor/radix-job-scheduler/models"
+	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 )
@@ -220,6 +221,22 @@ func TestCreateJob(t *testing.T) {
 		defer ctrl.Finish()
 		jobScheduleDescription := models.JobScheduleDescription{
 			Payload: "a_payload",
+			RadixJobComponentConfig: models.RadixJobComponentConfig{
+				Resources: &v1.ResourceRequirements{
+					Requests: v1.ResourceList{
+						"cpu":    "20m",
+						"memory": "256M",
+					},
+					Limits: v1.ResourceList{
+						"cpu":    "10m",
+						"memory": "128M",
+					},
+				},
+				Node: &v1.RadixNode{
+					Gpu:      "nvidia",
+					GpuCount: "6",
+				},
+			},
 		}
 		createdJob := models.JobStatus{
 			Name:    "newjob",
