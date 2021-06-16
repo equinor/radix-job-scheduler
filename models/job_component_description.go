@@ -6,11 +6,11 @@ type RadixJobComponentConfig struct {
 	// Resource describes the compute resource requirements.
 	//
 	// required: false
-	Resources *v1.ResourceRequirements `json:"resources"`
+	Resources *v1.ResourceRequirements `json:"resources,omitempty"`
 	// Node defines node attributes, where container should be scheduled
 	//
 	// required: false
-	Node *v1.RadixNode `json:"node"`
+	Node *v1.RadixNode `json:"node,omitempty"`
 }
 
 // JobScheduleDescription holds description about scheduling job
@@ -24,5 +24,5 @@ type JobScheduleDescription struct {
 	// Payload holding data realating to resource configuration
 	//
 	// required: false
-	RadixJobComponentConfig `json:"inline"`
+	RadixJobComponentConfig `json:",inline"`
 }

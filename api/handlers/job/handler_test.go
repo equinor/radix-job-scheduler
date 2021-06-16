@@ -415,6 +415,61 @@ func TestCreateJob(t *testing.T) {
 		assert.Equal(t, int64(40), job.Spec.Template.Spec.Containers[0].Resources.Limits.Memory().ScaledValue(resource.Mega))
 	})
 
+	t.Run("RD job with resources - resource specified by request body", func(t *testing.T) {
+		t.Parallel()
+		appName, appEnvironment, appJobComponent, appDeployment := "app", "qa", "compute", "app-deploy-1"
+		envNamespace := utils.GetEnvironmentNamespace(appName, appEnvironment)
+		rd := utils.ARadixDeployment().
+			WithDeploymentName(appDeployment).
+			WithAppName(appName).
+			WithEnvironment(appEnvironment).
+			WithComponents().
+			WithJobComponents(
+				utils.NewDeployJobComponentBuilder().
+					WithName(appJobComponent).
+					WithResource(
+						map[string]string{"cpu": "10m", "memory": "20M"},
+						map[string]string{"cpu": "30m", "memory": "40M"},
+					),
+			).
+			BuildRD()
+
+		radixClient, kubeClient, kubeUtil := setupTest(appName, appEnvironment, appJobComponent, appDeployment, 1)
+		radixClient.RadixV1().RadixDeployments(envNamespace).Create(context.TODO(), rd, metav1.CreateOptions{})
+		handler := New(models.NewEnv(), kubeUtil, kubeClient, radixClient)
+
+		jobRequestConfig := models.JobScheduleDescription{
+			RadixJobComponentConfig: models.RadixJobComponentConfig{
+				Resources: &v1.ResourceRequirements{
+					Requests: v1.ResourceList{
+						"cpu":    "50m",
+						"memory": "60M",
+					},
+					Limits: v1.ResourceList{
+						"cpu":    "100m",
+						"memory": "120M",
+					},
+				},
+			},
+		}
+		jobStatus, err := handler.CreateJob(&jobRequestConfig)
+		assert.Nil(t, err)
+		assert.NotNil(t, jobStatus)
+
+		// Test resources defined
+		job, _ := kubeClient.BatchV1().Jobs(envNamespace).Get(context.TODO(), jobStatus.Name, metav1.GetOptions{})
+		assert.NotNil(t, job)
+		assert.Len(t, job.Spec.Template.Spec.Containers, 1)
+
+		// Test CPU resource set by request
+		assert.Len(t, job.Spec.Template.Spec.Containers[0].Resources.Requests, 2)
+		assert.Len(t, job.Spec.Template.Spec.Containers[0].Resources.Limits, 2)
+		assert.Equal(t, int64(50), job.Spec.Template.Spec.Containers[0].Resources.Requests.Cpu().MilliValue())
+		assert.Equal(t, int64(60), job.Spec.Template.Spec.Containers[0].Resources.Requests.Memory().ScaledValue(resource.Mega))
+		assert.Equal(t, int64(100), job.Spec.Template.Spec.Containers[0].Resources.Limits.Cpu().MilliValue())
+		assert.Equal(t, int64(120), job.Spec.Template.Spec.Containers[0].Resources.Limits.Memory().ScaledValue(resource.Mega))
+	})
+
 	t.Run("RD job without resources", func(t *testing.T) {
 		t.Parallel()
 		appName, appEnvironment, appJobComponent, appDeployment := "app", "qa", "compute", "app-deploy-1"
@@ -667,6 +722,56 @@ func TestCreateJob(t *testing.T) {
 		gpuCount := getNodeSelectorRequirementByKeyForTest(job.Spec.Template.Spec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms[0].MatchExpressions, kube.RadixGpuCountLabel)
 		assert.Equal(t, corev1.NodeSelectorOpGt, gpuCount.Operator)
 		assert.Equal(t, gpuCount.Values, []string{"1"})
+	})
+
+	t.Run("RD job with GPU node - GPU node specified by request body", func(t *testing.T) {
+		t.Parallel()
+		appName, appEnvironment, appJobComponent, appDeployment := "app", "qa", "compute", "app-deploy-1"
+		envNamespace := utils.GetEnvironmentNamespace(appName, appEnvironment)
+		rd := utils.ARadixDeployment().
+			WithDeploymentName(appDeployment).
+			WithAppName(appName).
+			WithEnvironment(appEnvironment).
+			WithComponents().
+			WithJobComponents(
+				utils.NewDeployJobComponentBuilder().
+					WithName(appJobComponent).
+					WithNodeGpu("gpu1, gpu2, gpu3, gpu4").
+					WithNodeGpuCount("4"),
+			).
+			BuildRD()
+
+		radixClient, kubeClient, kubeUtil := setupTest(appName, appEnvironment, appJobComponent, appDeployment, 1)
+		radixClient.RadixV1().RadixDeployments(envNamespace).Create(context.TODO(), rd, metav1.CreateOptions{})
+		handler := New(models.NewEnv(), kubeUtil, kubeClient, radixClient)
+
+		jobRequestConfig := models.JobScheduleDescription{
+			RadixJobComponentConfig: models.RadixJobComponentConfig{
+				Node: &v1.RadixNode{
+					Gpu:      "amd1, amd2, amd3",
+					GpuCount: "6",
+				},
+			},
+		}
+		jobStatus, err := handler.CreateJob(&jobRequestConfig)
+
+		assert.NotNil(t, jobStatus)
+		assert.Nil(t, err)
+
+		// Test resources defined
+		job, _ := kubeClient.BatchV1().Jobs(envNamespace).Get(context.TODO(), jobStatus.Name, metav1.GetOptions{})
+		assert.NotNil(t, job)
+		assert.Len(t, job.Spec.Template.Spec.Containers, 1)
+
+		// Test GPU nodes set by request
+		gpu := getNodeSelectorRequirementByKeyForTest(job.Spec.Template.Spec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms[0].MatchExpressions, kube.RadixGpuLabel)
+		gpuCount := getNodeSelectorRequirementByKeyForTest(job.Spec.Template.Spec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms[0].MatchExpressions, kube.RadixGpuCountLabel)
+		assert.Len(t, job.Spec.Template.Spec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms, 1)
+		assert.Len(t, job.Spec.Template.Spec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms[0].MatchExpressions, 2)
+		assert.Equal(t, corev1.NodeSelectorOpIn, gpu.Operator)
+		assert.ElementsMatch(t, gpu.Values, []string{"amd1", "amd2", "amd3"})
+		assert.Equal(t, corev1.NodeSelectorOpGt, gpuCount.Operator)
+		assert.Equal(t, gpuCount.Values, []string{"5"})
 	})
 
 	t.Run("RD job with runAsNonRoot true", func(t *testing.T) {
