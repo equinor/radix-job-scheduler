@@ -3,7 +3,7 @@ module github.com/equinor/radix-job-scheduler
 go 1.16
 
 require (
-	github.com/equinor/radix-operator v1.12.4-0.20210611135325-f274b792f112
+	github.com/equinor/radix-operator v1.13.0
 	github.com/golang/mock v1.5.0
 	github.com/gorilla/mux v1.8.0
 	github.com/rakyll/statik v0.1.6
