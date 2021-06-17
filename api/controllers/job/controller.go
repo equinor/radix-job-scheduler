@@ -119,7 +119,9 @@ func (controller *jobController) CreateJob(w http.ResponseWriter, r *http.Reques
 //   "200":
 //     description: "Successful get jobs"
 //     schema:
-//        "$ref": "#/definitions/JobStatus"
+//        type: "array"
+//        items:
+//           "$ref": "#/definitions/JobStatus"
 //   "500":
 //     description: "Internal server error"
 //     schema:

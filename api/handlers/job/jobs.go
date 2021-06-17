@@ -97,9 +97,9 @@ func buildJobSpec(jobName string, rd *radixv1.RadixDeployment, radixJobComponent
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
-						kube.RadixAppLabel:       rd.Spec.AppName,
-						kube.RadixComponentLabel: radixJobComponent.Name,
-						kube.RadixJobTypeLabel:   kube.RadixJobTypeJobSchedule,
+						kube.RadixAppLabel:     rd.Spec.AppName,
+						kube.RadixJobTypeLabel: kube.RadixJobTypeJobSchedule,
+						kube.RadixJobNameLabel: jobName,
 					},
 					Namespace: rd.ObjectMeta.Namespace,
 				},
