@@ -59,7 +59,7 @@ func buildServiceSpec(serviceName, jobName, componentName, appName string, compo
 			Type:  corev1.ServiceTypeClusterIP,
 			Ports: buildServicePorts(componentPorts),
 			Selector: map[string]string{
-				k8sJobNameLabel: jobName,
+				k8sJobNameLabel: jobName, // K8s adds a "job-name" label to a Pod created from a Job
 			},
 		},
 	}

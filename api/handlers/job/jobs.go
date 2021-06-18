@@ -112,7 +112,7 @@ func (jh *jobHandler) buildJobSpec(jobName string, rd *v1.RadixDeployment, radix
 					Containers:       containers,
 					Volumes:          volumes,
 					SecurityContext:  podSecurityContext,
-					RestartPolicy:    corev1.RestartPolicyNever, //TODO: decide what to do with failed job
+					RestartPolicy:    corev1.RestartPolicyNever,
 					ImagePullSecrets: rd.Spec.ImagePullSecrets,
 					Affinity:         affinity,
 				},
