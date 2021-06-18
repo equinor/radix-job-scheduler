@@ -20,7 +20,7 @@
                 "RADIX_ENVIRONMENT":"qa",
                 "RADIX_APP":"radix-job-demo",
                 "RADIX_JOB_SCHEDULERS_PER_ENVIRONMENT_HISTORY_LIMIT": "2",
-                "RADIX_DEPLOYMENT": "qa-jfy2w-ebcsoo2t",
+                "RADIX_DEPLOYMENT": "qa-ui0c6-aw5r8uyh",
                 "RADIX_COMPONENT": "compute",
                 "RADIX_PORTS": "8081",
                 "RADIXOPERATOR_APP_ENV_LIMITS_DEFAULT_CPU": "50m",

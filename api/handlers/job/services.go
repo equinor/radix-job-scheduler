@@ -11,6 +11,10 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
+const (
+	k8sJobNameLabel = "job-name" // A label that k8s automatically adds to a Pod created by a Job
+)
+
 func (jh *jobHandler) createService(jobName string, jobComponent *v1.RadixDeployJobComponent, rd *v1.RadixDeployment) error {
 	if len(jobComponent.GetPorts()) > 0 {
 		serviceName := jobName
@@ -55,7 +59,7 @@ func buildServiceSpec(serviceName, jobName, componentName, appName string, compo
 			Type:  corev1.ServiceTypeClusterIP,
 			Ports: buildServicePorts(componentPorts),
 			Selector: map[string]string{
-				kube.RadixJobNameLabel: jobName,
+				k8sJobNameLabel: jobName, // K8s adds a "job-name" label to a Pod created from a Job
 			},
 		},
 	}
