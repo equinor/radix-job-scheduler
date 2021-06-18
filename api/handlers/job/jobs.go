@@ -105,7 +105,6 @@ func (jh *jobHandler) buildJobSpec(jobName string, rd *v1.RadixDeployment, radix
 					Labels: map[string]string{
 						kube.RadixAppLabel:     rd.Spec.AppName,
 						kube.RadixJobTypeLabel: kube.RadixJobTypeJobSchedule,
-						kube.RadixJobNameLabel: jobName,
 					},
 					Namespace: rd.ObjectMeta.Namespace,
 				},
