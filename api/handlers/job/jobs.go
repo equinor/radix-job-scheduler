@@ -122,7 +122,7 @@ func (jh *jobHandler) buildJobSpec(jobName string, rd *v1.RadixDeployment, radix
 }
 
 func getContainers(kube *kube.Kube, rd *radixv1.RadixDeployment, radixJobComponent *radixv1.RadixDeployJobComponent, payloadSecret *corev1.Secret, jobComponentConfig *models.RadixJobComponentConfig) []corev1.Container {
-	environmentVariables := deployment.GetEnvironmentVariablesFrom(rd.Spec.AppName, kube, rd, radixJobComponent)
+	environmentVariables := deployment.GetEnvironmentVariablesFrom(rd.Spec.AppName, rd, radixJobComponent)
 	ports := getContainerPorts(radixJobComponent)
 	containerSecurityContext := getSecurityContextForContainer(radixJobComponent.RunAsNonRoot)
 	volumeMounts := getVolumeMounts(radixJobComponent, payloadSecret)
