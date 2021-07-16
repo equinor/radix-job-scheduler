@@ -80,8 +80,10 @@ func (jh *jobHandler) buildJobSpec(jobName string, rd *v1.RadixDeployment, radix
 	if err != nil {
 		return nil, err
 	}
-	containers := getContainers(kubeutil, rd, radixJobComponent, payloadSecret, jobComponentConfig)
-
+	containers, err := getContainers(kubeutil, rd, radixJobComponent, payloadSecret, jobComponentConfig)
+	if err != nil {
+		return nil, err
+	}
 	var affinity *corev1.Affinity
 	if jobComponentConfig != nil && jobComponentConfig.Node != nil {
 		affinity = operatorUtils.GetPodSpecAffinity(jobComponentConfig.Node)
@@ -121,11 +123,14 @@ func (jh *jobHandler) buildJobSpec(jobName string, rd *v1.RadixDeployment, radix
 	}, nil
 }
 
-func getContainers(kube *kube.Kube, rd *radixv1.RadixDeployment, radixJobComponent *radixv1.RadixDeployJobComponent, payloadSecret *corev1.Secret, jobComponentConfig *models.RadixJobComponentConfig) []corev1.Container {
+func getContainers(kube *kube.Kube, rd *radixv1.RadixDeployment, radixJobComponent *radixv1.RadixDeployJobComponent, payloadSecret *corev1.Secret, jobComponentConfig *models.RadixJobComponentConfig) ([]corev1.Container, error) {
 	environmentVariables := deployment.GetEnvironmentVariablesFrom(rd.Spec.AppName, rd, radixJobComponent)
 	ports := getContainerPorts(radixJobComponent)
 	containerSecurityContext := getSecurityContextForContainer(radixJobComponent.RunAsNonRoot)
-	volumeMounts := getVolumeMounts(radixJobComponent, payloadSecret)
+	volumeMounts, err := getVolumeMounts(radixJobComponent, payloadSecret)
+	if err != nil {
+		return nil, err
+	}
 	resources := getResourceRequirements(radixJobComponent, jobComponentConfig)
 
 	container := corev1.Container{
@@ -139,12 +144,14 @@ func getContainers(kube *kube.Kube, rd *radixv1.RadixDeployment, radixJobCompone
 		Resources:       resources,
 	}
 
-	return []corev1.Container{container}
+	return []corev1.Container{container}, nil
 }
 
-func getVolumeMounts(radixJobComponent *radixv1.RadixDeployJobComponent, payloadSecret *corev1.Secret) []corev1.VolumeMount {
-	volumeMounts := deployment.GetRadixDeployComponentVolumeMounts(radixJobComponent)
-
+func getVolumeMounts(radixJobComponent *v1.RadixDeployJobComponent, payloadSecret *corev1.Secret) ([]corev1.VolumeMount, error) {
+	volumeMounts, err := deployment.GetRadixDeployComponentVolumeMounts(radixJobComponent)
+	if err != nil {
+		return nil, err
+	}
 	if payloadSecret != nil {
 		volumeMounts = append(volumeMounts, corev1.VolumeMount{
 			Name:      JOB_PAYLOAD_PROPERTY_NAME,
@@ -153,7 +160,7 @@ func getVolumeMounts(radixJobComponent *radixv1.RadixDeployJobComponent, payload
 		})
 	}
 
-	return volumeMounts
+	return volumeMounts, nil
 }
 
 func (jh *jobHandler) getVolumes(namespace, environment string, radixJobComponent *v1.RadixDeployJobComponent, payloadSecret *corev1.Secret) ([]corev1.Volume, error) {
