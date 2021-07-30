@@ -2,7 +2,6 @@ package job
 
 import (
 	"context"
-
 	radixutils "github.com/equinor/radix-common/utils"
 	jobErrors "github.com/equinor/radix-job-scheduler/api/errors"
 	"github.com/equinor/radix-job-scheduler/models"
@@ -25,16 +24,44 @@ func (jh *jobHandler) createJob(jobName string, jobComponent *v1.RadixDeployJobC
 		jobComponentConfig = &jobScheduleDescription.RadixJobComponentConfig
 	}
 
-	job, err := jh.buildJobSpec(jobName, rd, jobComponent, payloadSecret, jh.kube, jobComponentConfig)
+	job, jobEnvVarsConfigMap, jobEnvVarsMetadataConfigMap, err := jh.buildJobSpec(jobName, rd, jobComponent, payloadSecret, jh.kube, jobComponentConfig)
 	if err != nil {
 		return nil, err
 	}
-	createdJob, err := jh.kubeClient.BatchV1().Jobs(jh.env.RadixDeploymentNamespace).Create(context.TODO(), job, metav1.CreateOptions{})
+	namespace := jh.env.RadixDeploymentNamespace
+	createdJobEnvVarsConfigMap, createdJobEnvVarsMetadataConfigMap, err := jh.createEnvVarsConfigMaps(namespace, jobEnvVarsConfigMap, jobEnvVarsMetadataConfigMap)
 	if err != nil {
 		return nil, err
 	}
-
+	createdJob, err := jh.kubeClient.BatchV1().Jobs(namespace).Create(context.TODO(), job, metav1.CreateOptions{})
+	if err != nil {
+		return nil, err
+	}
+	err = jh.updateOwnerReferenceOfConfigMaps(createdJob, createdJobEnvVarsConfigMap, createdJobEnvVarsMetadataConfigMap)
+	if err != nil {
+		return nil, err
+	}
 	return createdJob, nil
+}
+
+func (jh *jobHandler) createEnvVarsConfigMaps(namespace string, jobEnvVarsConfigMap *corev1.ConfigMap, jobEnvVarsMetadataConfigMap *corev1.ConfigMap) (*corev1.ConfigMap, *corev1.ConfigMap, error) {
+	createdJobEnvVarsConfigMap, err := jh.kube.CreateConfigMap(namespace, jobEnvVarsConfigMap)
+	if err != nil {
+		return nil, nil, err
+	}
+	createdJobEnvVarsMetadataConfigMap, err := jh.kube.CreateConfigMap(namespace, jobEnvVarsMetadataConfigMap)
+	if err != nil {
+		return nil, nil, err
+	}
+	return createdJobEnvVarsConfigMap, createdJobEnvVarsMetadataConfigMap, nil
+}
+
+func (jh *jobHandler) updateOwnerReferenceOfConfigMaps(ownerJob *batchv1.Job, configMaps ...*corev1.ConfigMap) error {
+	jobOwnerReferences := getJobOwnerReferences(ownerJob)
+	for _, configMap := range configMaps {
+		configMap.OwnerReferences = jobOwnerReferences
+	}
+	return jh.kube.UpdateConfigMap(ownerJob.ObjectMeta.GetNamespace(), configMaps...)
 }
 
 func (jh *jobHandler) deleteJob(job *batchv1.Job) error {
@@ -75,15 +102,15 @@ func (jh *jobHandler) getAllJobs() (jobList, error) {
 	return jobList(slice.PointersOf(kubeJobs.Items).([]*batchv1.Job)), nil
 }
 
-func (jh *jobHandler) buildJobSpec(jobName string, rd *v1.RadixDeployment, radixJobComponent *v1.RadixDeployJobComponent, payloadSecret *corev1.Secret, kubeutil *kube.Kube, jobComponentConfig *models.RadixJobComponentConfig) (*batchv1.Job, error) {
+func (jh *jobHandler) buildJobSpec(jobName string, rd *v1.RadixDeployment, radixJobComponent *v1.RadixDeployJobComponent, payloadSecret *corev1.Secret, kubeutil *kube.Kube, jobComponentConfig *models.RadixJobComponentConfig) (*batchv1.Job, *corev1.ConfigMap, *corev1.ConfigMap, error) {
 	podSecurityContext := getSecurityContextForPod(radixJobComponent.RunAsNonRoot)
 	volumes, err := jh.getVolumes(rd.ObjectMeta.Namespace, rd.Spec.Environment, radixJobComponent, payloadSecret)
 	if err != nil {
-		return nil, err
+		return nil, nil, nil, err
 	}
-	containers, err := getContainers(kubeutil, rd, jobName, radixJobComponent, payloadSecret, jobComponentConfig)
+	containers, jobEnvVarsConfigMap, jobEnvVarsMetadataConfigMap, err := getContainersWithEnvVarsConfigMaps(kubeutil, rd, jobName, radixJobComponent, payloadSecret, jobComponentConfig)
 	if err != nil {
-		return nil, err
+		return nil, nil, nil, err
 	}
 	var affinity *corev1.Affinity
 	if jobComponentConfig != nil && jobComponentConfig.Node != nil {
@@ -121,19 +148,19 @@ func (jh *jobHandler) buildJobSpec(jobName string, rd *v1.RadixDeployment, radix
 				},
 			},
 		},
-	}, nil
+	}, jobEnvVarsConfigMap, jobEnvVarsMetadataConfigMap, nil
 }
 
-func getContainers(kubeUtils *kube.Kube, rd *v1.RadixDeployment, jobName string, radixJobComponent *v1.RadixDeployJobComponent, payloadSecret *corev1.Secret, jobComponentConfig *models.RadixJobComponentConfig) ([]corev1.Container, error) {
-	environmentVariables, err := getEnvironmentVariablesWithConfigMapsCreatedForJob(kubeUtils, rd, jobName, radixJobComponent)
+func getContainersWithEnvVarsConfigMaps(kubeUtils *kube.Kube, rd *v1.RadixDeployment, jobName string, radixJobComponent *v1.RadixDeployJobComponent, payloadSecret *corev1.Secret, jobComponentConfig *models.RadixJobComponentConfig) ([]corev1.Container, *corev1.ConfigMap, *corev1.ConfigMap, error) {
+	environmentVariables, jobEnvVarsConfigMap, jobEnvVarsMetadataConfigMap, err := getEnvironmentVariablesWithEnvVarsConfigMaps(kubeUtils, rd, jobName, radixJobComponent)
 	if err != nil {
-		return nil, err
+		return nil, nil, nil, err
 	}
 	ports := getContainerPorts(radixJobComponent)
 	containerSecurityContext := getSecurityContextForContainer(radixJobComponent.RunAsNonRoot)
 	volumeMounts, err := getVolumeMounts(radixJobComponent, payloadSecret)
 	if err != nil {
-		return nil, err
+		return nil, nil, nil, err
 	}
 	resources := getResourceRequirements(radixJobComponent, jobComponentConfig)
 
@@ -148,48 +175,37 @@ func getContainers(kubeUtils *kube.Kube, rd *v1.RadixDeployment, jobName string,
 		Resources:       resources,
 	}
 
-	return []corev1.Container{container}, nil
+	return []corev1.Container{container}, jobEnvVarsConfigMap, jobEnvVarsMetadataConfigMap, nil
 }
 
-func getEnvironmentVariablesWithConfigMapsCreatedForJob(kubeUtils *kube.Kube, rd *v1.RadixDeployment, jobName string, radixJobComponent *v1.RadixDeployJobComponent) ([]corev1.EnvVar, error) {
-	_, envVarsMetadataMap, err := kubeUtils.GetEnvVarsMetadataConfigMapAndMap(rd.GetNamespace(), radixJobComponent.GetName()) //env-vars metadata for jobComponent to use it for job's env-vars metadata
+func getEnvironmentVariablesWithEnvVarsConfigMaps(kubeUtils *kube.Kube, rd *v1.RadixDeployment, jobName string, radixJobComponent *v1.RadixDeployJobComponent) ([]corev1.EnvVar, *corev1.ConfigMap, *corev1.ConfigMap, error) {
+	envVarsConfigMap, _, envVarsMetadataMap, err := kubeUtils.GetEnvVarsConfigMapAndMetadataMap(rd.GetNamespace(), radixJobComponent.GetName()) //env-vars metadata for jobComponent to use it for job's env-vars metadata
 	if err != nil {
-		return nil, err
+		return nil, nil, nil, err
 	}
 	if envVarsMetadataMap == nil {
 		envVarsMetadataMap = map[string]v1.EnvVarMetadata{}
 	}
-	jobEnvVarsConfigMap, err := kubeUtils.CreateRadixConfigEnvVarsConfigMap(rd.GetNamespace(), rd.GetName(), jobName) //create env-vars config-name with name 'env-vars-JOB_NAME'
-	if err != nil {
-		return nil, err
-	}
-	jobEnvVarsMetadataConfigMap, err := kubeUtils.CreateRadixConfigEnvVarsMetadataConfigMap(rd.GetNamespace(), rd.GetName(), jobName) //create env-vars metadata config-name with name and 'env-vars-metadata-JOB_NAME'
-	if err != nil {
-		return nil, err
-	}
+	jobEnvVarsConfigMap := kube.BuildRadixConfigEnvVarsConfigMap(rd.GetName(), jobName) //build env-vars config-name with name 'env-vars-JOB_NAME'
+	jobEnvVarsConfigMap.Data = envVarsConfigMap.Data
+	jobEnvVarsMetadataConfigMap := kube.BuildRadixConfigEnvVarsMetadataConfigMap(rd.GetName(), jobName) //build env-vars metadata config-name with name and 'env-vars-metadata-JOB_NAME'
 
-	environmentVariables := deployment.GetEnvironmentVariablesFrom(kubeUtils, rd.Spec.AppName, rd, radixJobComponent, jobEnvVarsConfigMap, envVarsMetadataMap)
+	environmentVariables := deployment.GetEnvironmentVariablesFrom(rd.Spec.AppName, rd, radixJobComponent, jobEnvVarsConfigMap, envVarsMetadataMap)
 
-	jobOwnerReferences := getJobOwnerReferences(jobName)
-	jobEnvVarsConfigMap.OwnerReferences = jobOwnerReferences
-	_, err = kubeUtils.UpdateConfigMap(rd.GetNamespace(), jobEnvVarsConfigMap) //update env-vars config-map, individual for each job
+	err = kube.SetEnvVarsMetadataMapToConfigMap(jobEnvVarsMetadataConfigMap, envVarsMetadataMap) //use env-vars metadata config-map, individual for each job
 	if err != nil {
-		return nil, err
+		return nil, nil, nil, err
 	}
-	jobEnvVarsMetadataConfigMap.OwnerReferences = jobOwnerReferences
-	err = kubeUtils.ApplyEnvVarsMetadataConfigMap(rd.GetNamespace(), jobEnvVarsMetadataConfigMap, envVarsMetadataMap) //update env-vars metadata config-map, individual for each job
-	if err != nil {
-		return nil, err
-	}
-	return environmentVariables, nil
+	return environmentVariables, jobEnvVarsConfigMap, jobEnvVarsMetadataConfigMap, nil
 }
 
-func getJobOwnerReferences(jobName string) []metav1.OwnerReference {
+func getJobOwnerReferences(job *batchv1.Job) []metav1.OwnerReference {
 	return []metav1.OwnerReference{
 		{
 			APIVersion: "batch/v1",
 			Kind:       "Job",
-			Name:       jobName,
+			Name:       job.GetName(),
+			UID:        job.UID,
 			Controller: radixutils.BoolPtr(true),
 		},
 	}

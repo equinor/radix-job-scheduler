@@ -40,7 +40,7 @@ func setupTest(appName, appEnvironment, appComponent, appDeployment string, hist
 	return radixclient, kubeclient, kubeUtil
 }
 
-func applyRadixDeployment(kubeUtil *kube.Kube, rd *v1.RadixDeployment) map[string]*corev1.ConfigMap {
+func applyRadixDeploymentEnvVarsConfigMaps(kubeUtil *kube.Kube, rd *v1.RadixDeployment) map[string]*corev1.ConfigMap {
 	envVarConfigMapsMap := map[string]*corev1.ConfigMap{}
 	for _, deployComponent := range rd.Spec.Components {
 		envVarConfigMapsMap[deployComponent.GetName()] = ensurePopulatedEnvVarsConfigMaps(kubeUtil, rd, &deployComponent)
@@ -187,7 +187,7 @@ func TestCreateJob(t *testing.T) {
 			BuildRD()
 
 		radixClient, kubeClient, kubeUtil := setupTest(appName, appEnvironment, appJobComponent, appDeployment, 1)
-		applyRadixDeployment(kubeUtil, rd)
+		applyRadixDeploymentEnvVarsConfigMaps(kubeUtil, rd)
 		radixClient.RadixV1().RadixDeployments(envNamespace).Create(context.TODO(), rd, metav1.CreateOptions{})
 		handler := New(models.NewEnv(), kubeUtil, kubeClient, radixClient)
 		jobStatus, err := handler.CreateJob(nil)
@@ -223,7 +223,7 @@ func TestCreateJob(t *testing.T) {
 			BuildRD()
 
 		radixClient, kubeClient, kubeUtil := setupTest(appName, appEnvironment, appJobComponent, appDeployment, 1)
-		applyRadixDeployment(kubeUtil, rd)
+		applyRadixDeploymentEnvVarsConfigMaps(kubeUtil, rd)
 		radixClient.RadixV1().RadixDeployments(envNamespace).Create(context.TODO(), rd, metav1.CreateOptions{})
 		handler := New(models.NewEnv(), kubeUtil, kubeClient, radixClient)
 		jobStatus, err := handler.CreateJob(nil)
@@ -250,7 +250,7 @@ func TestCreateJob(t *testing.T) {
 			BuildRD()
 
 		radixClient, kubeClient, kubeUtil := setupTest(appName, appEnvironment, appJobComponent, appDeployment, 1)
-		envVarConfigMapsMap := applyRadixDeployment(kubeUtil, rd)
+		envVarConfigMapsMap := applyRadixDeploymentEnvVarsConfigMaps(kubeUtil, rd)
 		radixClient.RadixV1().RadixDeployments(envNamespace).Create(context.TODO(), rd, metav1.CreateOptions{})
 		handler := New(models.NewEnv(), kubeUtil, kubeClient, radixClient)
 		jobStatus, err := handler.CreateJob(nil)
@@ -283,7 +283,7 @@ func TestCreateJob(t *testing.T) {
 			BuildRD()
 
 		radixClient, kubeClient, kubeUtil := setupTest(appName, appEnvironment, appJobComponent, appDeployment, 1)
-		applyRadixDeployment(kubeUtil, rd)
+		applyRadixDeploymentEnvVarsConfigMaps(kubeUtil, rd)
 		radixClient.RadixV1().RadixDeployments(envNamespace).Create(context.TODO(), rd, metav1.CreateOptions{})
 		handler := New(models.NewEnv(), kubeUtil, kubeClient, radixClient)
 		jobStatus, err := handler.CreateJob(&models.JobScheduleDescription{Payload: payloadString})
@@ -327,7 +327,7 @@ func TestCreateJob(t *testing.T) {
 			BuildRD()
 
 		radixClient, kubeClient, kubeUtil := setupTest(appName, appEnvironment, appJobComponent, appDeployment, 1)
-		applyRadixDeployment(kubeUtil, rd)
+		applyRadixDeploymentEnvVarsConfigMaps(kubeUtil, rd)
 		radixClient.RadixV1().RadixDeployments(envNamespace).Create(context.TODO(), rd, metav1.CreateOptions{})
 		handler := New(models.NewEnv(), kubeUtil, kubeClient, radixClient)
 		jobStatus, err := handler.CreateJob(&models.JobScheduleDescription{Payload: payloadString})
@@ -361,7 +361,7 @@ func TestCreateJob(t *testing.T) {
 			BuildRD()
 
 		radixClient, kubeClient, kubeUtil := setupTest(appName, appEnvironment, appJobComponent, appDeployment, 1)
-		applyRadixDeployment(kubeUtil, rd)
+		applyRadixDeploymentEnvVarsConfigMaps(kubeUtil, rd)
 		radixClient.RadixV1().RadixDeployments(envNamespace).Create(context.TODO(), rd, metav1.CreateOptions{})
 		handler := New(models.NewEnv(), kubeUtil, kubeClient, radixClient)
 		jobStatus, err := handler.CreateJob(nil)
@@ -398,7 +398,7 @@ func TestCreateJob(t *testing.T) {
 			BuildRD()
 
 		radixClient, kubeClient, kubeUtil := setupTest(appName, appEnvironment, appJobComponent, appDeployment, 1)
-		applyRadixDeployment(kubeUtil, rd)
+		applyRadixDeploymentEnvVarsConfigMaps(kubeUtil, rd)
 		radixClient.RadixV1().RadixDeployments(envNamespace).Create(context.TODO(), rd, metav1.CreateOptions{})
 		handler := New(models.NewEnv(), kubeUtil, kubeClient, radixClient)
 		jobStatus, err := handler.CreateJob(nil)
@@ -429,7 +429,7 @@ func TestCreateJob(t *testing.T) {
 			BuildRD()
 
 		radixClient, kubeClient, kubeUtil := setupTest(appName, appEnvironment, appJobComponent, appDeployment, 1)
-		applyRadixDeployment(kubeUtil, rd)
+		applyRadixDeploymentEnvVarsConfigMaps(kubeUtil, rd)
 		radixClient.RadixV1().RadixDeployments(envNamespace).Create(context.TODO(), rd, metav1.CreateOptions{})
 		handler := New(models.NewEnv(), kubeUtil, kubeClient, radixClient)
 		jobStatus, err := handler.CreateJob(nil)
@@ -467,7 +467,7 @@ func TestCreateJob(t *testing.T) {
 			BuildRD()
 
 		radixClient, kubeClient, kubeUtil := setupTest(appName, appEnvironment, appJobComponent, appDeployment, 1)
-		applyRadixDeployment(kubeUtil, rd)
+		applyRadixDeploymentEnvVarsConfigMaps(kubeUtil, rd)
 		radixClient.RadixV1().RadixDeployments(envNamespace).Create(context.TODO(), rd, metav1.CreateOptions{})
 		handler := New(models.NewEnv(), kubeUtil, kubeClient, radixClient)
 
@@ -519,7 +519,7 @@ func TestCreateJob(t *testing.T) {
 			BuildRD()
 
 		radixClient, kubeClient, kubeUtil := setupTest(appName, appEnvironment, appJobComponent, appDeployment, 1)
-		applyRadixDeployment(kubeUtil, rd)
+		applyRadixDeploymentEnvVarsConfigMaps(kubeUtil, rd)
 		radixClient.RadixV1().RadixDeployments(envNamespace).Create(context.TODO(), rd, metav1.CreateOptions{})
 		handler := New(models.NewEnv(), kubeUtil, kubeClient, radixClient)
 		jobStatus, err := handler.CreateJob(nil)
@@ -553,7 +553,7 @@ func TestCreateJob(t *testing.T) {
 			BuildRD()
 
 		radixClient, kubeClient, kubeUtil := setupTest(appName, appEnvironment, appJobComponent, appDeployment, 1)
-		applyRadixDeployment(kubeUtil, rd)
+		applyRadixDeploymentEnvVarsConfigMaps(kubeUtil, rd)
 		radixClient.RadixV1().RadixDeployments(envNamespace).Create(context.TODO(), rd, metav1.CreateOptions{})
 		handler := New(models.NewEnv(), kubeUtil, kubeClient, radixClient)
 		jobStatus, err := handler.CreateJob(nil)
@@ -589,7 +589,7 @@ func TestCreateJob(t *testing.T) {
 			BuildRD()
 
 		radixClient, kubeClient, kubeUtil := setupTest(appName, appEnvironment, appJobComponent, appDeployment, 1)
-		applyRadixDeployment(kubeUtil, rd)
+		applyRadixDeploymentEnvVarsConfigMaps(kubeUtil, rd)
 		radixClient.RadixV1().RadixDeployments(envNamespace).Create(context.TODO(), rd, metav1.CreateOptions{})
 		handler := New(models.NewEnv(), kubeUtil, kubeClient, radixClient)
 		jobStatus, err := handler.CreateJob(nil)
@@ -623,7 +623,7 @@ func TestCreateJob(t *testing.T) {
 			BuildRD()
 
 		radixClient, kubeClient, kubeUtil := setupTest(appName, appEnvironment, appJobComponent, appDeployment, 1)
-		applyRadixDeployment(kubeUtil, rd)
+		applyRadixDeploymentEnvVarsConfigMaps(kubeUtil, rd)
 		radixClient.RadixV1().RadixDeployments(envNamespace).Create(context.TODO(), rd, metav1.CreateOptions{})
 		handler := New(models.NewEnv(), kubeUtil, kubeClient, radixClient)
 		jobStatus, err := handler.CreateJob(nil)
@@ -649,7 +649,7 @@ func TestCreateJob(t *testing.T) {
 			BuildRD()
 
 		radixClient, kubeClient, kubeUtil := setupTest(appName, appEnvironment, appJobComponent, appDeployment, 1)
-		applyRadixDeployment(kubeUtil, rd)
+		applyRadixDeploymentEnvVarsConfigMaps(kubeUtil, rd)
 		radixClient.RadixV1().RadixDeployments(envNamespace).Create(context.TODO(), rd, metav1.CreateOptions{})
 		handler := New(models.NewEnv(), kubeUtil, kubeClient, radixClient)
 		jobStatus, err := handler.CreateJob(nil)
@@ -676,7 +676,7 @@ func TestCreateJob(t *testing.T) {
 			BuildRD()
 
 		radixClient, kubeClient, kubeUtil := setupTest(appName, appEnvironment, appJobComponent, appDeployment, 1)
-		envVarConfigMapsMap := applyRadixDeployment(kubeUtil, rd)
+		envVarConfigMapsMap := applyRadixDeploymentEnvVarsConfigMaps(kubeUtil, rd)
 		radixClient.RadixV1().RadixDeployments(envNamespace).Create(context.TODO(), rd, metav1.CreateOptions{})
 		handler := New(models.NewEnv(), kubeUtil, kubeClient, radixClient)
 		jobStatus, err := handler.CreateJob(nil)
@@ -718,7 +718,7 @@ func TestCreateJob(t *testing.T) {
 			BuildRD()
 
 		radixClient, kubeClient, kubeUtil := setupTest(appName, appEnvironment, appJobComponent, appDeployment, 1)
-		applyRadixDeployment(kubeUtil, rd)
+		applyRadixDeploymentEnvVarsConfigMaps(kubeUtil, rd)
 		radixClient.RadixV1().RadixDeployments(envNamespace).Create(context.TODO(), rd, metav1.CreateOptions{})
 		handler := New(models.NewEnv(), kubeUtil, kubeClient, radixClient)
 		jobStatus, err := handler.CreateJob(nil)
@@ -749,7 +749,7 @@ func TestCreateJob(t *testing.T) {
 			BuildRD()
 
 		radixClient, kubeClient, kubeUtil := setupTest(appName, appEnvironment, appJobComponent, appDeployment, 1)
-		applyRadixDeployment(kubeUtil, rd)
+		applyRadixDeploymentEnvVarsConfigMaps(kubeUtil, rd)
 		radixClient.RadixV1().RadixDeployments(envNamespace).Create(context.TODO(), rd, metav1.CreateOptions{})
 		handler := New(models.NewEnv(), kubeUtil, kubeClient, radixClient)
 		jobStatus, err := handler.CreateJob(nil)
@@ -784,7 +784,7 @@ func TestCreateJob(t *testing.T) {
 			BuildRD()
 
 		radixClient, kubeClient, kubeUtil := setupTest(appName, appEnvironment, appJobComponent, appDeployment, 1)
-		applyRadixDeployment(kubeUtil, rd)
+		applyRadixDeploymentEnvVarsConfigMaps(kubeUtil, rd)
 		radixClient.RadixV1().RadixDeployments(envNamespace).Create(context.TODO(), rd, metav1.CreateOptions{})
 		handler := New(models.NewEnv(), kubeUtil, kubeClient, radixClient)
 
@@ -834,7 +834,7 @@ func TestCreateJob(t *testing.T) {
 			BuildRD()
 
 		radixClient, kubeClient, kubeUtil := setupTest(appName, appEnvironment, appJobComponent, appDeployment, 1)
-		applyRadixDeployment(kubeUtil, rd)
+		applyRadixDeploymentEnvVarsConfigMaps(kubeUtil, rd)
 		radixClient.RadixV1().RadixDeployments(envNamespace).Create(context.TODO(), rd, metav1.CreateOptions{})
 		handler := New(models.NewEnv(), kubeUtil, kubeClient, radixClient)
 		jobStatus, err := handler.CreateJob(nil)
@@ -864,7 +864,7 @@ func TestCreateJob(t *testing.T) {
 			BuildRD()
 
 		radixClient, kubeClient, kubeUtil := setupTest(appName, appEnvironment, appJobComponent, appDeployment, 1)
-		applyRadixDeployment(kubeUtil, rd)
+		applyRadixDeploymentEnvVarsConfigMaps(kubeUtil, rd)
 		radixClient.RadixV1().RadixDeployments(envNamespace).Create(context.TODO(), rd, metav1.CreateOptions{})
 		handler := New(models.NewEnv(), kubeUtil, kubeClient, radixClient)
 		jobStatus, err := handler.CreateJob(nil)
