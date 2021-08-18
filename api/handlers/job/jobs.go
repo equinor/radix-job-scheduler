@@ -152,7 +152,7 @@ func (jh *jobHandler) buildJobSpec(jobName string, rd *v1.RadixDeployment, radix
 }
 
 func getContainersWithEnvVarsConfigMaps(kubeUtils *kube.Kube, rd *v1.RadixDeployment, jobName string, radixJobComponent *v1.RadixDeployJobComponent, payloadSecret *corev1.Secret, jobComponentConfig *models.RadixJobComponentConfig) ([]corev1.Container, *corev1.ConfigMap, *corev1.ConfigMap, error) {
-	environmentVariables, jobEnvVarsConfigMap, jobEnvVarsMetadataConfigMap, err := getEnvironmentVariablesWithEnvVarsConfigMaps(kubeUtils, rd, jobName, radixJobComponent)
+	environmentVariables, jobEnvVarsConfigMap, jobEnvVarsMetadataConfigMap, err := buildEnvironmentVariablesWithEnvVarsConfigMaps(kubeUtils, rd, jobName, radixJobComponent)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -178,19 +178,19 @@ func getContainersWithEnvVarsConfigMaps(kubeUtils *kube.Kube, rd *v1.RadixDeploy
 	return []corev1.Container{container}, jobEnvVarsConfigMap, jobEnvVarsMetadataConfigMap, nil
 }
 
-func getEnvironmentVariablesWithEnvVarsConfigMaps(kubeUtils *kube.Kube, rd *v1.RadixDeployment, jobName string, radixJobComponent *v1.RadixDeployJobComponent) ([]corev1.EnvVar, *corev1.ConfigMap, *corev1.ConfigMap, error) {
+func buildEnvironmentVariablesWithEnvVarsConfigMaps(kubeUtils *kube.Kube, rd *v1.RadixDeployment, jobName string, radixJobComponent *v1.RadixDeployJobComponent) ([]corev1.EnvVar, *corev1.ConfigMap, *corev1.ConfigMap, error) {
 	envVarsConfigMap, _, envVarsMetadataMap, err := kubeUtils.GetEnvVarsConfigMapAndMetadataMap(rd.GetNamespace(), radixJobComponent.GetName()) //env-vars metadata for jobComponent to use it for job's env-vars metadata
 	if err != nil {
 		return nil, nil, nil, err
 	}
 	if envVarsMetadataMap == nil {
-		envVarsMetadataMap = map[string]v1.EnvVarMetadata{}
+		envVarsMetadataMap = map[string]kube.EnvVarMetadata{}
 	}
 	jobEnvVarsConfigMap := kube.BuildRadixConfigEnvVarsConfigMap(rd.GetName(), jobName) //build env-vars config-name with name 'env-vars-JOB_NAME'
 	jobEnvVarsConfigMap.Data = envVarsConfigMap.Data
 	jobEnvVarsMetadataConfigMap := kube.BuildRadixConfigEnvVarsMetadataConfigMap(rd.GetName(), jobName) //build env-vars metadata config-name with name and 'env-vars-metadata-JOB_NAME'
 
-	environmentVariables := deployment.GetEnvironmentVariablesFrom(rd.Spec.AppName, rd, radixJobComponent, jobEnvVarsConfigMap, envVarsMetadataMap)
+	environmentVariables, err := deployment.GetEnvironmentVariablesFrom(kubeUtils, rd.Spec.AppName, rd, radixJobComponent)
 
 	err = kube.SetEnvVarsMetadataMapToConfigMap(jobEnvVarsMetadataConfigMap, envVarsMetadataMap) //use env-vars metadata config-map, individual for each job
 	if err != nil {
