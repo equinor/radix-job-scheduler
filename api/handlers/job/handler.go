@@ -41,7 +41,7 @@ type jobHandler struct {
 	securityContextBuilder deployment.SecurityContextBuilder
 }
 
-func New(env *models.Env, kube *kube.Kube, kubeClient kubernetes.Interface, radixClient radixclient.Interface) *jobHandler {
+func New(env *models.Env, kube *kube.Kube, kubeClient kubernetes.Interface, radixClient radixclient.Interface) Handler {
 	return &jobHandler{
 		kube:                   kube,
 		kubeClient:             kubeClient,

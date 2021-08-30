@@ -94,15 +94,18 @@ func TestNewHandler(t *testing.T) {
 	env := models.NewEnv()
 
 	h := New(env, kubeUtil, kubeClient, radixClient)
-	assert.Equal(t, h.env, env)
-	assert.Equal(t, h.kube, kubeUtil)
-	assert.Equal(t, h.kubeClient, kubeClient)
-	assert.Equal(t, h.radixClient, radixClient)
-	assert.NotNil(t, h.securityContextBuilder)
+	assert.IsType(t, &jobHandler{}, h)
+	actualHandler := h.(*jobHandler)
+
+	assert.Equal(t, env, actualHandler.env)
+	assert.Equal(t, kubeUtil, actualHandler.kube)
+	assert.Equal(t, kubeClient, actualHandler.kubeClient)
+	assert.Equal(t, radixClient, actualHandler.radixClient)
+	assert.NotNil(t, actualHandler.securityContextBuilder)
 
 	job := v1.RadixDeployJobComponent{RunAsNonRoot: false}
-	assert.True(t, *h.securityContextBuilder.BuildContainerSecurityContext(&job).RunAsNonRoot)
-	assert.True(t, *h.securityContextBuilder.BuildPodSecurityContext(&job).RunAsNonRoot)
+	assert.True(t, *actualHandler.securityContextBuilder.BuildContainerSecurityContext(&job).RunAsNonRoot)
+	assert.True(t, *actualHandler.securityContextBuilder.BuildPodSecurityContext(&job).RunAsNonRoot)
 }
 
 func TestGetJobs(t *testing.T) {
