@@ -9,9 +9,9 @@ import (
 
 	jobErrors "github.com/equinor/radix-job-scheduler/api/errors"
 	"github.com/equinor/radix-job-scheduler/models"
+	"github.com/equinor/radix-operator/pkg/apis/deployment"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
-	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/equinor/radix-operator/pkg/apis/utils"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 	log "github.com/sirupsen/logrus"
@@ -34,18 +34,20 @@ type Handler interface {
 }
 
 type jobHandler struct {
-	kube        *kube.Kube
-	env         *models.Env
-	kubeClient  kubernetes.Interface
-	radixClient radixclient.Interface
+	kube                   *kube.Kube
+	env                    *models.Env
+	kubeClient             kubernetes.Interface
+	radixClient            radixclient.Interface
+	securityContextBuilder deployment.SecurityContextBuilder
 }
 
 func New(env *models.Env, kube *kube.Kube, kubeClient kubernetes.Interface, radixClient radixclient.Interface) Handler {
 	return &jobHandler{
-		kube:        kube,
-		kubeClient:  kubeClient,
-		radixClient: radixClient,
-		env:         env,
+		kube:                   kube,
+		kubeClient:             kubeClient,
+		radixClient:            radixClient,
+		env:                    env,
+		securityContextBuilder: deployment.NewSecurityContextBuilder(true),
 	}
 }
 
@@ -214,7 +216,7 @@ func getCompletionTimeFrom(job *batchv1.Job) *metav1.Time {
 	return job.Status.CompletionTime
 }
 
-func generateJobName(jobComponent *v1.RadixDeployJobComponent) string {
+func generateJobName(jobComponent *radixv1.RadixDeployJobComponent) string {
 	timestamp := time.Now().Format("20060102150405")
 	jobTag := strings.ToLower(utils.RandString(8))
 	return fmt.Sprintf("%s-%s-%s", jobComponent.Name, timestamp, jobTag)
