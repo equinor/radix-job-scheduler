@@ -2,6 +2,7 @@ package job
 
 import (
 	"context"
+
 	radixutils "github.com/equinor/radix-common/utils"
 	jobErrors "github.com/equinor/radix-job-scheduler/api/errors"
 	"github.com/equinor/radix-job-scheduler/models"
@@ -103,12 +104,12 @@ func (jh *jobHandler) getAllJobs() (jobList, error) {
 }
 
 func (jh *jobHandler) buildJobSpec(jobName string, rd *v1.RadixDeployment, radixJobComponent *v1.RadixDeployJobComponent, payloadSecret *corev1.Secret, kubeutil *kube.Kube, jobComponentConfig *models.RadixJobComponentConfig) (*batchv1.Job, *corev1.ConfigMap, *corev1.ConfigMap, error) {
-	podSecurityContext := getSecurityContextForPod(radixJobComponent.RunAsNonRoot)
+	podSecurityContext := jh.securityContextBuilder.BuildPodSecurityContext(radixJobComponent)
 	volumes, err := jh.getVolumes(rd.ObjectMeta.Namespace, rd.Spec.Environment, radixJobComponent, payloadSecret)
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	containers, jobEnvVarsConfigMap, jobEnvVarsMetadataConfigMap, err := getContainersWithEnvVarsConfigMaps(kubeutil, rd, jobName, radixJobComponent, payloadSecret, jobComponentConfig)
+	containers, jobEnvVarsConfigMap, jobEnvVarsMetadataConfigMap, err := getContainersWithEnvVarsConfigMaps(kubeutil, rd, jobName, radixJobComponent, payloadSecret, jobComponentConfig, jh.securityContextBuilder)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -151,13 +152,13 @@ func (jh *jobHandler) buildJobSpec(jobName string, rd *v1.RadixDeployment, radix
 	}, jobEnvVarsConfigMap, jobEnvVarsMetadataConfigMap, nil
 }
 
-func getContainersWithEnvVarsConfigMaps(kubeUtils *kube.Kube, rd *v1.RadixDeployment, jobName string, radixJobComponent *v1.RadixDeployJobComponent, payloadSecret *corev1.Secret, jobComponentConfig *models.RadixJobComponentConfig) ([]corev1.Container, *corev1.ConfigMap, *corev1.ConfigMap, error) {
+func getContainersWithEnvVarsConfigMaps(kubeUtils *kube.Kube, rd *v1.RadixDeployment, jobName string, radixJobComponent *v1.RadixDeployJobComponent, payloadSecret *corev1.Secret, jobComponentConfig *models.RadixJobComponentConfig, securityContextBuilder deployment.SecurityContextBuilder) ([]corev1.Container, *corev1.ConfigMap, *corev1.ConfigMap, error) {
 	environmentVariables, jobEnvVarsConfigMap, jobEnvVarsMetadataConfigMap, err := buildEnvironmentVariablesWithEnvVarsConfigMaps(kubeUtils, rd, jobName, radixJobComponent)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 	ports := getContainerPorts(radixJobComponent)
-	containerSecurityContext := getSecurityContextForContainer(radixJobComponent.RunAsNonRoot)
+	containerSecurityContext := securityContextBuilder.BuildContainerSecurityContext(radixJobComponent)
 	volumeMounts, err := getVolumeMounts(radixJobComponent, payloadSecret)
 	if err != nil {
 		return nil, nil, nil, err
@@ -270,22 +271,6 @@ func getContainerPorts(radixJobComponent *radixv1.RadixDeployJobComponent) []cor
 		ports = append(ports, containerPort)
 	}
 	return ports
-}
-
-func getSecurityContextForContainer(runAsNonRoot bool) *corev1.SecurityContext {
-	// runAsNonRoot is false by default
-	return &corev1.SecurityContext{
-		AllowPrivilegeEscalation: operatorUtils.BoolPtr(false),
-		Privileged:               operatorUtils.BoolPtr(false),
-		RunAsNonRoot:             operatorUtils.BoolPtr(runAsNonRoot),
-	}
-}
-
-func getSecurityContextForPod(runAsNonRoot bool) *corev1.PodSecurityContext {
-	// runAsNonRoot is false by default
-	return &corev1.PodSecurityContext{
-		RunAsNonRoot: operatorUtils.BoolPtr(runAsNonRoot),
-	}
 }
 
 func getLabelSelectorForJobComponent(componentName string) string {

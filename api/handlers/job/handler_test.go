@@ -11,12 +11,14 @@ import (
 	"github.com/equinor/radix-job-scheduler/api/errors"
 	"github.com/equinor/radix-job-scheduler/models"
 	"github.com/equinor/radix-operator/pkg/apis/defaults"
+	"github.com/equinor/radix-operator/pkg/apis/deployment"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/equinor/radix-operator/pkg/apis/utils"
 	"github.com/equinor/radix-operator/pkg/apis/utils/numbers"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 	radixfake "github.com/equinor/radix-operator/pkg/client/clientset/versioned/fake"
+	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -85,6 +87,22 @@ func addKubeJob(kubeClient kubernetes.Interface, jobName, componentName, jobType
 		},
 		metav1.CreateOptions{},
 	)
+}
+
+func TestNewHandler(t *testing.T) {
+	radixClient, kubeClient, kubeUtil := setupTest("app", "qa", "compute", "app-deploy-1", 1)
+	env := models.NewEnv()
+
+	h := New(env, kubeUtil, kubeClient, radixClient)
+	assert.Equal(t, h.env, env)
+	assert.Equal(t, h.kube, kubeUtil)
+	assert.Equal(t, h.kubeClient, kubeClient)
+	assert.Equal(t, h.radixClient, radixClient)
+	assert.NotNil(t, h.securityContextBuilder)
+
+	job := v1.RadixDeployJobComponent{RunAsNonRoot: false}
+	assert.True(t, *h.securityContextBuilder.BuildContainerSecurityContext(&job).RunAsNonRoot)
+	assert.True(t, *h.securityContextBuilder.BuildPodSecurityContext(&job).RunAsNonRoot)
 }
 
 func TestGetJobs(t *testing.T) {
@@ -817,7 +835,7 @@ func TestCreateJob(t *testing.T) {
 		assert.Equal(t, gpuCount.Values, []string{"5"})
 	})
 
-	t.Run("RD job with runAsNonRoot true", func(t *testing.T) {
+	t.Run("securityContextBuilder is called", func(t *testing.T) {
 		t.Parallel()
 		appName, appEnvironment, appJobComponent, appDeployment := "app", "qa", "compute", "app-deploy-1"
 		envNamespace := utils.GetEnvironmentNamespace(appName, appEnvironment)
@@ -828,53 +846,34 @@ func TestCreateJob(t *testing.T) {
 			WithComponents().
 			WithJobComponents(
 				utils.NewDeployJobComponentBuilder().
-					WithName(appJobComponent).
-					WithRunAsNonRoot(true),
+					WithName(appJobComponent),
 			).
 			BuildRD()
 
 		radixClient, kubeClient, kubeUtil := setupTest(appName, appEnvironment, appJobComponent, appDeployment, 1)
 		applyRadixDeploymentEnvVarsConfigMaps(kubeUtil, rd)
 		radixClient.RadixV1().RadixDeployments(envNamespace).Create(context.TODO(), rd, metav1.CreateOptions{})
-		handler := New(models.NewEnv(), kubeUtil, kubeClient, radixClient)
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+		securityContextBuilder := deployment.NewMockSecurityContextBuilder(ctrl)
+		expectedPodSecurityContext := &corev1.PodSecurityContext{RunAsNonRoot: utils.BoolPtr(true)}
+		securityContextBuilder.EXPECT().BuildPodSecurityContext(gomock.Any()).Return(expectedPodSecurityContext).Times(1)
+		expectedContainerSecurityContext := &corev1.SecurityContext{RunAsNonRoot: utils.BoolPtr(true)}
+		securityContextBuilder.EXPECT().BuildContainerSecurityContext(gomock.Any()).Return(expectedContainerSecurityContext).Times(1)
+		handler := &jobHandler{
+			kube:                   kubeUtil,
+			env:                    models.NewEnv(),
+			kubeClient:             kubeClient,
+			radixClient:            radixClient,
+			securityContextBuilder: securityContextBuilder,
+		}
+
 		jobStatus, err := handler.CreateJob(nil)
 		assert.NotNil(t, jobStatus)
 		assert.Nil(t, err)
 		job, _ := kubeClient.BatchV1().Jobs(envNamespace).Get(context.TODO(), jobStatus.Name, metav1.GetOptions{})
-		assert.Equal(t, utils.BoolPtr(true), job.Spec.Template.Spec.SecurityContext.RunAsNonRoot)
-		assert.Equal(t, utils.BoolPtr(true), job.Spec.Template.Spec.Containers[0].SecurityContext.RunAsNonRoot)
-		assert.Equal(t, utils.BoolPtr(false), job.Spec.Template.Spec.Containers[0].SecurityContext.AllowPrivilegeEscalation)
-		assert.Equal(t, utils.BoolPtr(false), job.Spec.Template.Spec.Containers[0].SecurityContext.Privileged)
-	})
-
-	t.Run("RD job with runAsNonRoot false", func(t *testing.T) {
-		t.Parallel()
-		appName, appEnvironment, appJobComponent, appDeployment := "app", "qa", "compute", "app-deploy-1"
-		envNamespace := utils.GetEnvironmentNamespace(appName, appEnvironment)
-		rd := utils.ARadixDeployment().
-			WithDeploymentName(appDeployment).
-			WithAppName(appName).
-			WithEnvironment(appEnvironment).
-			WithComponents().
-			WithJobComponents(
-				utils.NewDeployJobComponentBuilder().
-					WithName(appJobComponent).
-					WithRunAsNonRoot(false),
-			).
-			BuildRD()
-
-		radixClient, kubeClient, kubeUtil := setupTest(appName, appEnvironment, appJobComponent, appDeployment, 1)
-		applyRadixDeploymentEnvVarsConfigMaps(kubeUtil, rd)
-		radixClient.RadixV1().RadixDeployments(envNamespace).Create(context.TODO(), rd, metav1.CreateOptions{})
-		handler := New(models.NewEnv(), kubeUtil, kubeClient, radixClient)
-		jobStatus, err := handler.CreateJob(nil)
-		assert.NotNil(t, jobStatus)
-		assert.Nil(t, err)
-		job, _ := kubeClient.BatchV1().Jobs(envNamespace).Get(context.TODO(), jobStatus.Name, metav1.GetOptions{})
-		assert.Equal(t, utils.BoolPtr(false), job.Spec.Template.Spec.SecurityContext.RunAsNonRoot)
-		assert.Equal(t, utils.BoolPtr(false), job.Spec.Template.Spec.Containers[0].SecurityContext.RunAsNonRoot)
-		assert.Equal(t, utils.BoolPtr(false), job.Spec.Template.Spec.Containers[0].SecurityContext.AllowPrivilegeEscalation)
-		assert.Equal(t, utils.BoolPtr(false), job.Spec.Template.Spec.Containers[0].SecurityContext.Privileged)
+		assert.Equal(t, expectedPodSecurityContext, job.Spec.Template.Spec.SecurityContext)
+		assert.Equal(t, expectedContainerSecurityContext, job.Spec.Template.Spec.Containers[0].SecurityContext)
 	})
 }
 
