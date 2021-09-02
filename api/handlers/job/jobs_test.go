@@ -94,6 +94,30 @@ func Test_createJobWithEnvVars(t *testing.T) {
 		assert.NotEmpty(t, envVarsMetadataMap["VAR2"])
 		assert.Equal(t, "orig-val2", envVarsMetadataMap["VAR2"].RadixConfigValue)
 	})
+
+	t.Run("Create Job adds itself as owner-ref to env-vars config-maps", func(t *testing.T) {
+		t.Parallel()
+		radixClient, kubeClient, kubeUtil := setupTest("app", "qa", "compute", "app-deploy-1", 1)
+		env := models.NewEnv()
+		h := &jobHandler{
+			kube:                   kubeUtil,
+			kubeClient:             kubeClient,
+			radixClient:            radixClient,
+			env:                    env,
+			securityContextBuilder: deployment.NewSecurityContextBuilder(true),
+		}
+		params := getTestParams().withRadixConfigEnvVarsMap(map[string]string{"VAR1": "val1", "VAR2": "val2"})
+		rd := params.applyRd(kubeUtil)
+
+		job, err := h.createJob(params.jobName, &rd.Spec.Jobs[0], rd, &corev1.Secret{}, &models.JobScheduleDescription{Payload: "{}"})
+
+		envVarsConfigMap, envVarsMetadataConfigMap, _, err := kubeUtil.GetEnvVarsConfigMapAndMetadataMap(params.namespace, params.jobName)
+		assert.NoError(t, err)
+		assert.NotEmpty(t, envVarsConfigMap.OwnerReferences)
+		assert.Equal(t, job.Name, envVarsConfigMap.OwnerReferences[0].Name)
+		assert.NotEmpty(t, envVarsMetadataConfigMap.OwnerReferences)
+		assert.Equal(t, job.Name, envVarsMetadataConfigMap.OwnerReferences[0].Name)
+	})
 }
 
 func getEnvVarsMap(envVars []corev1.EnvVar) map[string]corev1.EnvVar {
