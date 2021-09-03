@@ -4,7 +4,7 @@ go 1.16
 
 require (
 	github.com/equinor/radix-common v1.1.6
-	github.com/equinor/radix-operator v1.15.5
+	github.com/equinor/radix-operator v1.15.7
 	github.com/golang/mock v1.5.0
 	github.com/gorilla/mux v1.8.0
 	github.com/rakyll/statik v0.1.6
@@ -18,6 +18,7 @@ require (
 )
 
 replace (
+	github.com/equinor/radix-operator => /home/user1/go/src/github.com/equinor/radix-operator
 	github.com/prometheus/prometheus => github.com/prometheus/prometheus v0.0.0-20190818123050-43acd0e2e93f
 	k8s.io/client-go => k8s.io/client-go v0.19.9
 )
