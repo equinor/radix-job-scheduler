@@ -18,7 +18,6 @@ require (
 )
 
 replace (
-	github.com/equinor/radix-operator => /home/user1/go/src/github.com/equinor/radix-operator
 	github.com/prometheus/prometheus => github.com/prometheus/prometheus v0.0.0-20190818123050-43acd0e2e93f
 	k8s.io/client-go => k8s.io/client-go v0.19.9
 )
