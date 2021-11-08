@@ -103,6 +103,27 @@ func (jh *jobHandler) getAllJobs() (jobList, error) {
 	return jobList(slice.PointersOf(kubeJobs.Items).([]*batchv1.Job)), nil
 }
 
+//getJobPods jobName is optional, when empty - returns all job-pods for the namespace
+func (jh *jobHandler) getJobPods(jobName string) ([]corev1.Pod, error) {
+	listOptions := metav1.ListOptions{}
+	if jobName != "" {
+		listOptions.LabelSelector = getLabelSelectorForJobPods(jobName)
+	}
+	podList, err := jh.kubeClient.
+		CoreV1().
+		Pods(jh.env.RadixDeploymentNamespace).
+		List(
+			context.TODO(),
+			listOptions,
+		)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return podList.Items, nil
+}
+
 func (jh *jobHandler) buildJobSpec(jobName string, rd *v1.RadixDeployment, radixJobComponent *v1.RadixDeployJobComponent, payloadSecret *corev1.Secret, kubeutil *kube.Kube, jobComponentConfig *models.RadixJobComponentConfig) (*batchv1.Job, *corev1.ConfigMap, *corev1.ConfigMap, error) {
 	podSecurityContext := jh.securityContextBuilder.BuildPodSecurityContext(radixJobComponent)
 	volumes, err := jh.getVolumes(rd.ObjectMeta.Namespace, rd.Spec.Environment, radixJobComponent, payloadSecret)
@@ -277,5 +298,11 @@ func getLabelSelectorForJobComponent(componentName string) string {
 	return labels.SelectorFromSet(labels.Set(map[string]string{
 		kube.RadixComponentLabel: componentName,
 		kube.RadixJobTypeLabel:   kube.RadixJobTypeJobSchedule,
+	})).String()
+}
+
+func getLabelSelectorForJobPods(jobName string) string {
+	return labels.SelectorFromSet(labels.Set(map[string]string{
+		k8sJobNameLabel: jobName,
 	})).String()
 }

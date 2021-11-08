@@ -3,6 +3,7 @@ package job
 import (
 	"context"
 	"fmt"
+	corev1 "k8s.io/api/core/v1"
 	"sort"
 	"strings"
 	"time"
@@ -59,13 +60,29 @@ func (jh *jobHandler) GetJobs() ([]models.JobStatus, error) {
 		return nil, err
 	}
 
+	pods, err := jh.getJobPods("")
+	if err != nil {
+		return nil, err
+	}
+	podsMap := getJobPodsMap(pods)
 	jobs := make([]models.JobStatus, len(kubeJobs))
 	for idx, k8sJob := range kubeJobs {
-		jobs[idx] = *models.GetJobStatusFromJob(k8sJob)
+		jobs[idx] = *models.GetJobStatusFromJob(jh.kubeClient, k8sJob, podsMap[k8sJob.Name])
 	}
 
 	log.Debugf("Found %v jobs for namespace %s", len(jobs), jh.env.RadixDeploymentNamespace)
 	return jobs, nil
+}
+
+func getJobPodsMap(pods []corev1.Pod) map[string][]corev1.Pod {
+	podsMap := make(map[string][]corev1.Pod)
+	for _, pod := range pods {
+		jobName := pod.Labels[k8sJobNameLabel]
+		if len(jobName) > 0 {
+			podsMap[jobName] = append(podsMap[jobName], pod)
+		}
+	}
+	return podsMap
 }
 
 func (jh *jobHandler) GetJob(jobName string) (*models.JobStatus, error) {
@@ -75,7 +92,11 @@ func (jh *jobHandler) GetJob(jobName string) (*models.JobStatus, error) {
 		return nil, err
 	}
 	log.Debugf("found Job %s for namespace: %s", jobName, jh.env.RadixDeploymentNamespace)
-	jobStatus := models.GetJobStatusFromJob(job)
+	pods, err := jh.getJobPods(job.Name)
+	if err != nil {
+		return nil, err
+	}
+	jobStatus := models.GetJobStatusFromJob(jh.kubeClient, job, pods)
 	return jobStatus, nil
 }
 
@@ -109,7 +130,7 @@ func (jh *jobHandler) CreateJob(jobScheduleDescription *models.JobScheduleDescri
 	}
 
 	log.Debug(fmt.Sprintf("created job %s for component %s, environment %s, in namespace: %s", job.Name, jh.env.RadixComponentName, radixDeployment.Spec.Environment, jh.env.RadixDeploymentNamespace))
-	return models.GetJobStatusFromJob(job), nil
+	return models.GetJobStatusFromJob(jh.kubeClient, job, nil), nil
 }
 
 func (jh *jobHandler) DeleteJob(jobName string) error {

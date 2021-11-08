@@ -19,3 +19,5 @@ __debug_bin
 
 swaggerui/statik.go
 swaggerui_src/swagger.json
+
+.idea
