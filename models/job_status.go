@@ -20,6 +20,12 @@ type JobStatus struct {
 	// example: calculator
 	Name string `json:"name"`
 
+	// Created timestamp
+	//
+	// required: true
+	// example: 2006-01-02T15:04:05Z
+	Created string `json:"created"`
+
 	// Started timestamp
 	//
 	// required: false
@@ -50,6 +56,7 @@ type JobStatus struct {
 func GetJobStatusFromJob(kubeClient kubernetes.Interface, job *v1.Job, jobPods []corev1.Pod) *JobStatus {
 	jobStatus := JobStatus{
 		Name:    job.GetName(),
+		Created: utils.FormatTime(&job.ObjectMeta.CreationTimestamp),
 		Started: utils.FormatTime(job.Status.StartTime),
 		Ended:   utils.FormatTime(job.Status.CompletionTime),
 	}
