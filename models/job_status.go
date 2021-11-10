@@ -90,6 +90,16 @@ func GetJobStatusFromJob(kubeClient kubernetes.Interface, job *v1.Job, jobPods [
 				}
 				return &jobStatus
 			}
+			continue
+		}
+		if len(pod.Status.Conditions) > 0 {
+
+			lastCondition := sortPodStatusConditionsDesc(pod.Status.Conditions)[0]
+			if lastCondition.Status == corev1.ConditionTrue {
+				continue
+			}
+			jobStatus.Status = Waiting.String()
+			jobStatus.Message = fmt.Sprintf("%s %s", lastCondition.Reason, lastCondition.Message)
 		}
 	}
 	return &jobStatus
@@ -117,7 +127,17 @@ func sortEventsDesc(events []corev1.Event) []corev1.Event {
 		if events[i].CreationTimestamp.IsZero() || events[j].CreationTimestamp.IsZero() {
 			return false
 		}
-		return events[i].CreationTimestamp.Before(&events[j].CreationTimestamp)
+		return events[j].CreationTimestamp.Before(&events[i].CreationTimestamp)
 	})
 	return events
+}
+
+func sortPodStatusConditionsDesc(podConditions []corev1.PodCondition) []corev1.PodCondition {
+	sort.Slice(podConditions, func(i, j int) bool {
+		if podConditions[i].LastTransitionTime.IsZero() || podConditions[j].LastTransitionTime.IsZero() {
+			return false
+		}
+		return podConditions[j].LastTransitionTime.Before(&podConditions[i].LastTransitionTime)
+	})
+	return podConditions
 }
