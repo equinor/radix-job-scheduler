@@ -280,6 +280,8 @@ github.com/equinor/radix-common v1.1.6 h1:Fub8HHYx/dvJcQCIYLQnwiI8KXN1AUL8WFtmaQ
 github.com/equinor/radix-common v1.1.6/go.mod h1:oo9mgynvNU/+IXi8I0To5K3Tx4nu4zbDv8i0TJtO7Ec=
 github.com/equinor/radix-operator v1.16.4 h1:LGWVZO4Z2F+6Amsi761Yd+V34vKV6aXz7cql49dpvDA=
 github.com/equinor/radix-operator v1.16.4/go.mod h1:WBz3AaeKuHYgkD9PuVnx0LNPYDC0eUdnFRqExPmHNd0=
+github.com/equinor/radix-operator v1.16.7 h1:ZiHh0r13of/m2+c6btWtqpkzPEbgBQgNKC1TnoYNjeU=
+github.com/equinor/radix-operator v1.16.7/go.mod h1:WBz3AaeKuHYgkD9PuVnx0LNPYDC0eUdnFRqExPmHNd0=
 github.com/evanphx/json-patch v4.2.0+incompatible/go.mod h1:50XU6AFN0ol/bzJsmQLiYLvXMP4fmwYFNcr97nuDLSk=
 github.com/evanphx/json-patch v4.5.0+incompatible/go.mod h1:50XU6AFN0ol/bzJsmQLiYLvXMP4fmwYFNcr97nuDLSk=
 github.com/evanphx/json-patch v4.9.0+incompatible h1:kLcOMZeuLAJvL2BPWLMIj5oaZQobrkAqrL+WFZwQses=
