@@ -11,6 +11,10 @@ type RadixJobComponentConfig struct {
 	//
 	// required: false
 	Node *v1.RadixNode `json:"node,omitempty"`
+	// TimeLimitSeconds defines maximum job run time. Corresponds to ActiveDeadlineSeconds in K8s.
+	//
+	// required: false
+	TimeLimitSeconds *int64 `json:"timeLimitSeconds,omitempty"`
 }
 
 // JobScheduleDescription holds description about scheduling job
