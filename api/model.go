@@ -1,4 +1,4 @@
-package kube
+package api
 
 import (
 	"github.com/equinor/radix-job-scheduler/models"
@@ -8,7 +8,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-type HandlerModel struct {
+type Model struct {
 	Kube                   *kube.Kube
 	Env                    *models.Env
 	KubeClient             kubernetes.Interface

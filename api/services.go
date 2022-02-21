@@ -1,4 +1,4 @@
-package kube
+package api
 
 import (
 	"context"
@@ -13,7 +13,7 @@ import (
 )
 
 //CreateService Create a service for the job API
-func (model *HandlerModel) CreateService(jobName string, jobComponent *v1.RadixDeployJobComponent, rd *v1.RadixDeployment) error {
+func (model *Model) CreateService(jobName string, jobComponent *v1.RadixDeployJobComponent, rd *v1.RadixDeployment) error {
 	if len(jobComponent.GetPorts()) > 0 {
 		serviceName := jobName
 		service := buildServiceSpec(serviceName, jobName, jobComponent.Name, rd.Spec.AppName, jobComponent.GetPorts())
@@ -23,7 +23,7 @@ func (model *HandlerModel) CreateService(jobName string, jobComponent *v1.RadixD
 }
 
 //GetServiceForJob Get the service for the job
-func (model *HandlerModel) GetServiceForJob(jobName string) (*corev1.ServiceList, error) {
+func (model *Model) GetServiceForJob(jobName string) (*corev1.ServiceList, error) {
 	return model.KubeClient.CoreV1().Services(model.Env.RadixDeploymentNamespace).List(
 		context.TODO(),
 		metav1.ListOptions{
@@ -33,7 +33,7 @@ func (model *HandlerModel) GetServiceForJob(jobName string) (*corev1.ServiceList
 }
 
 //DeleteService Delete the service for the job
-func (model *HandlerModel) DeleteService(service *corev1.Service) error {
+func (model *Model) DeleteService(service *corev1.Service) error {
 	return model.KubeClient.CoreV1().Services(service.Namespace).Delete(context.TODO(), service.Name, metav1.DeleteOptions{})
 }
 
