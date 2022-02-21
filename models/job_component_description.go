@@ -2,6 +2,7 @@ package models
 
 import v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 
+//RadixJobComponentConfig holds description of RadixJobComponent
 type RadixJobComponentConfig struct {
 	// Resource describes the compute resource requirements.
 	//
@@ -11,6 +12,7 @@ type RadixJobComponentConfig struct {
 	//
 	// required: false
 	Node *v1.RadixNode `json:"node,omitempty"`
+
 	// TimeLimitSeconds defines maximum job run time. Corresponds to ActiveDeadlineSeconds in K8s.
 	//
 	// required: false
