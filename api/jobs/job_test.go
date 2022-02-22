@@ -2,7 +2,6 @@ package jobs
 
 import (
 	"context"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"strings"
 	"testing"
 	"time"
@@ -350,7 +349,7 @@ func TestGetJob(t *testing.T) {
 		handler := New(models.NewEnv(), kubeUtil, kubeClient, radixClient)
 		job, err := handler.GetJob(jobName)
 		assert.NotNil(t, err)
-		assert.Equal(t, models.StatusReasonNotFound, errors.ReasonForError(err))
+		assert.Equal(t, models.StatusReasonNotFound, apiErrors.ReasonForError(err))
 		assert.Nil(t, job)
 	})
 
@@ -363,7 +362,7 @@ func TestGetJob(t *testing.T) {
 		handler := New(models.NewEnv(), kubeUtil, kubeClient, radixClient)
 		job, err := handler.GetJob(jobName)
 		assert.NotNil(t, err)
-		assert.Equal(t, models.StatusReasonNotFound, errors.ReasonForError(err))
+		assert.Equal(t, models.StatusReasonNotFound, apiErrors.ReasonForError(err))
 		assert.Nil(t, job)
 	})
 }
@@ -835,7 +834,7 @@ func TestCreateJob(t *testing.T) {
 		jobStatus, err := handler.CreateJob(nil)
 		assert.Nil(t, jobStatus)
 		assert.NotNil(t, err)
-		assert.Equal(t, models.StatusReasonNotFound, errors.ReasonForError(err))
+		assert.Equal(t, models.StatusReasonNotFound, apiErrors.ReasonForError(err))
 		assert.Equal(t, apiErrors.NotFoundMessage("job component", appJobComponent), err.Error())
 	})
 
@@ -861,7 +860,7 @@ func TestCreateJob(t *testing.T) {
 		jobStatus, err := handler.CreateJob(nil)
 		assert.Nil(t, jobStatus)
 		assert.NotNil(t, err)
-		assert.Equal(t, models.StatusReasonNotFound, errors.ReasonForError(err))
+		assert.Equal(t, models.StatusReasonNotFound, apiErrors.ReasonForError(err))
 		assert.Equal(t, apiErrors.NotFoundMessage("radix deployment", appDeployment), err.Error())
 	})
 
@@ -1127,7 +1126,7 @@ func TestDeleteJob(t *testing.T) {
 		handler := New(models.NewEnv(), kubeUtil, kubeClient, radixClient)
 		err := handler.DeleteJob(jobName)
 		assert.NotNil(t, err)
-		assert.Equal(t, models.StatusReasonNotFound, errors.ReasonForError(err))
+		assert.Equal(t, models.StatusReasonNotFound, apiErrors.ReasonForError(err))
 	})
 
 	t.Run("delete job - another job component name", func(t *testing.T) {
@@ -1140,7 +1139,7 @@ func TestDeleteJob(t *testing.T) {
 		handler := New(models.NewEnv(), kubeUtil, kubeClient, radixClient)
 		err := handler.DeleteJob(jobName)
 		assert.NotNil(t, err)
-		assert.Equal(t, models.StatusReasonNotFound, errors.ReasonForError(err))
+		assert.Equal(t, models.StatusReasonNotFound, apiErrors.ReasonForError(err))
 	})
 
 	t.Run("delete job - another job type", func(t *testing.T) {
@@ -1153,7 +1152,7 @@ func TestDeleteJob(t *testing.T) {
 		handler := New(models.NewEnv(), kubeUtil, kubeClient, radixClient)
 		err := handler.DeleteJob(jobName)
 		assert.NotNil(t, err)
-		assert.Equal(t, models.StatusReasonNotFound, errors.ReasonForError(err))
+		assert.Equal(t, models.StatusReasonNotFound, apiErrors.ReasonForError(err))
 	})
 
 	t.Run("delete job - another namespace", func(t *testing.T) {
@@ -1165,7 +1164,7 @@ func TestDeleteJob(t *testing.T) {
 		handler := New(models.NewEnv(), kubeUtil, kubeClient, radixClient)
 		err := handler.DeleteJob(jobName)
 		assert.NotNil(t, err)
-		assert.Equal(t, models.StatusReasonNotFound, errors.ReasonForError(err))
+		assert.Equal(t, models.StatusReasonNotFound, apiErrors.ReasonForError(err))
 	})
 }
 
