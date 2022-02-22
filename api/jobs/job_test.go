@@ -10,7 +10,7 @@ import (
 	"github.com/equinor/radix-common/utils/numbers"
 	"github.com/equinor/radix-job-scheduler/api"
 	apiErrors "github.com/equinor/radix-job-scheduler/api/errors"
-	jobDefaults "github.com/equinor/radix-job-scheduler/defaults"
+	schedulerDefaults "github.com/equinor/radix-job-scheduler/defaults"
 	"github.com/equinor/radix-job-scheduler/models"
 	"github.com/equinor/radix-job-scheduler/utils/test"
 	"github.com/equinor/radix-operator/pkg/apis/deployment"
@@ -495,7 +495,7 @@ func TestCreateJob(t *testing.T) {
 		assert.Nil(t, err)
 		assert.NotNil(t, jobStatus)
 		// Test secret spec
-		secretName := jobDefaults.GetPayloadSecretName(jobStatus.Name)
+		secretName := schedulerDefaults.GetPayloadSecretName(jobStatus.Name)
 		secret, _ := kubeClient.CoreV1().Secrets(envNamespace).Get(context.TODO(), secretName, metav1.GetOptions{})
 		assert.NotNil(t, secret)
 		assert.Len(t, secret.Labels, 4)
@@ -503,16 +503,16 @@ func TestCreateJob(t *testing.T) {
 		assert.Equal(t, appJobComponent, secret.Labels[kube.RadixComponentLabel])
 		assert.Equal(t, kube.RadixJobTypeJobSchedule, secret.Labels[kube.RadixJobTypeLabel])
 		assert.Equal(t, jobStatus.Name, secret.Labels[kube.RadixJobNameLabel])
-		payloadBytes := secret.Data[jobDefaults.JobPayloadPropertyName]
+		payloadBytes := secret.Data[schedulerDefaults.JobPayloadPropertyName]
 		assert.Equal(t, payloadString, string(payloadBytes))
 		// Test secret mounted
 		job, _ := kubeClient.BatchV1().Jobs(envNamespace).Get(context.TODO(), jobStatus.Name, metav1.GetOptions{})
 		assert.NotNil(t, job)
 		assert.Len(t, job.Spec.Template.Spec.Volumes, 1)
-		assert.Equal(t, jobDefaults.JobPayloadPropertyName, job.Spec.Template.Spec.Volumes[0].Name)
+		assert.Equal(t, schedulerDefaults.JobPayloadPropertyName, job.Spec.Template.Spec.Volumes[0].Name)
 		assert.Equal(t, secretName, job.Spec.Template.Spec.Volumes[0].Secret.SecretName)
 		assert.Len(t, job.Spec.Template.Spec.Containers[0].VolumeMounts, 1)
-		assert.Equal(t, jobDefaults.JobPayloadPropertyName, job.Spec.Template.Spec.Containers[0].VolumeMounts[0].Name)
+		assert.Equal(t, schedulerDefaults.JobPayloadPropertyName, job.Spec.Template.Spec.Containers[0].VolumeMounts[0].Name)
 		assert.Equal(t, payloadPath, job.Spec.Template.Spec.Containers[0].VolumeMounts[0].MountPath)
 	})
 
@@ -539,7 +539,7 @@ func TestCreateJob(t *testing.T) {
 		assert.Nil(t, err)
 		assert.NotNil(t, jobStatus)
 		// Test secret does not exist
-		secretName := jobDefaults.GetPayloadSecretName(jobStatus.Name)
+		secretName := schedulerDefaults.GetPayloadSecretName(jobStatus.Name)
 		secret, _ := kubeClient.CoreV1().Secrets(envNamespace).Get(context.TODO(), secretName, metav1.GetOptions{})
 		assert.Nil(t, secret)
 		// Test no volume mounts
@@ -581,7 +581,7 @@ func TestCreateJob(t *testing.T) {
 		assert.Equal(t, kube.RadixJobTypeJobSchedule, service.Labels[kube.RadixJobTypeLabel])
 		assert.Equal(t, jobStatus.Name, service.Labels[kube.RadixJobNameLabel])
 		assert.Len(t, service.Spec.Selector, 1)
-		assert.Equal(t, jobStatus.Name, service.Spec.Selector[jobDefaults.K8sJobNameLabel])
+		assert.Equal(t, jobStatus.Name, service.Spec.Selector[schedulerDefaults.K8sJobNameLabel])
 		assert.Len(t, service.Spec.Ports, 1)
 		assert.Equal(t, "http", service.Spec.Ports[0].Name)
 		assert.Equal(t, int32(8000), service.Spec.Ports[0].Port)

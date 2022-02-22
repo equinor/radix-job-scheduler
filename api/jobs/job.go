@@ -10,7 +10,7 @@ import (
 	"time"
 
 	commonUtils "github.com/equinor/radix-common/utils"
-	jobDefaults "github.com/equinor/radix-job-scheduler/defaults"
+	schedulerDefaults "github.com/equinor/radix-job-scheduler/defaults"
 	"github.com/equinor/radix-job-scheduler/models"
 	"github.com/equinor/radix-operator/pkg/apis/deployment"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
@@ -87,7 +87,7 @@ func (model *jobModel) GetJobs() ([]models.JobStatus, error) {
 func getJobPodsMap(pods []corev1.Pod) map[string][]corev1.Pod {
 	podsMap := make(map[string][]corev1.Pod)
 	for _, pod := range pods {
-		jobName := pod.Labels[jobDefaults.K8sJobNameLabel]
+		jobName := pod.Labels[schedulerDefaults.K8sJobNameLabel]
 		if len(jobName) > 0 {
 			podsMap[jobName] = append(podsMap[jobName], pod)
 		}
@@ -496,7 +496,7 @@ func getVolumeMounts(radixJobComponent *radixv1.RadixDeployJobComponent, radixDe
 	}
 	if payloadSecret != nil {
 		volumeMounts = append(volumeMounts, corev1.VolumeMount{
-			Name:      jobDefaults.JobPayloadPropertyName,
+			Name:      schedulerDefaults.JobPayloadPropertyName,
 			ReadOnly:  true,
 			MountPath: radixJobComponent.Payload.Path,
 		})
@@ -528,7 +528,7 @@ func getResourceRequirements(radixJobComponent *radixv1.RadixDeployJobComponent,
 
 func getPayloadVolume(secretName string) *corev1.Volume {
 	volume := &corev1.Volume{
-		Name: jobDefaults.JobPayloadPropertyName,
+		Name: schedulerDefaults.JobPayloadPropertyName,
 		VolumeSource: corev1.VolumeSource{
 			Secret: &corev1.SecretVolumeSource{
 				SecretName: secretName,
@@ -559,6 +559,6 @@ func getLabelSelectorForJobComponent(componentName string) string {
 
 func getLabelSelectorForJobPods(jobName string) string {
 	return labels.SelectorFromSet(map[string]string{
-		jobDefaults.K8sJobNameLabel: jobName,
+		schedulerDefaults.K8sJobNameLabel: jobName,
 	}).String()
 }

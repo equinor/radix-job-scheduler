@@ -22,6 +22,12 @@ type RadixJobComponentConfig struct {
 // JobScheduleDescription holds description about scheduling job
 // swagger:model JobScheduleDescription
 type JobScheduleDescription struct {
+	// JobId Optional ID of a job
+	//
+	// required: false
+	// example: 'job1'
+	JobId string `json:"jobId"`
+
 	// Payload holding json data to be mapped to component
 	//
 	// required: false

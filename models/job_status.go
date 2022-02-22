@@ -3,6 +3,12 @@ package models
 // JobStatus holds general information about job status
 // swagger:model JobStatus
 type JobStatus struct {
+	// JobId Optional ID of a job
+	//
+	// required: false
+	// example: 'job1'
+	JobId string `json:"jobId"`
+
 	// Name of the job
 	// required: true
 	// example: calculator

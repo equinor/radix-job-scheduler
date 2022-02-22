@@ -10,7 +10,7 @@ import (
 	commonUtils "github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-job-scheduler/api"
 	apiErrors "github.com/equinor/radix-job-scheduler/api/errors"
-	jobDefaults "github.com/equinor/radix-job-scheduler/defaults"
+	schedulerDefaults "github.com/equinor/radix-job-scheduler/defaults"
 	"github.com/equinor/radix-job-scheduler/models"
 	"github.com/equinor/radix-operator/pkg/apis/deployment"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
@@ -90,7 +90,7 @@ func (model *batchModel) GetBatches() ([]models.BatchStatus, error) {
 func getBatchPodsMap(pods []corev1.Pod) map[string][]corev1.Pod {
 	podsMap := make(map[string][]corev1.Pod)
 	for _, pod := range pods {
-		batchName := pod.Labels[jobDefaults.K8sJobNameLabel]
+		batchName := pod.Labels[schedulerDefaults.K8sJobNameLabel]
 		if len(batchName) > 0 {
 			podsMap[batchName] = append(podsMap[batchName], pod)
 		}
@@ -482,9 +482,9 @@ func getVolumeMounts(batchScheduleDescriptionSecret *corev1.Secret) ([]corev1.Vo
 	volumeMounts := make([]corev1.VolumeMount, 0)
 	if batchScheduleDescriptionSecret != nil {
 		volumeMounts = append(volumeMounts, corev1.VolumeMount{
-			Name:      jobDefaults.BatchScheduleDescriptionPropertyName,
+			Name:      schedulerDefaults.BatchScheduleDescriptionPropertyName,
 			ReadOnly:  true,
-			MountPath: "/mnt/secrets",
+			MountPath: schedulerDefaults.BatchSecretsMountPath,
 		})
 	}
 
@@ -514,7 +514,7 @@ func getResourceRequirements(radixJobComponent *radixv1.RadixDeployJobComponent,
 
 func getBatchScheduleDescriptionVolume(secretName string) *corev1.Volume {
 	volume := &corev1.Volume{
-		Name: jobDefaults.BatchScheduleDescriptionPropertyName,
+		Name: schedulerDefaults.BatchScheduleDescriptionPropertyName,
 		VolumeSource: corev1.VolumeSource{
 			Secret: &corev1.SecretVolumeSource{
 				SecretName: secretName,
@@ -545,6 +545,6 @@ func getLabelSelectorForJobComponentBatches(componentName string) string {
 
 func getLabelSelectorForJobPods(jobName string) string {
 	return labels.SelectorFromSet(map[string]string{
-		jobDefaults.K8sJobNameLabel: jobName,
+		schedulerDefaults.K8sJobNameLabel: jobName,
 	}).String()
 }
