@@ -30,6 +30,9 @@ const (
 )
 
 func (p ProgressStatus) String() string {
+	if p >= numStatuses {
+		return "Unsupported"
+	}
 	return [...]string{"Running", "Succeeded", "Failed", "Waiting", "Stopping", "Stopped"}[p]
 }
 
