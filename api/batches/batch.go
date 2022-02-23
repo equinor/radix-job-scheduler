@@ -3,6 +3,7 @@ package batches
 import (
 	"context"
 	"fmt"
+	"path"
 	"sort"
 	"strings"
 	"time"
@@ -377,6 +378,20 @@ func (model *batchModel) buildBatchJobSpec(batchName string, rd *radixv1.RadixDe
 	if err != nil {
 		return nil, nil, nil, err
 	}
+	if len(containers) != 1 {
+		return nil, nil, nil, fmt.Errorf("expected one container, but created %d", len(containers))
+	}
+
+	containers[0].Env = append(containers[0].Env, []corev1.EnvVar{
+		{
+			Name:  schedulerDefaults.BatchNameEnvVarName,
+			Value: batchName,
+		},
+		{
+			Name:  schedulerDefaults.BatchScheduleDescriptionPath,
+			Value: path.Join(schedulerDefaults.BatchSecretsMountPath, batchScheduleDescriptionSecret.Name),
+		},
+	}...)
 
 	return &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{

@@ -9,6 +9,10 @@ const (
 	K8sBatchJobNameLabel = "batch-name"
 	//BatchSecretsMountPath Path to secrets, mounted to a Radix batch scheduler container
 	BatchSecretsMountPath = "/mnt/secrets"
+	//BatchNameEnvVarName Name of a batch
+	BatchNameEnvVarName = "RADIX_BATCH_NAME"
+	//BatchScheduleDescriptionPath Path to a file with batch schedule description json-file
+	BatchScheduleDescriptionPath = "RADIX_BATCH_SCHEDULE_DESCRIPTION_PATH"
 )
 
 //GetBatchScheduleDescriptionSecretName Get secret name for the batch schedule description
