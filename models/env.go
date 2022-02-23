@@ -15,7 +15,12 @@ import (
 // Env instance variables
 type Env struct {
 	UseSwagger                                   bool
+	RadixDNSZone                                 string
+	RadixContainerRegistry                       string
+	RadixClusterName                             string
+	RadixActiveClusterEgressIps                  string
 	RadixAppName                                 string
+	RadixEnvironment                             string
 	RadixComponentName                           string
 	RadixDeploymentName                          string
 	RadixDeploymentNamespace                     string
@@ -36,23 +41,31 @@ func NewEnv() *Env {
 	}
 	var (
 		useSwagger                                   = envVarIsTrueOrYes(os.Getenv("USE_SWAGGER"))
+		radixDNSZone                                 = strings.TrimSpace(os.Getenv("RADIX_DNS_ZONE"))
+		radixClusterName                             = strings.TrimSpace(os.Getenv("RADIX_CLUSTERNAME"))
+		radixActiveClusterEgressIps                  = strings.TrimSpace(os.Getenv("RADIX_ACTIVE_CLUSTER_EGRESS_IPS"))
 		radixAppName                                 = strings.TrimSpace(os.Getenv("RADIX_APP"))
 		radixEnv                                     = strings.TrimSpace(os.Getenv("RADIX_ENVIRONMENT"))
 		radixComponentName                           = strings.TrimSpace(os.Getenv("RADIX_COMPONENT"))
 		radixDeployment                              = strings.TrimSpace(os.Getenv("RADIX_DEPLOYMENT"))
 		radixJobSchedulersPerEnvironmentHistoryLimit = strings.TrimSpace(os.Getenv("RADIX_JOB_SCHEDULERS_PER_ENVIRONMENT_HISTORY_LIMIT"))
 		radixPorts                                   = strings.TrimSpace(os.Getenv("RADIX_PORTS"))
-		containerRegistryEnvironmentVariable         = strings.TrimSpace(os.Getenv("RADIX_CONTAINER_REGISTRY"))
+		radixContainerRegistry                       = strings.TrimSpace(os.Getenv("RADIX_CONTAINER_REGISTRY"))
 	)
 	env := Env{
-		RadixAppName:             radixAppName,
-		RadixComponentName:       radixComponentName,
-		RadixDeploymentName:      radixDeployment,
-		RadixDeploymentNamespace: utils.GetEnvironmentNamespace(radixAppName, radixEnv),
-		UseSwagger:               useSwagger,
+		RadixDNSZone:                radixDNSZone,
+		RadixAppName:                radixAppName,
+		RadixContainerRegistry:      radixContainerRegistry,
+		RadixClusterName:            radixClusterName,
+		RadixActiveClusterEgressIps: radixActiveClusterEgressIps,
+		RadixEnvironment:            radixEnv,
+		RadixComponentName:          radixComponentName,
+		RadixDeploymentName:         radixDeployment,
+		RadixDeploymentNamespace:    utils.GetEnvironmentNamespace(radixAppName, radixEnv),
+		UseSwagger:                  useSwagger,
 		RadixJobSchedulersPerEnvironmentHistoryLimit: 10,
 		RadixBatchSchedulerImageFullName: getRadixBatchSchedulerImageFullName(
-			containerRegistryEnvironmentVariable, radixEnv),
+			radixContainerRegistry, radixEnv),
 	}
 	setPort(radixPorts, &env)
 	setHistoryLimit(radixJobSchedulersPerEnvironmentHistoryLimit, &env)

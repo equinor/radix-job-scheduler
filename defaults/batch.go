@@ -1,7 +1,5 @@
 package defaults
 
-import "fmt"
-
 const (
 	//BatchScheduleDescriptionPropertyName Property name for a batch schedule description
 	BatchScheduleDescriptionPropertyName = "batch"
@@ -21,5 +19,5 @@ const (
 
 //GetBatchScheduleDescriptionSecretName Get secret name for the batch schedule description
 func GetBatchScheduleDescriptionSecretName(batchName string) string {
-	return fmt.Sprintf("%s-%s", batchName, BatchScheduleDescriptionPropertyName)
+	return batchName
 }

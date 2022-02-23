@@ -3,6 +3,7 @@ package batches
 import (
 	"context"
 	"fmt"
+	"github.com/equinor/radix-operator/pkg/apis/defaults"
 	"path"
 	"sort"
 	"strings"
@@ -258,12 +259,12 @@ func generateBatchName(jobComponent *radixv1.RadixDeployJobComponent) string {
 }
 
 func (model *batchModel) createBatch(batchName string, jobComponent *radixv1.RadixDeployJobComponent, rd *radixv1.RadixDeployment, batchScheduleDescriptionSecret *corev1.Secret, batchScheduleDescription *models.BatchScheduleDescription) (*batchv1.Job, error) {
-	job, err := model.buildBatchJobSpec(batchName, rd, jobComponent, batchScheduleDescriptionSecret, model.common.Kube)
+	batch, err := model.buildBatchJobSpec(batchName, rd, jobComponent, batchScheduleDescriptionSecret, model.common.Kube)
 	if err != nil {
 		return nil, err
 	}
 	namespace := model.common.Env.RadixDeploymentNamespace
-	return model.common.KubeClient.BatchV1().Jobs(namespace).Create(context.TODO(), job, metav1.CreateOptions{})
+	return model.common.KubeClient.BatchV1().Jobs(namespace).Create(context.TODO(), batch, metav1.CreateOptions{})
 }
 
 func (model *batchModel) getBatchByName(batchName string) (*batchv1.Job, error) {
@@ -321,11 +322,9 @@ func (model *batchModel) getJobPods(jobName string) ([]corev1.Pod, error) {
 }
 
 func (model *batchModel) buildBatchJobSpec(batchName string, rd *radixv1.RadixDeployment, radixJobComponent *radixv1.RadixDeployJobComponent, batchScheduleDescriptionSecret *corev1.Secret, kubeutil *kube.Kube) (*batchv1.Job, error) {
-	containers, err := model.getContainers(kubeutil, rd, batchName, radixJobComponent, batchScheduleDescriptionSecret, model.common.SecurityContextBuilder)
-	if err != nil {
-		return nil, err
-	}
-	volumes := model.getVolumes(batchScheduleDescriptionSecret)
+	container := *model.getContainer(batchName, radixJobComponent, batchScheduleDescriptionSecret,
+		model.common.SecurityContextBuilder)
+	volumes := getVolumes(batchScheduleDescriptionSecret)
 	podSecurityContext := model.common.SecurityContextBuilder.BuildPodSecurityContext(radixJobComponent)
 
 	return &batchv1.Job{
@@ -350,78 +349,65 @@ func (model *batchModel) buildBatchJobSpec(batchName string, rd *radixv1.RadixDe
 					Namespace: rd.ObjectMeta.Namespace,
 				},
 				Spec: corev1.PodSpec{
-					Containers:      containers,
-					Volumes:         volumes,
-					SecurityContext: podSecurityContext,
-					RestartPolicy:   corev1.RestartPolicyNever,
+					Containers:         []corev1.Container{container},
+					Volumes:            volumes,
+					SecurityContext:    podSecurityContext,
+					RestartPolicy:      corev1.RestartPolicyNever,
+					ServiceAccountName: defaults.RadixJobSchedulerServerServiceName,
 				},
 			},
 		},
 	}, nil
 }
 
-func (model *batchModel) getContainers(kubeUtils *kube.Kube, rd *radixv1.RadixDeployment, batchName string, radixJobComponent *radixv1.RadixDeployJobComponent, batchScheduleDescriptionSecret *corev1.Secret, securityContextBuilder deployment.SecurityContextBuilder) ([]corev1.Container, error) {
-	environmentVariables, err := buildEnvironmentVariables(kubeUtils, rd, batchName, radixJobComponent, batchScheduleDescriptionSecret)
-	if err != nil {
-		return nil, err
-	}
-	volumeMounts, err := getVolumeMounts(batchScheduleDescriptionSecret)
-	if err != nil {
-		return nil, err
-	}
-	containerSecurityContext := securityContextBuilder.BuildContainerSecurityContext(radixJobComponent)
-
-	container := corev1.Container{
+func (model *batchModel) getContainer(batchName string, radixJobComponent *radixv1.RadixDeployJobComponent,
+	batchScheduleDescriptionSecret *corev1.Secret, securityContextBuilder deployment.SecurityContextBuilder) *corev1.Container {
+	return &corev1.Container{
 		Name:            schedulerDefaults.RadixBatchSchedulerContainerName,
 		Image:           model.common.Env.RadixBatchSchedulerImageFullName,
 		ImagePullPolicy: corev1.PullIfNotPresent,
-		Env:             environmentVariables,
-		VolumeMounts:    volumeMounts,
-		SecurityContext: containerSecurityContext,
+		Env:             getEnvironmentVariables(batchName, model.common.Env, batchScheduleDescriptionSecret),
+		VolumeMounts:    getVolumeMounts(batchScheduleDescriptionSecret),
+		SecurityContext: securityContextBuilder.BuildContainerSecurityContext(radixJobComponent),
 	}
-
-	return []corev1.Container{container}, nil
 }
 
-func buildEnvironmentVariables(kubeUtils *kube.Kube, rd *radixv1.RadixDeployment, batchName string, radixJobComponent *radixv1.RadixDeployJobComponent, batchScheduleDescriptionSecret *corev1.Secret) ([]corev1.EnvVar, error) {
-	environmentVariables, err := deployment.GetEnvironmentVariables(kubeUtils, rd.Spec.AppName, rd, radixJobComponent)
-	if err != nil {
-		return nil, err
+func getEnvironmentVariables(batchName string, env *models.Env, batchScheduleDescriptionSecret *corev1.Secret) []corev1.EnvVar {
+	return []corev1.EnvVar{
+		{Name: defaults.RadixDNSZoneEnvironmentVariable, Value: env.RadixAppName},
+		{Name: defaults.ContainerRegistryEnvironmentVariable, Value: env.RadixContainerRegistry},
+		{Name: defaults.ClusternameEnvironmentVariable, Value: env.RadixClusterName},
+		{Name: defaults.RadixActiveClusterEgressIpsEnvironmentVariable, Value: env.RadixActiveClusterEgressIps},
+		{Name: defaults.RadixAppEnvironmentVariable, Value: env.RadixAppName},
+		{Name: defaults.EnvironmentnameEnvironmentVariable, Value: env.RadixEnvironment},
+		{Name: defaults.RadixComponentEnvironmentVariable, Value: env.RadixComponentName},
+		{Name: defaults.RadixDeploymentEnvironmentVariable, Value: env.RadixDeploymentName},
+		{Name: schedulerDefaults.BatchNameEnvVarName, Value: batchName},
+		{Name: schedulerDefaults.BatchScheduleDescriptionPath,
+			Value: path.Join(schedulerDefaults.BatchSecretsMountPath, batchScheduleDescriptionSecret.Name)},
 	}
-	environmentVariables = append(environmentVariables, []corev1.EnvVar{
-		{
-			Name:  schedulerDefaults.BatchNameEnvVarName,
-			Value: batchName,
-		},
-		{
-			Name:  schedulerDefaults.BatchScheduleDescriptionPath,
-			Value: path.Join(schedulerDefaults.BatchSecretsMountPath, batchScheduleDescriptionSecret.Name),
-		},
-	}...)
-
-	return environmentVariables, nil
 }
 
-func getVolumeMounts(batchScheduleDescriptionSecret *corev1.Secret) ([]corev1.VolumeMount, error) {
-	volumeMounts := make([]corev1.VolumeMount, 0)
-	if batchScheduleDescriptionSecret != nil {
-		volumeMounts = append(volumeMounts, corev1.VolumeMount{
-			Name:      schedulerDefaults.BatchScheduleDescriptionPropertyName,
+func getVolumeMounts(batchScheduleDescriptionSecret *corev1.Secret) []corev1.VolumeMount {
+	if batchScheduleDescriptionSecret == nil {
+		return nil
+	}
+	return []corev1.VolumeMount{
+		{
+			Name:      batchScheduleDescriptionSecret.Name,
 			ReadOnly:  true,
 			MountPath: schedulerDefaults.BatchSecretsMountPath,
-		})
+		},
 	}
-
-	return volumeMounts, nil
 }
 
-func (model *batchModel) getVolumes(batchScheduleDescriptionSecret *corev1.Secret) []corev1.Volume {
+func getVolumes(batchScheduleDescriptionSecret *corev1.Secret) []corev1.Volume {
 	if batchScheduleDescriptionSecret == nil {
 		return nil
 	}
 	return []corev1.Volume{
-		corev1.Volume{
-			Name: schedulerDefaults.BatchScheduleDescriptionPropertyName,
+		{
+			Name: batchScheduleDescriptionSecret.Name,
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: batchScheduleDescriptionSecret.Name,
