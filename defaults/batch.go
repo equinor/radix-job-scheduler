@@ -13,6 +13,10 @@ const (
 	BatchNameEnvVarName = "RADIX_BATCH_NAME"
 	//BatchScheduleDescriptionPath Path to a file with batch schedule description json-file
 	BatchScheduleDescriptionPath = "RADIX_BATCH_SCHEDULE_DESCRIPTION_PATH"
+	//RadixBatchSchedulerContainerName Container name of the Radix batch scheduler
+	RadixBatchSchedulerContainerName = "batch-scheduler"
+	//RadixBatchSchedulerImage Image name of the Radix batch scheduler
+	RadixBatchSchedulerImage = "radix-batch-scheduler"
 )
 
 //GetBatchScheduleDescriptionSecretName Get secret name for the batch schedule description

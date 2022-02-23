@@ -2,11 +2,14 @@ package models
 
 import (
 	"fmt"
-	"github.com/equinor/radix-operator/pkg/apis/utils"
-	log "github.com/sirupsen/logrus"
 	"os"
 	"strconv"
 	"strings"
+
+	commonUtils "github.com/equinor/radix-common/utils"
+	schedulerDefaults "github.com/equinor/radix-job-scheduler/defaults"
+	"github.com/equinor/radix-operator/pkg/apis/utils"
+	log "github.com/sirupsen/logrus"
 )
 
 // Env instance variables
@@ -18,6 +21,9 @@ type Env struct {
 	RadixDeploymentNamespace                     string
 	RadixJobSchedulersPerEnvironmentHistoryLimit int
 	RadixPort                                    string
+	//RadixBatchSchedulerImageFullName The name of the Radix batch cheduler image,
+	//including comtainer repository and tag
+	RadixBatchSchedulerImageFullName string
 }
 
 // NewEnv Constructor
@@ -36,6 +42,7 @@ func NewEnv() *Env {
 		radixDeployment                              = strings.TrimSpace(os.Getenv("RADIX_DEPLOYMENT"))
 		radixJobSchedulersPerEnvironmentHistoryLimit = strings.TrimSpace(os.Getenv("RADIX_JOB_SCHEDULERS_PER_ENVIRONMENT_HISTORY_LIMIT"))
 		radixPorts                                   = strings.TrimSpace(os.Getenv("RADIX_PORTS"))
+		containerRegistryEnvironmentVariable         = strings.TrimSpace(os.Getenv("RADIX_CONTAINER_REGISTRY"))
 	)
 	env := Env{
 		RadixAppName:             radixAppName,
@@ -44,10 +51,17 @@ func NewEnv() *Env {
 		RadixDeploymentNamespace: utils.GetEnvironmentNamespace(radixAppName, radixEnv),
 		UseSwagger:               useSwagger,
 		RadixJobSchedulersPerEnvironmentHistoryLimit: 10,
+		RadixBatchSchedulerImageFullName: getRadixBatchSchedulerImageFullName(
+			containerRegistryEnvironmentVariable, radixEnv),
 	}
 	setPort(radixPorts, &env)
 	setHistoryLimit(radixJobSchedulersPerEnvironmentHistoryLimit, &env)
 	return &env
+}
+
+func getRadixBatchSchedulerImageFullName(containerRegistry, radixEnv string) string {
+	tag := commonUtils.TernaryString(strings.EqualFold(radixEnv, "prod"), "release-latest", "main-latest")
+	return fmt.Sprintf("%s/%s:%s", containerRegistry, schedulerDefaults.RadixBatchSchedulerImage, tag)
 }
 
 func setHistoryLimit(radixJobSchedulersPerEnvironmentHistoryLimit string, env *Env) {
