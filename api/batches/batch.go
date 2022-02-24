@@ -390,7 +390,7 @@ func getEnvironmentVariables(batchName string, env *models.Env, batchScheduleDes
 		{Name: defaults.RadixDeploymentEnvironmentVariable, Value: env.RadixDeploymentName},
 		{Name: schedulerDefaults.BatchNameEnvVarName, Value: batchName},
 		{Name: schedulerDefaults.BatchScheduleDescriptionPath,
-			Value: path.Join(schedulerDefaults.BatchSecretsMountPath, batchScheduleDescriptionSecret.Name)},
+			Value: path.Join(schedulerDefaults.BatchSecretsMountPath, schedulerDefaults.BatchScheduleDescriptionPropertyName)},
 	}
 }
 
