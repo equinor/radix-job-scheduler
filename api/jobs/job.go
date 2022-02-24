@@ -3,13 +3,13 @@ package jobs
 import (
 	"context"
 	"fmt"
-	"github.com/equinor/radix-job-scheduler/api"
-	jobErrors "github.com/equinor/radix-job-scheduler/api/errors"
 	"sort"
 	"strings"
 	"time"
 
 	commonUtils "github.com/equinor/radix-common/utils"
+	"github.com/equinor/radix-job-scheduler/api"
+	jobErrors "github.com/equinor/radix-job-scheduler/api/errors"
 	schedulerDefaults "github.com/equinor/radix-job-scheduler/defaults"
 	"github.com/equinor/radix-job-scheduler/models"
 	"github.com/equinor/radix-operator/pkg/apis/deployment"
@@ -277,7 +277,12 @@ func (model *jobModel) createJob(jobName string, jobComponent *radixv1.RadixDepl
 	if err != nil {
 		return nil, err
 	}
-	err = model.updateOwnerReferenceOfConfigMaps(createdJob, createdJobEnvVarsConfigMap, createdJobEnvVarsMetadataConfigMap)
+	err = model.common.UpdateOwnerReferenceOfSecret(createdJob, payloadSecret)
+	if err != nil {
+		return nil, err
+	}
+	err = model.common.UpdateOwnerReferenceOfConfigMaps(createdJob, createdJobEnvVarsConfigMap,
+		createdJobEnvVarsMetadataConfigMap)
 	if err != nil {
 		return nil, err
 	}
@@ -294,14 +299,6 @@ func (model *jobModel) createEnvVarsConfigMaps(namespace string, jobEnvVarsConfi
 		return nil, nil, err
 	}
 	return createdJobEnvVarsConfigMap, createdJobEnvVarsMetadataConfigMap, nil
-}
-
-func (model *jobModel) updateOwnerReferenceOfConfigMaps(ownerJob *batchv1.Job, configMaps ...*corev1.ConfigMap) error {
-	jobOwnerReferences := getJobOwnerReferences(ownerJob)
-	for _, configMap := range configMaps {
-		configMap.OwnerReferences = jobOwnerReferences
-	}
-	return model.common.Kube.UpdateConfigMap(ownerJob.ObjectMeta.GetNamespace(), configMaps...)
 }
 
 func (model *jobModel) deleteJob(job *batchv1.Job) error {
@@ -438,7 +435,8 @@ func getContainersWithEnvVarsConfigMaps(kubeUtils *kube.Kube, rd *radixv1.RadixD
 	container := corev1.Container{
 		Name:            radixJobComponent.Name,
 		Image:           radixJobComponent.Image,
-		ImagePullPolicy: corev1.PullAlways,
+		ImagePullPolicy: corev1.PullIfNotPresent,
+		//ImagePullPolicy: corev1.PullAlways,
 		Env:             environmentVariables,
 		Ports:           ports,
 		VolumeMounts:    volumeMounts,
@@ -475,18 +473,6 @@ func buildEnvironmentVariablesWithEnvVarsConfigMaps(kubeUtils *kube.Kube, rd *ra
 	}
 
 	return environmentVariables, jobEnvVarsConfigMap, jobEnvVarsMetadataConfigMap, nil
-}
-
-func getJobOwnerReferences(job *batchv1.Job) []metav1.OwnerReference {
-	return []metav1.OwnerReference{
-		{
-			APIVersion: "batch/v1",
-			Kind:       "Job",
-			Name:       job.GetName(),
-			UID:        job.UID,
-			Controller: commonUtils.BoolPtr(true),
-		},
-	}
 }
 
 func getVolumeMounts(radixJobComponent *radixv1.RadixDeployJobComponent, radixDeploymentName string, payloadSecret *corev1.Secret) ([]corev1.VolumeMount, error) {

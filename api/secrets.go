@@ -3,7 +3,10 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	commonErrors "github.com/equinor/radix-common/utils/errors"
 	"github.com/equinor/radix-job-scheduler/models"
+	batchv1 "k8s.io/api/batch/v1"
 	"strings"
 
 	"github.com/equinor/radix-job-scheduler/defaults"
@@ -104,4 +107,24 @@ func buildBatchScheduleDescriptionSecretSpec(batchName, appName, componentName s
 		},
 	}
 	return &secret, nil
+}
+
+//UpdateOwnerReferenceOfSecret Update owner reference of a secret
+func (model *Model) UpdateOwnerReferenceOfSecret(ownerJob *batchv1.Job,
+	secrets ...*corev1.Secret) error {
+	jobOwnerReferences := getJobOwnerReferences(ownerJob)
+	var errs []error
+	for _, secret := range secrets {
+		secret.OwnerReferences = jobOwnerReferences
+		_, err := model.Kube.ApplySecret(ownerJob.ObjectMeta.GetNamespace(), secret)
+		if err != nil {
+			errs = append(errs, fmt.Errorf("failed update OwnerReference for the secret %s: %s", secret.Name,
+				err.Error()))
+		}
+	}
+	if len(errs) == 0 {
+		return nil
+	}
+
+	return commonErrors.Concat(errs)
 }

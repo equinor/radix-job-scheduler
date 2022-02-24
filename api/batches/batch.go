@@ -135,13 +135,19 @@ func (model *batchModel) CreateBatch(batchScheduleDescription *models.BatchSched
 		return nil, apiErrors.NewFromError(err)
 	}
 
-	batch, err := model.createBatch(batchName, jobComponent, radixDeployment, descriptionSecret, batchScheduleDescription)
+	createdBatch, err := model.createBatch(batchName, jobComponent, radixDeployment, descriptionSecret,
+		batchScheduleDescription)
 	if err != nil {
 		return nil, apiErrors.NewFromError(err)
 	}
 
-	log.Debug(fmt.Sprintf("created batch %s for component %s, environment %s, in namespace: %s", batch.Name, model.common.Env.RadixComponentName, radixDeployment.Spec.Environment, model.common.Env.RadixDeploymentNamespace))
-	return GetBatchStatusFromJob(model.common.KubeClient, batch, nil)
+	err = model.common.UpdateOwnerReferenceOfSecret(createdBatch, descriptionSecret)
+	if err != nil {
+		return nil, err
+	}
+
+	log.Debug(fmt.Sprintf("created batch %s for component %s, environment %s, in namespace: %s", descriptionSecret.Name, model.common.Env.RadixComponentName, radixDeployment.Spec.Environment, model.common.Env.RadixDeploymentNamespace))
+	return GetBatchStatusFromJob(model.common.KubeClient, createdBatch, nil)
 }
 
 //DeleteBatch Delete a batch
