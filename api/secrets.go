@@ -112,13 +112,13 @@ func buildBatchScheduleDescriptionSecretSpec(batchName, appName, componentName s
 //UpdateOwnerReferenceOfSecret Update owner reference of a secret
 func (model *Model) UpdateOwnerReferenceOfSecret(ownerJob *batchv1.Job,
 	secrets ...*corev1.Secret) error {
-	jobOwnerReferences := getJobOwnerReferences(ownerJob)
+	jobOwnerReference := GetJobOwnerReference(ownerJob)
 	var errs []error
 	for _, secret := range secrets {
 		if secret == nil {
 			continue
 		}
-		secret.OwnerReferences = jobOwnerReferences
+		secret.OwnerReferences = []metav1.OwnerReference{jobOwnerReference}
 		_, err := model.Kube.ApplySecret(ownerJob.ObjectMeta.GetNamespace(), secret)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("failed update OwnerReference for the secret %s: %s", secret.Name,

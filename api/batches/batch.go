@@ -3,6 +3,8 @@ package batches
 import (
 	"context"
 	"fmt"
+	"github.com/equinor/radix-job-scheduler/api"
+	"github.com/equinor/radix-job-scheduler/api/jobs"
 	"github.com/equinor/radix-operator/pkg/apis/defaults"
 	"path"
 	"sort"
@@ -10,7 +12,6 @@ import (
 	"time"
 
 	commonUtils "github.com/equinor/radix-common/utils"
-	"github.com/equinor/radix-job-scheduler/api"
 	apiErrors "github.com/equinor/radix-job-scheduler/api/errors"
 	schedulerDefaults "github.com/equinor/radix-job-scheduler/defaults"
 	"github.com/equinor/radix-job-scheduler/models"
@@ -61,38 +62,28 @@ func New(env *models.Env, kube *kube.Kube, kubeClient kubernetes.Interface, radi
 
 //GetBatches Get status of all batches
 func (model *batchModel) GetBatches() ([]models.BatchStatus, error) {
-	log.Debugf("Get Batches for namespace: %s", model.common.Env.RadixDeploymentNamespace)
+	log.Debugf("Get batches for the namespace: %s", model.common.Env.RadixDeploymentNamespace)
 
-	//TODO
-	//kubeBatches, err := model.getAllBatches()
-	//if err != nil {
-	//    return nil, err
-	//}
+	allBatches, err := model.getAllBatches()
+	if err != nil {
+		return nil, err
+	}
 
-	//pods, err := model.GetBatchPods("")
-	//if err != nil {
-	//    return nil, err
-	//}
-	//podsMap := getBatchPodsMap(pods)
-	//batches := make([]models.BatchStatus, len(kubeBatches))
-	//for idx, k8sBatch := range kubeBatches {
-	//    batches[idx] = *models.GetBatchStatusFromJob(model.common.KubeClient, k8sBatch, podsMap[k8sBatch.Name])
-	//}
-
-	//log.Debugf("Found %v batches for namespace %s", len(batches), model.common.Env.RadixDeploymentNamespace)
-	//return batches, nil
-	return nil, nil
-}
-
-func getBatchPodsMap(pods []corev1.Pod) map[string][]corev1.Pod {
-	podsMap := make(map[string][]corev1.Pod)
-	for _, pod := range pods {
-		batchName := pod.Labels[schedulerDefaults.K8sJobNameLabel]
-		if len(batchName) > 0 {
-			podsMap[batchName] = append(podsMap[batchName], pod)
+	allBatchesPods, err := model.common.GetPodsForLabelSelector(getLabelSelectorForAllBatchesPods())
+	if err != nil {
+		return nil, err
+	}
+	allBatchesPodsMap := getBatchPodsMap(allBatchesPods)
+	allBatchStatuses := make([]models.BatchStatus, len(allBatches))
+	for idx, batch := range allBatches {
+		allBatchStatuses[idx] = models.BatchStatus{
+			JobStatus: *jobs.GetJobStatusFromJob(model.common.KubeClient, batch,
+				allBatchesPodsMap[batch.Name]),
 		}
 	}
-	return podsMap
+
+	log.Debugf("Found %v batches for namespace %s", len(allBatchStatuses), model.common.Env.RadixDeploymentNamespace)
+	return allBatchStatuses, nil
 }
 
 //GetBatch Get status of a batch
@@ -103,11 +94,27 @@ func (model *batchModel) GetBatch(batchName string) (*models.BatchStatus, error)
 		return nil, err
 	}
 	log.Debugf("found Batch %s for namespace: %s", batchName, model.common.Env.RadixDeploymentNamespace)
-	pods, err := model.getJobPods(batch.Name)
+	batchPods, err := model.common.GetPodsForLabelSelector(getLabelSelectorForBatchPods(batchName))
 	if err != nil {
 		return nil, err
 	}
-	return GetBatchStatusFromJob(model.common.KubeClient, batch, pods)
+	batchStatus := models.BatchStatus{
+		JobStatus: *jobs.GetJobStatusFromJob(model.common.KubeClient, batch, batchPods),
+	}
+	batchJobsPods, err := model.common.GetPodsForLabelSelector(getLabelSelectorForBatchObjects(batchName))
+	if err != nil {
+		return nil, err
+	}
+	batchJobsPodsMap := getBatchPodsMap(batchJobsPods)
+	batchJobs, err := model.getBatchJobs(batchName)
+	batchStatus.JobStatuses = make([]models.JobStatus, len(batchJobs))
+	for idx, batchJob := range batchJobs {
+		batchStatus.JobStatuses[idx] = *jobs.GetJobStatusFromJob(model.common.KubeClient, batchJob, batchJobsPodsMap[batch.Name])
+	}
+
+	log.Debugf("Found %v jobs for the batche '%s' for namespace '%s'", len(batchJobs), batchName,
+		model.common.Env.RadixDeploymentNamespace)
+	return &batchStatus, nil
 }
 
 //CreateBatch Create a batch with parameters
@@ -152,7 +159,8 @@ func (model *batchModel) CreateBatch(batchScheduleDescription *models.BatchSched
 //DeleteBatch Delete a batch
 func (model *batchModel) DeleteBatch(batchName string) error {
 	log.Debugf("delete batch %s for namespace: %s", batchName, model.common.Env.RadixDeploymentNamespace)
-	return model.garbageCollectBatch(batchName)
+	fg := metav1.DeletePropagationBackground
+	return model.common.KubeClient.BatchV1().Jobs(model.common.Env.RadixDeploymentNamespace).Delete(context.TODO(), batchName, metav1.DeleteOptions{PropagationPolicy: &fg})
 }
 
 //MaintainHistoryLimit Delete outdated batches
@@ -191,46 +199,10 @@ func (model *batchModel) maintainHistoryLimitForBatches(batches []*batchv1.Job, 
 	for i := 0; i < numToDelete; i++ {
 		batch := sortedBatches[i]
 		log.Debugf("deleting batch %s", batch.Name)
-		if err := model.garbageCollectBatch(batch.Name); err != nil {
+		if err := model.DeleteBatch(batch.Name); err != nil {
 			return err
 		}
 	}
-	return nil
-}
-
-func (model *batchModel) garbageCollectBatch(batchName string) (err error) {
-	//TODO
-	//batch, err := model.getBatchByName(batchName)
-	//if err != nil {
-	//    return
-	//}
-	//    secrets, err := model.getSecretsForBatch(batchName)
-	//    if err != nil {
-	//        return
-	//    }
-	//
-	//    for _, secret := range secrets.Items {
-	//        if err = model.deleteSecret(&secret); err != nil {
-	//            return
-	//        }
-	//    }
-	//
-	//    services, err := model.getServiceForBatch(batchName)
-	//    if err != nil {
-	//        return
-	//    }
-	//
-	//    for _, service := range services.Items {
-	//        if err = model.deleteService(&service); err != nil {
-	//            return
-	//        }
-	//    }
-	//
-	//    err = model.deleteBatch(batch)
-	//    if err != nil {
-	//        return err
-	//    }
-	//
 	return nil
 }
 
@@ -305,30 +277,8 @@ func (model *batchModel) getAllBatches() (models.JobList, error) {
 	return slice.PointersOf(kubeBatches.Items).([]*batchv1.Job), nil
 }
 
-//getJobPods jobName is optional, when empty - returns all job-pods for the namespace
-func (model *batchModel) getJobPods(jobName string) ([]corev1.Pod, error) {
-	listOptions := metav1.ListOptions{}
-	if jobName != "" {
-		listOptions.LabelSelector = getLabelSelectorForJobPods(jobName)
-	}
-	podList, err := model.common.KubeClient.
-		CoreV1().
-		Pods(model.common.Env.RadixDeploymentNamespace).
-		List(
-			context.TODO(),
-			listOptions,
-		)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return podList.Items, nil
-}
-
 func (model *batchModel) buildBatchJobSpec(batchName string, rd *radixv1.RadixDeployment, radixJobComponent *radixv1.RadixDeployJobComponent, batchScheduleDescriptionSecret *corev1.Secret) (*batchv1.Job, error) {
-	container := model.getContainer(batchName, radixJobComponent, rd, batchScheduleDescriptionSecret,
-		model.common.SecurityContextBuilder)
+	container := model.getContainer(batchName, radixJobComponent, batchScheduleDescriptionSecret, model.common.SecurityContextBuilder)
 	volumes := getVolumes(batchScheduleDescriptionSecret)
 	podSecurityContext := model.common.SecurityContextBuilder.BuildPodSecurityContext(radixJobComponent)
 
@@ -338,8 +288,7 @@ func (model *batchModel) buildBatchJobSpec(batchName string, rd *radixv1.RadixDe
 			Labels: map[string]string{
 				kube.RadixAppLabel:       rd.Spec.AppName,
 				kube.RadixComponentLabel: radixJobComponent.Name,
-				kube.RadixJobTypeLabel:   kube.RadixJobTypeJobSchedule,
-				kube.RadixBatchNameLabel: batchName,
+				kube.RadixJobTypeLabel:   schedulerDefaults.RadixJobTypeBatchSchedule,
 			},
 		},
 		Spec: batchv1.JobSpec{
@@ -348,7 +297,7 @@ func (model *batchModel) buildBatchJobSpec(batchName string, rd *radixv1.RadixDe
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
 						kube.RadixAppLabel:       rd.Spec.AppName,
-						kube.RadixJobTypeLabel:   kube.RadixJobTypeJobSchedule,
+						kube.RadixJobTypeLabel:   schedulerDefaults.RadixJobTypeBatchSchedule,
 						kube.RadixBatchNameLabel: batchName,
 					},
 					Namespace: rd.ObjectMeta.Namespace,
@@ -365,18 +314,18 @@ func (model *batchModel) buildBatchJobSpec(batchName string, rd *radixv1.RadixDe
 	}, nil
 }
 
-func (model *batchModel) getContainer(batchName string, radixJobComponent *radixv1.RadixDeployJobComponent, rd *radixv1.RadixDeployment, batchScheduleDescriptionSecret *corev1.Secret, securityContextBuilder deployment.SecurityContextBuilder) *corev1.Container {
+func (model *batchModel) getContainer(batchName string, radixJobComponent *radixv1.RadixDeployJobComponent, batchScheduleDescriptionSecret *corev1.Secret, securityContextBuilder deployment.SecurityContextBuilder) *corev1.Container {
 	return &corev1.Container{
 		Name:            schedulerDefaults.RadixBatchSchedulerContainerName,
 		Image:           model.common.Env.RadixBatchSchedulerImageFullName,
 		ImagePullPolicy: corev1.PullAlways,
-		Env:             model.getEnvironmentVariables(batchName, model.common.Env, rd),
+		Env:             model.getEnvironmentVariables(batchName, model.common.Env),
 		VolumeMounts:    getVolumeMounts(batchScheduleDescriptionSecret),
 		SecurityContext: securityContextBuilder.BuildContainerSecurityContext(radixJobComponent),
 	}
 }
 
-func (model *batchModel) getEnvironmentVariables(batchName string, env *models.Env, rd *radixv1.RadixDeployment) []corev1.EnvVar {
+func (model *batchModel) getEnvironmentVariables(batchName string, env *models.Env) []corev1.EnvVar {
 	return []corev1.EnvVar{
 		{Name: defaults.RadixDNSZoneEnvironmentVariable, Value: env.RadixAppName},
 		{Name: defaults.ContainerRegistryEnvironmentVariable, Value: env.RadixContainerRegistry},
@@ -429,8 +378,57 @@ func getLabelSelectorForJobComponentBatches(componentName string) string {
 	return labels.NewSelector().Add(*componentRequirement, *jobTypeRequirement, *batchNameRequirement).String()
 }
 
-func getLabelSelectorForJobPods(batchName string) string {
+func getBatchPodsMap(pods []corev1.Pod) map[string][]corev1.Pod {
+	podsMap := make(map[string][]corev1.Pod)
+	for _, pod := range pods {
+		batchName := pod.Labels[schedulerDefaults.K8sJobNameLabel]
+		if len(batchName) > 0 {
+			podsMap[batchName] = append(podsMap[batchName], pod)
+		}
+	}
+	return podsMap
+}
+
+func getLabelSelectorForJobPods(jobName string) string {
 	return labels.SelectorFromSet(map[string]string{
+		kube.RadixJobNameLabel: jobName,
+	}).String()
+}
+
+func getLabelSelectorForBatchPods(batchName string) string {
+	return labels.SelectorFromSet(map[string]string{
+		kube.RadixJobTypeLabel:   schedulerDefaults.RadixJobTypeBatchSchedule,
 		kube.RadixBatchNameLabel: batchName,
 	}).String()
+}
+
+func getLabelSelectorForAllBatchesPods() string {
+	return labels.SelectorFromSet(map[string]string{
+		kube.RadixJobTypeLabel: schedulerDefaults.RadixJobTypeBatchSchedule,
+	}).String()
+}
+
+func getLabelSelectorForBatchObjects(batchName string) string {
+	return labels.SelectorFromSet(map[string]string{
+		kube.RadixJobTypeLabel:   kube.RadixJobTypeJobSchedule,
+		kube.RadixBatchNameLabel: batchName,
+	}).String()
+}
+
+func (model *batchModel) getBatchJobs(batchName string) (models.JobList, error) {
+	kubeJobs, err := model.common.KubeClient.
+		BatchV1().
+		Jobs(model.common.Env.RadixDeploymentNamespace).
+		List(
+			context.TODO(),
+			metav1.ListOptions{
+				LabelSelector: getLabelSelectorForBatchObjects(batchName),
+			},
+		)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return slice.PointersOf(kubeJobs.Items).([]*batchv1.Job), nil
 }

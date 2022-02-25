@@ -6,14 +6,13 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func getJobOwnerReferences(job *batchv1.Job) []metav1.OwnerReference {
-	return []metav1.OwnerReference{
-		{
-			APIVersion: "batch/v1",
-			Kind:       "Job",
-			Name:       job.GetName(),
-			UID:        job.UID,
-			Controller: commonUtils.BoolPtr(true),
-		},
+//GetJobOwnerReference Gets job as an OwnerReference
+func GetJobOwnerReference(job *batchv1.Job) metav1.OwnerReference {
+	return metav1.OwnerReference{
+		APIVersion: "batch/v1",
+		Kind:       "Job",
+		Name:       job.GetName(),
+		UID:        job.UID,
+		Controller: commonUtils.BoolPtr(true),
 	}
 }

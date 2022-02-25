@@ -2,8 +2,8 @@ package api
 
 import (
 	"context"
-	"github.com/equinor/radix-job-scheduler/defaults"
 
+	"github.com/equinor/radix-job-scheduler/defaults"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -13,7 +13,8 @@ import (
 )
 
 //CreateService Create a service for the job API
-func (model *Model) CreateService(jobName string, jobComponent *v1.RadixDeployJobComponent, rd *v1.RadixDeployment) error {
+func (model *Model) CreateService(jobName string, jobComponent *v1.RadixDeployJobComponent,
+	rd *v1.RadixDeployment) error {
 	if len(jobComponent.GetPorts()) > 0 {
 		serviceName := jobName
 		service := buildServiceSpec(serviceName, jobName, jobComponent.Name, rd.Spec.AppName, jobComponent.GetPorts())

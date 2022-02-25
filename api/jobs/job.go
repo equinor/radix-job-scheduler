@@ -3,12 +3,13 @@ package jobs
 import (
 	"context"
 	"fmt"
+	"github.com/equinor/radix-job-scheduler/api"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"sort"
 	"strings"
 	"time"
 
 	commonUtils "github.com/equinor/radix-common/utils"
-	"github.com/equinor/radix-job-scheduler/api"
 	jobErrors "github.com/equinor/radix-job-scheduler/api/errors"
 	schedulerDefaults "github.com/equinor/radix-job-scheduler/defaults"
 	"github.com/equinor/radix-job-scheduler/models"
@@ -38,8 +39,8 @@ type Job interface {
 	GetJobs() ([]models.JobStatus, error)
 	//GetJob Get status of a job
 	GetJob(name string) (*models.JobStatus, error)
-	//CreateJob Create a job with parameters
-	CreateJob(jobScheduleDescription *models.JobScheduleDescription) (*models.JobStatus, error)
+	//CreateJob Create a job with parameters. `batchName` is optional.
+	CreateJob(jobScheduleDescription *models.JobScheduleDescription, batchName string) (*models.JobStatus, error)
 	//MaintainHistoryLimit Delete outdated jobs
 	MaintainHistoryLimit() error
 	//DeleteJob Delete a job
@@ -110,7 +111,8 @@ func (model *jobModel) GetJob(jobName string) (*models.JobStatus, error) {
 }
 
 //CreateJob Create a job with parameters
-func (model *jobModel) CreateJob(jobScheduleDescription *models.JobScheduleDescription) (*models.JobStatus, error) {
+func (model *jobModel) CreateJob(jobScheduleDescription *models.JobScheduleDescription,
+	batchName string) (*models.JobStatus, error) {
 	log.Debugf("create job for namespace: %s", model.common.Env.RadixDeploymentNamespace)
 
 	radixDeployment, err := model.common.RadixClient.RadixV1().RadixDeployments(model.common.Env.RadixDeploymentNamespace).Get(context.TODO(), model.common.Env.RadixDeploymentName, metav1.GetOptions{})
@@ -135,9 +137,18 @@ func (model *jobModel) CreateJob(jobScheduleDescription *models.JobScheduleDescr
 		return nil, jobErrors.NewFromError(err)
 	}
 
-	job, err := model.createJob(jobName, jobComponent, radixDeployment, payloadSecret, jobScheduleDescription)
+	job, err := model.createJob(jobName, jobComponent, radixDeployment, payloadSecret, jobScheduleDescription, batchName)
 	if err != nil {
 		return nil, jobErrors.NewFromError(err)
+	}
+
+	if len(batchName) > 0 {
+		batch, err := model.common.GetJob(batchName)
+		if err == nil {
+			job.OwnerReferences = []metav1.OwnerReference{api.GetJobOwnerReference(batch)}
+		} else if !errors.IsNotFound(err) {
+			return nil, err
+		}
 	}
 
 	log.Debug(fmt.Sprintf("created job %s for component %s, environment %s, in namespace: %s", job.Name, model.common.Env.RadixComponentName, radixDeployment.Spec.Environment, model.common.Env.RadixDeploymentNamespace))
@@ -256,13 +267,14 @@ func generateJobName(jobComponent *radixv1.RadixDeployJobComponent) string {
 	return fmt.Sprintf("%s-%s-%s", jobComponent.Name, timestamp, jobTag)
 }
 
-func (model *jobModel) createJob(jobName string, jobComponent *radixv1.RadixDeployJobComponent, rd *radixv1.RadixDeployment, payloadSecret *corev1.Secret, jobScheduleDescription *models.JobScheduleDescription) (*batchv1.Job, error) {
+func (model *jobModel) createJob(jobName string, jobComponent *radixv1.RadixDeployJobComponent, rd *radixv1.RadixDeployment, payloadSecret *corev1.Secret, jobScheduleDescription *models.JobScheduleDescription, batchName string) (*batchv1.Job, error) {
 	var jobComponentConfig *models.RadixJobComponentConfig
 	if jobScheduleDescription != nil {
 		jobComponentConfig = &jobScheduleDescription.RadixJobComponentConfig
 	}
 
-	job, jobEnvVarsConfigMap, jobEnvVarsMetadataConfigMap, err := model.buildJobSpec(jobName, rd, jobComponent, payloadSecret, jobComponentConfig)
+	job, jobEnvVarsConfigMap, jobEnvVarsMetadataConfigMap, err := model.buildJobSpec(jobName, rd, jobComponent,
+		payloadSecret, jobComponentConfig, batchName, jobScheduleDescription)
 	if err != nil {
 		return nil, err
 	}
@@ -358,7 +370,7 @@ func (model *jobModel) getJobPods(jobName string) ([]corev1.Pod, error) {
 	return podList.Items, nil
 }
 
-func (model *jobModel) buildJobSpec(jobName string, rd *radixv1.RadixDeployment, radixJobComponent *radixv1.RadixDeployJobComponent, payloadSecret *corev1.Secret, jobComponentConfig *models.RadixJobComponentConfig) (*batchv1.Job, *corev1.ConfigMap, *corev1.ConfigMap, error) {
+func (model *jobModel) buildJobSpec(jobName string, rd *radixv1.RadixDeployment, radixJobComponent *radixv1.RadixDeployJobComponent, payloadSecret *corev1.Secret, jobComponentConfig *models.RadixJobComponentConfig, batchName string, jobScheduleDescription *models.JobScheduleDescription) (*batchv1.Job, *corev1.ConfigMap, *corev1.ConfigMap, error) {
 	podSecurityContext := model.common.SecurityContextBuilder.BuildPodSecurityContext(radixJobComponent)
 	volumes, err := model.getVolumes(rd.ObjectMeta.Namespace, rd.Spec.Environment, radixJobComponent, rd.Name, payloadSecret)
 	if err != nil {
@@ -383,7 +395,7 @@ func (model *jobModel) buildJobSpec(jobName string, rd *radixv1.RadixDeployment,
 		timeLimitSeconds = radixJobComponent.GetTimeLimitSeconds()
 	}
 
-	return &batchv1.Job{
+	job := batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: jobName,
 			Labels: map[string]string{
@@ -414,7 +426,16 @@ func (model *jobModel) buildJobSpec(jobName string, rd *radixv1.RadixDeployment,
 				},
 			},
 		},
-	}, jobEnvVarsConfigMap, jobEnvVarsMetadataConfigMap, nil
+	}
+	if len(jobScheduleDescription.JobId) > 0 {
+		job.ObjectMeta.Labels[schedulerDefaults.RadixJobIdLabel] = jobScheduleDescription.JobId
+		job.Spec.Template.ObjectMeta.Labels[schedulerDefaults.RadixJobIdLabel] = jobScheduleDescription.JobId
+	}
+	if len(batchName) > 0 {
+		job.ObjectMeta.Labels[kube.RadixBatchNameLabel] = batchName
+		job.Spec.Template.ObjectMeta.Labels[kube.RadixBatchNameLabel] = batchName
+	}
+	return &job, jobEnvVarsConfigMap, jobEnvVarsMetadataConfigMap, nil
 }
 
 func (model *jobModel) getContainersWithEnvVarsConfigMaps(rd *radixv1.RadixDeployment, jobName string, radixJobComponent *radixv1.RadixDeployJobComponent, payloadSecret *corev1.Secret, jobComponentConfig *models.RadixJobComponentConfig, securityContextBuilder deployment.SecurityContextBuilder) ([]corev1.Container, *corev1.ConfigMap, *corev1.ConfigMap, error) {
