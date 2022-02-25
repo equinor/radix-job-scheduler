@@ -371,7 +371,7 @@ func (model *batchModel) getContainer(batchName string, radixJobComponent *radix
 	return &corev1.Container{
 		Name:            schedulerDefaults.RadixBatchSchedulerContainerName,
 		Image:           model.common.Env.RadixBatchSchedulerImageFullName,
-		ImagePullPolicy: corev1.PullIfNotPresent,
+		ImagePullPolicy: corev1.PullAlways,
 		Env:             getEnvironmentVariables(batchName, model.common.Env, batchScheduleDescriptionSecret),
 		VolumeMounts:    getVolumeMounts(batchScheduleDescriptionSecret),
 		SecurityContext: securityContextBuilder.BuildContainerSecurityContext(radixJobComponent),

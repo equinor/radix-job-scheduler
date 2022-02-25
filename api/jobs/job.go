@@ -435,8 +435,7 @@ func getContainersWithEnvVarsConfigMaps(kubeUtils *kube.Kube, rd *radixv1.RadixD
 	container := corev1.Container{
 		Name:            radixJobComponent.Name,
 		Image:           radixJobComponent.Image,
-		ImagePullPolicy: corev1.PullIfNotPresent,
-		//ImagePullPolicy: corev1.PullAlways,
+		ImagePullPolicy: corev1.PullAlways,
 		Env:             environmentVariables,
 		Ports:           ports,
 		VolumeMounts:    volumeMounts,
