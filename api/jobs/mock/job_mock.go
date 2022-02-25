@@ -35,18 +35,18 @@ func (m *MockJob) EXPECT() *MockJobMockRecorder {
 }
 
 // CreateJob mocks base method.
-func (m *MockJob) CreateJob(jobScheduleDescription *models.JobScheduleDescription) (*models.JobStatus, error) {
+func (m *MockJob) CreateJob(jobScheduleDescription *models.JobScheduleDescription, batchName string) (*models.JobStatus, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateJob", jobScheduleDescription)
+	ret := m.ctrl.Call(m, "CreateJob", jobScheduleDescription, batchName)
 	ret0, _ := ret[0].(*models.JobStatus)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // CreateJob indicates an expected call of CreateJob.
-func (mr *MockJobMockRecorder) CreateJob(jobScheduleDescription interface{}) *gomock.Call {
+func (mr *MockJobMockRecorder) CreateJob(jobScheduleDescription, batchName interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateJob", reflect.TypeOf((*MockJob)(nil).CreateJob), jobScheduleDescription)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateJob", reflect.TypeOf((*MockJob)(nil).CreateJob), jobScheduleDescription, batchName)
 }
 
 // DeleteJob mocks base method.
