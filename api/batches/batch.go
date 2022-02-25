@@ -26,7 +26,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -89,7 +88,7 @@ func (model *batchModel) GetBatches() ([]models.BatchStatus, error) {
 //GetBatch Get status of a batch
 func (model *batchModel) GetBatch(batchName string) (*models.BatchStatus, error) {
 	log.Debugf("get batches for namespace: %s", model.common.Env.RadixDeploymentNamespace)
-	batch, err := model.getBatchByName(batchName)
+	batch, err := model.common.GetJob(batchName)
 	if err != nil {
 		return nil, err
 	}
@@ -244,21 +243,6 @@ func (model *batchModel) createBatch(batchName string, jobComponent *radixv1.Rad
 	return model.common.KubeClient.BatchV1().Jobs(namespace).Create(context.TODO(), batch, metav1.CreateOptions{})
 }
 
-func (model *batchModel) getBatchByName(batchName string) (*batchv1.Job, error) {
-	batches, err := model.getAllBatches()
-	if err != nil {
-		return nil, err
-	}
-
-	batches = batches.Where(func(j *batchv1.Job) bool { return j.Name == batchName })
-
-	if len(batches) == 1 {
-		return batches[0], nil
-	}
-
-	return nil, apiErrors.NewNotFound("batch", batchName)
-}
-
 func (model *batchModel) getAllBatches() (models.JobList, error) {
 	kubeBatches, err := model.common.KubeClient.
 		BatchV1().
@@ -266,7 +250,7 @@ func (model *batchModel) getAllBatches() (models.JobList, error) {
 		List(
 			context.TODO(),
 			metav1.ListOptions{
-				LabelSelector: getLabelSelectorForJobComponentBatches(model.common.Env.RadixComponentName),
+				LabelSelector: getLabelSelectorForBatches(model.common.Env.RadixComponentName),
 			},
 		)
 
@@ -371,13 +355,6 @@ func getVolumes(batchScheduleDescriptionSecret *corev1.Secret) []corev1.Volume {
 		}}
 }
 
-func getLabelSelectorForJobComponentBatches(componentName string) string {
-	componentRequirement, _ := labels.NewRequirement(kube.RadixComponentLabel, selection.Equals, []string{componentName})
-	jobTypeRequirement, _ := labels.NewRequirement(kube.RadixJobTypeLabel, selection.Equals, []string{kube.RadixJobTypeJobSchedule})
-	batchNameRequirement, _ := labels.NewRequirement(kube.RadixBatchNameLabel, selection.Exists, nil) //TODO kube.Label...
-	return labels.NewSelector().Add(*componentRequirement, *jobTypeRequirement, *batchNameRequirement).String()
-}
-
 func getBatchPodsMap(pods []corev1.Pod) map[string][]corev1.Pod {
 	podsMap := make(map[string][]corev1.Pod)
 	for _, pod := range pods {
@@ -389,9 +366,10 @@ func getBatchPodsMap(pods []corev1.Pod) map[string][]corev1.Pod {
 	return podsMap
 }
 
-func getLabelSelectorForJobPods(jobName string) string {
+func getLabelSelectorForBatches(componentName string) string {
 	return labels.SelectorFromSet(map[string]string{
-		kube.RadixJobNameLabel: jobName,
+		kube.RadixComponentLabel: componentName,
+		kube.RadixJobTypeLabel:   schedulerDefaults.RadixJobTypeBatchSchedule,
 	}).String()
 }
 

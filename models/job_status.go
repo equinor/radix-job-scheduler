@@ -8,6 +8,11 @@ type JobStatus struct {
 	// required: false
 	// example: 'job1'
 	JobId string `json:"jobId"`
+	// BatchName Optional Batch ID of a job
+	//
+	// required: false
+	// example: 'batch1'
+	BatchName string `json:"batchName"`
 
 	// Name of the job
 	// required: true

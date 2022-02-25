@@ -142,15 +142,6 @@ func (model *jobModel) CreateJob(jobScheduleDescription *models.JobScheduleDescr
 		return nil, jobErrors.NewFromError(err)
 	}
 
-	if len(batchName) > 0 {
-		batch, err := model.common.GetJob(batchName)
-		if err == nil {
-			job.OwnerReferences = []metav1.OwnerReference{api.GetJobOwnerReference(batch)}
-		} else if !errors.IsNotFound(err) {
-			return nil, err
-		}
-	}
-
 	log.Debug(fmt.Sprintf("created job %s for component %s, environment %s, in namespace: %s", job.Name, model.common.Env.RadixComponentName, radixDeployment.Spec.Environment, model.common.Env.RadixDeploymentNamespace))
 	return GetJobStatusFromJob(model.common.KubeClient, job, nil), nil
 }
@@ -282,6 +273,14 @@ func (model *jobModel) createJob(jobName string, jobComponent *radixv1.RadixDepl
 	createdJobEnvVarsConfigMap, createdJobEnvVarsMetadataConfigMap, err := model.createEnvVarsConfigMaps(namespace, jobEnvVarsConfigMap, jobEnvVarsMetadataConfigMap)
 	if err != nil {
 		return nil, err
+	}
+	if len(batchName) > 0 {
+		batch, err := model.common.GetJob(batchName)
+		if err == nil {
+			job.OwnerReferences = []metav1.OwnerReference{api.GetJobOwnerReference(batch)}
+		} else if !errors.IsNotFound(err) {
+			return nil, err
+		}
 	}
 	createdJob, err := model.common.KubeClient.BatchV1().Jobs(namespace).Create(context.TODO(), job, metav1.CreateOptions{})
 	if err != nil {
