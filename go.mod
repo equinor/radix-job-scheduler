@@ -59,3 +59,5 @@ require (
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.1 // indirect
 	sigs.k8s.io/yaml v1.2.0 // indirect
 )
+
+replace github.com/equinor/radix-operator => github.com/equinor/radix-operator v1.19.6-0.20220225070507-4f7b0a9108eb

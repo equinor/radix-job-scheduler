@@ -98,8 +98,7 @@ func buildBatchScheduleDescriptionSecretSpec(batchName, appName, componentName s
 				kube.RadixAppLabel:       appName,
 				kube.RadixComponentLabel: componentName,
 				kube.RadixJobTypeLabel:   kube.RadixJobTypeJobSchedule,
-				"radix-batch-name":       batchName,
-				//TODO: add to radix-operator kube: RadixBatchNameLabel = "radix-batch-name"
+				kube.RadixBatchNameLabel: batchName,
 			},
 		},
 		Data: map[string][]byte{

@@ -26,8 +26,9 @@ type Env struct {
 	RadixDeploymentNamespace                     string
 	RadixJobSchedulersPerEnvironmentHistoryLimit int
 	RadixPort                                    string
-	//RadixBatchSchedulerImageFullName The name of the Radix batch cheduler image,
-	//including comtainer repository and tag
+	RadixDefaultCpuLimit                         string
+	RadixDefaultMemoryLimit                      string
+	//RadixBatchSchedulerImageFullName The name of the Radix batch cheduler image, including comtainer repository and tag
 	RadixBatchSchedulerImageFullName string
 }
 
@@ -51,6 +52,10 @@ func NewEnv() *Env {
 		radixJobSchedulersPerEnvironmentHistoryLimit = strings.TrimSpace(os.Getenv("RADIX_JOB_SCHEDULERS_PER_ENVIRONMENT_HISTORY_LIMIT"))
 		radixPorts                                   = strings.TrimSpace(os.Getenv("RADIX_PORTS"))
 		radixContainerRegistry                       = strings.TrimSpace(os.Getenv("RADIX_CONTAINER_REGISTRY"))
+		radixDefaultCpuLimit                         = strings.TrimSpace(os.Getenv(
+			"RADIXOPERATOR_APP_ENV_LIMITS_DEFAULT_CPU"))
+		radixDefaultMemoryLimit = strings.TrimSpace(os.Getenv(
+			"RADIXOPERATOR_APP_ENV_LIMITS_DEFAULT_MEMORY"))
 	)
 	env := Env{
 		RadixDNSZone:                radixDNSZone,
@@ -64,6 +69,10 @@ func NewEnv() *Env {
 		RadixDeploymentNamespace:    utils.GetEnvironmentNamespace(radixAppName, radixEnv),
 		UseSwagger:                  useSwagger,
 		RadixJobSchedulersPerEnvironmentHistoryLimit: 10,
+		RadixDefaultCpuLimit: commonUtils.TernaryString(radixDefaultCpuLimit == "",
+			schedulerDefaults.DefaultBatchCpuLimit, radixDefaultCpuLimit),
+		RadixDefaultMemoryLimit: commonUtils.TernaryString(radixDefaultMemoryLimit == "",
+			schedulerDefaults.DefaultBatchMemoryLimit, radixDefaultMemoryLimit),
 		RadixBatchSchedulerImageFullName: getRadixBatchSchedulerImageFullName(
 			radixContainerRegistry, radixEnv),
 	}

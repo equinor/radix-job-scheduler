@@ -18,13 +18,11 @@ import (
 	operatorUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	"github.com/equinor/radix-operator/pkg/apis/utils/numbers"
 	"github.com/equinor/radix-operator/pkg/apis/utils/slice"
-	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 	log "github.com/sirupsen/logrus"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/client-go/kubernetes"
 )
 
 const (
@@ -49,12 +47,12 @@ type Job interface {
 }
 
 //New Constructor for job model
-func New(env *models.Env, kube *kube.Kube, kubeClient kubernetes.Interface, radixClient radixclient.Interface) Job {
+func New(env *models.Env, kube *kube.Kube) Job {
 	return &jobModel{
 		common: &api.Model{
 			Kube:                   kube,
-			KubeClient:             kubeClient,
-			RadixClient:            radixClient,
+			KubeClient:             kube.KubeClient(),
+			RadixClient:            kube.RadixClient(),
 			Env:                    env,
 			SecurityContextBuilder: deployment.NewSecurityContextBuilder(true),
 		},
@@ -264,7 +262,7 @@ func (model *jobModel) createJob(jobName string, jobComponent *radixv1.RadixDepl
 		jobComponentConfig = &jobScheduleDescription.RadixJobComponentConfig
 	}
 
-	job, jobEnvVarsConfigMap, jobEnvVarsMetadataConfigMap, err := model.buildJobSpec(jobName, rd, jobComponent, payloadSecret, model.common.Kube, jobComponentConfig)
+	job, jobEnvVarsConfigMap, jobEnvVarsMetadataConfigMap, err := model.buildJobSpec(jobName, rd, jobComponent, payloadSecret, jobComponentConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -360,13 +358,13 @@ func (model *jobModel) getJobPods(jobName string) ([]corev1.Pod, error) {
 	return podList.Items, nil
 }
 
-func (model *jobModel) buildJobSpec(jobName string, rd *radixv1.RadixDeployment, radixJobComponent *radixv1.RadixDeployJobComponent, payloadSecret *corev1.Secret, kubeutil *kube.Kube, jobComponentConfig *models.RadixJobComponentConfig) (*batchv1.Job, *corev1.ConfigMap, *corev1.ConfigMap, error) {
+func (model *jobModel) buildJobSpec(jobName string, rd *radixv1.RadixDeployment, radixJobComponent *radixv1.RadixDeployJobComponent, payloadSecret *corev1.Secret, jobComponentConfig *models.RadixJobComponentConfig) (*batchv1.Job, *corev1.ConfigMap, *corev1.ConfigMap, error) {
 	podSecurityContext := model.common.SecurityContextBuilder.BuildPodSecurityContext(radixJobComponent)
 	volumes, err := model.getVolumes(rd.ObjectMeta.Namespace, rd.Spec.Environment, radixJobComponent, rd.Name, payloadSecret)
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	containers, jobEnvVarsConfigMap, jobEnvVarsMetadataConfigMap, err := getContainersWithEnvVarsConfigMaps(kubeutil, rd, jobName, radixJobComponent, payloadSecret, jobComponentConfig, model.common.SecurityContextBuilder)
+	containers, jobEnvVarsConfigMap, jobEnvVarsMetadataConfigMap, err := model.getContainersWithEnvVarsConfigMaps(rd, jobName, radixJobComponent, payloadSecret, jobComponentConfig, model.common.SecurityContextBuilder)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -419,8 +417,9 @@ func (model *jobModel) buildJobSpec(jobName string, rd *radixv1.RadixDeployment,
 	}, jobEnvVarsConfigMap, jobEnvVarsMetadataConfigMap, nil
 }
 
-func getContainersWithEnvVarsConfigMaps(kubeUtils *kube.Kube, rd *radixv1.RadixDeployment, jobName string, radixJobComponent *radixv1.RadixDeployJobComponent, payloadSecret *corev1.Secret, jobComponentConfig *models.RadixJobComponentConfig, securityContextBuilder deployment.SecurityContextBuilder) ([]corev1.Container, *corev1.ConfigMap, *corev1.ConfigMap, error) {
-	environmentVariables, jobEnvVarsConfigMap, jobEnvVarsMetadataConfigMap, err := buildEnvironmentVariablesWithEnvVarsConfigMaps(kubeUtils, rd, jobName, radixJobComponent)
+func (model *jobModel) getContainersWithEnvVarsConfigMaps(rd *radixv1.RadixDeployment, jobName string, radixJobComponent *radixv1.RadixDeployJobComponent, payloadSecret *corev1.Secret, jobComponentConfig *models.RadixJobComponentConfig, securityContextBuilder deployment.SecurityContextBuilder) ([]corev1.Container, *corev1.ConfigMap, *corev1.ConfigMap, error) {
+	environmentVariables, jobEnvVarsConfigMap, jobEnvVarsMetadataConfigMap,
+		err := model.buildEnvironmentVariablesWithEnvVarsConfigMaps(rd, jobName, radixJobComponent)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -446,8 +445,9 @@ func getContainersWithEnvVarsConfigMaps(kubeUtils *kube.Kube, rd *radixv1.RadixD
 	return []corev1.Container{container}, jobEnvVarsConfigMap, jobEnvVarsMetadataConfigMap, nil
 }
 
-func buildEnvironmentVariablesWithEnvVarsConfigMaps(kubeUtils *kube.Kube, rd *radixv1.RadixDeployment, jobName string, radixJobComponent *radixv1.RadixDeployJobComponent) ([]corev1.EnvVar, *corev1.ConfigMap, *corev1.ConfigMap, error) {
-	envVarsConfigMap, _, envVarsMetadataMap, err := kubeUtils.GetEnvVarsConfigMapAndMetadataMap(rd.GetNamespace(), radixJobComponent.GetName()) //env-vars metadata for jobComponent to use it for job's env-vars metadata
+func (model *jobModel) buildEnvironmentVariablesWithEnvVarsConfigMaps(rd *radixv1.RadixDeployment, jobName string, radixJobComponent *radixv1.RadixDeployJobComponent) ([]corev1.EnvVar, *corev1.ConfigMap, *corev1.ConfigMap, error) {
+	envVarsConfigMap, _, envVarsMetadataMap, err := model.common.Kube.GetEnvVarsConfigMapAndMetadataMap(rd.
+		GetNamespace(), radixJobComponent.GetName()) //env-vars metadata for jobComponent to use it for job's env-vars metadata
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -458,7 +458,7 @@ func buildEnvironmentVariablesWithEnvVarsConfigMaps(kubeUtils *kube.Kube, rd *ra
 	jobEnvVarsConfigMap.Data = envVarsConfigMap.Data
 	jobEnvVarsMetadataConfigMap := kube.BuildRadixConfigEnvVarsMetadataConfigMap(rd.GetName(), jobName) //build env-vars metadata config-name with name and 'env-vars-metadata-JOB_NAME'
 
-	environmentVariables, err := deployment.GetEnvironmentVariables(kubeUtils, rd.Spec.AppName, rd, radixJobComponent)
+	environmentVariables, err := deployment.GetEnvironmentVariables(model.common.Kube, rd.Spec.AppName, rd, radixJobComponent)
 	if err != nil {
 		return nil, nil, nil, err
 	}

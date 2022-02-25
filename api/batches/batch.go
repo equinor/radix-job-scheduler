@@ -135,8 +135,7 @@ func (model *batchModel) CreateBatch(batchScheduleDescription *models.BatchSched
 		return nil, apiErrors.NewFromError(err)
 	}
 
-	createdBatch, err := model.createBatch(batchName, jobComponent, radixDeployment, descriptionSecret,
-		batchScheduleDescription)
+	createdBatch, err := model.createBatch(batchName, jobComponent, radixDeployment, descriptionSecret)
 	if err != nil {
 		return nil, apiErrors.NewFromError(err)
 	}
@@ -264,8 +263,8 @@ func generateBatchName(jobComponent *radixv1.RadixDeployJobComponent) string {
 	return fmt.Sprintf("batch-%s-%s-%s", jobComponent.Name, timestamp, jobTag)
 }
 
-func (model *batchModel) createBatch(batchName string, jobComponent *radixv1.RadixDeployJobComponent, rd *radixv1.RadixDeployment, batchScheduleDescriptionSecret *corev1.Secret, batchScheduleDescription *models.BatchScheduleDescription) (*batchv1.Job, error) {
-	batch, err := model.buildBatchJobSpec(batchName, rd, jobComponent, batchScheduleDescriptionSecret, model.common.Kube)
+func (model *batchModel) createBatch(batchName string, jobComponent *radixv1.RadixDeployJobComponent, rd *radixv1.RadixDeployment, batchScheduleDescriptionSecret *corev1.Secret) (*batchv1.Job, error) {
+	batch, err := model.buildBatchJobSpec(batchName, rd, jobComponent, batchScheduleDescriptionSecret)
 	if err != nil {
 		return nil, err
 	}
@@ -327,8 +326,8 @@ func (model *batchModel) getJobPods(jobName string) ([]corev1.Pod, error) {
 	return podList.Items, nil
 }
 
-func (model *batchModel) buildBatchJobSpec(batchName string, rd *radixv1.RadixDeployment, radixJobComponent *radixv1.RadixDeployJobComponent, batchScheduleDescriptionSecret *corev1.Secret, kubeutil *kube.Kube) (*batchv1.Job, error) {
-	container := *model.getContainer(batchName, radixJobComponent, batchScheduleDescriptionSecret,
+func (model *batchModel) buildBatchJobSpec(batchName string, rd *radixv1.RadixDeployment, radixJobComponent *radixv1.RadixDeployJobComponent, batchScheduleDescriptionSecret *corev1.Secret) (*batchv1.Job, error) {
+	container := model.getContainer(batchName, radixJobComponent, rd, batchScheduleDescriptionSecret,
 		model.common.SecurityContextBuilder)
 	volumes := getVolumes(batchScheduleDescriptionSecret)
 	podSecurityContext := model.common.SecurityContextBuilder.BuildPodSecurityContext(radixJobComponent)
@@ -340,7 +339,7 @@ func (model *batchModel) buildBatchJobSpec(batchName string, rd *radixv1.RadixDe
 				kube.RadixAppLabel:       rd.Spec.AppName,
 				kube.RadixComponentLabel: radixJobComponent.Name,
 				kube.RadixJobTypeLabel:   kube.RadixJobTypeJobSchedule,
-				"radix-batch-name":       batchName,
+				kube.RadixBatchNameLabel: batchName,
 			},
 		},
 		Spec: batchv1.JobSpec{
@@ -348,14 +347,14 @@ func (model *batchModel) buildBatchJobSpec(batchName string, rd *radixv1.RadixDe
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
-						kube.RadixAppLabel:     rd.Spec.AppName,
-						kube.RadixJobTypeLabel: kube.RadixJobTypeJobSchedule,
-						"radix-batch-name":     batchName,
+						kube.RadixAppLabel:       rd.Spec.AppName,
+						kube.RadixJobTypeLabel:   kube.RadixJobTypeJobSchedule,
+						kube.RadixBatchNameLabel: batchName,
 					},
 					Namespace: rd.ObjectMeta.Namespace,
 				},
 				Spec: corev1.PodSpec{
-					Containers:         []corev1.Container{container},
+					Containers:         []corev1.Container{*container},
 					Volumes:            volumes,
 					SecurityContext:    podSecurityContext,
 					RestartPolicy:      corev1.RestartPolicyNever,
@@ -366,19 +365,18 @@ func (model *batchModel) buildBatchJobSpec(batchName string, rd *radixv1.RadixDe
 	}, nil
 }
 
-func (model *batchModel) getContainer(batchName string, radixJobComponent *radixv1.RadixDeployJobComponent,
-	batchScheduleDescriptionSecret *corev1.Secret, securityContextBuilder deployment.SecurityContextBuilder) *corev1.Container {
+func (model *batchModel) getContainer(batchName string, radixJobComponent *radixv1.RadixDeployJobComponent, rd *radixv1.RadixDeployment, batchScheduleDescriptionSecret *corev1.Secret, securityContextBuilder deployment.SecurityContextBuilder) *corev1.Container {
 	return &corev1.Container{
 		Name:            schedulerDefaults.RadixBatchSchedulerContainerName,
 		Image:           model.common.Env.RadixBatchSchedulerImageFullName,
 		ImagePullPolicy: corev1.PullAlways,
-		Env:             getEnvironmentVariables(batchName, model.common.Env, batchScheduleDescriptionSecret),
+		Env:             model.getEnvironmentVariables(batchName, model.common.Env, rd),
 		VolumeMounts:    getVolumeMounts(batchScheduleDescriptionSecret),
 		SecurityContext: securityContextBuilder.BuildContainerSecurityContext(radixJobComponent),
 	}
 }
 
-func getEnvironmentVariables(batchName string, env *models.Env, batchScheduleDescriptionSecret *corev1.Secret) []corev1.EnvVar {
+func (model *batchModel) getEnvironmentVariables(batchName string, env *models.Env, rd *radixv1.RadixDeployment) []corev1.EnvVar {
 	return []corev1.EnvVar{
 		{Name: defaults.RadixDNSZoneEnvironmentVariable, Value: env.RadixAppName},
 		{Name: defaults.ContainerRegistryEnvironmentVariable, Value: env.RadixContainerRegistry},
@@ -388,6 +386,8 @@ func getEnvironmentVariables(batchName string, env *models.Env, batchScheduleDes
 		{Name: defaults.EnvironmentnameEnvironmentVariable, Value: env.RadixEnvironment},
 		{Name: defaults.RadixComponentEnvironmentVariable, Value: env.RadixComponentName},
 		{Name: defaults.RadixDeploymentEnvironmentVariable, Value: env.RadixDeploymentName},
+		{Name: defaults.OperatorEnvLimitDefaultCPUEnvironmentVariable, Value: env.RadixDefaultCpuLimit},
+		{Name: defaults.OperatorEnvLimitDefaultMemoryEnvironmentVariable, Value: env.RadixDefaultMemoryLimit},
 		{Name: schedulerDefaults.BatchNameEnvVarName, Value: batchName},
 		{Name: schedulerDefaults.BatchScheduleDescriptionPath,
 			Value: path.Join(schedulerDefaults.BatchSecretsMountPath, schedulerDefaults.BatchScheduleDescriptionPropertyName)},
@@ -425,12 +425,12 @@ func getVolumes(batchScheduleDescriptionSecret *corev1.Secret) []corev1.Volume {
 func getLabelSelectorForJobComponentBatches(componentName string) string {
 	componentRequirement, _ := labels.NewRequirement(kube.RadixComponentLabel, selection.Equals, []string{componentName})
 	jobTypeRequirement, _ := labels.NewRequirement(kube.RadixJobTypeLabel, selection.Equals, []string{kube.RadixJobTypeJobSchedule})
-	batchNameRequirement, _ := labels.NewRequirement("radix-batch-name", selection.Exists, nil) //TODO kube.Label...
+	batchNameRequirement, _ := labels.NewRequirement(kube.RadixBatchNameLabel, selection.Exists, nil) //TODO kube.Label...
 	return labels.NewSelector().Add(*componentRequirement, *jobTypeRequirement, *batchNameRequirement).String()
 }
 
 func getLabelSelectorForJobPods(batchName string) string {
 	return labels.SelectorFromSet(map[string]string{
-		"radix-batch-name": batchName,
+		kube.RadixBatchNameLabel: batchName,
 	}).String()
 }

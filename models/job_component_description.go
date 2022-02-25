@@ -26,7 +26,7 @@ type JobScheduleDescription struct {
 	//
 	// required: false
 	// example: 'job1'
-	JobId string `json:"jobId"`
+	JobId string `json:"jobId,omitempty"`
 
 	// Payload holding json data to be mapped to component
 	//
@@ -34,7 +34,7 @@ type JobScheduleDescription struct {
 	// example: {'data':'value'}
 	Payload string `json:"payload"`
 
-	// RadixJobComponentConfig holding data realating to resource configuration
+	// RadixJobComponentConfig holding data relating to resource configuration
 	//
 	// required: false
 	RadixJobComponentConfig `json:",inline"`

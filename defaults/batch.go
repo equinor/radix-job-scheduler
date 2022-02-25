@@ -3,8 +3,6 @@ package defaults
 const (
 	//BatchScheduleDescriptionPropertyName Property name for a batch schedule description
 	BatchScheduleDescriptionPropertyName = "batchScheduleDescription"
-	//K8sBatchJobNameLabel A label that k8s automatically adds to a Pod created by Job and to the Job for a Batch
-	K8sBatchJobNameLabel = "batch-name"
 	//BatchSecretsMountPath Path to secrets, mounted to a Radix batch scheduler container
 	BatchSecretsMountPath = "/mnt/secrets"
 	//BatchNameEnvVarName Name of a batch
@@ -15,6 +13,10 @@ const (
 	RadixBatchSchedulerContainerName = "batch-scheduler"
 	//RadixBatchSchedulerImage Image name of the Radix batch scheduler
 	RadixBatchSchedulerImage = "radix-batch-scheduler"
+	//DefaultBatchCpuLimit Default batch pod CPU limit
+	DefaultBatchCpuLimit = "200m"
+	//DefaultBatchMemoryLimit Default batch pod memory limit
+	DefaultBatchMemoryLimit = "200Mi"
 )
 
 //GetBatchScheduleDescriptionSecretName Get secret name for the batch schedule description
