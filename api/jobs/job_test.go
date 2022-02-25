@@ -390,7 +390,7 @@ func TestCreateJob(t *testing.T) {
 		applyRadixDeploymentEnvVarsConfigMaps(kubeUtil, rd)
 		radixClient.RadixV1().RadixDeployments(envNamespace).Create(context.TODO(), rd, metav1.CreateOptions{})
 		handler := New(models.NewEnv(), kubeUtil)
-		jobStatus, err := handler.CreateJob(nil)
+		jobStatus, err := handler.CreateJob(&models.JobScheduleDescription{}, "")
 		assert.Nil(t, err)
 		assert.NotNil(t, jobStatus)
 		job, _ := kubeClient.BatchV1().Jobs(envNamespace).Get(context.TODO(), jobStatus.Name, metav1.GetOptions{})
@@ -428,7 +428,7 @@ func TestCreateJob(t *testing.T) {
 		applyRadixDeploymentEnvVarsConfigMaps(kubeUtil, rd)
 		radixClient.RadixV1().RadixDeployments(envNamespace).Create(context.TODO(), rd, metav1.CreateOptions{})
 		handler := New(models.NewEnv(), kubeUtil)
-		jobStatus, err := handler.CreateJob(nil)
+		jobStatus, err := handler.CreateJob(&models.JobScheduleDescription{}, "")
 		assert.Nil(t, err)
 		assert.NotNil(t, jobStatus)
 		job, _ := kubeClient.BatchV1().Jobs(envNamespace).Get(context.TODO(), jobStatus.Name, metav1.GetOptions{})
@@ -455,7 +455,7 @@ func TestCreateJob(t *testing.T) {
 		envVarConfigMapsMap := applyRadixDeploymentEnvVarsConfigMaps(kubeUtil, rd)
 		radixClient.RadixV1().RadixDeployments(envNamespace).Create(context.TODO(), rd, metav1.CreateOptions{})
 		handler := New(models.NewEnv(), kubeUtil)
-		jobStatus, err := handler.CreateJob(nil)
+		jobStatus, err := handler.CreateJob(&models.JobScheduleDescription{}, "")
 		assert.Nil(t, err)
 		assert.NotNil(t, jobStatus)
 		// Test environment variables
@@ -491,7 +491,7 @@ func TestCreateJob(t *testing.T) {
 		applyRadixDeploymentEnvVarsConfigMaps(kubeUtil, rd)
 		radixClient.RadixV1().RadixDeployments(envNamespace).Create(context.TODO(), rd, metav1.CreateOptions{})
 		handler := New(models.NewEnv(), kubeUtil)
-		jobStatus, err := handler.CreateJob(&models.JobScheduleDescription{Payload: payloadString})
+		jobStatus, err := handler.CreateJob(&models.JobScheduleDescription{Payload: payloadString}, "")
 		assert.Nil(t, err)
 		assert.NotNil(t, jobStatus)
 		// Test secret spec
@@ -535,7 +535,7 @@ func TestCreateJob(t *testing.T) {
 		applyRadixDeploymentEnvVarsConfigMaps(kubeUtil, rd)
 		radixClient.RadixV1().RadixDeployments(envNamespace).Create(context.TODO(), rd, metav1.CreateOptions{})
 		handler := New(models.NewEnv(), kubeUtil)
-		jobStatus, err := handler.CreateJob(&models.JobScheduleDescription{Payload: payloadString})
+		jobStatus, err := handler.CreateJob(&models.JobScheduleDescription{Payload: payloadString}, "")
 		assert.Nil(t, err)
 		assert.NotNil(t, jobStatus)
 		// Test secret does not exist
@@ -569,7 +569,7 @@ func TestCreateJob(t *testing.T) {
 		applyRadixDeploymentEnvVarsConfigMaps(kubeUtil, rd)
 		radixClient.RadixV1().RadixDeployments(envNamespace).Create(context.TODO(), rd, metav1.CreateOptions{})
 		handler := New(models.NewEnv(), kubeUtil)
-		jobStatus, err := handler.CreateJob(nil)
+		jobStatus, err := handler.CreateJob(&models.JobScheduleDescription{}, "")
 		assert.Nil(t, err)
 		assert.NotNil(t, jobStatus)
 		// Test service spec
@@ -606,7 +606,7 @@ func TestCreateJob(t *testing.T) {
 		applyRadixDeploymentEnvVarsConfigMaps(kubeUtil, rd)
 		radixClient.RadixV1().RadixDeployments(envNamespace).Create(context.TODO(), rd, metav1.CreateOptions{})
 		handler := New(models.NewEnv(), kubeUtil)
-		jobStatus, err := handler.CreateJob(nil)
+		jobStatus, err := handler.CreateJob(&models.JobScheduleDescription{}, "")
 		assert.Nil(t, err)
 		assert.NotNil(t, jobStatus)
 		// Test service spec
@@ -637,7 +637,7 @@ func TestCreateJob(t *testing.T) {
 		applyRadixDeploymentEnvVarsConfigMaps(kubeUtil, rd)
 		radixClient.RadixV1().RadixDeployments(envNamespace).Create(context.TODO(), rd, metav1.CreateOptions{})
 		handler := New(models.NewEnv(), kubeUtil)
-		jobStatus, err := handler.CreateJob(nil)
+		jobStatus, err := handler.CreateJob(&models.JobScheduleDescription{}, "")
 		assert.Nil(t, err)
 		assert.NotNil(t, jobStatus)
 		// Test resources defined
@@ -690,7 +690,7 @@ func TestCreateJob(t *testing.T) {
 				},
 			},
 		}
-		jobStatus, err := handler.CreateJob(&jobRequestConfig)
+		jobStatus, err := handler.CreateJob(&jobRequestConfig, "")
 		assert.Nil(t, err)
 		assert.NotNil(t, jobStatus)
 
@@ -727,7 +727,7 @@ func TestCreateJob(t *testing.T) {
 		applyRadixDeploymentEnvVarsConfigMaps(kubeUtil, rd)
 		radixClient.RadixV1().RadixDeployments(envNamespace).Create(context.TODO(), rd, metav1.CreateOptions{})
 		handler := New(models.NewEnv(), kubeUtil)
-		jobStatus, err := handler.CreateJob(nil)
+		jobStatus, err := handler.CreateJob(&models.JobScheduleDescription{}, "")
 		assert.Nil(t, err)
 		assert.NotNil(t, jobStatus)
 
@@ -761,7 +761,7 @@ func TestCreateJob(t *testing.T) {
 		applyRadixDeploymentEnvVarsConfigMaps(kubeUtil, rd)
 		radixClient.RadixV1().RadixDeployments(envNamespace).Create(context.TODO(), rd, metav1.CreateOptions{})
 		handler := New(models.NewEnv(), kubeUtil)
-		jobStatus, err := handler.CreateJob(nil)
+		jobStatus, err := handler.CreateJob(&models.JobScheduleDescription{}, "")
 		assert.Nil(t, err)
 		assert.NotNil(t, jobStatus)
 
@@ -797,7 +797,7 @@ func TestCreateJob(t *testing.T) {
 		applyRadixDeploymentEnvVarsConfigMaps(kubeUtil, rd)
 		radixClient.RadixV1().RadixDeployments(envNamespace).Create(context.TODO(), rd, metav1.CreateOptions{})
 		handler := New(models.NewEnv(), kubeUtil)
-		jobStatus, err := handler.CreateJob(nil)
+		jobStatus, err := handler.CreateJob(&models.JobScheduleDescription{}, "")
 		assert.Nil(t, err)
 		assert.NotNil(t, jobStatus)
 
@@ -831,7 +831,7 @@ func TestCreateJob(t *testing.T) {
 		applyRadixDeploymentEnvVarsConfigMaps(kubeUtil, rd)
 		radixClient.RadixV1().RadixDeployments(envNamespace).Create(context.TODO(), rd, metav1.CreateOptions{})
 		handler := New(models.NewEnv(), kubeUtil)
-		jobStatus, err := handler.CreateJob(nil)
+		jobStatus, err := handler.CreateJob(&models.JobScheduleDescription{}, "")
 		assert.Nil(t, jobStatus)
 		assert.NotNil(t, err)
 		assert.Equal(t, models.StatusReasonNotFound, apiErrors.ReasonForError(err))
@@ -857,7 +857,7 @@ func TestCreateJob(t *testing.T) {
 		applyRadixDeploymentEnvVarsConfigMaps(kubeUtil, rd)
 		radixClient.RadixV1().RadixDeployments(envNamespace).Create(context.TODO(), rd, metav1.CreateOptions{})
 		handler := New(models.NewEnv(), kubeUtil)
-		jobStatus, err := handler.CreateJob(nil)
+		jobStatus, err := handler.CreateJob(&models.JobScheduleDescription{}, "")
 		assert.Nil(t, jobStatus)
 		assert.NotNil(t, err)
 		assert.Equal(t, models.StatusReasonNotFound, apiErrors.ReasonForError(err))
@@ -884,7 +884,7 @@ func TestCreateJob(t *testing.T) {
 		envVarConfigMapsMap := applyRadixDeploymentEnvVarsConfigMaps(kubeUtil, rd)
 		radixClient.RadixV1().RadixDeployments(envNamespace).Create(context.TODO(), rd, metav1.CreateOptions{})
 		handler := New(models.NewEnv(), kubeUtil)
-		jobStatus, err := handler.CreateJob(nil)
+		jobStatus, err := handler.CreateJob(&models.JobScheduleDescription{}, "")
 		assert.NotNil(t, jobStatus)
 		assert.Nil(t, err)
 		job, _ := kubeClient.BatchV1().Jobs(envNamespace).Get(context.TODO(), jobStatus.Name, metav1.GetOptions{})
@@ -929,7 +929,7 @@ func TestCreateJob(t *testing.T) {
 		applyRadixDeploymentEnvVarsConfigMaps(kubeUtil, rd)
 		radixClient.RadixV1().RadixDeployments(envNamespace).Create(context.TODO(), rd, metav1.CreateOptions{})
 		handler := New(models.NewEnv(), kubeUtil)
-		jobStatus, err := handler.CreateJob(nil)
+		jobStatus, err := handler.CreateJob(&models.JobScheduleDescription{}, "")
 		assert.NotNil(t, jobStatus)
 		assert.Nil(t, err)
 		job, _ := kubeClient.BatchV1().Jobs(envNamespace).Get(context.TODO(), jobStatus.Name, metav1.GetOptions{})
@@ -960,7 +960,7 @@ func TestCreateJob(t *testing.T) {
 		applyRadixDeploymentEnvVarsConfigMaps(kubeUtil, rd)
 		radixClient.RadixV1().RadixDeployments(envNamespace).Create(context.TODO(), rd, metav1.CreateOptions{})
 		handler := New(models.NewEnv(), kubeUtil)
-		jobStatus, err := handler.CreateJob(nil)
+		jobStatus, err := handler.CreateJob(&models.JobScheduleDescription{}, "")
 		assert.NotNil(t, jobStatus)
 		assert.Nil(t, err)
 		job, _ := kubeClient.BatchV1().Jobs(envNamespace).Get(context.TODO(), jobStatus.Name, metav1.GetOptions{})
@@ -1009,7 +1009,7 @@ func TestCreateJob(t *testing.T) {
 				},
 			},
 		}
-		jobStatus, err := handler.CreateJob(&jobRequestConfig)
+		jobStatus, err := handler.CreateJob(&jobRequestConfig, "")
 
 		assert.NotNil(t, jobStatus)
 		assert.Nil(t, err)
@@ -1070,7 +1070,7 @@ func TestCreateJob(t *testing.T) {
 			},
 		}
 
-		jobStatus, err := handler.CreateJob(nil)
+		jobStatus, err := handler.CreateJob(&models.JobScheduleDescription{}, "")
 		assert.NotNil(t, jobStatus)
 		assert.Nil(t, err)
 		job, _ := kubeClient.BatchV1().Jobs(envNamespace).Get(context.TODO(), jobStatus.Name, metav1.GetOptions{})
