@@ -26,7 +26,8 @@ func (model *Model) CreatePayloadSecret(jobName string, jobComponent *v1.RadixDe
 
 	secretName := defaults.GetPayloadSecretName(jobName)
 	secret := buildPayloadSecretSpec(secretName, jobScheduleDescription.Payload, jobName, rd.Spec.AppName, jobComponent.Name)
-	return model.Kube.ApplySecret(model.Env.RadixDeploymentNamespace, secret)
+	savedSecret, err := model.Kube.ApplySecret(model.Env.RadixDeploymentNamespace, secret)
+	return savedSecret, err
 }
 
 //CreateBatchScheduleDescriptionSecret Create a secret for the batch schedule description
@@ -114,6 +115,9 @@ func (model *Model) UpdateOwnerReferenceOfSecret(ownerJob *batchv1.Job,
 	jobOwnerReferences := getJobOwnerReferences(ownerJob)
 	var errs []error
 	for _, secret := range secrets {
+		if secret == nil {
+			continue
+		}
 		secret.OwnerReferences = jobOwnerReferences
 		_, err := model.Kube.ApplySecret(ownerJob.ObjectMeta.GetNamespace(), secret)
 		if err != nil {
