@@ -23,6 +23,6 @@ We follow the [semantic version](https://semver.org/) as recommended by [go](htt
 
   Run following command to set `tag` (with corresponding version)
     ```
-    git tag v1.0.0
+    git tag v1.0.0 
     git push origin v1.0.0
     ```
