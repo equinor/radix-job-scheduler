@@ -3,7 +3,6 @@ package jobs
 import (
 	"context"
 	"fmt"
-	schedulerDefaults "github.com/equinor/radix-job-scheduler/defaults"
 	"github.com/equinor/radix-job-scheduler/models"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	"sort"
@@ -26,8 +25,8 @@ func GetJobStatusFromJob(kubeClient kubernetes.Interface, job *v1.Job, jobPods [
 	}
 	status := models.GetStatusFromJobStatus(job.Status)
 	jobStatus.Status = status.String()
-	jobStatus.JobId = job.ObjectMeta.Labels[schedulerDefaults.RadixJobIdLabel] //Not empty, if JobId exists
-	jobStatus.BatchName = job.ObjectMeta.Labels[kube.RadixBatchNameLabel]      //Not empty, if BatchName exists
+	jobStatus.JobId = job.ObjectMeta.Labels[kube.RadixJobIdLabel]         //Not empty, if JobId exists
+	jobStatus.BatchName = job.ObjectMeta.Labels[kube.RadixBatchNameLabel] //Not empty, if BatchName exists
 	if status != models.Running {
 		return &jobStatus
 	}

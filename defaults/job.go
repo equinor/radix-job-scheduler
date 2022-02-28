@@ -7,7 +7,6 @@ const (
 	JobPayloadPropertyName = "payload"
 	//K8sJobNameLabel A label that k8s automatically adds to a Pod created by a Job
 	K8sJobNameLabel = "job-name"
-	RadixJobIdLabel = "radix-job-id"
 )
 
 //GetPayloadSecretName Get secret name for the payload

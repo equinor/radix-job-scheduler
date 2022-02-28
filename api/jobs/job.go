@@ -427,8 +427,8 @@ func (model *jobModel) buildJobSpec(jobName string, rd *radixv1.RadixDeployment,
 		},
 	}
 	if len(jobScheduleDescription.JobId) > 0 {
-		job.ObjectMeta.Labels[schedulerDefaults.RadixJobIdLabel] = jobScheduleDescription.JobId
-		job.Spec.Template.ObjectMeta.Labels[schedulerDefaults.RadixJobIdLabel] = jobScheduleDescription.JobId
+		job.ObjectMeta.Labels[kube.RadixJobIdLabel] = jobScheduleDescription.JobId
+		job.Spec.Template.ObjectMeta.Labels[kube.RadixJobIdLabel] = jobScheduleDescription.JobId
 	}
 	if len(batchName) > 0 {
 		job.ObjectMeta.Labels[kube.RadixBatchNameLabel] = batchName

@@ -272,7 +272,7 @@ func (model *batchModel) buildBatchJobSpec(batchName string, rd *radixv1.RadixDe
 			Labels: map[string]string{
 				kube.RadixAppLabel:       rd.Spec.AppName,
 				kube.RadixComponentLabel: radixJobComponent.Name,
-				kube.RadixJobTypeLabel:   schedulerDefaults.RadixJobTypeBatchSchedule,
+				kube.RadixJobTypeLabel:   kube.RadixJobTypeBatchSchedule,
 			},
 		},
 		Spec: batchv1.JobSpec{
@@ -281,7 +281,7 @@ func (model *batchModel) buildBatchJobSpec(batchName string, rd *radixv1.RadixDe
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
 						kube.RadixAppLabel:       rd.Spec.AppName,
-						kube.RadixJobTypeLabel:   schedulerDefaults.RadixJobTypeBatchSchedule,
+						kube.RadixJobTypeLabel:   kube.RadixJobTypeBatchSchedule,
 						kube.RadixBatchNameLabel: batchName,
 					},
 					Namespace: rd.ObjectMeta.Namespace,
@@ -369,20 +369,20 @@ func getBatchPodsMap(pods []corev1.Pod) map[string][]corev1.Pod {
 func getLabelSelectorForBatches(componentName string) string {
 	return labels.SelectorFromSet(map[string]string{
 		kube.RadixComponentLabel: componentName,
-		kube.RadixJobTypeLabel:   schedulerDefaults.RadixJobTypeBatchSchedule,
+		kube.RadixJobTypeLabel:   kube.RadixJobTypeBatchSchedule,
 	}).String()
 }
 
 func getLabelSelectorForBatchPods(batchName string) string {
 	return labels.SelectorFromSet(map[string]string{
-		kube.RadixJobTypeLabel:   schedulerDefaults.RadixJobTypeBatchSchedule,
+		kube.RadixJobTypeLabel:   kube.RadixJobTypeBatchSchedule,
 		kube.RadixBatchNameLabel: batchName,
 	}).String()
 }
 
 func getLabelSelectorForAllBatchesPods() string {
 	return labels.SelectorFromSet(map[string]string{
-		kube.RadixJobTypeLabel: schedulerDefaults.RadixJobTypeBatchSchedule,
+		kube.RadixJobTypeLabel: kube.RadixJobTypeBatchSchedule,
 	}).String()
 }
 

@@ -17,8 +17,6 @@ const (
 	DefaultBatchCpuLimit = "200m"
 	//DefaultBatchMemoryLimit Default batch pod memory limit
 	DefaultBatchMemoryLimit = "200Mi"
-	//RadixJobTypeBatchSchedule TODO use from radix-operator
-	RadixJobTypeBatchSchedule = "batch-scheduler"
 )
 
 //GetBatchScheduleDescriptionSecretName Get secret name for the batch schedule description
