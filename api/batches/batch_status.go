@@ -10,9 +10,10 @@ import (
 
 // GetBatchStatusFromJob Gets job from a k8s jobs for the batch
 func GetBatchStatusFromJob(kubeClient kubernetes.Interface, job *v1.Job, jobPods []corev1.Pod) (*models.BatchStatus, error) {
-	jobStatus := jobs.GetJobStatusFromJob(kubeClient, job, jobPods)
+	batchJobStatus := jobs.GetJobStatusFromJob(kubeClient, job, jobPods)
+	batchJobStatus.BatchName = job.GetName()
 	batchStatus := models.BatchStatus{
-		JobStatus: *jobStatus,
+		JobStatus: *batchJobStatus,
 	}
 	//TODO 		JobStatuses: nil,
 	return &batchStatus, nil
