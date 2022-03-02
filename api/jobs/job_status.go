@@ -79,7 +79,7 @@ func getLastEventMessageForPod(kubeClient kubernetes.Interface, pod corev1.Pod) 
 	for _, event := range events {
 		if event.InvolvedObject.Name == pod.Name {
 			if strings.Contains(event.Message, "container init was OOM-killed (memory limit too low?)") {
-				return fmt.Sprintf("Probably memory limit too low. Error: %s", event.Message)
+				return fmt.Sprintf("Memory limit is probably too low. Error: %s", event.Message)
 			}
 			return event.Message
 		}

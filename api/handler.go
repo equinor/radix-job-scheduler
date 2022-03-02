@@ -8,7 +8,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-type Model struct {
+type Handler struct {
 	Kube                   *kube.Kube
 	Env                    *models.Env
 	KubeClient             kubernetes.Interface

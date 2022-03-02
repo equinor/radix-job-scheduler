@@ -13,29 +13,34 @@ import (
 )
 
 //CreateService Create a service for the job API
-func (model *Model) CreateService(jobName string, jobComponent *v1.RadixDeployJobComponent,
-	rd *v1.RadixDeployment) error {
-	if len(jobComponent.GetPorts()) > 0 {
-		serviceName := jobName
-		service := buildServiceSpec(serviceName, jobName, jobComponent.Name, rd.Spec.AppName, jobComponent.GetPorts())
-		return model.Kube.ApplyService(model.Env.RadixDeploymentNamespace, service)
+func (handler *Handler) CreateService(appName, jobName string, jobComponent *v1.RadixDeployJobComponent) (*corev1.
+	Service, error) {
+	if len(jobComponent.GetPorts()) == 0 {
+		return nil, nil
 	}
-	return nil
+	serviceName := jobName
+	service := buildServiceSpec(serviceName, jobName, jobComponent.Name, appName, jobComponent.GetPorts())
+	err := handler.Kube.ApplyService(handler.Env.RadixDeploymentNamespace, service)
+	if err != nil {
+		return nil, err
+	}
+	return service, nil
+
 }
 
 //GetServiceForJob Get the service for the job
-func (model *Model) GetServiceForJob(jobName string) (*corev1.ServiceList, error) {
-	return model.KubeClient.CoreV1().Services(model.Env.RadixDeploymentNamespace).List(
+func (handler *Handler) GetServiceForJob(jobName string) (*corev1.ServiceList, error) {
+	return handler.KubeClient.CoreV1().Services(handler.Env.RadixDeploymentNamespace).List(
 		context.TODO(),
 		metav1.ListOptions{
-			LabelSelector: getLabelSelectorForService(jobName, model.Env.RadixComponentName),
+			LabelSelector: getLabelSelectorForService(jobName, handler.Env.RadixComponentName),
 		},
 	)
 }
 
 //DeleteService Delete the service for the job
-func (model *Model) DeleteService(service *corev1.Service) error {
-	return model.KubeClient.CoreV1().Services(service.Namespace).Delete(context.TODO(), service.Name, metav1.DeleteOptions{})
+func (handler *Handler) DeleteService(service *corev1.Service) error {
+	return handler.KubeClient.CoreV1().Services(service.Namespace).Delete(context.TODO(), service.Name, metav1.DeleteOptions{})
 }
 
 func getLabelSelectorForService(jobName, componentName string) string {

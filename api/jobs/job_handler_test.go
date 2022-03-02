@@ -30,8 +30,8 @@ func Test_createJob(t *testing.T) {
 	radixClient, kubeClient, kubeUtil := test.SetupTest("app", "qa", "compute", "app-deploy-1", 1)
 	env := models.NewEnv()
 
-	h := &jobModel{
-		common: &api.Model{
+	h := &jobHandler{
+		common: &api.Handler{
 			Kube:                   kubeUtil,
 			KubeClient:             kubeClient,
 			RadixClient:            radixClient,
@@ -45,7 +45,7 @@ func Test_createJob(t *testing.T) {
 		params := getTestParams()
 		rd := params.applyRd(kubeUtil)
 
-		job, err := h.createJob(params.jobName, &rd.Spec.Jobs[0], rd, &corev1.Secret{}, &models.JobScheduleDescription{Payload: "{}"}, "")
+		job, err := h.createJob(params.jobName, &rd.Spec.Jobs[0], rd, &models.JobScheduleDescription{Payload: "{}"}, "")
 
 		assert.NoError(t, err)
 		assert.Equal(t, params.jobName, job.Name)
@@ -58,8 +58,8 @@ func Test_createJobWithEnvVars(t *testing.T) {
 		t.Parallel()
 		radixClient, kubeClient, kubeUtil := test.SetupTest("app", "qa", "compute", "app-deploy-1", 1)
 		env := models.NewEnv()
-		h := &jobModel{
-			common: &api.Model{
+		h := &jobHandler{
+			common: &api.Handler{
 				Kube:                   kubeUtil,
 				KubeClient:             kubeClient,
 				RadixClient:            radixClient,
@@ -70,7 +70,7 @@ func Test_createJobWithEnvVars(t *testing.T) {
 		params := getTestParams().withRadixConfigEnvVarsMap(map[string]string{"VAR1": "val1", "VAR2": "val2"})
 		rd := params.applyRd(kubeUtil)
 
-		job, err := h.createJob(params.jobName, &rd.Spec.Jobs[0], rd, &corev1.Secret{}, &models.JobScheduleDescription{Payload: "{}"}, "")
+		job, err := h.createJob(params.jobName, &rd.Spec.Jobs[0], rd, &models.JobScheduleDescription{Payload: "{}"}, "")
 
 		assert.NoError(t, err)
 		envVars := job.Spec.Template.Spec.Containers[0].Env
@@ -85,8 +85,8 @@ func Test_createJobWithEnvVars(t *testing.T) {
 		t.Parallel()
 		radixClient, kubeClient, kubeUtil := test.SetupTest("app", "qa", "compute", "app-deploy-1", 1)
 		env := models.NewEnv()
-		h := &jobModel{
-			common: &api.Model{
+		h := &jobHandler{
+			common: &api.Handler{
 				Kube:                   kubeUtil,
 				KubeClient:             kubeClient,
 				RadixClient:            radixClient,
@@ -100,7 +100,7 @@ func Test_createJobWithEnvVars(t *testing.T) {
 			withEnvVarsMetadataConfigMapData(map[string]string{"VAR2": "orig-val2"})
 		rd := params.applyRd(kubeUtil)
 
-		job, _ := h.createJob(params.jobName, &rd.Spec.Jobs[0], rd, &corev1.Secret{}, &models.JobScheduleDescription{Payload: "{}"}, "")
+		job, _ := h.createJob(params.jobName, &rd.Spec.Jobs[0], rd, &models.JobScheduleDescription{Payload: "{}"}, "")
 
 		envVarsConfigMap, _, envVarsMetadataMap, err := kubeUtil.GetEnvVarsConfigMapAndMetadataMap(params.namespace, params.jobName)
 		assert.NoError(t, err)
@@ -121,8 +121,8 @@ func Test_createJobWithEnvVars(t *testing.T) {
 		t.Parallel()
 		radixClient, kubeClient, kubeUtil := test.SetupTest("app", "qa", "compute", "app-deploy-1", 1)
 		env := models.NewEnv()
-		h := &jobModel{
-			common: &api.Model{
+		h := &jobHandler{
+			common: &api.Handler{
 				Kube:                   kubeUtil,
 				KubeClient:             kubeClient,
 				RadixClient:            radixClient,
@@ -133,7 +133,7 @@ func Test_createJobWithEnvVars(t *testing.T) {
 		params := getTestParams().withRadixConfigEnvVarsMap(map[string]string{"VAR1": "val1", "VAR2": "val2"})
 		rd := params.applyRd(kubeUtil)
 
-		job, _ := h.createJob(params.jobName, &rd.Spec.Jobs[0], rd, &corev1.Secret{}, &models.JobScheduleDescription{Payload: "{}"}, "")
+		job, _ := h.createJob(params.jobName, &rd.Spec.Jobs[0], rd, &models.JobScheduleDescription{Payload: "{}"}, "")
 
 		envVarsConfigMap, envVarsMetadataConfigMap, _, err := kubeUtil.GetEnvVarsConfigMapAndMetadataMap(params.namespace, params.jobName)
 		assert.NoError(t, err)
@@ -272,8 +272,8 @@ func TestNewHandler(t *testing.T) {
 	env := models.NewEnv()
 
 	h := New(env, kubeUtil)
-	assert.IsType(t, &jobModel{}, h)
-	actualHandler := h.(*jobModel)
+	assert.IsType(t, &jobHandler{}, h)
+	actualHandler := h.(*jobHandler)
 
 	assert.Equal(t, kubeUtil, actualHandler.common.Kube)
 	assert.Equal(t, env, actualHandler.common.Env)
@@ -1060,8 +1060,8 @@ func TestCreateJob(t *testing.T) {
 		securityContextBuilder.EXPECT().BuildPodSecurityContext(gomock.Any()).Return(expectedPodSecurityContext).Times(1)
 		expectedContainerSecurityContext := &corev1.SecurityContext{RunAsNonRoot: utils.BoolPtr(true)}
 		securityContextBuilder.EXPECT().BuildContainerSecurityContext(gomock.Any()).Return(expectedContainerSecurityContext).Times(1)
-		handler := &jobModel{
-			common: &api.Model{
+		handler := &jobHandler{
+			common: &api.Handler{
 				Kube:                   kubeUtil,
 				KubeClient:             kubeClient,
 				RadixClient:            radixClient,

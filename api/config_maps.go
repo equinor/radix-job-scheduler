@@ -1,16 +1,13 @@
 package api
 
 import (
-	batchv1 "k8s.io/api/batch/v1"
+	"context"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-//UpdateOwnerReferenceOfConfigMaps Update owner reference of a config-map
-func (model *Model) UpdateOwnerReferenceOfConfigMaps(ownerJob *batchv1.Job, configMaps ...*corev1.ConfigMap) error {
-	jobOwnerReference := GetJobOwnerReference(ownerJob)
-	for _, configMap := range configMaps {
-		configMap.OwnerReferences = []metav1.OwnerReference{jobOwnerReference}
-	}
-	return model.Kube.UpdateConfigMap(ownerJob.ObjectMeta.GetNamespace(), configMaps...)
+// DeleteConfigMaps Deletes a configmap in a namespace
+func (handler *Handler) DeleteConfigMaps(configMap *corev1.ConfigMap) error {
+	return handler.KubeClient.CoreV1().ConfigMaps(configMap.Namespace).Delete(context.Background(), configMap.Name,
+		metav1.DeleteOptions{})
 }

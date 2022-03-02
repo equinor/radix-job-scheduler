@@ -30,11 +30,11 @@ const (
 	radixJobNameEnvironmentVariable = "RADIX_JOB_NAME"
 )
 
-type jobModel struct {
-	common *api.Model
+type jobHandler struct {
+	common *api.Handler
 }
 
-type Job interface {
+type JobHandler interface {
 	//GetJobs Get status of all jobs
 	GetJobs() ([]models.JobStatus, error)
 	//GetJob Get status of a job
@@ -47,10 +47,10 @@ type Job interface {
 	DeleteJob(jobName string) error
 }
 
-//New Constructor for job model
-func New(env *models.Env, kube *kube.Kube) Job {
-	return &jobModel{
-		common: &api.Model{
+//New Constructor for job handler
+func New(env *models.Env, kube *kube.Kube) JobHandler {
+	return &jobHandler{
+		common: &api.Handler{
 			Kube:                   kube,
 			KubeClient:             kube.KubeClient(),
 			RadixClient:            kube.RadixClient(),
@@ -61,120 +61,99 @@ func New(env *models.Env, kube *kube.Kube) Job {
 }
 
 //GetJobs Get status of all jobs
-func (model *jobModel) GetJobs() ([]models.JobStatus, error) {
-	log.Debugf("Get Jobs for namespace: %s", model.common.Env.RadixDeploymentNamespace)
+func (handler *jobHandler) GetJobs() ([]models.JobStatus, error) {
+	log.Debugf("Get Jobs for namespace: %s", handler.common.Env.RadixDeploymentNamespace)
 
-	kubeJobs, err := model.getAllJobs()
+	kubeJobs, err := handler.getAllJobs()
 	if err != nil {
 		return nil, err
 	}
 
-	pods, err := model.getJobPods("")
+	pods, err := handler.getJobPods("")
 	if err != nil {
 		return nil, err
 	}
-	podsMap := getJobPodsMap(pods)
+	podsMap := api.GetPodsToJobNameMap(pods)
 	jobs := make([]models.JobStatus, len(kubeJobs))
 	for idx, k8sJob := range kubeJobs {
-		jobs[idx] = *GetJobStatusFromJob(model.common.KubeClient, k8sJob, podsMap[k8sJob.Name])
+		jobs[idx] = *GetJobStatusFromJob(handler.common.KubeClient, k8sJob, podsMap[k8sJob.Name])
 	}
 
-	log.Debugf("Found %v jobs for namespace %s", len(jobs), model.common.Env.RadixDeploymentNamespace)
+	log.Debugf("Found %v jobs for namespace %s", len(jobs), handler.common.Env.RadixDeploymentNamespace)
 	return jobs, nil
 }
 
-func getJobPodsMap(pods []corev1.Pod) map[string][]corev1.Pod {
-	podsMap := make(map[string][]corev1.Pod)
-	for _, pod := range pods {
-		jobName := pod.Labels[schedulerDefaults.K8sJobNameLabel]
-		if len(jobName) > 0 {
-			podsMap[jobName] = append(podsMap[jobName], pod)
-		}
-	}
-	return podsMap
-}
-
 //GetJob Get status of a job
-func (model *jobModel) GetJob(jobName string) (*models.JobStatus, error) {
-	log.Debugf("get jobs for namespace: %s", model.common.Env.RadixDeploymentNamespace)
-	job, err := model.getJobByName(jobName)
+func (handler *jobHandler) GetJob(jobName string) (*models.JobStatus, error) {
+	log.Debugf("get jobs for namespace: %s", handler.common.Env.RadixDeploymentNamespace)
+	job, err := handler.getJobByName(jobName)
 	if err != nil {
 		return nil, err
 	}
-	log.Debugf("found Job %s for namespace: %s", jobName, model.common.Env.RadixDeploymentNamespace)
-	pods, err := model.getJobPods(job.Name)
+	log.Debugf("found Job %s for namespace: %s", jobName, handler.common.Env.RadixDeploymentNamespace)
+	pods, err := handler.getJobPods(job.Name)
 	if err != nil {
 		return nil, err
 	}
-	jobStatus := GetJobStatusFromJob(model.common.KubeClient, job, pods)
+	jobStatus := GetJobStatusFromJob(handler.common.KubeClient, job, pods)
 	return jobStatus, nil
 }
 
 //CreateJob Create a job with parameters
-func (model *jobModel) CreateJob(jobScheduleDescription *models.JobScheduleDescription,
+func (handler *jobHandler) CreateJob(jobScheduleDescription *models.JobScheduleDescription,
 	batchName string) (*models.JobStatus, error) {
-	log.Debugf("create job for namespace: %s", model.common.Env.RadixDeploymentNamespace)
+	log.Debugf("create job for namespace: %s", handler.common.Env.RadixDeploymentNamespace)
 
-	radixDeployment, err := model.common.RadixClient.RadixV1().RadixDeployments(model.common.Env.RadixDeploymentNamespace).Get(context.TODO(), model.common.Env.RadixDeploymentName, metav1.GetOptions{})
+	radixDeployment, err := handler.common.RadixClient.RadixV1().RadixDeployments(handler.common.Env.RadixDeploymentNamespace).Get(context.Background(), handler.common.Env.RadixDeploymentName, metav1.GetOptions{})
 	if err != nil {
-		return nil, jobErrors.NewNotFound("radix deployment", model.common.Env.RadixDeploymentName)
+		return nil, jobErrors.NewNotFound("radix deployment", handler.common.Env.RadixDeploymentName)
 	}
 
-	jobComponent := radixDeployment.GetJobComponentByName(model.common.Env.RadixComponentName)
+	jobComponent := radixDeployment.GetJobComponentByName(handler.common.Env.RadixComponentName)
 	if jobComponent == nil {
-		return nil, jobErrors.NewNotFound("job component", model.common.Env.RadixComponentName)
+		return nil, jobErrors.NewNotFound("job component", handler.common.Env.RadixComponentName)
 	}
 
 	jobName := generateJobName(jobComponent)
 
-	payloadSecret, err := model.common.CreatePayloadSecret(jobName, jobComponent, radixDeployment,
-		jobScheduleDescription)
+	job, err := handler.createJob(jobName, jobComponent, radixDeployment, jobScheduleDescription, batchName)
 	if err != nil {
 		return nil, jobErrors.NewFromError(err)
 	}
 
-	if err = model.common.CreateService(jobName, jobComponent, radixDeployment); err != nil {
-		return nil, jobErrors.NewFromError(err)
-	}
-
-	job, err := model.createJob(jobName, jobComponent, radixDeployment, payloadSecret, jobScheduleDescription, batchName)
-	if err != nil {
-		return nil, jobErrors.NewFromError(err)
-	}
-
-	log.Debug(fmt.Sprintf("created job %s for component %s, environment %s, in namespace: %s", job.Name, model.common.Env.RadixComponentName, radixDeployment.Spec.Environment, model.common.Env.RadixDeploymentNamespace))
-	return GetJobStatusFromJob(model.common.KubeClient, job, nil), nil
+	log.Debug(fmt.Sprintf("created job %s for component %s, environment %s, in namespace: %s", job.Name, handler.common.Env.RadixComponentName, radixDeployment.Spec.Environment, handler.common.Env.RadixDeploymentNamespace))
+	return GetJobStatusFromJob(handler.common.KubeClient, job, nil), nil
 }
 
 //DeleteJob Delete a job
-func (model *jobModel) DeleteJob(jobName string) error {
-	log.Debugf("delete job %s for namespace: %s", jobName, model.common.Env.RadixDeploymentNamespace)
-	return model.garbageCollectJob(jobName)
+func (handler *jobHandler) DeleteJob(jobName string) error {
+	log.Debugf("delete job %s for namespace: %s", jobName, handler.common.Env.RadixDeploymentNamespace)
+	return handler.garbageCollectJob(jobName)
 }
 
 //MaintainHistoryLimit Delete outdated jobs
-func (model *jobModel) MaintainHistoryLimit() error {
-	jobList, err := model.getAllJobs()
+func (handler *jobHandler) MaintainHistoryLimit() error {
+	jobList, err := handler.getAllJobs()
 	if err != nil {
 		return err
 	}
 
 	log.Debug("maintain history limit for succeeded jobs")
 	succeededJobs := jobList.Where(func(j *batchv1.Job) bool { return j.Status.Succeeded > 0 })
-	if err = model.maintainHistoryLimitForJobs(succeededJobs, model.common.Env.RadixJobSchedulersPerEnvironmentHistoryLimit); err != nil {
+	if err = handler.maintainHistoryLimitForJobs(succeededJobs, handler.common.Env.RadixJobSchedulersPerEnvironmentHistoryLimit); err != nil {
 		return err
 	}
 
 	log.Debug("maintain history limit for failed jobs")
 	failedJobs := jobList.Where(func(j *batchv1.Job) bool { return j.Status.Failed > 0 })
-	if err = model.maintainHistoryLimitForJobs(failedJobs, model.common.Env.RadixJobSchedulersPerEnvironmentHistoryLimit); err != nil {
+	if err = handler.maintainHistoryLimitForJobs(failedJobs, handler.common.Env.RadixJobSchedulersPerEnvironmentHistoryLimit); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (model *jobModel) maintainHistoryLimitForJobs(jobs []*batchv1.Job, historyLimit int) error {
+func (handler *jobHandler) maintainHistoryLimitForJobs(jobs []*batchv1.Job, historyLimit int) error {
 	numToDelete := len(jobs) - historyLimit
 	if numToDelete <= 0 {
 		log.Debug("no history jobs to delete")
@@ -186,42 +165,42 @@ func (model *jobModel) maintainHistoryLimitForJobs(jobs []*batchv1.Job, historyL
 	for i := 0; i < numToDelete; i++ {
 		job := sortedJobs[i]
 		log.Debugf("deleting job %s", job.Name)
-		if err := model.garbageCollectJob(job.Name); err != nil {
+		if err := handler.garbageCollectJob(job.Name); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (model *jobModel) garbageCollectJob(jobName string) (err error) {
-	job, err := model.getJobByName(jobName)
+func (handler *jobHandler) garbageCollectJob(jobName string) (err error) {
+	job, err := handler.getJobByName(jobName)
 	if err != nil {
 		return
 	}
 
-	secrets, err := model.common.GetSecretsForJob(jobName)
+	secrets, err := handler.common.GetSecretsForJob(jobName)
 	if err != nil {
 		return
 	}
 
 	for _, secret := range secrets.Items {
-		if err = model.common.DeleteSecret(&secret); err != nil {
+		if err = handler.common.DeleteSecret(&secret); err != nil {
 			return
 		}
 	}
 
-	services, err := model.common.GetServiceForJob(jobName)
+	services, err := handler.common.GetServiceForJob(jobName)
 	if err != nil {
 		return
 	}
 
 	for _, service := range services.Items {
-		if err = model.common.DeleteService(&service); err != nil {
+		if err = handler.common.DeleteService(&service); err != nil {
 			return
 		}
 	}
 
-	err = model.deleteJob(job)
+	err = handler.deleteJob(job)
 	if err != nil {
 		return err
 	}
@@ -258,65 +237,86 @@ func generateJobName(jobComponent *radixv1.RadixDeployJobComponent) string {
 	return fmt.Sprintf("%s-%s-%s", jobComponent.Name, timestamp, jobTag)
 }
 
-func (model *jobModel) createJob(jobName string, jobComponent *radixv1.RadixDeployJobComponent, rd *radixv1.RadixDeployment, payloadSecret *corev1.Secret, jobScheduleDescription *models.JobScheduleDescription, batchName string) (*batchv1.Job, error) {
+func (handler *jobHandler) createJob(jobName string, jobComponent *radixv1.RadixDeployJobComponent, rd *radixv1.RadixDeployment, jobScheduleDescription *models.JobScheduleDescription, batchName string) (*batchv1.Job, error) {
+	appName := rd.Spec.AppName
+	namespace := handler.common.Env.RadixDeploymentNamespace
 	var jobComponentConfig *models.RadixJobComponentConfig
 	if jobScheduleDescription != nil {
 		jobComponentConfig = &jobScheduleDescription.RadixJobComponentConfig
 	}
 
-	job, jobEnvVarsConfigMap, jobEnvVarsMetadataConfigMap, err := model.buildJobSpec(jobName, rd, jobComponent,
+	payloadSecret, err := handler.common.CreatePayloadSecret(appName, jobName, jobComponent, jobScheduleDescription)
+	if err != nil {
+		return nil, jobErrors.NewFromError(err)
+	}
+	job, jobEnvVarsConfigMap, jobEnvVarsMetadataConfigMap, err := handler.buildJobSpec(jobName, rd, jobComponent,
 		payloadSecret, jobComponentConfig, batchName, jobScheduleDescription)
 	if err != nil {
 		return nil, err
 	}
-	namespace := model.common.Env.RadixDeploymentNamespace
-	createdJobEnvVarsConfigMap, createdJobEnvVarsMetadataConfigMap, err := model.createEnvVarsConfigMaps(namespace, jobEnvVarsConfigMap, jobEnvVarsMetadataConfigMap)
+
+	createdJobEnvVarsConfigMap, createdJobEnvVarsMetadataConfigMap, err := handler.createEnvVarsConfigMaps(namespace, jobEnvVarsConfigMap, jobEnvVarsMetadataConfigMap)
 	if err != nil {
 		return nil, err
 	}
+
+	service, err := handler.common.CreateService(appName, jobName, jobComponent)
+	if err != nil {
+		return nil, jobErrors.NewFromError(err)
+	}
 	if len(batchName) > 0 {
-		batch, err := model.common.GetJob(batchName)
+		batch, err := handler.common.GetBatch(batchName)
 		if err == nil {
 			job.OwnerReferences = []metav1.OwnerReference{api.GetJobOwnerReference(batch)}
 		} else if !errors.IsNotFound(err) {
-			return nil, err
+			return nil, fmt.Errorf("the batch %s does not exist", batchName)
 		}
 	}
-	createdJob, err := model.common.KubeClient.BatchV1().Jobs(namespace).Create(context.TODO(), job, metav1.CreateOptions{})
+	createdJob, err := handler.common.KubeClient.BatchV1().Jobs(namespace).Create(context.Background(), job, metav1.CreateOptions{})
+	if err != nil {
+		_ = handler.common.Kube.DeleteSecret(payloadSecret.GetNamespace(), payloadSecret.GetName())
+		_ = handler.common.DeleteConfigMaps(createdJobEnvVarsConfigMap)
+		_ = handler.common.DeleteConfigMaps(createdJobEnvVarsMetadataConfigMap)
+		_ = handler.common.DeleteService(service)
+		return nil, err
+	}
+	jobOwnerReference := api.GetJobOwnerReference(createdJob)
+	err = handler.common.UpdateOwnerReferenceOfSecret(namespace, jobOwnerReference, payloadSecret)
 	if err != nil {
 		return nil, err
 	}
-	err = model.common.UpdateOwnerReferenceOfSecret(createdJob, payloadSecret)
-	if err != nil {
-		return nil, err
-	}
-	err = model.common.UpdateOwnerReferenceOfConfigMaps(createdJob, createdJobEnvVarsConfigMap,
+	err = handler.common.UpdateOwnerReferenceOfConfigMaps(namespace, jobOwnerReference, createdJobEnvVarsConfigMap,
 		createdJobEnvVarsMetadataConfigMap)
 	if err != nil {
 		return nil, err
 	}
+	err = handler.common.UpdateOwnerReferenceOfService(namespace, jobOwnerReference, service)
+	if err != nil {
+		return nil, err
+	}
+
 	return createdJob, nil
 }
 
-func (model *jobModel) createEnvVarsConfigMaps(namespace string, jobEnvVarsConfigMap *corev1.ConfigMap, jobEnvVarsMetadataConfigMap *corev1.ConfigMap) (*corev1.ConfigMap, *corev1.ConfigMap, error) {
-	createdJobEnvVarsConfigMap, err := model.common.Kube.CreateConfigMap(namespace, jobEnvVarsConfigMap)
+func (handler *jobHandler) createEnvVarsConfigMaps(namespace string, jobEnvVarsConfigMap *corev1.ConfigMap, jobEnvVarsMetadataConfigMap *corev1.ConfigMap) (*corev1.ConfigMap, *corev1.ConfigMap, error) {
+	createdJobEnvVarsConfigMap, err := handler.common.Kube.CreateConfigMap(namespace, jobEnvVarsConfigMap)
 	if err != nil {
 		return nil, nil, err
 	}
-	createdJobEnvVarsMetadataConfigMap, err := model.common.Kube.CreateConfigMap(namespace, jobEnvVarsMetadataConfigMap)
+	createdJobEnvVarsMetadataConfigMap, err := handler.common.Kube.CreateConfigMap(namespace, jobEnvVarsMetadataConfigMap)
 	if err != nil {
 		return nil, nil, err
 	}
 	return createdJobEnvVarsConfigMap, createdJobEnvVarsMetadataConfigMap, nil
 }
 
-func (model *jobModel) deleteJob(job *batchv1.Job) error {
+func (handler *jobHandler) deleteJob(job *batchv1.Job) error {
 	fg := metav1.DeletePropagationBackground
-	return model.common.KubeClient.BatchV1().Jobs(job.Namespace).Delete(context.TODO(), job.Name, metav1.DeleteOptions{PropagationPolicy: &fg})
+	return handler.common.KubeClient.BatchV1().Jobs(job.Namespace).Delete(context.Background(), job.Name, metav1.DeleteOptions{PropagationPolicy: &fg})
 }
 
-func (model *jobModel) getJobByName(jobName string) (*batchv1.Job, error) {
-	allJobs, err := model.getAllJobs()
+func (handler *jobHandler) getJobByName(jobName string) (*batchv1.Job, error) {
+	allJobs, err := handler.getAllJobs()
 	if err != nil {
 		return nil, err
 	}
@@ -330,14 +330,14 @@ func (model *jobModel) getJobByName(jobName string) (*batchv1.Job, error) {
 	return nil, jobErrors.NewNotFound("job", jobName)
 }
 
-func (model *jobModel) getAllJobs() (models.JobList, error) {
-	kubeJobs, err := model.common.KubeClient.
+func (handler *jobHandler) getAllJobs() (models.JobList, error) {
+	kubeJobs, err := handler.common.KubeClient.
 		BatchV1().
-		Jobs(model.common.Env.RadixDeploymentNamespace).
+		Jobs(handler.common.Env.RadixDeploymentNamespace).
 		List(
-			context.TODO(),
+			context.Background(),
 			metav1.ListOptions{
-				LabelSelector: getLabelSelectorForJobComponent(model.common.Env.RadixComponentName),
+				LabelSelector: getLabelSelectorForJobComponent(handler.common.Env.RadixComponentName),
 			},
 		)
 
@@ -349,16 +349,16 @@ func (model *jobModel) getAllJobs() (models.JobList, error) {
 }
 
 //getJobPods jobName is optional, when empty - returns all job-pods for the namespace
-func (model *jobModel) getJobPods(jobName string) ([]corev1.Pod, error) {
+func (handler *jobHandler) getJobPods(jobName string) ([]corev1.Pod, error) {
 	listOptions := metav1.ListOptions{}
 	if jobName != "" {
 		listOptions.LabelSelector = getLabelSelectorForJobPods(jobName)
 	}
-	podList, err := model.common.KubeClient.
+	podList, err := handler.common.KubeClient.
 		CoreV1().
-		Pods(model.common.Env.RadixDeploymentNamespace).
+		Pods(handler.common.Env.RadixDeploymentNamespace).
 		List(
-			context.TODO(),
+			context.Background(),
 			listOptions,
 		)
 
@@ -369,13 +369,13 @@ func (model *jobModel) getJobPods(jobName string) ([]corev1.Pod, error) {
 	return podList.Items, nil
 }
 
-func (model *jobModel) buildJobSpec(jobName string, rd *radixv1.RadixDeployment, radixJobComponent *radixv1.RadixDeployJobComponent, payloadSecret *corev1.Secret, jobComponentConfig *models.RadixJobComponentConfig, batchName string, jobScheduleDescription *models.JobScheduleDescription) (*batchv1.Job, *corev1.ConfigMap, *corev1.ConfigMap, error) {
-	podSecurityContext := model.common.SecurityContextBuilder.BuildPodSecurityContext(radixJobComponent)
-	volumes, err := model.getVolumes(rd.ObjectMeta.Namespace, rd.Spec.Environment, radixJobComponent, rd.Name, payloadSecret)
+func (handler *jobHandler) buildJobSpec(jobName string, rd *radixv1.RadixDeployment, radixJobComponent *radixv1.RadixDeployJobComponent, payloadSecret *corev1.Secret, jobComponentConfig *models.RadixJobComponentConfig, batchName string, jobScheduleDescription *models.JobScheduleDescription) (*batchv1.Job, *corev1.ConfigMap, *corev1.ConfigMap, error) {
+	podSecurityContext := handler.common.SecurityContextBuilder.BuildPodSecurityContext(radixJobComponent)
+	volumes, err := handler.getVolumes(rd.ObjectMeta.Namespace, rd.Spec.Environment, radixJobComponent, rd.Name, payloadSecret)
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	containers, jobEnvVarsConfigMap, jobEnvVarsMetadataConfigMap, err := model.getContainersWithEnvVarsConfigMaps(rd, jobName, radixJobComponent, payloadSecret, jobComponentConfig, model.common.SecurityContextBuilder)
+	containers, jobEnvVarsConfigMap, jobEnvVarsMetadataConfigMap, err := handler.getContainersWithEnvVarsConfigMaps(rd, jobName, radixJobComponent, payloadSecret, jobComponentConfig, handler.common.SecurityContextBuilder)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -437,9 +437,9 @@ func (model *jobModel) buildJobSpec(jobName string, rd *radixv1.RadixDeployment,
 	return &job, jobEnvVarsConfigMap, jobEnvVarsMetadataConfigMap, nil
 }
 
-func (model *jobModel) getContainersWithEnvVarsConfigMaps(rd *radixv1.RadixDeployment, jobName string, radixJobComponent *radixv1.RadixDeployJobComponent, payloadSecret *corev1.Secret, jobComponentConfig *models.RadixJobComponentConfig, securityContextBuilder deployment.SecurityContextBuilder) ([]corev1.Container, *corev1.ConfigMap, *corev1.ConfigMap, error) {
+func (handler *jobHandler) getContainersWithEnvVarsConfigMaps(rd *radixv1.RadixDeployment, jobName string, radixJobComponent *radixv1.RadixDeployJobComponent, payloadSecret *corev1.Secret, jobComponentConfig *models.RadixJobComponentConfig, securityContextBuilder deployment.SecurityContextBuilder) ([]corev1.Container, *corev1.ConfigMap, *corev1.ConfigMap, error) {
 	environmentVariables, jobEnvVarsConfigMap, jobEnvVarsMetadataConfigMap,
-		err := model.buildEnvironmentVariablesWithEnvVarsConfigMaps(rd, jobName, radixJobComponent)
+		err := handler.buildEnvironmentVariablesWithEnvVarsConfigMaps(rd, jobName, radixJobComponent)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -465,8 +465,8 @@ func (model *jobModel) getContainersWithEnvVarsConfigMaps(rd *radixv1.RadixDeplo
 	return []corev1.Container{container}, jobEnvVarsConfigMap, jobEnvVarsMetadataConfigMap, nil
 }
 
-func (model *jobModel) buildEnvironmentVariablesWithEnvVarsConfigMaps(rd *radixv1.RadixDeployment, jobName string, radixJobComponent *radixv1.RadixDeployJobComponent) ([]corev1.EnvVar, *corev1.ConfigMap, *corev1.ConfigMap, error) {
-	envVarsConfigMap, _, envVarsMetadataMap, err := model.common.Kube.GetEnvVarsConfigMapAndMetadataMap(rd.
+func (handler *jobHandler) buildEnvironmentVariablesWithEnvVarsConfigMaps(rd *radixv1.RadixDeployment, jobName string, radixJobComponent *radixv1.RadixDeployJobComponent) ([]corev1.EnvVar, *corev1.ConfigMap, *corev1.ConfigMap, error) {
+	envVarsConfigMap, _, envVarsMetadataMap, err := handler.common.Kube.GetEnvVarsConfigMapAndMetadataMap(rd.
 		GetNamespace(), radixJobComponent.GetName()) //env-vars metadata for jobComponent to use it for job's env-vars metadata
 	if err != nil {
 		return nil, nil, nil, err
@@ -478,7 +478,7 @@ func (model *jobModel) buildEnvironmentVariablesWithEnvVarsConfigMaps(rd *radixv
 	jobEnvVarsConfigMap.Data = envVarsConfigMap.Data
 	jobEnvVarsMetadataConfigMap := kube.BuildRadixConfigEnvVarsMetadataConfigMap(rd.GetName(), jobName) //build env-vars metadata config-name with name and 'env-vars-metadata-JOB_NAME'
 
-	environmentVariables, err := deployment.GetEnvironmentVariables(model.common.Kube, rd.Spec.AppName, rd, radixJobComponent)
+	environmentVariables, err := deployment.GetEnvironmentVariables(handler.common.Kube, rd.Spec.AppName, rd, radixJobComponent)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -510,8 +510,8 @@ func getVolumeMounts(radixJobComponent *radixv1.RadixDeployJobComponent, radixDe
 	return volumeMounts, nil
 }
 
-func (model *jobModel) getVolumes(namespace, environment string, radixJobComponent *radixv1.RadixDeployJobComponent, radixDeploymentName string, payloadSecret *corev1.Secret) ([]corev1.Volume, error) {
-	volumes, err := deployment.GetVolumes(model.common.KubeClient, model.common.Kube, namespace, environment, radixJobComponent, radixDeploymentName)
+func (handler *jobHandler) getVolumes(namespace, environment string, radixJobComponent *radixv1.RadixDeployJobComponent, radixDeploymentName string, payloadSecret *corev1.Secret) ([]corev1.Volume, error) {
+	volumes, err := deployment.GetVolumes(handler.common.KubeClient, handler.common.Kube, namespace, environment, radixJobComponent, radixDeploymentName)
 	if err != nil {
 		return nil, err
 	}
