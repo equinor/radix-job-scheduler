@@ -15,6 +15,9 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
+var imageErrors = map[string]bool{"ImagePullBackOff": true, "ImageInspectError": true, "ErrImagePull": true,
+	"ErrImageNeverPull": true, "RegistryUnavailable": true, "InvalidImageName": true}
+
 // GetJobStatusFromJob Gets job from a k8s job
 func GetJobStatusFromJob(kubeClient kubernetes.Interface, job *v1.Job, jobPods []corev1.Pod) *models.JobStatus {
 	jobStatus := models.JobStatus{
@@ -42,7 +45,11 @@ func GetJobStatusFromJob(kubeClient kubernetes.Interface, job *v1.Job, jobPods [
 				jobStatus.Message = cs.State.Terminated.Message
 				return &jobStatus
 			case cs.State.Waiting != nil:
-				jobStatus.Status = models.Waiting.String()
+				if _, ok := imageErrors[cs.State.Waiting.Reason]; ok {
+					jobStatus.Status = models.Failed.String()
+				} else {
+					jobStatus.Status = models.Waiting.String()
+				}
 				jobStatus.Started = ""
 				message := cs.State.Waiting.Message
 				if len(message) > 0 {
