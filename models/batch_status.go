@@ -7,5 +7,5 @@ type BatchStatus struct {
 	JobStatus
 	// JobStatuses of the jobs in the batch
 	// required: false
-	JobStatuses []JobStatus
+	JobStatuses []JobStatus `json:"jobStatuses,omitempty"`
 }
