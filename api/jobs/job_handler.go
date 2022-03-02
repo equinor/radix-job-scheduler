@@ -139,7 +139,10 @@ func (handler *jobHandler) MaintainHistoryLimit() error {
 	}
 
 	log.Debug("maintain history limit for succeeded jobs")
-	succeededJobs := jobList.Where(func(j *batchv1.Job) bool { return j.Status.Succeeded > 0 })
+	succeededJobs := jobList.Where(func(j *batchv1.Job) bool {
+		_, batchNameLabelExists := j.ObjectMeta.Labels[kube.RadixBatchNameLabel]
+		return j.Status.Succeeded > 0 && !batchNameLabelExists
+	})
 	if err = handler.maintainHistoryLimitForJobs(succeededJobs, handler.common.Env.RadixJobSchedulersPerEnvironmentHistoryLimit); err != nil {
 		return err
 	}
