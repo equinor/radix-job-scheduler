@@ -2,6 +2,7 @@ package models
 
 import v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 
+//RadixJobComponentConfig holds description of RadixJobComponent
 type RadixJobComponentConfig struct {
 	// Resource describes the compute resource requirements.
 	//
@@ -11,6 +12,7 @@ type RadixJobComponentConfig struct {
 	//
 	// required: false
 	Node *v1.RadixNode `json:"node,omitempty"`
+
 	// TimeLimitSeconds defines maximum job run time. Corresponds to ActiveDeadlineSeconds in K8s.
 	//
 	// required: false
@@ -20,12 +22,19 @@ type RadixJobComponentConfig struct {
 // JobScheduleDescription holds description about scheduling job
 // swagger:model JobScheduleDescription
 type JobScheduleDescription struct {
+	// JobId Optional ID of a job
+	//
+	// required: false
+	// example: 'job1'
+	JobId string `json:"jobId,omitempty"`
+
 	// Payload holding json data to be mapped to component
 	//
 	// required: false
 	// example: {'data':'value'}
 	Payload string `json:"payload"`
-	// Payload holding data realating to resource configuration
+
+	// RadixJobComponentConfig holding data relating to resource configuration
 	//
 	// required: false
 	RadixJobComponentConfig `json:",inline"`
