@@ -232,7 +232,8 @@ func applyRadixDeploymentEnvVarsConfigMaps(kubeUtil *kube.Kube, rd *v1.RadixDepl
 }
 
 func ensurePopulatedEnvVarsConfigMaps(kubeUtil *kube.Kube, rd *v1.RadixDeployment, deployComponent v1.RadixCommonDeployComponent) *corev1.ConfigMap {
-	initialEnvVarsConfigMap, _, _ := kubeUtil.GetOrCreateEnvVarsConfigMapAndMetadataMap(rd.GetNamespace(), rd.GetName(), deployComponent.GetName())
+	initialEnvVarsConfigMap, _, _ := kubeUtil.GetOrCreateEnvVarsConfigMapAndMetadataMap(rd.GetNamespace(),
+		rd.Spec.AppName, deployComponent.GetName())
 	desiredConfigMap := initialEnvVarsConfigMap.DeepCopy()
 	for envVarName, envVarValue := range deployComponent.GetEnvironmentVariables() {
 		if strings.HasPrefix(envVarName, "RADIX_") {
