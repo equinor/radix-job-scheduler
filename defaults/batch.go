@@ -17,6 +17,8 @@ const (
 	DefaultBatchCpuLimit = "200m"
 	//DefaultBatchMemoryLimit Default batch pod memory limit
 	DefaultBatchMemoryLimit = "200Mi"
+	//RadixBatchJobCountAnnotation Job count in a batch
+	RadixBatchJobCountAnnotation = "radix.equinor.com\\batch-job-count"
 )
 
 //GetBatchScheduleDescriptionSecretName Get secret name for the batch schedule description
