@@ -278,13 +278,10 @@ func (handler *batchHandler) buildBatchJobSpec(namespace, appName, batchName str
 	volumes := getVolumes(batchScheduleDescriptionSecret)
 	podSecurityContext := handler.common.SecurityContextBuilder.BuildPodSecurityContext(radixJobComponent)
 
-	jobCount := len(batchScheduleDescription.JobScheduleDescriptions)
-	return &batchv1.Job{
+	job := batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: batchName,
-			Annotations: map[string]string{
-				schedulerDefaults.RadixBatchJobCountAnnotation: strconv.Itoa(jobCount),
-			},
+			Name:        batchName,
+			Annotations: make(map[string]string, 0),
 			Labels: map[string]string{
 				kube.RadixAppLabel:       appName,
 				kube.RadixComponentLabel: radixJobComponent.Name,
@@ -311,7 +308,12 @@ func (handler *batchHandler) buildBatchJobSpec(namespace, appName, batchName str
 				},
 			},
 		},
-	}, nil
+	}
+	if batchScheduleDescription != nil {
+		jobCount := strconv.Itoa(len(batchScheduleDescription.JobScheduleDescriptions))
+		job.ObjectMeta.Annotations[schedulerDefaults.RadixBatchJobCountAnnotation] = jobCount
+	}
+	return &job, nil
 }
 
 func (handler *batchHandler) getContainer(batchName string, radixJobComponent *radixv1.RadixDeployJobComponent, batchScheduleDescriptionSecret *corev1.Secret, securityContextBuilder deployment.SecurityContextBuilder) *corev1.Container {

@@ -54,7 +54,7 @@ func Test_createJob(t *testing.T) {
 }
 
 func Test_createJobWithEnvVars(t *testing.T) {
-	t.Run("Create Job With new env-vars", func(t *testing.T) {
+	t.Run("Create Job with new env-vars", func(t *testing.T) {
 		t.Parallel()
 		radixClient, kubeClient, kubeUtil := test.SetupTest("app", "qa", "compute", "app-deploy-1", 1)
 		env := models.NewEnv()
@@ -81,7 +81,7 @@ func Test_createJobWithEnvVars(t *testing.T) {
 		assert.NotEmpty(t, envVarsMap[radixJobNameEnvironmentVariable])
 	})
 
-	t.Run("Create Job With updated and deleted env-vars", func(t *testing.T) {
+	t.Run("Create Job with updated and deleted env-vars", func(t *testing.T) {
 		t.Parallel()
 		radixClient, kubeClient, kubeUtil := test.SetupTest("app", "qa", "compute", "app-deploy-1", 1)
 		env := models.NewEnv()
@@ -259,7 +259,7 @@ func TestGetJob(t *testing.T) {
 		assert.Equal(t, "job2", job2.Name)
 	})
 
-	t.Run("job With different component name label", func(t *testing.T) {
+	t.Run("job with different component name label", func(t *testing.T) {
 		t.Parallel()
 		appName, appEnvironment, appComponent, appDeployment, jobName := "app", "qa", "compute", "app-deploy-1", "a-job"
 		appNamespace := utils.GetEnvironmentNamespace(appName, appEnvironment)
@@ -273,7 +273,7 @@ func TestGetJob(t *testing.T) {
 		assert.Nil(t, job)
 	})
 
-	t.Run("job With different job type label", func(t *testing.T) {
+	t.Run("job with different job type label", func(t *testing.T) {
 		t.Parallel()
 		appName, appEnvironment, appComponent, appDeployment, jobName := "app", "qa", "compute", "app-deploy-1", "a-job"
 		appNamespace := utils.GetEnvironmentNamespace(appName, appEnvironment)
@@ -369,7 +369,7 @@ func TestCreateJob(t *testing.T) {
 		assert.Equal(t, image, job.Spec.Template.Spec.Containers[0].Image)
 	})
 
-	t.Run("RD job With env vars", func(t *testing.T) {
+	t.Run("RD job with env vars", func(t *testing.T) {
 		t.Parallel()
 		appName, appEnvironment, appJobComponent, appDeployment := "app", "qa", "compute", "app-deploy-1"
 		envNamespace := utils.GetEnvironmentNamespace(appName, appEnvironment)
@@ -405,7 +405,7 @@ func TestCreateJob(t *testing.T) {
 		assert.NotEmpty(t, env3)
 	})
 
-	t.Run("RD job With payload path - secret exists and mounted", func(t *testing.T) {
+	t.Run("RD job with payload path - secret exists and mounted", func(t *testing.T) {
 		t.Parallel()
 		appName, appEnvironment, appJobComponent, appDeployment, payloadPath, payloadString := "app", "qa", "compute", "app-deploy-1", "path/payload", "the_payload"
 		envNamespace := utils.GetEnvironmentNamespace(appName, appEnvironment)
@@ -483,7 +483,7 @@ func TestCreateJob(t *testing.T) {
 		assert.Len(t, job.Spec.Template.Spec.Containers[0].VolumeMounts, 0)
 	})
 
-	t.Run("RD job With ports - service created", func(t *testing.T) {
+	t.Run("RD job with ports - service created", func(t *testing.T) {
 		t.Parallel()
 		appName, appEnvironment, appJobComponent, appDeployment := "app", "qa", "compute", "app-deploy-1"
 		envNamespace := utils.GetEnvironmentNamespace(appName, appEnvironment)
@@ -548,7 +548,7 @@ func TestCreateJob(t *testing.T) {
 		assert.Nil(t, service)
 	})
 
-	t.Run("RD job With resources", func(t *testing.T) {
+	t.Run("RD job with resources", func(t *testing.T) {
 		t.Parallel()
 		appName, appEnvironment, appJobComponent, appDeployment := "app", "qa", "compute", "app-deploy-1"
 		envNamespace := utils.GetEnvironmentNamespace(appName, appEnvironment)
@@ -586,7 +586,7 @@ func TestCreateJob(t *testing.T) {
 		assert.Equal(t, int64(40), job.Spec.Template.Spec.Containers[0].Resources.Limits.Memory().ScaledValue(resource.Mega))
 	})
 
-	t.Run("RD job With resources - resource specified by request body", func(t *testing.T) {
+	t.Run("RD job with resources - resource specified by request body", func(t *testing.T) {
 		t.Parallel()
 		appName, appEnvironment, appJobComponent, appDeployment := "app", "qa", "compute", "app-deploy-1"
 		envNamespace := utils.GetEnvironmentNamespace(appName, appEnvironment)
@@ -672,7 +672,7 @@ func TestCreateJob(t *testing.T) {
 		assert.Len(t, job.Spec.Template.Spec.Containers[0].Resources.Limits, 0)
 	})
 
-	t.Run("RD job With only request resources, not exceeding default limit", func(t *testing.T) {
+	t.Run("RD job with only request resources, not exceeding default limit", func(t *testing.T) {
 		t.Parallel()
 		appName, appEnvironment, appJobComponent, appDeployment := "app", "qa", "compute", "app-deploy-1"
 		envNamespace := utils.GetEnvironmentNamespace(appName, appEnvironment)
@@ -708,7 +708,7 @@ func TestCreateJob(t *testing.T) {
 		assert.Len(t, job.Spec.Template.Spec.Containers[0].Resources.Limits, 0)
 	})
 
-	t.Run("RD job With only request resources, exceeding default limit", func(t *testing.T) {
+	t.Run("RD job with only request resources, exceeding default limit", func(t *testing.T) {
 		t.Parallel()
 		appName, appEnvironment, appJobComponent, appDeployment := "app", "qa", "compute", "app-deploy-1"
 		envNamespace := utils.GetEnvironmentNamespace(appName, appEnvironment)
@@ -798,7 +798,7 @@ func TestCreateJob(t *testing.T) {
 		assert.Equal(t, apiErrors.NotFoundMessage("radix deployment", appDeployment), err.Error())
 	})
 
-	t.Run("RD job With secrets - env correctly set", func(t *testing.T) {
+	t.Run("RD job with secrets - env correctly set", func(t *testing.T) {
 		t.Parallel()
 		appName, appEnvironment, appJobComponent, appDeployment := "app", "qa", "compute", "app-deploy-1"
 		envNamespace := utils.GetEnvironmentNamespace(appName, appEnvironment)
@@ -836,7 +836,7 @@ func TestCreateJob(t *testing.T) {
 		assert.NotEmpty(t, env3)
 	})
 
-	t.Run("RD job With volume mount", func(t *testing.T) {
+	t.Run("RD job with volume mount", func(t *testing.T) {
 		t.Parallel()
 		appName, appEnvironment, appJobComponent, appDeployment := "app", "qa", "compute", "app-deploy-1"
 		envNamespace := utils.GetEnvironmentNamespace(appName, appEnvironment)
@@ -873,7 +873,7 @@ func TestCreateJob(t *testing.T) {
 		assert.Equal(t, "/blobpath", job.Spec.Template.Spec.Containers[0].VolumeMounts[0].MountPath)
 	})
 
-	t.Run("RD job With GPU", func(t *testing.T) {
+	t.Run("RD job with GPU", func(t *testing.T) {
 		t.Parallel()
 		appName, appEnvironment, appJobComponent, appDeployment := "app", "qa", "compute", "app-deploy-1"
 		envNamespace := utils.GetEnvironmentNamespace(appName, appEnvironment)
@@ -913,7 +913,7 @@ func TestCreateJob(t *testing.T) {
 		assert.Equal(t, corev1.TaintEffectNoSchedule, tolerations[0].Effect)
 	})
 
-	t.Run("RD job With GPU node - GPU node specified by request body", func(t *testing.T) {
+	t.Run("RD job with GPU node - GPU node specified by request body", func(t *testing.T) {
 		t.Parallel()
 		appName, appEnvironment, appJobComponent, appDeployment := "app", "qa", "compute", "app-deploy-1"
 		envNamespace := utils.GetEnvironmentNamespace(appName, appEnvironment)
