@@ -8,6 +8,7 @@ import (
 	"github.com/equinor/radix-operator/pkg/apis/defaults"
 	"path"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -237,7 +238,7 @@ func (handler *batchHandler) createBatch(namespace, appName, batchName string, r
 		return nil, apiErrors.NewFromError(err)
 	}
 	batch, err := handler.buildBatchJobSpec(namespace, appName, batchName, radixJobComponent,
-		batchScheduleDescriptionSecret)
+		batchScheduleDescriptionSecret, batchScheduleDescription)
 	if err != nil {
 		return nil, err
 	}
@@ -271,15 +272,19 @@ func (handler *batchHandler) getAllBatches() (models.JobList, error) {
 	return slice.PointersOf(kubeBatches.Items).([]*batchv1.Job), nil
 }
 
-func (handler *batchHandler) buildBatchJobSpec(namespace, appName, batchName string, radixJobComponent *radixv1.RadixDeployJobComponent, batchScheduleDescriptionSecret *corev1.Secret) (*batchv1.Job, error) {
+func (handler *batchHandler) buildBatchJobSpec(namespace, appName, batchName string, radixJobComponent *radixv1.RadixDeployJobComponent, batchScheduleDescriptionSecret *corev1.Secret, batchScheduleDescription *models.BatchScheduleDescription) (*batchv1.Job, error) {
 	container := handler.getContainer(batchName, radixJobComponent, batchScheduleDescriptionSecret,
 		handler.common.SecurityContextBuilder)
 	volumes := getVolumes(batchScheduleDescriptionSecret)
 	podSecurityContext := handler.common.SecurityContextBuilder.BuildPodSecurityContext(radixJobComponent)
 
+	jobCount := len(batchScheduleDescription.JobScheduleDescriptions)
 	return &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: batchName,
+			Annotations: map[string]string{
+				schedulerDefaults.RadixBatchJobCountAnnotation: strconv.Itoa(jobCount),
+			},
 			Labels: map[string]string{
 				kube.RadixAppLabel:       appName,
 				kube.RadixComponentLabel: radixJobComponent.Name,

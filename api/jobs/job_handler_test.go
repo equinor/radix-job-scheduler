@@ -2,17 +2,17 @@ package jobs
 
 import (
 	"context"
-	"github.com/equinor/radix-job-scheduler/api"
 	"strings"
 	"testing"
 	"time"
 
-	radixUtils "github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-common/utils/numbers"
+	"github.com/equinor/radix-job-scheduler/api"
 	apiErrors "github.com/equinor/radix-job-scheduler/api/errors"
 	schedulerDefaults "github.com/equinor/radix-job-scheduler/defaults"
 	"github.com/equinor/radix-job-scheduler/models"
 	"github.com/equinor/radix-job-scheduler/utils/test"
+	testUtils "github.com/equinor/radix-job-scheduler/utils/test"
 	"github.com/equinor/radix-operator/pkg/apis/deployment"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
@@ -42,19 +42,19 @@ func Test_createJob(t *testing.T) {
 
 	t.Run("Create Job", func(t *testing.T) {
 		t.Parallel()
-		params := getTestParams()
-		rd := params.applyRd(kubeUtil)
+		params := testUtils.GetTestParams()
+		rd := params.ApplyRd(kubeUtil)
 
-		job, err := h.createJob(params.jobName, &rd.Spec.Jobs[0], rd, &models.JobScheduleDescription{Payload: "{}"}, "")
+		job, err := h.createJob(params.JobName, &rd.Spec.Jobs[0], rd, &models.JobScheduleDescription{Payload: "{}"}, "")
 
 		assert.NoError(t, err)
-		assert.Equal(t, params.jobName, job.Name)
-		assert.Equal(t, params.namespace, job.Namespace)
+		assert.Equal(t, params.JobName, job.Name)
+		assert.Equal(t, params.Namespace, job.Namespace)
 	})
 }
 
 func Test_createJobWithEnvVars(t *testing.T) {
-	t.Run("Create Job with new env-vars", func(t *testing.T) {
+	t.Run("Create Job With new env-vars", func(t *testing.T) {
 		t.Parallel()
 		radixClient, kubeClient, kubeUtil := test.SetupTest("app", "qa", "compute", "app-deploy-1", 1)
 		env := models.NewEnv()
@@ -67,10 +67,10 @@ func Test_createJobWithEnvVars(t *testing.T) {
 				SecurityContextBuilder: deployment.NewSecurityContextBuilder(true),
 			},
 		}
-		params := getTestParams().withRadixConfigEnvVarsMap(map[string]string{"VAR1": "val1", "VAR2": "val2"})
-		rd := params.applyRd(kubeUtil)
+		params := testUtils.GetTestParams().WithRadixConfigEnvVarsMap(map[string]string{"VAR1": "val1", "VAR2": "val2"})
+		rd := params.ApplyRd(kubeUtil)
 
-		job, err := h.createJob(params.jobName, &rd.Spec.Jobs[0], rd, &models.JobScheduleDescription{Payload: "{}"}, "")
+		job, err := h.createJob(params.JobName, &rd.Spec.Jobs[0], rd, &models.JobScheduleDescription{Payload: "{}"}, "")
 
 		assert.NoError(t, err)
 		envVars := job.Spec.Template.Spec.Containers[0].Env
@@ -81,7 +81,7 @@ func Test_createJobWithEnvVars(t *testing.T) {
 		assert.NotEmpty(t, envVarsMap[radixJobNameEnvironmentVariable])
 	})
 
-	t.Run("Create Job with updated and deleted env-vars", func(t *testing.T) {
+	t.Run("Create Job With updated and deleted env-vars", func(t *testing.T) {
 		t.Parallel()
 		radixClient, kubeClient, kubeUtil := test.SetupTest("app", "qa", "compute", "app-deploy-1", 1)
 		env := models.NewEnv()
@@ -94,15 +94,15 @@ func Test_createJobWithEnvVars(t *testing.T) {
 				SecurityContextBuilder: deployment.NewSecurityContextBuilder(true),
 			},
 		}
-		params := getTestParams().
-			withRadixConfigEnvVarsMap(map[string]string{"VAR1": "val1", "VAR2": "orig-val2"}).
-			withEnvVarsConfigMapData(map[string]string{"VAR1": "val1", "VAR2": "edited-val2"}).
-			withEnvVarsMetadataConfigMapData(map[string]string{"VAR2": "orig-val2"})
-		rd := params.applyRd(kubeUtil)
+		params := testUtils.GetTestParams().
+			WithRadixConfigEnvVarsMap(map[string]string{"VAR1": "val1", "VAR2": "orig-val2"}).
+			WithEnvVarsConfigMapData(map[string]string{"VAR1": "val1", "VAR2": "edited-val2"}).
+			WithEnvVarsMetadataConfigMapData(map[string]string{"VAR2": "orig-val2"})
+		rd := params.ApplyRd(kubeUtil)
 
-		job, _ := h.createJob(params.jobName, &rd.Spec.Jobs[0], rd, &models.JobScheduleDescription{Payload: "{}"}, "")
+		job, _ := h.createJob(params.JobName, &rd.Spec.Jobs[0], rd, &models.JobScheduleDescription{Payload: "{}"}, "")
 
-		envVarsConfigMap, _, envVarsMetadataMap, err := kubeUtil.GetEnvVarsConfigMapAndMetadataMap(params.namespace, params.jobName)
+		envVarsConfigMap, _, envVarsMetadataMap, err := kubeUtil.GetEnvVarsConfigMapAndMetadataMap(params.Namespace, params.JobName)
 		assert.NoError(t, err)
 		envVars := job.Spec.Template.Spec.Containers[0].Env
 		assert.Len(t, envVars, 3)
@@ -130,12 +130,12 @@ func Test_createJobWithEnvVars(t *testing.T) {
 				SecurityContextBuilder: deployment.NewSecurityContextBuilder(true),
 			},
 		}
-		params := getTestParams().withRadixConfigEnvVarsMap(map[string]string{"VAR1": "val1", "VAR2": "val2"})
-		rd := params.applyRd(kubeUtil)
+		params := testUtils.GetTestParams().WithRadixConfigEnvVarsMap(map[string]string{"VAR1": "val1", "VAR2": "val2"})
+		rd := params.ApplyRd(kubeUtil)
 
-		job, _ := h.createJob(params.jobName, &rd.Spec.Jobs[0], rd, &models.JobScheduleDescription{Payload: "{}"}, "")
+		job, _ := h.createJob(params.JobName, &rd.Spec.Jobs[0], rd, &models.JobScheduleDescription{Payload: "{}"}, "")
 
-		envVarsConfigMap, envVarsMetadataConfigMap, _, err := kubeUtil.GetEnvVarsConfigMapAndMetadataMap(params.namespace, params.jobName)
+		envVarsConfigMap, envVarsMetadataConfigMap, _, err := kubeUtil.GetEnvVarsConfigMapAndMetadataMap(params.Namespace, params.JobName)
 		assert.NoError(t, err)
 		assert.NotEmpty(t, envVarsConfigMap.OwnerReferences)
 		assert.Equal(t, job.Name, envVarsConfigMap.OwnerReferences[0].Name)
@@ -151,73 +151,6 @@ func getEnvVarsMap(envVars []corev1.EnvVar) map[string]corev1.EnvVar {
 		envVarsMap[envVar.Name] = envVar
 	}
 	return envVarsMap
-}
-
-func (params *testParams) applyRd(kubeUtil *kube.Kube) *v1.RadixDeployment {
-	envVarsConfigMap, envVarsMetadataConfigMap, _ := kubeUtil.GetOrCreateEnvVarsConfigMapAndMetadataMap(params.namespace, params.appName, params.jobComponentName)
-	envVarsConfigMap.Data = params.envVarsConfigMapData
-	metadataMap := make(map[string]kube.EnvVarMetadata)
-	for name, value := range params.envVarsMetadataConfigMapData {
-		metadataMap[name] = kube.EnvVarMetadata{RadixConfigValue: value}
-	}
-	kube.SetEnvVarsMetadataMapToConfigMap(envVarsMetadataConfigMap, metadataMap)
-	kubeUtil.UpdateConfigMap(params.namespace, envVarsConfigMap, envVarsMetadataConfigMap)
-
-	rd := utils.ARadixDeployment().
-		WithDeploymentName(params.deploymentName).
-		WithAppName(params.appName).
-		WithEnvironment(params.environment).
-		WithComponents().
-		WithJobComponents(
-			utils.NewDeployJobComponentBuilder().
-				WithName(params.jobComponentName).
-				WithPayloadPath(radixUtils.StringPtr("payload-path")).
-				WithEnvironmentVariables(params.radixConfigEnvVarsMap),
-		).
-		BuildRD()
-	return rd
-}
-
-type testParams struct {
-	appName                      string
-	environment                  string
-	namespace                    string
-	jobComponentName             string
-	deploymentName               string
-	jobName                      string
-	radixConfigEnvVarsMap        map[string]string
-	envVarsConfigMapData         map[string]string
-	envVarsMetadataConfigMapData map[string]string
-}
-
-func getTestParams() *testParams {
-	params := testParams{
-		appName:                      "app",
-		environment:                  "qa",
-		jobComponentName:             "compute",
-		deploymentName:               "app-deploy-1",
-		jobName:                      "some-job",
-		radixConfigEnvVarsMap:        make(map[string]string),
-		envVarsConfigMapData:         make(map[string]string),
-		envVarsMetadataConfigMapData: make(map[string]string),
-	}
-	params.namespace = utils.GetEnvironmentNamespace(params.appName, params.environment)
-	return &params
-}
-
-func (params *testParams) withRadixConfigEnvVarsMap(envVars map[string]string) *testParams {
-	params.radixConfigEnvVarsMap = envVars
-	return params
-}
-
-func (params *testParams) withEnvVarsConfigMapData(envVars map[string]string) *testParams {
-	params.envVarsConfigMapData = envVars
-	return params
-}
-
-func (params *testParams) withEnvVarsMetadataConfigMapData(envVars map[string]string) *testParams {
-	params.envVarsMetadataConfigMapData = envVars
-	return params
 }
 
 func applyRadixDeploymentEnvVarsConfigMaps(kubeUtil *kube.Kube, rd *v1.RadixDeployment) map[string]*corev1.ConfigMap {
@@ -326,7 +259,7 @@ func TestGetJob(t *testing.T) {
 		assert.Equal(t, "job2", job2.Name)
 	})
 
-	t.Run("job with different component name label", func(t *testing.T) {
+	t.Run("job With different component name label", func(t *testing.T) {
 		t.Parallel()
 		appName, appEnvironment, appComponent, appDeployment, jobName := "app", "qa", "compute", "app-deploy-1", "a-job"
 		appNamespace := utils.GetEnvironmentNamespace(appName, appEnvironment)
@@ -340,7 +273,7 @@ func TestGetJob(t *testing.T) {
 		assert.Nil(t, job)
 	})
 
-	t.Run("job with different job type label", func(t *testing.T) {
+	t.Run("job With different job type label", func(t *testing.T) {
 		t.Parallel()
 		appName, appEnvironment, appComponent, appDeployment, jobName := "app", "qa", "compute", "app-deploy-1", "a-job"
 		appNamespace := utils.GetEnvironmentNamespace(appName, appEnvironment)
@@ -436,7 +369,7 @@ func TestCreateJob(t *testing.T) {
 		assert.Equal(t, image, job.Spec.Template.Spec.Containers[0].Image)
 	})
 
-	t.Run("RD job with env vars", func(t *testing.T) {
+	t.Run("RD job With env vars", func(t *testing.T) {
 		t.Parallel()
 		appName, appEnvironment, appJobComponent, appDeployment := "app", "qa", "compute", "app-deploy-1"
 		envNamespace := utils.GetEnvironmentNamespace(appName, appEnvironment)
@@ -472,7 +405,7 @@ func TestCreateJob(t *testing.T) {
 		assert.NotEmpty(t, env3)
 	})
 
-	t.Run("RD job with payload path - secret exists and mounted", func(t *testing.T) {
+	t.Run("RD job With payload path - secret exists and mounted", func(t *testing.T) {
 		t.Parallel()
 		appName, appEnvironment, appJobComponent, appDeployment, payloadPath, payloadString := "app", "qa", "compute", "app-deploy-1", "path/payload", "the_payload"
 		envNamespace := utils.GetEnvironmentNamespace(appName, appEnvironment)
@@ -517,7 +450,7 @@ func TestCreateJob(t *testing.T) {
 		assert.Equal(t, payloadPath, job.Spec.Template.Spec.Containers[0].VolumeMounts[0].MountPath)
 	})
 
-	t.Run("RD job without payload path - no secret, no volume mounts", func(t *testing.T) {
+	t.Run("RD job Without payload path - no secret, no volume mounts", func(t *testing.T) {
 		t.Parallel()
 		appName, appEnvironment, appJobComponent, appDeployment, payloadString := "app", "qa", "compute", "app-deploy-1", "the_payload"
 		envNamespace := utils.GetEnvironmentNamespace(appName, appEnvironment)
@@ -550,7 +483,7 @@ func TestCreateJob(t *testing.T) {
 		assert.Len(t, job.Spec.Template.Spec.Containers[0].VolumeMounts, 0)
 	})
 
-	t.Run("RD job with ports - service created", func(t *testing.T) {
+	t.Run("RD job With ports - service created", func(t *testing.T) {
 		t.Parallel()
 		appName, appEnvironment, appJobComponent, appDeployment := "app", "qa", "compute", "app-deploy-1"
 		envNamespace := utils.GetEnvironmentNamespace(appName, appEnvironment)
@@ -588,7 +521,7 @@ func TestCreateJob(t *testing.T) {
 		assert.Equal(t, int32(8000), service.Spec.Ports[0].Port)
 	})
 
-	t.Run("RD job without ports - no service created", func(t *testing.T) {
+	t.Run("RD job Without ports - no service created", func(t *testing.T) {
 		t.Parallel()
 		appName, appEnvironment, appJobComponent, appDeployment := "app", "qa", "compute", "app-deploy-1"
 		envNamespace := utils.GetEnvironmentNamespace(appName, appEnvironment)
@@ -615,7 +548,7 @@ func TestCreateJob(t *testing.T) {
 		assert.Nil(t, service)
 	})
 
-	t.Run("RD job with resources", func(t *testing.T) {
+	t.Run("RD job With resources", func(t *testing.T) {
 		t.Parallel()
 		appName, appEnvironment, appJobComponent, appDeployment := "app", "qa", "compute", "app-deploy-1"
 		envNamespace := utils.GetEnvironmentNamespace(appName, appEnvironment)
@@ -653,7 +586,7 @@ func TestCreateJob(t *testing.T) {
 		assert.Equal(t, int64(40), job.Spec.Template.Spec.Containers[0].Resources.Limits.Memory().ScaledValue(resource.Mega))
 	})
 
-	t.Run("RD job with resources - resource specified by request body", func(t *testing.T) {
+	t.Run("RD job With resources - resource specified by request body", func(t *testing.T) {
 		t.Parallel()
 		appName, appEnvironment, appJobComponent, appDeployment := "app", "qa", "compute", "app-deploy-1"
 		envNamespace := utils.GetEnvironmentNamespace(appName, appEnvironment)
@@ -709,7 +642,7 @@ func TestCreateJob(t *testing.T) {
 		assert.Equal(t, int64(120), job.Spec.Template.Spec.Containers[0].Resources.Limits.Memory().ScaledValue(resource.Mega))
 	})
 
-	t.Run("RD job without resources", func(t *testing.T) {
+	t.Run("RD job Without resources", func(t *testing.T) {
 		t.Parallel()
 		appName, appEnvironment, appJobComponent, appDeployment := "app", "qa", "compute", "app-deploy-1"
 		envNamespace := utils.GetEnvironmentNamespace(appName, appEnvironment)
@@ -739,7 +672,7 @@ func TestCreateJob(t *testing.T) {
 		assert.Len(t, job.Spec.Template.Spec.Containers[0].Resources.Limits, 0)
 	})
 
-	t.Run("RD job with only request resources, not exceeding default limit", func(t *testing.T) {
+	t.Run("RD job With only request resources, not exceeding default limit", func(t *testing.T) {
 		t.Parallel()
 		appName, appEnvironment, appJobComponent, appDeployment := "app", "qa", "compute", "app-deploy-1"
 		envNamespace := utils.GetEnvironmentNamespace(appName, appEnvironment)
@@ -775,7 +708,7 @@ func TestCreateJob(t *testing.T) {
 		assert.Len(t, job.Spec.Template.Spec.Containers[0].Resources.Limits, 0)
 	})
 
-	t.Run("RD job with only request resources, exceeding default limit", func(t *testing.T) {
+	t.Run("RD job With only request resources, exceeding default limit", func(t *testing.T) {
 		t.Parallel()
 		appName, appEnvironment, appJobComponent, appDeployment := "app", "qa", "compute", "app-deploy-1"
 		envNamespace := utils.GetEnvironmentNamespace(appName, appEnvironment)
@@ -865,7 +798,7 @@ func TestCreateJob(t *testing.T) {
 		assert.Equal(t, apiErrors.NotFoundMessage("radix deployment", appDeployment), err.Error())
 	})
 
-	t.Run("RD job with secrets - env correctly set", func(t *testing.T) {
+	t.Run("RD job With secrets - env correctly set", func(t *testing.T) {
 		t.Parallel()
 		appName, appEnvironment, appJobComponent, appDeployment := "app", "qa", "compute", "app-deploy-1"
 		envNamespace := utils.GetEnvironmentNamespace(appName, appEnvironment)
@@ -903,7 +836,7 @@ func TestCreateJob(t *testing.T) {
 		assert.NotEmpty(t, env3)
 	})
 
-	t.Run("RD job with volume mount", func(t *testing.T) {
+	t.Run("RD job With volume mount", func(t *testing.T) {
 		t.Parallel()
 		appName, appEnvironment, appJobComponent, appDeployment := "app", "qa", "compute", "app-deploy-1"
 		envNamespace := utils.GetEnvironmentNamespace(appName, appEnvironment)
@@ -940,7 +873,7 @@ func TestCreateJob(t *testing.T) {
 		assert.Equal(t, "/blobpath", job.Spec.Template.Spec.Containers[0].VolumeMounts[0].MountPath)
 	})
 
-	t.Run("RD job with GPU", func(t *testing.T) {
+	t.Run("RD job With GPU", func(t *testing.T) {
 		t.Parallel()
 		appName, appEnvironment, appJobComponent, appDeployment := "app", "qa", "compute", "app-deploy-1"
 		envNamespace := utils.GetEnvironmentNamespace(appName, appEnvironment)
@@ -980,7 +913,7 @@ func TestCreateJob(t *testing.T) {
 		assert.Equal(t, corev1.TaintEffectNoSchedule, tolerations[0].Effect)
 	})
 
-	t.Run("RD job with GPU node - GPU node specified by request body", func(t *testing.T) {
+	t.Run("RD job With GPU node - GPU node specified by request body", func(t *testing.T) {
 		t.Parallel()
 		appName, appEnvironment, appJobComponent, appDeployment := "app", "qa", "compute", "app-deploy-1"
 		envNamespace := utils.GetEnvironmentNamespace(appName, appEnvironment)
