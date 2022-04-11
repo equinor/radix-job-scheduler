@@ -32,7 +32,15 @@ func GetJobStatusFromJob(kubeClient kubernetes.Interface, job *v1.Job, jobPods [
 	jobStatus.JobId = job.ObjectMeta.Labels[kube.RadixJobIdLabel]         //Not empty, if JobId exists
 	jobStatus.BatchName = job.ObjectMeta.Labels[kube.RadixBatchNameLabel] //Not empty, if BatchName exists
 	if status != models.Running {
-		// If the job's status is anything _else_ than 'running', there's no further need for investigation
+		// if the job is not in state 'Running', we check that job's pod status reason
+		for _, pod := range jobPods {
+			if pod.Status.Reason == "DeadlineExceeded" {
+				// if the pod's status reason is 'DeadlineExceeded', the entire job also gets that status
+				jobStatus.Status = models.DeadlineExceeded.String()
+				jobStatus.Message = pod.Status.Message
+				return &jobStatus
+			}
+		}
 		return &jobStatus
 	}
 	for _, pod := range jobPods {
@@ -43,14 +51,7 @@ func GetJobStatusFromJob(kubeClient kubernetes.Interface, job *v1.Job, jobPods [
 			}
 			switch {
 			case cs.State.Terminated != nil:
-				// if any container in any of the job's pods has status 'Terminated', we check that pod's status reason
-				if pod.Status.Reason == "DeadlineExceeded" {
-					// if the pod's status reason is 'DeadlineExceeded', the entire job also gets that status
-					jobStatus.Status = models.DeadlineExceeded.String()
-					jobStatus.Message = pod.Status.Message
-					return &jobStatus
-				}
-				// unless DeadlineExceeded, a job with one or more 'terminated' containers gets status 'Stopped'
+				//  job with one or more 'terminated' containers gets status 'Stopped'
 				jobStatus.Status = models.Stopped.String()
 				jobStatus.Message = cs.State.Terminated.Message
 
