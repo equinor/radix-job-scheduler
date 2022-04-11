@@ -24,13 +24,15 @@ func GetJobStatusFromJob(kubeClient kubernetes.Interface, job *v1.Job, jobPods [
 		Name:    job.GetName(),
 		Created: utils.FormatTime(&job.ObjectMeta.CreationTimestamp),
 		Started: utils.FormatTime(job.Status.StartTime),
-		Ended:   utils.FormatTime(job.Status.CompletionTime),
+		Ended:   getJobEndTimestamp(job),
 	}
 	status := models.GetStatusFromJobStatus(job.Status)
+
 	jobStatus.Status = status.String()
 	jobStatus.JobId = job.ObjectMeta.Labels[kube.RadixJobIdLabel]         //Not empty, if JobId exists
 	jobStatus.BatchName = job.ObjectMeta.Labels[kube.RadixBatchNameLabel] //Not empty, if BatchName exists
 	if status != models.Running {
+		// If the job's status is anything _else_ than 'running', there's no further need for investigation
 		return &jobStatus
 	}
 	for _, pod := range jobPods {
@@ -41,13 +43,24 @@ func GetJobStatusFromJob(kubeClient kubernetes.Interface, job *v1.Job, jobPods [
 			}
 			switch {
 			case cs.State.Terminated != nil:
+				// if any container in any of the job's pods has status 'Terminated', we check that pod's status reason
+				if pod.Status.Reason == "DeadlineExceeded" {
+					// if the pod's status reason is 'DeadlineExceeded', the entire job also gets that status
+					jobStatus.Status = models.DeadlineExceeded.String()
+					jobStatus.Message = pod.Status.Message
+					return &jobStatus
+				}
+				// unless DeadlineExceeded, a job with one or more 'terminated' containers gets status 'Stopped'
 				jobStatus.Status = models.Stopped.String()
 				jobStatus.Message = cs.State.Terminated.Message
+
 				return &jobStatus
 			case cs.State.Waiting != nil:
 				if _, ok := imageErrors[cs.State.Waiting.Reason]; ok {
+					// if container waits because of inaccessible image, the job is 'Failed'
 					jobStatus.Status = models.Failed.String()
 				} else {
+					// if container waits for any other reason, job is 'Waiting'
 					jobStatus.Status = models.Waiting.String()
 				}
 				jobStatus.Started = ""
@@ -75,6 +88,17 @@ func GetJobStatusFromJob(kubeClient kubernetes.Interface, job *v1.Job, jobPods [
 		}
 	}
 	return &jobStatus
+}
+
+func getJobEndTimestamp(job *v1.Job) string {
+	if job.Status.CompletionTime != nil {
+		// if the k8s job succeeds, we simply return the CompletionTime
+		return utils.FormatTime(job.Status.CompletionTime)
+	}
+	// if a k8s job fails, there is no timestamp for the failure. We set the job's failure time to be
+	// the timestamp for the job's last status condition.
+	lastCondition := sortJobStatusConditionsDesc(job.Status.Conditions)[0].LastTransitionTime
+	return utils.FormatTime(&lastCondition)
 }
 
 func getLastEventMessageForPod(kubeClient kubernetes.Interface, pod corev1.Pod) string {
@@ -112,4 +136,14 @@ func sortPodStatusConditionsDesc(podConditions []corev1.PodCondition) []corev1.P
 		return podConditions[j].LastTransitionTime.Before(&podConditions[i].LastTransitionTime)
 	})
 	return podConditions
+}
+
+func sortJobStatusConditionsDesc(jobConditions []v1.JobCondition) []v1.JobCondition {
+	sort.Slice(jobConditions, func(i, j int) bool {
+		if jobConditions[i].LastTransitionTime.IsZero() || jobConditions[j].LastTransitionTime.IsZero() {
+			return false
+		}
+		return jobConditions[j].LastTransitionTime.Before(&jobConditions[i].LastTransitionTime)
+	})
+	return jobConditions
 }
