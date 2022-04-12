@@ -98,8 +98,11 @@ func getJobEndTimestamp(job *v1.Job) string {
 	}
 	// if a k8s job fails, there is no timestamp for the failure. We set the job's failure time to be
 	// the timestamp for the job's last status condition.
-	lastCondition := sortJobStatusConditionsDesc(job.Status.Conditions)[0].LastTransitionTime
-	return utils.FormatTime(&lastCondition)
+	if job.Status.Conditions != nil {
+		lastCondition := sortJobStatusConditionsDesc(job.Status.Conditions)[0].LastTransitionTime
+		return utils.FormatTime(&lastCondition)
+	}
+	return ""
 }
 
 func getLastEventMessageForPod(kubeClient kubernetes.Interface, pod corev1.Pod) string {

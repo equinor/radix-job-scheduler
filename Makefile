@@ -4,5 +4,5 @@ test:
 
 .PHONY: generate-mock
 generate-mock:
-	mockgen -source ./api/jobs/job.go -destination ./api/jobs/mock/job_mock.go -package mock
-	mockgen -source ./api/batches/batch.go -destination ./api/batches/mock/batch_mock.go -package mock
+	mockgen -source ./api/jobs/job_handler.go -destination ./api/jobs/mock/job_mock.go -package mock
+	mockgen -source ./api/batches/batch_handler.go -destination ./api/batches/mock/batch_mock.go -package mock
