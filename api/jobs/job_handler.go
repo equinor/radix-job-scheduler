@@ -397,6 +397,10 @@ func (handler *jobHandler) buildJobSpec(jobName string, rd *radixv1.RadixDeploym
 		timeLimitSeconds = radixJobComponent.GetTimeLimitSeconds()
 	}
 
+	if *timeLimitSeconds < *numbers.Int64Ptr(1) {
+		return nil, nil, nil, fmt.Errorf("timeLimitSeconds must be greater than 0")
+	}
+
 	job := batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: jobName,
