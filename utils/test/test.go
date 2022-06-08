@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	radixUtils "github.com/equinor/radix-common/utils"
+	numbers "github.com/equinor/radix-common/utils/numbers"
 	"github.com/equinor/radix-operator/pkg/apis/defaults"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
@@ -50,6 +51,7 @@ func (params *TestParams) ApplyRd(kubeUtil *kube.Kube) *v1.RadixDeployment {
 		WithJobComponents(
 			utils.NewDeployJobComponentBuilder().
 				WithName(params.JobComponentName).
+				WithTimeLimitSeconds(numbers.Int64Ptr(10)).
 				WithPayloadPath(radixUtils.StringPtr("payload-path")).
 				WithEnvironmentVariables(params.RadixConfigEnvVarsMap),
 		).

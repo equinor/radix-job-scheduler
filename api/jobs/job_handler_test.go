@@ -315,6 +315,7 @@ func TestCreateJob(t *testing.T) {
 			WithComponents().
 			WithJobComponents(
 				utils.NewDeployJobComponentBuilder().
+					WithTimeLimitSeconds(numbers.Int64Ptr(10)).
 					WithName(appJobComponent),
 			).
 			BuildRD()
@@ -338,7 +339,7 @@ func TestCreateJob(t *testing.T) {
 		assert.Equal(t, numbers.Int32Ptr(0), job.Spec.BackoffLimit)
 		assert.Equal(t, corev1.RestartPolicyNever, job.Spec.Template.Spec.RestartPolicy)
 		assert.Equal(t, corev1.PullAlways, job.Spec.Template.Spec.Containers[0].ImagePullPolicy)
-		assert.Nil(t, job.Spec.Template.Spec.Affinity)
+		assert.Nil(t, job.Spec.Template.Spec.Affinity.NodeAffinity)
 		assert.Len(t, job.Spec.Template.Spec.Tolerations, 0)
 	})
 
@@ -353,6 +354,7 @@ func TestCreateJob(t *testing.T) {
 			WithComponents().
 			WithJobComponents(
 				utils.NewDeployJobComponentBuilder().
+					WithTimeLimitSeconds(numbers.Int64Ptr(10)).
 					WithName(appJobComponent).
 					WithImage(image),
 			).
@@ -380,6 +382,7 @@ func TestCreateJob(t *testing.T) {
 			WithComponents().
 			WithJobComponents(
 				utils.NewDeployJobComponentBuilder().
+					WithTimeLimitSeconds(numbers.Int64Ptr(10)).
 					WithName(appJobComponent).
 					WithEnvironmentVariables(map[string]string{"ENV1": "value1", "ENV2": "value2"}),
 			).
@@ -416,6 +419,7 @@ func TestCreateJob(t *testing.T) {
 			WithComponents().
 			WithJobComponents(
 				utils.NewDeployJobComponentBuilder().
+					WithTimeLimitSeconds(numbers.Int64Ptr(10)).
 					WithName(appJobComponent).
 					WithPayloadPath(&payloadPath),
 			).
@@ -461,6 +465,7 @@ func TestCreateJob(t *testing.T) {
 			WithComponents().
 			WithJobComponents(
 				utils.NewDeployJobComponentBuilder().
+					WithTimeLimitSeconds(numbers.Int64Ptr(10)).
 					WithName(appJobComponent),
 			).
 			BuildRD()
@@ -494,6 +499,7 @@ func TestCreateJob(t *testing.T) {
 			WithComponents().
 			WithJobComponents(
 				utils.NewDeployJobComponentBuilder().
+					WithTimeLimitSeconds(numbers.Int64Ptr(10)).
 					WithName(appJobComponent).
 					WithPort("http", 8000),
 			).
@@ -532,6 +538,7 @@ func TestCreateJob(t *testing.T) {
 			WithComponents().
 			WithJobComponents(
 				utils.NewDeployJobComponentBuilder().
+					WithTimeLimitSeconds(numbers.Int64Ptr(10)).
 					WithName(appJobComponent),
 			).
 			BuildRD()
@@ -559,6 +566,7 @@ func TestCreateJob(t *testing.T) {
 			WithComponents().
 			WithJobComponents(
 				utils.NewDeployJobComponentBuilder().
+					WithTimeLimitSeconds(numbers.Int64Ptr(10)).
 					WithName(appJobComponent).
 					WithResource(
 						map[string]string{"cpu": "10m", "memory": "20M"},
@@ -597,6 +605,7 @@ func TestCreateJob(t *testing.T) {
 			WithComponents().
 			WithJobComponents(
 				utils.NewDeployJobComponentBuilder().
+					WithTimeLimitSeconds(numbers.Int64Ptr(10)).
 					WithName(appJobComponent).
 					WithResource(
 						map[string]string{"cpu": "10m", "memory": "20M"},
@@ -653,6 +662,7 @@ func TestCreateJob(t *testing.T) {
 			WithComponents().
 			WithJobComponents(
 				utils.NewDeployJobComponentBuilder().
+					WithTimeLimitSeconds(numbers.Int64Ptr(10)).
 					WithName(appJobComponent),
 			).
 			BuildRD()
@@ -683,6 +693,7 @@ func TestCreateJob(t *testing.T) {
 			WithComponents().
 			WithJobComponents(
 				utils.NewDeployJobComponentBuilder().
+					WithTimeLimitSeconds(numbers.Int64Ptr(10)).
 					WithName(appJobComponent).
 					WithResource(
 						map[string]string{"cpu": "50m", "memory": "60M"},
@@ -719,6 +730,7 @@ func TestCreateJob(t *testing.T) {
 			WithComponents().
 			WithJobComponents(
 				utils.NewDeployJobComponentBuilder().
+					WithTimeLimitSeconds(numbers.Int64Ptr(10)).
 					WithName(appJobComponent).
 					WithResource(
 						map[string]string{"cpu": "400m", "memory": "600M"},
@@ -757,6 +769,7 @@ func TestCreateJob(t *testing.T) {
 			WithComponents().
 			WithJobComponents(
 				utils.NewDeployJobComponentBuilder().
+					WithTimeLimitSeconds(numbers.Int64Ptr(10)).
 					WithName("another-job"),
 			).
 			BuildRD()
@@ -783,6 +796,7 @@ func TestCreateJob(t *testing.T) {
 			WithComponents().
 			WithJobComponents(
 				utils.NewDeployJobComponentBuilder().
+					WithTimeLimitSeconds(numbers.Int64Ptr(10)).
 					WithName(appJobComponent),
 			).
 			BuildRD()
@@ -809,6 +823,7 @@ func TestCreateJob(t *testing.T) {
 			WithComponents().
 			WithJobComponents(
 				utils.NewDeployJobComponentBuilder().
+					WithTimeLimitSeconds(numbers.Int64Ptr(10)).
 					WithName(appJobComponent).
 					WithSecrets([]string{"SECRET1", "SECRET2"}),
 			).
@@ -847,6 +862,7 @@ func TestCreateJob(t *testing.T) {
 			WithComponents().
 			WithJobComponents(
 				utils.NewDeployJobComponentBuilder().
+					WithTimeLimitSeconds(numbers.Int64Ptr(10)).
 					WithName(appJobComponent).
 					WithVolumeMounts([]v1.RadixVolumeMount{
 						{
@@ -884,6 +900,7 @@ func TestCreateJob(t *testing.T) {
 			WithComponents().
 			WithJobComponents(
 				utils.NewDeployJobComponentBuilder().
+					WithTimeLimitSeconds(numbers.Int64Ptr(10)).
 					WithName(appJobComponent).
 					WithNodeGpu("gpu1, gpu2").
 					WithNodeGpuCount("2"),
@@ -924,6 +941,7 @@ func TestCreateJob(t *testing.T) {
 			WithComponents().
 			WithJobComponents(
 				utils.NewDeployJobComponentBuilder().
+					WithTimeLimitSeconds(numbers.Int64Ptr(10)).
 					WithName(appJobComponent).
 					WithNodeGpu("gpu1, gpu2, gpu3, gpu4").
 					WithNodeGpuCount("4"),
@@ -980,6 +998,7 @@ func TestCreateJob(t *testing.T) {
 			WithComponents().
 			WithJobComponents(
 				utils.NewDeployJobComponentBuilder().
+					WithTimeLimitSeconds(numbers.Int64Ptr(10)).
 					WithName(appJobComponent),
 			).
 			BuildRD()
