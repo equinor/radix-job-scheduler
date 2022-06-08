@@ -387,7 +387,7 @@ func (handler *jobHandler) buildJobSpec(jobName string, rd *radixv1.RadixDeploym
 	if jobComponentConfig != nil && jobComponentConfig.Node != nil {
 		node = jobComponentConfig.Node
 	}
-	affinity := operatorUtils.GetPodSpecAffinity(node)
+	affinity := operatorUtils.GetPodSpecAffinity(node, rd.Spec.AppName, radixJobComponent.Name)
 	tolerations := operatorUtils.GetPodSpecTolerations(node)
 
 	var timeLimitSeconds *int64
