@@ -335,11 +335,11 @@ func (handler *batchHandler) getContainer(batchName string, radixJobComponent *r
 func getResources() corev1.ResourceRequirements {
 	return corev1.ResourceRequirements{
 		Limits: corev1.ResourceList{
-			corev1.ResourceCPU:    resource.MustParse("100M"),
+			corev1.ResourceCPU:    resource.MustParse("100m"),
 			corev1.ResourceMemory: resource.MustParse("500M"),
 		},
 		Requests: corev1.ResourceList{
-			corev1.ResourceCPU:    resource.MustParse("100M"),
+			corev1.ResourceCPU:    resource.MustParse("100m"),
 			corev1.ResourceMemory: resource.MustParse("500M"),
 		},
 	}
