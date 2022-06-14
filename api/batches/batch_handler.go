@@ -3,9 +3,6 @@ package batches
 import (
 	"context"
 	"fmt"
-	"github.com/equinor/radix-job-scheduler/api"
-	"github.com/equinor/radix-job-scheduler/api/jobs"
-	"github.com/equinor/radix-operator/pkg/apis/defaults"
 	"path"
 	"sort"
 	"strconv"
@@ -13,9 +10,12 @@ import (
 	"time"
 
 	commonUtils "github.com/equinor/radix-common/utils"
+	"github.com/equinor/radix-job-scheduler/api"
 	apiErrors "github.com/equinor/radix-job-scheduler/api/errors"
+	"github.com/equinor/radix-job-scheduler/api/jobs"
 	schedulerDefaults "github.com/equinor/radix-job-scheduler/defaults"
 	"github.com/equinor/radix-job-scheduler/models"
+	"github.com/equinor/radix-operator/pkg/apis/defaults"
 	"github.com/equinor/radix-operator/pkg/apis/deployment"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
@@ -25,6 +25,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes"
@@ -326,6 +327,21 @@ func (handler *batchHandler) getContainer(batchName string, radixJobComponent *r
 		Env:             handler.getEnvironmentVariables(batchName, handler.common.Env),
 		VolumeMounts:    getVolumeMounts(batchScheduleDescriptionSecret),
 		SecurityContext: securityContextBuilder.BuildContainerSecurityContext(radixJobComponent),
+		Resources:       getResources(),
+	}
+}
+
+//keep Limits and Requests resources equal to have QoS Class "Guaranteed" https://kubernetes.io/docs/tasks/configure-pod-container/quality-service-pod/#create-a-pod-that-gets-assigned-a-qos-class-of-guaranteed
+func getResources() corev1.ResourceRequirements {
+	return corev1.ResourceRequirements{
+		Limits: corev1.ResourceList{
+			corev1.ResourceCPU:    resource.MustParse("100M"),
+			corev1.ResourceMemory: resource.MustParse("500M"),
+		},
+		Requests: corev1.ResourceList{
+			corev1.ResourceCPU:    resource.MustParse("100M"),
+			corev1.ResourceMemory: resource.MustParse("500M"),
+		},
 	}
 }
 

@@ -8,6 +8,7 @@ import (
 
 	commonUtils "github.com/equinor/radix-common/utils"
 	schedulerDefaults "github.com/equinor/radix-job-scheduler/defaults"
+	"github.com/equinor/radix-operator/pkg/apis/defaults"
 	"github.com/equinor/radix-operator/pkg/apis/utils"
 	log "github.com/sirupsen/logrus"
 )
@@ -42,20 +43,21 @@ func NewEnv() *Env {
 	}
 	var (
 		useSwagger                                   = envVarIsTrueOrYes(os.Getenv("USE_SWAGGER"))
-		radixDNSZone                                 = strings.TrimSpace(os.Getenv("RADIX_DNS_ZONE"))
-		radixClusterName                             = strings.TrimSpace(os.Getenv("RADIX_CLUSTERNAME"))
-		radixActiveClusterEgressIps                  = strings.TrimSpace(os.Getenv("RADIX_ACTIVE_CLUSTER_EGRESS_IPS"))
-		radixAppName                                 = strings.TrimSpace(os.Getenv("RADIX_APP"))
-		radixEnv                                     = strings.TrimSpace(os.Getenv("RADIX_ENVIRONMENT"))
-		radixComponentName                           = strings.TrimSpace(os.Getenv("RADIX_COMPONENT"))
-		radixDeployment                              = strings.TrimSpace(os.Getenv("RADIX_DEPLOYMENT"))
+		radixDNSZone                                 = strings.TrimSpace(os.Getenv(defaults.RadixDNSZoneEnvironmentVariable))
+		radixClusterName                             = strings.TrimSpace(os.Getenv(defaults.ClusternameEnvironmentVariable))
+		radixClusterType                             = strings.TrimSpace(os.Getenv(defaults.RadixClusterTypeEnvironmentVariable))
+		radixActiveClusterEgressIps                  = strings.TrimSpace(os.Getenv(defaults.RadixActiveClusterEgressIpsEnvironmentVariable))
+		radixAppName                                 = strings.TrimSpace(os.Getenv(defaults.RadixAppEnvironmentVariable))
+		radixEnv                                     = strings.TrimSpace(os.Getenv(defaults.EnvironmentnameEnvironmentVariable))
+		radixComponentName                           = strings.TrimSpace(os.Getenv(defaults.RadixComponentEnvironmentVariable))
+		radixDeployment                              = strings.TrimSpace(os.Getenv(defaults.RadixDeploymentEnvironmentVariable))
 		radixJobSchedulersPerEnvironmentHistoryLimit = strings.TrimSpace(os.Getenv("RADIX_JOB_SCHEDULERS_PER_ENVIRONMENT_HISTORY_LIMIT"))
-		radixPorts                                   = strings.TrimSpace(os.Getenv("RADIX_PORTS"))
-		radixContainerRegistry                       = strings.TrimSpace(os.Getenv("RADIX_CONTAINER_REGISTRY"))
+		radixPorts                                   = strings.TrimSpace(os.Getenv(defaults.RadixPortsEnvironmentVariable))
+		radixContainerRegistry                       = strings.TrimSpace(os.Getenv(defaults.ContainerRegistryEnvironmentVariable))
 		radixDefaultCpuLimit                         = strings.TrimSpace(os.Getenv(
-			"RADIXOPERATOR_APP_ENV_LIMITS_DEFAULT_CPU"))
+			defaults.OperatorEnvLimitDefaultCPUEnvironmentVariable))
 		radixDefaultMemoryLimit = strings.TrimSpace(os.Getenv(
-			"RADIXOPERATOR_APP_ENV_LIMITS_DEFAULT_MEMORY"))
+			defaults.OperatorEnvLimitDefaultMemoryEnvironmentVariable))
 	)
 	env := Env{
 		RadixDNSZone:                radixDNSZone,
@@ -74,7 +76,7 @@ func NewEnv() *Env {
 		RadixDefaultMemoryLimit: commonUtils.TernaryString(radixDefaultMemoryLimit == "",
 			schedulerDefaults.DefaultBatchMemoryLimit, radixDefaultMemoryLimit),
 		RadixBatchSchedulerImageFullName: getRadixBatchSchedulerImageFullName(
-			radixContainerRegistry, radixEnv),
+			radixContainerRegistry, radixClusterType),
 	}
 	setPort(radixPorts, &env)
 	setHistoryLimit(radixJobSchedulersPerEnvironmentHistoryLimit, &env)
@@ -82,7 +84,7 @@ func NewEnv() *Env {
 }
 
 func getRadixBatchSchedulerImageFullName(containerRegistry, radixEnv string) string {
-	tag := commonUtils.TernaryString(strings.EqualFold(radixEnv, "prod"), "release-latest", "main-latest")
+	tag := commonUtils.TernaryString(strings.EqualFold(radixEnv, "development"), "main-latest", "release-latest")
 	return fmt.Sprintf("%s/%s:%s", containerRegistry, schedulerDefaults.RadixBatchSchedulerImage, tag)
 }
 
