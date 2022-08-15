@@ -12,7 +12,6 @@ import (
 	schedulerDefaults "github.com/equinor/radix-job-scheduler/defaults"
 	"github.com/equinor/radix-job-scheduler/models"
 	"github.com/equinor/radix-job-scheduler/utils/test"
-	testUtils "github.com/equinor/radix-job-scheduler/utils/test"
 	"github.com/equinor/radix-operator/pkg/apis/deployment"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
@@ -42,7 +41,7 @@ func Test_createJob(t *testing.T) {
 
 	t.Run("Create Job", func(t *testing.T) {
 		t.Parallel()
-		params := testUtils.GetTestParams()
+		params := test.GetTestParams()
 		rd := params.ApplyRd(kubeUtil)
 
 		job, err := h.createJob(params.JobName, &rd.Spec.Jobs[0], rd, &models.JobScheduleDescription{Payload: "{}"}, "")
@@ -67,7 +66,7 @@ func Test_createJobWithEnvVars(t *testing.T) {
 				SecurityContextBuilder: deployment.NewSecurityContextBuilder(true),
 			},
 		}
-		params := testUtils.GetTestParams().WithRadixConfigEnvVarsMap(map[string]string{"VAR1": "val1", "VAR2": "val2"})
+		params := test.GetTestParams().WithRadixConfigEnvVarsMap(map[string]string{"VAR1": "val1", "VAR2": "val2"})
 		rd := params.ApplyRd(kubeUtil)
 
 		job, err := h.createJob(params.JobName, &rd.Spec.Jobs[0], rd, &models.JobScheduleDescription{Payload: "{}"}, "")
@@ -94,7 +93,7 @@ func Test_createJobWithEnvVars(t *testing.T) {
 				SecurityContextBuilder: deployment.NewSecurityContextBuilder(true),
 			},
 		}
-		params := testUtils.GetTestParams().
+		params := test.GetTestParams().
 			WithRadixConfigEnvVarsMap(map[string]string{"VAR1": "val1", "VAR2": "orig-val2"}).
 			WithEnvVarsConfigMapData(map[string]string{"VAR1": "val1", "VAR2": "edited-val2"}).
 			WithEnvVarsMetadataConfigMapData(map[string]string{"VAR2": "orig-val2"})
@@ -130,7 +129,7 @@ func Test_createJobWithEnvVars(t *testing.T) {
 				SecurityContextBuilder: deployment.NewSecurityContextBuilder(true),
 			},
 		}
-		params := testUtils.GetTestParams().WithRadixConfigEnvVarsMap(map[string]string{"VAR1": "val1", "VAR2": "val2"})
+		params := test.GetTestParams().WithRadixConfigEnvVarsMap(map[string]string{"VAR1": "val1", "VAR2": "val2"})
 		rd := params.ApplyRd(kubeUtil)
 
 		job, _ := h.createJob(params.JobName, &rd.Spec.Jobs[0], rd, &models.JobScheduleDescription{Payload: "{}"}, "")
