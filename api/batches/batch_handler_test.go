@@ -2,14 +2,14 @@ package batches
 
 import (
 	"context"
-	"github.com/equinor/radix-operator/pkg/apis/kube"
 	"strconv"
 	"testing"
+
+	"github.com/equinor/radix-operator/pkg/apis/kube"
 
 	"github.com/equinor/radix-job-scheduler/api"
 	"github.com/equinor/radix-job-scheduler/defaults"
 	"github.com/equinor/radix-job-scheduler/models"
-	"github.com/equinor/radix-job-scheduler/utils/test"
 	testUtils "github.com/equinor/radix-job-scheduler/utils/test"
 	"github.com/equinor/radix-operator/pkg/apis/deployment"
 	"github.com/stretchr/testify/assert"
@@ -17,7 +17,7 @@ import (
 )
 
 func Test_createBatch(t *testing.T) {
-	radixClient, kubeClient, kubeUtil := test.SetupTest("app", "qa", "compute", "app-deploy-1", 1)
+	radixClient, kubeClient, kubeUtil := testUtils.SetupTest("app", "qa", "compute", "app-deploy-1", 1)
 	env := models.NewEnv()
 
 	h := &batchHandler{

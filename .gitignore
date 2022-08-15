@@ -4,6 +4,7 @@
 *.dll
 *.so
 *.dylib
+.vscode/*.log
 
 # Debug file
 __debug_bin
