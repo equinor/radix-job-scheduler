@@ -302,6 +302,7 @@ func (handler *batchHandler) buildBatchJobSpec(namespace, appName, batchName str
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
 						kube.RadixAppLabel:       appName,
+						kube.RadixComponentLabel: radixJobComponent.Name,
 						kube.RadixJobTypeLabel:   kube.RadixJobTypeBatchSchedule,
 						kube.RadixBatchNameLabel: batchName,
 					},
