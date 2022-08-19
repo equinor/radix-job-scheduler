@@ -401,23 +401,21 @@ func (handler *jobHandler) buildJobSpec(jobName string, rd *radixv1.RadixDeploym
 		return nil, nil, nil, fmt.Errorf("timeLimitSeconds must be greater than 0")
 	}
 
+	labels := map[string]string{
+		kube.RadixAppLabel:       rd.Spec.AppName,
+		kube.RadixComponentLabel: radixJobComponent.Name,
+		kube.RadixJobTypeLabel:   kube.RadixJobTypeJobSchedule,
+	}
 	job := batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: jobName,
-			Labels: map[string]string{
-				kube.RadixAppLabel:       rd.Spec.AppName,
-				kube.RadixComponentLabel: radixJobComponent.Name,
-				kube.RadixJobTypeLabel:   kube.RadixJobTypeJobSchedule,
-			},
+			Name:   jobName,
+			Labels: labels,
 		},
 		Spec: batchv1.JobSpec{
 			BackoffLimit: numbers.Int32Ptr(0),
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: map[string]string{
-						kube.RadixAppLabel:     rd.Spec.AppName,
-						kube.RadixJobTypeLabel: kube.RadixJobTypeJobSchedule,
-					},
+					Labels:    labels,
 					Namespace: rd.ObjectMeta.Namespace,
 				},
 				Spec: corev1.PodSpec{
