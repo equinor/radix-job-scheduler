@@ -4,8 +4,9 @@ go 1.18
 
 require (
 	github.com/equinor/radix-common v1.2.1
-	github.com/equinor/radix-operator v1.25.1
+	github.com/equinor/radix-operator v1.25.3
 	github.com/golang/mock v1.6.0
+	github.com/prometheus-operator/prometheus-operator/pkg/client v0.54.0
 	github.com/sirupsen/logrus v1.9.0
 	github.com/stretchr/testify v1.8.0
 	k8s.io/api v0.23.9
@@ -34,7 +35,6 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.54.0 // indirect
-	github.com/prometheus-operator/prometheus-operator/pkg/client v0.54.0 // indirect
 	github.com/prometheus/client_golang v1.12.2 // indirect
 	github.com/prometheus/client_model v0.2.0 // indirect
 	github.com/prometheus/common v0.32.1 // indirect
