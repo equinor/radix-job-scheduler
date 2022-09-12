@@ -17,7 +17,7 @@ import (
 )
 
 func Test_createBatch(t *testing.T) {
-	radixClient, kubeClient, kubeUtil := testUtils.SetupTest("app", "qa", "compute", "app-deploy-1", 1)
+	radixClient, kubeClient, _, kubeUtil := testUtils.SetupTest("app", "qa", "compute", "app-deploy-1", 1)
 	env := models.NewEnv()
 
 	h := &batchHandler{
