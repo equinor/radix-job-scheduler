@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/equinor/radix-job-scheduler/api"
+	"github.com/equinor/radix-operator/pkg/apis/securitycontext"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"sort"
 	"strings"
@@ -51,11 +52,10 @@ type JobHandler interface {
 func New(env *models.Env, kube *kube.Kube) JobHandler {
 	return &jobHandler{
 		common: &api.Handler{
-			Kube:                   kube,
-			KubeClient:             kube.KubeClient(),
-			RadixClient:            kube.RadixClient(),
-			Env:                    env,
-			SecurityContextBuilder: deployment.NewSecurityContextBuilder(true),
+			Kube:        kube,
+			KubeClient:  kube.KubeClient(),
+			RadixClient: kube.RadixClient(),
+			Env:         env,
 		},
 	}
 }
@@ -373,12 +373,12 @@ func (handler *jobHandler) getJobPods(jobName string) ([]corev1.Pod, error) {
 }
 
 func (handler *jobHandler) buildJobSpec(jobName string, rd *radixv1.RadixDeployment, radixJobComponent *radixv1.RadixDeployJobComponent, payloadSecret *corev1.Secret, jobComponentConfig *models.RadixJobComponentConfig, batchName string, jobScheduleDescription *models.JobScheduleDescription) (*batchv1.Job, *corev1.ConfigMap, *corev1.ConfigMap, error) {
-	podSecurityContext := handler.common.SecurityContextBuilder.BuildPodSecurityContext(radixJobComponent)
+	podSecurityContext := securitycontext.PodSecurityContext()
 	volumes, err := handler.getVolumes(rd.ObjectMeta.Namespace, rd.Spec.Environment, radixJobComponent, rd.Name, payloadSecret)
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	containers, jobEnvVarsConfigMap, jobEnvVarsMetadataConfigMap, err := handler.getContainersWithEnvVarsConfigMaps(rd, jobName, radixJobComponent, payloadSecret, jobComponentConfig, handler.common.SecurityContextBuilder)
+	containers, jobEnvVarsConfigMap, jobEnvVarsMetadataConfigMap, err := handler.getContainersWithEnvVarsConfigMaps(rd, jobName, radixJobComponent, payloadSecret, jobComponentConfig)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -442,14 +442,14 @@ func (handler *jobHandler) buildJobSpec(jobName string, rd *radixv1.RadixDeploym
 	return &job, jobEnvVarsConfigMap, jobEnvVarsMetadataConfigMap, nil
 }
 
-func (handler *jobHandler) getContainersWithEnvVarsConfigMaps(rd *radixv1.RadixDeployment, jobName string, radixJobComponent *radixv1.RadixDeployJobComponent, payloadSecret *corev1.Secret, jobComponentConfig *models.RadixJobComponentConfig, securityContextBuilder deployment.SecurityContextBuilder) ([]corev1.Container, *corev1.ConfigMap, *corev1.ConfigMap, error) {
+func (handler *jobHandler) getContainersWithEnvVarsConfigMaps(rd *radixv1.RadixDeployment, jobName string, radixJobComponent *radixv1.RadixDeployJobComponent, payloadSecret *corev1.Secret, jobComponentConfig *models.RadixJobComponentConfig) ([]corev1.Container, *corev1.ConfigMap, *corev1.ConfigMap, error) {
 	environmentVariables, jobEnvVarsConfigMap, jobEnvVarsMetadataConfigMap,
 		err := handler.buildEnvironmentVariablesWithEnvVarsConfigMaps(rd, jobName, radixJobComponent)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 	ports := getContainerPorts(radixJobComponent)
-	containerSecurityContext := securityContextBuilder.BuildContainerSecurityContext(radixJobComponent)
+	containerSecurityContext := securitycontext.ContainerSecurityContext()
 	volumeMounts, err := getVolumeMounts(radixJobComponent, rd.GetName(), payloadSecret)
 	if err != nil {
 		return nil, nil, nil, err
