@@ -3,8 +3,8 @@ module github.com/equinor/radix-job-scheduler
 go 1.18
 
 require (
-	github.com/equinor/radix-common v1.2.1
-	github.com/equinor/radix-operator v1.25.4
+	github.com/equinor/radix-common v1.2.3
+	github.com/equinor/radix-operator v1.29.0
 	github.com/golang/mock v1.6.0
 	github.com/prometheus-operator/prometheus-operator/pkg/client v0.54.0
 	github.com/sirupsen/logrus v1.9.0
