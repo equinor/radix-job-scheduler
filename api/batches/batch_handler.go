@@ -3,6 +3,7 @@ package batches
 import (
 	"context"
 	"fmt"
+	"github.com/equinor/radix-operator/pkg/apis/securitycontext"
 	"path"
 	"sort"
 	"strconv"
@@ -16,7 +17,6 @@ import (
 	schedulerDefaults "github.com/equinor/radix-job-scheduler/defaults"
 	"github.com/equinor/radix-job-scheduler/models"
 	"github.com/equinor/radix-operator/pkg/apis/defaults"
-	"github.com/equinor/radix-operator/pkg/apis/deployment"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/equinor/radix-operator/pkg/apis/utils/numbers"
@@ -52,11 +52,10 @@ type BatchHandler interface {
 func New(env *models.Env, kube *kube.Kube, kubeClient kubernetes.Interface, radixClient radixclient.Interface) BatchHandler {
 	return &batchHandler{
 		common: &api.Handler{
-			Kube:                   kube,
-			KubeClient:             kubeClient,
-			RadixClient:            radixClient,
-			Env:                    env,
-			SecurityContextBuilder: deployment.NewSecurityContextBuilder(true),
+			Kube:        kube,
+			KubeClient:  kubeClient,
+			RadixClient: radixClient,
+			Env:         env,
 		},
 	}
 }
@@ -274,10 +273,9 @@ func (handler *batchHandler) getAllBatches() (models.JobList, error) {
 }
 
 func (handler *batchHandler) buildBatchJobSpec(namespace, appName, batchName string, radixJobComponent *radixv1.RadixDeployJobComponent, batchScheduleDescriptionSecret *corev1.Secret, batchScheduleDescription *models.BatchScheduleDescription) (*batchv1.Job, error) {
-	container := handler.getContainer(batchName, radixJobComponent, batchScheduleDescriptionSecret,
-		handler.common.SecurityContextBuilder)
+	container := handler.getContainer(batchName, batchScheduleDescriptionSecret)
 	volumes := getVolumes(batchScheduleDescriptionSecret)
-	podSecurityContext := handler.common.SecurityContextBuilder.BuildPodSecurityContext(radixJobComponent)
+	podSecurityContext := securitycontext.PodSecurityContext()
 
 	jobCount := 0
 	if batchScheduleDescription != nil {
@@ -320,14 +318,14 @@ func (handler *batchHandler) buildBatchJobSpec(namespace, appName, batchName str
 	}, nil
 }
 
-func (handler *batchHandler) getContainer(batchName string, radixJobComponent *radixv1.RadixDeployJobComponent, batchScheduleDescriptionSecret *corev1.Secret, securityContextBuilder deployment.SecurityContextBuilder) *corev1.Container {
+func (handler *batchHandler) getContainer(batchName string, batchScheduleDescriptionSecret *corev1.Secret) *corev1.Container {
 	return &corev1.Container{
 		Name:            schedulerDefaults.RadixBatchSchedulerContainerName,
 		Image:           handler.common.Env.RadixBatchSchedulerImageFullName,
 		ImagePullPolicy: corev1.PullAlways,
 		Env:             handler.getEnvironmentVariables(batchName, handler.common.Env),
 		VolumeMounts:    getVolumeMounts(batchScheduleDescriptionSecret),
-		SecurityContext: securityContextBuilder.BuildContainerSecurityContext(radixJobComponent),
+		SecurityContext: securitycontext.ContainerSecurityContext(),
 		Resources:       getResources(),
 	}
 }

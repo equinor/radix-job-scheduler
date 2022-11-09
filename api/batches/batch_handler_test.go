@@ -11,7 +11,6 @@ import (
 	"github.com/equinor/radix-job-scheduler/defaults"
 	"github.com/equinor/radix-job-scheduler/models"
 	testUtils "github.com/equinor/radix-job-scheduler/utils/test"
-	"github.com/equinor/radix-operator/pkg/apis/deployment"
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -22,11 +21,10 @@ func Test_createBatch(t *testing.T) {
 
 	h := &batchHandler{
 		common: &api.Handler{
-			Kube:                   kubeUtil,
-			KubeClient:             kubeClient,
-			RadixClient:            radixClient,
-			Env:                    env,
-			SecurityContextBuilder: deployment.NewSecurityContextBuilder(true),
+			Kube:        kubeUtil,
+			KubeClient:  kubeClient,
+			RadixClient: radixClient,
+			Env:         env,
 		},
 	}
 

@@ -2,6 +2,7 @@ package jobs
 
 import (
 	"context"
+	"github.com/equinor/radix-operator/pkg/apis/securitycontext"
 	"strings"
 	"testing"
 	"time"
@@ -33,11 +34,10 @@ func Test_createJob(t *testing.T) {
 
 	h := &jobHandler{
 		common: &api.Handler{
-			Kube:                   kubeUtil,
-			KubeClient:             kubeClient,
-			RadixClient:            radixClient,
-			Env:                    env,
-			SecurityContextBuilder: deployment.NewSecurityContextBuilder(true),
+			Kube:        kubeUtil,
+			KubeClient:  kubeClient,
+			RadixClient: radixClient,
+			Env:         env,
 		},
 	}
 
@@ -61,11 +61,10 @@ func Test_createJobWithEnvVars(t *testing.T) {
 		env := models.NewEnv()
 		h := &jobHandler{
 			common: &api.Handler{
-				Kube:                   kubeUtil,
-				KubeClient:             kubeClient,
-				RadixClient:            radixClient,
-				Env:                    env,
-				SecurityContextBuilder: deployment.NewSecurityContextBuilder(true),
+				Kube:        kubeUtil,
+				KubeClient:  kubeClient,
+				RadixClient: radixClient,
+				Env:         env,
 			},
 		}
 		params := testUtils.GetTestParams().WithRadixConfigEnvVarsMap(map[string]string{"VAR1": "val1", "VAR2": "val2"})
@@ -88,11 +87,10 @@ func Test_createJobWithEnvVars(t *testing.T) {
 		env := models.NewEnv()
 		h := &jobHandler{
 			common: &api.Handler{
-				Kube:                   kubeUtil,
-				KubeClient:             kubeClient,
-				RadixClient:            radixClient,
-				Env:                    env,
-				SecurityContextBuilder: deployment.NewSecurityContextBuilder(true),
+				Kube:        kubeUtil,
+				KubeClient:  kubeClient,
+				RadixClient: radixClient,
+				Env:         env,
 			},
 		}
 		params := testUtils.GetTestParams().
@@ -124,11 +122,10 @@ func Test_createJobWithEnvVars(t *testing.T) {
 		env := models.NewEnv()
 		h := &jobHandler{
 			common: &api.Handler{
-				Kube:                   kubeUtil,
-				KubeClient:             kubeClient,
-				RadixClient:            radixClient,
-				Env:                    env,
-				SecurityContextBuilder: deployment.NewSecurityContextBuilder(true),
+				Kube:        kubeUtil,
+				KubeClient:  kubeClient,
+				RadixClient: radixClient,
+				Env:         env,
 			},
 		}
 		params := testUtils.GetTestParams().WithRadixConfigEnvVarsMap(map[string]string{"VAR1": "val1", "VAR2": "val2"})
@@ -215,11 +212,6 @@ func TestNewHandler(t *testing.T) {
 	assert.Equal(t, env, actualHandler.common.Env)
 	assert.Equal(t, kubeClient, actualHandler.common.KubeClient)
 	assert.Equal(t, radixClient, actualHandler.common.RadixClient)
-	assert.NotNil(t, actualHandler.common.SecurityContextBuilder)
-
-	job := v1.RadixDeployJobComponent{RunAsNonRoot: false}
-	assert.True(t, *actualHandler.common.SecurityContextBuilder.BuildContainerSecurityContext(&job).RunAsNonRoot)
-	assert.True(t, *actualHandler.common.SecurityContextBuilder.BuildPodSecurityContext(&job).RunAsNonRoot)
 }
 
 func TestGetJobs(t *testing.T) {
@@ -933,7 +925,7 @@ func TestCreateJob(t *testing.T) {
 
 		radixClient, kubeClient, promclient, kubeUtil := testUtils.SetupTest(appName, appEnvironment, appJobComponent, appDeployment, 1)
 		radixClient.RadixV1().RadixDeployments(envNamespace).Create(context.Background(), rd, metav1.CreateOptions{})
-		syncer := deployment.NewDeployment(kubeUtil.KubeClient(), kubeUtil, kubeUtil.RadixClient(), promclient, utils.NewRegistrationBuilder().WithName(appName).BuildRR(), rd, true, "", 0, nil, nil)
+		syncer := deployment.NewDeployment(kubeUtil.KubeClient(), kubeUtil, kubeUtil.RadixClient(), promclient, utils.NewRegistrationBuilder().WithName(appName).BuildRR(), rd, "", 0, nil, nil)
 		err := syncer.OnSync()
 		require.NoError(t, err)
 
@@ -1068,18 +1060,14 @@ func TestCreateJob(t *testing.T) {
 		radixClient.RadixV1().RadixDeployments(envNamespace).Create(context.TODO(), rd, metav1.CreateOptions{})
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
-		securityContextBuilder := deployment.NewMockSecurityContextBuilder(ctrl)
-		expectedPodSecurityContext := &corev1.PodSecurityContext{RunAsNonRoot: utils.BoolPtr(true)}
-		securityContextBuilder.EXPECT().BuildPodSecurityContext(gomock.Any()).Return(expectedPodSecurityContext).Times(1)
-		expectedContainerSecurityContext := &corev1.SecurityContext{RunAsNonRoot: utils.BoolPtr(true)}
-		securityContextBuilder.EXPECT().BuildContainerSecurityContext(gomock.Any()).Return(expectedContainerSecurityContext).Times(1)
+		expectedPodSecurityContext := securitycontext.PodSecurityContext()
+		expectedContainerSecurityContext := securitycontext.ContainerSecurityContext()
 		handler := &jobHandler{
 			common: &api.Handler{
-				Kube:                   kubeUtil,
-				KubeClient:             kubeClient,
-				RadixClient:            radixClient,
-				Env:                    models.NewEnv(),
-				SecurityContextBuilder: securityContextBuilder,
+				Kube:        kubeUtil,
+				KubeClient:  kubeClient,
+				RadixClient: radixClient,
+				Env:         models.NewEnv(),
 			},
 		}
 
