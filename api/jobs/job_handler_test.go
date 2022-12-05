@@ -2,10 +2,11 @@ package jobs
 
 import (
 	"context"
-	"github.com/equinor/radix-operator/pkg/apis/securitycontext"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/equinor/radix-operator/pkg/apis/securitycontext"
 
 	radixutils "github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-common/utils/numbers"
@@ -334,6 +335,8 @@ func TestCreateJob(t *testing.T) {
 		assert.Equal(t, numbers.Int32Ptr(0), job.Spec.BackoffLimit)
 		assert.Equal(t, corev1.RestartPolicyNever, job.Spec.Template.Spec.RestartPolicy)
 		assert.Equal(t, corev1.PullAlways, job.Spec.Template.Spec.Containers[0].ImagePullPolicy)
+		assert.Equal(t, "default", job.Spec.Template.Spec.ServiceAccountName)
+		assert.Equal(t, utils.BoolPtr(false), job.Spec.Template.Spec.AutomountServiceAccountToken)
 		assert.Nil(t, job.Spec.Template.Spec.Affinity.NodeAffinity)
 		assert.Len(t, job.Spec.Template.Spec.Tolerations, 0)
 	})
@@ -1077,6 +1080,46 @@ func TestCreateJob(t *testing.T) {
 		job, _ := kubeClient.BatchV1().Jobs(envNamespace).Get(context.TODO(), jobStatus.Name, metav1.GetOptions{})
 		assert.Equal(t, expectedPodSecurityContext, job.Spec.Template.Spec.SecurityContext)
 		assert.Equal(t, expectedContainerSecurityContext, job.Spec.Template.Spec.Containers[0].SecurityContext)
+	})
+
+	t.Run("job with Azure identity", func(t *testing.T) {
+		t.Parallel()
+		appName, appEnvironment, appJobComponent, appDeployment := "app", "qa", "compute", "app-deploy-1"
+		envNamespace := utils.GetEnvironmentNamespace(appName, appEnvironment)
+		rd := utils.ARadixDeployment().
+			WithDeploymentName(appDeployment).
+			WithAppName(appName).
+			WithEnvironment(appEnvironment).
+			WithComponents().
+			WithJobComponents(
+				utils.NewDeployJobComponentBuilder().
+					WithTimeLimitSeconds(numbers.Int64Ptr(10)).
+					WithName(appJobComponent).
+					WithIdentity(&v1.Identity{Azure: &v1.AzureIdentity{ClientId: "anyclientid"}}),
+			).
+			BuildRD()
+
+		radixClient, kubeClient, _, kubeUtil := testUtils.SetupTest(appName, appEnvironment, appJobComponent,
+			appDeployment, 1)
+		applyRadixDeploymentEnvVarsConfigMaps(kubeUtil, rd)
+		radixClient.RadixV1().RadixDeployments(envNamespace).Create(context.TODO(), rd, metav1.CreateOptions{})
+		handler := New(models.NewEnv(), kubeUtil)
+		jobStatus, err := handler.CreateJob(&models.JobScheduleDescription{}, "")
+		assert.Nil(t, err)
+		assert.NotNil(t, jobStatus)
+		job, _ := kubeClient.BatchV1().Jobs(envNamespace).Get(context.TODO(), jobStatus.Name, metav1.GetOptions{})
+		assert.Len(t, job.Labels, 3)
+		assert.Equal(t, appName, job.Labels[kube.RadixAppLabel])
+		assert.Equal(t, appJobComponent, job.Labels[kube.RadixComponentLabel])
+		assert.Equal(t, kube.RadixJobTypeJobSchedule, job.Labels[kube.RadixJobTypeLabel])
+		assert.Len(t, job.Spec.Template.Labels, 4)
+		assert.Equal(t, appName, job.Spec.Template.Labels[kube.RadixAppLabel])
+		assert.Equal(t, appJobComponent, job.Spec.Template.Labels[kube.RadixComponentLabel])
+		assert.Equal(t, kube.RadixJobTypeJobSchedule, job.Spec.Template.Labels[kube.RadixJobTypeLabel])
+		assert.Equal(t, "true", job.Spec.Template.Labels["azure.workload.identity/use"])
+		assert.Equal(t, utils.GetComponentServiceAccountName(appJobComponent), job.Spec.Template.Spec.ServiceAccountName)
+		assert.Equal(t, utils.BoolPtr(false), job.Spec.Template.Spec.AutomountServiceAccountToken)
+
 	})
 }
 
