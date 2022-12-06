@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	github.com/equinor/radix-common v1.2.4
-	github.com/equinor/radix-operator v1.29.1
+	github.com/equinor/radix-operator v1.31.0
 	github.com/golang/mock v1.6.0
 	github.com/prometheus-operator/prometheus-operator/pkg/client v0.54.0
 	github.com/sirupsen/logrus v1.9.0
@@ -59,5 +59,3 @@ require (
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.1 // indirect
 	sigs.k8s.io/yaml v1.3.0 // indirect
 )
-
-replace github.com/equinor/radix-operator => /home/nst/go/src/github.com/equinor/radix-operator
