@@ -375,7 +375,6 @@ func (handler *jobHandler) getJobPods(jobName string) ([]corev1.Pod, error) {
 }
 
 func (handler *jobHandler) buildJobSpec(jobName string, rd *radixv1.RadixDeployment, radixJobComponent *radixv1.RadixDeployJobComponent, payloadSecret *corev1.Secret, jobComponentConfig *models.RadixJobComponentConfig, batchName string, jobScheduleDescription *models.JobScheduleDescription) (*batchv1.Job, *corev1.ConfigMap, *corev1.ConfigMap, error) {
-	podSecurityContext := securitycontext.PodSecurityContext()
 	volumes, err := handler.getVolumes(rd.ObjectMeta.Namespace, rd.Spec.Environment, radixJobComponent, rd.Name, payloadSecret)
 	if err != nil {
 		return nil, nil, nil, err
@@ -433,7 +432,7 @@ func (handler *jobHandler) buildJobSpec(jobName string, rd *radixv1.RadixDeploym
 				Spec: corev1.PodSpec{
 					Containers:                   containers,
 					Volumes:                      volumes,
-					SecurityContext:              podSecurityContext,
+					SecurityContext:              securitycontext.Pod(),
 					RestartPolicy:                corev1.RestartPolicyNever,
 					ImagePullSecrets:             rd.Spec.ImagePullSecrets,
 					Affinity:                     affinity,
@@ -463,7 +462,6 @@ func (handler *jobHandler) getContainersWithEnvVarsConfigMaps(rd *radixv1.RadixD
 		return nil, nil, nil, err
 	}
 	ports := getContainerPorts(radixJobComponent)
-	containerSecurityContext := securitycontext.ContainerSecurityContext()
 	volumeMounts, err := getVolumeMounts(radixJobComponent, rd.GetName(), payloadSecret)
 	if err != nil {
 		return nil, nil, nil, err
@@ -477,7 +475,7 @@ func (handler *jobHandler) getContainersWithEnvVarsConfigMaps(rd *radixv1.RadixD
 		Env:             environmentVariables,
 		Ports:           ports,
 		VolumeMounts:    volumeMounts,
-		SecurityContext: containerSecurityContext,
+		SecurityContext: securitycontext.Container(),
 		Resources:       resources,
 	}
 

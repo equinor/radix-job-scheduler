@@ -1063,8 +1063,8 @@ func TestCreateJob(t *testing.T) {
 		radixClient.RadixV1().RadixDeployments(envNamespace).Create(context.TODO(), rd, metav1.CreateOptions{})
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
-		expectedPodSecurityContext := securitycontext.PodSecurityContext()
-		expectedContainerSecurityContext := securitycontext.ContainerSecurityContext()
+		expectedPodSecurityContext := securitycontext.Pod()
+		expectedContainerSecurityContext := securitycontext.Container()
 		handler := &jobHandler{
 			common: &api.Handler{
 				Kube:        kubeUtil,
