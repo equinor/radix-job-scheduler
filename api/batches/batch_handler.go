@@ -275,8 +275,6 @@ func (handler *batchHandler) getAllBatches() (models.JobList, error) {
 func (handler *batchHandler) buildBatchJobSpec(namespace, appName, batchName string, radixJobComponent *radixv1.RadixDeployJobComponent, batchScheduleDescriptionSecret *corev1.Secret, batchScheduleDescription *models.BatchScheduleDescription) (*batchv1.Job, error) {
 	container := handler.getContainer(batchName, batchScheduleDescriptionSecret)
 	volumes := getVolumes(batchScheduleDescriptionSecret)
-	podSecurityContext := securitycontext.PodSecurityContext()
-
 	jobCount := 0
 	if batchScheduleDescription != nil {
 		jobCount = len(batchScheduleDescription.JobScheduleDescriptions)
@@ -309,7 +307,7 @@ func (handler *batchHandler) buildBatchJobSpec(namespace, appName, batchName str
 				Spec: corev1.PodSpec{
 					Containers:         []corev1.Container{*container},
 					Volumes:            volumes,
-					SecurityContext:    podSecurityContext,
+					SecurityContext:    securitycontext.Pod(),
 					RestartPolicy:      corev1.RestartPolicyNever,
 					ServiceAccountName: defaults.RadixJobSchedulerServerServiceName,
 				},
@@ -325,7 +323,7 @@ func (handler *batchHandler) getContainer(batchName string, batchScheduleDescrip
 		ImagePullPolicy: corev1.PullAlways,
 		Env:             handler.getEnvironmentVariables(batchName, handler.common.Env),
 		VolumeMounts:    getVolumeMounts(batchScheduleDescriptionSecret),
-		SecurityContext: securitycontext.ContainerSecurityContext(),
+		SecurityContext: securitycontext.Container(),
 		Resources:       getResources(),
 	}
 }
