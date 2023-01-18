@@ -7,17 +7,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/equinor/radix-job-scheduler/api"
-	"github.com/equinor/radix-operator/pkg/apis/securitycontext"
-	"k8s.io/apimachinery/pkg/api/errors"
-
 	commonUtils "github.com/equinor/radix-common/utils"
+	"github.com/equinor/radix-job-scheduler/api"
 	jobErrors "github.com/equinor/radix-job-scheduler/api/errors"
 	schedulerDefaults "github.com/equinor/radix-job-scheduler/defaults"
 	"github.com/equinor/radix-job-scheduler/models"
 	"github.com/equinor/radix-operator/pkg/apis/deployment"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
+	"github.com/equinor/radix-operator/pkg/apis/securitycontext"
 	operatorUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	radixlabels "github.com/equinor/radix-operator/pkg/apis/utils/labels"
 	"github.com/equinor/radix-operator/pkg/apis/utils/numbers"
@@ -25,6 +23,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 )
@@ -280,8 +279,8 @@ func (handler *jobHandler) createJob(jobName string, jobComponent *radixv1.Radix
 	createdJob, err := handler.common.KubeClient.BatchV1().Jobs(namespace).Create(context.Background(), job, metav1.CreateOptions{})
 	if err != nil {
 		_ = handler.common.Kube.DeleteSecret(payloadSecret.GetNamespace(), payloadSecret.GetName())
-		_ = handler.common.DeleteConfigMaps(createdJobEnvVarsConfigMap)
-		_ = handler.common.DeleteConfigMaps(createdJobEnvVarsMetadataConfigMap)
+		_ = handler.common.DeleteConfigMap(createdJobEnvVarsConfigMap)
+		_ = handler.common.DeleteConfigMap(createdJobEnvVarsMetadataConfigMap)
 		_ = handler.common.DeleteService(service)
 		return nil, err
 	}
