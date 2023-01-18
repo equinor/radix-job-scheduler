@@ -38,8 +38,11 @@ func (handler *Handler) GetServiceForJob(jobName string) (*corev1.ServiceList, e
 	)
 }
 
-//DeleteService Delete the service for the job
+//DeleteService Deletes a service
 func (handler *Handler) DeleteService(service *corev1.Service) error {
+	if service == nil {
+		return nil
+	}
 	return handler.KubeClient.CoreV1().Services(service.Namespace).Delete(context.TODO(), service.Name, metav1.DeleteOptions{})
 }
 
