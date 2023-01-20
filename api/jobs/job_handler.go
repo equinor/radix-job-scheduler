@@ -280,8 +280,8 @@ func (handler *jobHandler) createJob(jobName string, jobComponent *radixv1.Radix
 	createdJob, err := handler.common.KubeClient.BatchV1().Jobs(namespace).Create(context.Background(), job, metav1.CreateOptions{})
 	if err != nil {
 		_ = handler.common.Kube.DeleteSecret(payloadSecret.GetNamespace(), payloadSecret.GetName())
-		_ = handler.common.DeleteConfigMaps(createdJobEnvVarsConfigMap)
-		_ = handler.common.DeleteConfigMaps(createdJobEnvVarsMetadataConfigMap)
+		_ = handler.common.DeleteConfigMap(createdJobEnvVarsConfigMap)
+		_ = handler.common.DeleteConfigMap(createdJobEnvVarsMetadataConfigMap)
 		_ = handler.common.DeleteService(service)
 		return nil, err
 	}
