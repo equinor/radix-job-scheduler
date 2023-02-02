@@ -2,7 +2,7 @@ package v1
 
 import (
 	"context"
-	defaultsV1 "github.com/equinor/radix-job-scheduler/models/v1/defaults"
+	defaultsv1 "github.com/equinor/radix-job-scheduler/models/v1/defaults"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -67,7 +67,7 @@ func buildServiceSpec(serviceName, jobName, componentName, appName string, compo
 			Type:  corev1.ServiceTypeClusterIP,
 			Ports: buildServicePorts(componentPorts),
 			Selector: map[string]string{
-				defaultsV1.K8sJobNameLabel: jobName, // K8s adds a "job-name" label to a Pod created from a Job
+				defaultsv1.K8sJobNameLabel: jobName, // K8s adds a "job-name" label to a Pod created from a Job
 			},
 		},
 	}

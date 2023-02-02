@@ -3,13 +3,14 @@ package jobs
 import (
 	"context"
 	"fmt"
-	v12 "github.com/equinor/radix-job-scheduler/models/v1"
-	defaultsV1 "github.com/equinor/radix-job-scheduler/models/v1/defaults"
-	"github.com/equinor/radix-operator/pkg/apis/kube"
 	"sort"
 	"strings"
 
 	"github.com/equinor/radix-common/utils"
+	modelsv1 "github.com/equinor/radix-job-scheduler/models/v1"
+	defaultsv1 "github.com/equinor/radix-job-scheduler/models/v1/defaults"
+	"github.com/equinor/radix-operator/pkg/apis/kube"
+	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	v1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -20,24 +21,24 @@ var imageErrors = map[string]bool{"ImagePullBackOff": true, "ImageInspectError":
 	"ErrImageNeverPull": true, "RegistryUnavailable": true, "InvalidImageName": true}
 
 // GetJobStatusFromJob Gets job from a k8s job
-func GetJobStatusFromJob(kubeClient kubernetes.Interface, job *v1.Job, jobPods []corev1.Pod) *v12.JobStatus {
-	jobStatus := v12.JobStatus{
+func GetJobStatusFromJob(kubeClient kubernetes.Interface, job *v1.Job, jobPods []corev1.Pod) *modelsv1.JobStatus {
+	jobStatus := modelsv1.JobStatus{
 		Name:    job.GetName(),
 		Created: utils.FormatTime(&job.ObjectMeta.CreationTimestamp),
 		Started: utils.FormatTime(job.Status.StartTime),
 		Ended:   getJobEndTimestamp(job),
 	}
-	status := v12.GetStatusFromJobStatus(job.Status)
+	status := modelsv1.GetStatusFromJobStatus(job.Status)
 
 	jobStatus.Status = status.String()
-	jobStatus.JobId = job.ObjectMeta.Labels[defaultsV1.RadixJobIdLabel]   //Not empty, if JobId exists
+	jobStatus.JobId = job.ObjectMeta.Labels[defaultsv1.RadixJobIdLabel]   //Not empty, if JobId exists
 	jobStatus.BatchName = job.ObjectMeta.Labels[kube.RadixBatchNameLabel] //Not empty, if BatchName exists
-	if status != v12.Running {
+	if status != modelsv1.Running {
 		// if the job is not in state 'Running', we check that job's pod status reason
 		for _, pod := range jobPods {
 			if pod.Status.Reason == "DeadlineExceeded" {
 				// if the pod's status reason is 'DeadlineExceeded', the entire job also gets that status
-				jobStatus.Status = v12.DeadlineExceeded.String()
+				jobStatus.Status = modelsv1.DeadlineExceeded.String()
 				jobStatus.Message = pod.Status.Message
 				return &jobStatus
 			}
@@ -53,17 +54,17 @@ func GetJobStatusFromJob(kubeClient kubernetes.Interface, job *v1.Job, jobPods [
 			switch {
 			case cs.State.Terminated != nil:
 				//  job with one or more 'terminated' containers gets status 'Stopped'
-				jobStatus.Status = v12.Stopped.String()
+				jobStatus.Status = modelsv1.Stopped.String()
 				jobStatus.Message = cs.State.Terminated.Message
 
 				return &jobStatus
 			case cs.State.Waiting != nil:
 				if _, ok := imageErrors[cs.State.Waiting.Reason]; ok {
 					// if container waits because of inaccessible image, the job is 'Failed'
-					jobStatus.Status = v12.Failed.String()
+					jobStatus.Status = modelsv1.Failed.String()
 				} else {
 					// if container waits for any other reason, job is 'Waiting'
-					jobStatus.Status = v12.Waiting.String()
+					jobStatus.Status = modelsv1.Waiting.String()
 				}
 				jobStatus.Started = ""
 				message := cs.State.Waiting.Message
@@ -85,9 +86,24 @@ func GetJobStatusFromJob(kubeClient kubernetes.Interface, job *v1.Job, jobPods [
 			if lastCondition.Status == corev1.ConditionTrue {
 				continue
 			}
-			jobStatus.Status = v12.Waiting.String()
+			jobStatus.Status = modelsv1.Waiting.String()
 			jobStatus.Message = fmt.Sprintf("%s %s", lastCondition.Reason, lastCondition.Message)
 		}
+	}
+	return &jobStatus
+}
+
+// GetJobStatusFromRadixBatchJob Gets job status from RadixBatch
+func GetJobStatusFromRadixBatchJob(radixBatch *radixv1.RadixBatch) *modelsv1.JobStatus {
+	jobStatus := modelsv1.JobStatus{
+		JobId:     "", //TODO ?
+		BatchName: radixBatch.GetName(),
+		Name:      radixBatch.GetName(), //TODO ?
+		Created:   utils.FormatTime(&radixBatch.ObjectMeta.CreationTimestamp),
+		Started:   utils.FormatTime(radixBatch.Status.Condition.ActiveTime),
+		Ended:     utils.FormatTime(radixBatch.Status.Condition.CompletionTime),
+		Status:    radixBatch.Status.Condition.Reason, //TODO ?
+		Message:   radixBatch.Status.Condition.Message,
 	}
 	return &jobStatus
 }

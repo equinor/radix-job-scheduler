@@ -14,7 +14,7 @@ import (
 	"github.com/equinor/radix-common/utils/slice"
 	apiErrors "github.com/equinor/radix-job-scheduler/api/errors"
 	"github.com/equinor/radix-job-scheduler/models"
-	modelsV2 "github.com/equinor/radix-job-scheduler/models/v2"
+	modelsv2 "github.com/equinor/radix-job-scheduler/models/v2"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	radixLabels "github.com/equinor/radix-operator/pkg/apis/utils/labels"
@@ -39,9 +39,9 @@ type handler struct {
 
 type Handler interface {
 	//GetRadixBatches Get status of all batches
-	GetRadixBatches() ([]modelsV2.RadixBatchStatus, error)
+	GetRadixBatches() ([]modelsv2.RadixBatchStatus, error)
 	//GetRadixBatchSingleJobs Get status of all single jobs
-	GetRadixBatchSingleJobs() ([]modelsV2.RadixBatchStatus, error)
+	GetRadixBatchSingleJobs() ([]modelsv2.RadixBatchStatus, error)
 	//GetRadixBatch Get status of a batch
 	GetRadixBatch(string) (*radixv1.RadixBatchStatus, error)
 	//CreateRadixBatch Create a batch with parameters
@@ -70,28 +70,28 @@ type payloadEntry struct {
 }
 
 //GetRadixBatches Get statuses of all batches
-func (h *handler) GetRadixBatches() ([]modelsV2.RadixBatchStatus, error) {
+func (h *handler) GetRadixBatches() ([]modelsv2.RadixBatchStatus, error) {
 	log.Debugf("Get batches for the namespace: %s", h.Env.RadixDeploymentNamespace)
 	return h.getRadixBatchStatus(kube.RadixBatchTypeBatch)
 }
 
 //GetRadixBatchSingleJobs Get statuses of all single jobs
-func (h *handler) GetRadixBatchSingleJobs() ([]modelsV2.RadixBatchStatus, error) {
+func (h *handler) GetRadixBatchSingleJobs() ([]modelsv2.RadixBatchStatus, error) {
 	log.Debugf("Get sigle jobs for the namespace: %s", h.Env.RadixDeploymentNamespace)
 	return h.getRadixBatchStatus(kube.RadixBatchTypeJob)
 }
 
-func (h *handler) getRadixBatchStatus(radixBatchType kube.RadixBatchType) ([]modelsV2.RadixBatchStatus, error) {
+func (h *handler) getRadixBatchStatus(radixBatchType kube.RadixBatchType) ([]modelsv2.RadixBatchStatus, error) {
 	radixBatches, err := h.getAllBatches(radixBatchType)
 	if err != nil {
 		return nil, err
 	}
 	log.Debugf("Found %v batches for namespace %s", len(radixBatches), h.Env.RadixDeploymentNamespace)
 
-	var radixBatchStatuses []modelsV2.RadixBatchStatus
+	var radixBatchStatuses []modelsv2.RadixBatchStatus
 	for _, radixBatch := range radixBatches {
 		radixBatchStatus := radixBatch.Status
-		radixBatchStatuses = append(radixBatchStatuses, modelsV2.RadixBatchStatus{
+		radixBatchStatuses = append(radixBatchStatuses, modelsv2.RadixBatchStatus{
 			Name:         radixBatch.GetName(),
 			CreationTime: utils.FormatTime(pointers.Ptr(radixBatch.GetCreationTimestamp())),
 			Status:       radixBatchStatus,

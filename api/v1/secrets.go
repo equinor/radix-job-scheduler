@@ -3,10 +3,10 @@ package v1
 import (
 	"context"
 	"encoding/json"
-	"github.com/equinor/radix-job-scheduler/models"
-	defaultsV1 "github.com/equinor/radix-job-scheduler/models/v1/defaults"
 	"strings"
 
+	"github.com/equinor/radix-job-scheduler/models"
+	defaultsv1 "github.com/equinor/radix-job-scheduler/models/v1/defaults"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -21,7 +21,7 @@ func (handler *Handler) CreatePayloadSecret(appName, jobName string, jobComponen
 		return nil, nil
 	}
 
-	secretName := defaultsV1.GetPayloadSecretName(jobName)
+	secretName := defaultsv1.GetPayloadSecretName(jobName)
 	secret := buildPayloadSecretSpec(appName, jobName, jobComponent.Name, secretName, jobScheduleDescription.Payload)
 	savedSecret, err := handler.Kube.ApplySecret(handler.Env.RadixDeploymentNamespace, secret)
 	return savedSecret, err
@@ -72,7 +72,7 @@ func buildPayloadSecretSpec(appName, jobName, componentName, secretName, payload
 			},
 		},
 		Data: map[string][]byte{
-			defaultsV1.JobPayloadPropertyName: []byte(payload),
+			defaultsv1.JobPayloadPropertyName: []byte(payload),
 		},
 	}
 	return &secret
@@ -83,7 +83,7 @@ func isPayloadDefinedForJobComponent(radixJobComponent *v1.RadixDeployJobCompone
 }
 
 func buildBatchScheduleDescriptionSecretSpec(batchName, appName, componentName string, batchScheduleDescription *models.BatchScheduleDescription) (*corev1.Secret, error) {
-	secretName := defaultsV1.GetBatchScheduleDescriptionSecretName(batchName)
+	secretName := defaultsv1.GetBatchScheduleDescriptionSecretName(batchName)
 	descriptionJson, err := json.Marshal(batchScheduleDescription)
 	if err != nil {
 		return nil, err
@@ -101,7 +101,7 @@ func buildBatchScheduleDescriptionSecretSpec(batchName, appName, componentName s
 			},
 		},
 		Data: map[string][]byte{
-			defaultsV1.BatchScheduleDescriptionPropertyName: descriptionJson,
+			defaultsv1.BatchScheduleDescriptionPropertyName: descriptionJson,
 		},
 	}
 	return &secret, nil

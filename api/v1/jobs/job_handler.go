@@ -2,19 +2,15 @@ package jobs
 
 import (
 	"context"
-	"fmt"
 	"sort"
-	"strings"
-	"time"
 
-	commonUtils "github.com/equinor/radix-common/utils"
 	jobErrors "github.com/equinor/radix-job-scheduler/api/errors"
 	"github.com/equinor/radix-job-scheduler/api/v1"
+	apiv2 "github.com/equinor/radix-job-scheduler/api/v2"
 	"github.com/equinor/radix-job-scheduler/models"
-	modelsV1 "github.com/equinor/radix-job-scheduler/models/v1"
-	defaultsV1 "github.com/equinor/radix-job-scheduler/models/v1/defaults"
+	modelsv1 "github.com/equinor/radix-job-scheduler/models/v1"
+	defaultsv1 "github.com/equinor/radix-job-scheduler/models/v1/defaults"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
-	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/equinor/radix-operator/pkg/apis/utils/slice"
 	log "github.com/sirupsen/logrus"
 	batchv1 "k8s.io/api/batch/v1"
@@ -29,11 +25,11 @@ type jobHandler struct {
 
 type JobHandler interface {
 	//GetJobs Get status of all jobs
-	GetJobs() ([]modelsV1.JobStatus, error)
+	GetJobs() ([]modelsv1.JobStatus, error)
 	//GetJob Get status of a job
-	GetJob(name string) (*modelsV1.JobStatus, error)
+	GetJob(name string) (*modelsv1.JobStatus, error)
 	//CreateJob Create a job with parameters. `batchName` is optional.
-	CreateJob(jobScheduleDescription *models.JobScheduleDescription, batchName string) (*modelsV1.JobStatus, error)
+	CreateJob(jobScheduleDescription *models.JobScheduleDescription, batchName string) (*modelsv1.JobStatus, error)
 	//MaintainHistoryLimit Delete outdated jobs
 	MaintainHistoryLimit() error
 	//DeleteJob Delete a job
@@ -42,18 +38,21 @@ type JobHandler interface {
 
 // New Constructor for job handler
 func New(env *models.Env, kube *kube.Kube) JobHandler {
+	kubeClient := kube.KubeClient()
+	radixClient := kube.RadixClient()
 	return &jobHandler{
 		common: &v1.Handler{
-			Kube:        kube,
-			KubeClient:  kube.KubeClient(),
-			RadixClient: kube.RadixClient(),
-			Env:         env,
+			Kube:         kube,
+			KubeClient:   kubeClient,
+			RadixClient:  radixClient,
+			Env:          env,
+			HandlerApiV2: apiv2.New(env, kube, kubeClient, radixClient),
 		},
 	}
 }
 
 // GetJobs Get status of all jobs
-func (handler *jobHandler) GetJobs() ([]modelsV1.JobStatus, error) {
+func (handler *jobHandler) GetJobs() ([]modelsv1.JobStatus, error) {
 	log.Debugf("Get Jobs for namespace: %s", handler.common.Env.RadixDeploymentNamespace)
 
 	kubeJobs, err := handler.getAllJobs()
@@ -66,7 +65,7 @@ func (handler *jobHandler) GetJobs() ([]modelsV1.JobStatus, error) {
 		return nil, err
 	}
 	podsMap := v1.GetPodsToJobNameMap(pods)
-	jobs := make([]modelsV1.JobStatus, len(kubeJobs))
+	jobs := make([]modelsv1.JobStatus, len(kubeJobs))
 	for idx, k8sJob := range kubeJobs {
 		jobs[idx] = *GetJobStatusFromJob(handler.common.KubeClient, k8sJob, podsMap[k8sJob.Name])
 	}
@@ -76,7 +75,7 @@ func (handler *jobHandler) GetJobs() ([]modelsV1.JobStatus, error) {
 }
 
 // GetJob Get status of a job
-func (handler *jobHandler) GetJob(jobName string) (*modelsV1.JobStatus, error) {
+func (handler *jobHandler) GetJob(jobName string) (*modelsv1.JobStatus, error) {
 	log.Debugf("get jobs for namespace: %s", handler.common.Env.RadixDeploymentNamespace)
 	job, err := handler.getJobByName(jobName)
 	if err != nil {
@@ -93,28 +92,14 @@ func (handler *jobHandler) GetJob(jobName string) (*modelsV1.JobStatus, error) {
 
 // CreateJob Create a job with parameters
 func (handler *jobHandler) CreateJob(jobScheduleDescription *models.JobScheduleDescription,
-	batchName string) (*modelsV1.JobStatus, error) {
+	batchName string) (*modelsv1.JobStatus, error) {
+	//TODO remove batchName ?
 	log.Debugf("create job for namespace: %s", handler.common.Env.RadixDeploymentNamespace)
-
-	radixDeployment, err := handler.common.RadixClient.RadixV1().RadixDeployments(handler.common.Env.RadixDeploymentNamespace).Get(context.Background(), handler.common.Env.RadixDeploymentName, metav1.GetOptions{})
+	radixBatch, err := handler.common.HandlerApiV2.CreateRadixBatchSingleJob(jobScheduleDescription)
 	if err != nil {
-		return nil, jobErrors.NewNotFound("radix deployment", handler.common.Env.RadixDeploymentName)
+		return nil, err
 	}
-
-	jobComponent := radixDeployment.GetJobComponentByName(handler.common.Env.RadixComponentName)
-	if jobComponent == nil {
-		return nil, jobErrors.NewNotFound("job component", handler.common.Env.RadixComponentName)
-	}
-
-	jobName := generateJobName(jobComponent)
-
-	job, err := handler.createJob(jobName, jobComponent, radixDeployment, jobScheduleDescription, batchName)
-	if err != nil {
-		return nil, jobErrors.NewFromError(err)
-	}
-
-	log.Debug(fmt.Sprintf("created job %s for component %s, environment %s, in namespace: %s", job.Name, handler.common.Env.RadixComponentName, radixDeployment.Spec.Environment, handler.common.Env.RadixDeploymentNamespace))
-	return GetJobStatusFromJob(handler.common.KubeClient, job, nil), nil
+	return GetJobStatusFromRadixBatchJob(radixBatch), nil
 }
 
 // DeleteJob Delete a job
@@ -226,24 +211,6 @@ func getCompletionTimeFrom(job *batchv1.Job) *metav1.Time {
 	return job.Status.CompletionTime
 }
 
-func generateJobName(jobComponent *radixv1.RadixDeployJobComponent) string {
-	timestamp := time.Now().Format("20060102150405")
-	jobTag := strings.ToLower(commonUtils.RandString(8))
-	return fmt.Sprintf("%s-%s-%s", jobComponent.Name, timestamp, jobTag)
-}
-
-func (handler *jobHandler) createJob(jobName string, jobComponent *radixv1.RadixDeployJobComponent, rd *radixv1.RadixDeployment, jobScheduleDescription *models.JobScheduleDescription, batchName string) (*batchv1.Job, error) {
-	//appName := rd.Spec.AppName
-	//namespace := handler.common.Env.RadixDeploymentNamespace
-	//var jobComponentConfig *models.RadixJobComponentConfig
-	//if jobScheduleDescription != nil {
-	//	jobComponentConfig = &jobScheduleDescription.RadixJobComponentConfig
-	//}
-	//TODO
-
-	return nil, nil
-}
-
 func (handler *jobHandler) deleteJob(job *batchv1.Job) error {
 	fg := metav1.DeletePropagationBackground
 	return handler.common.KubeClient.BatchV1().Jobs(job.Namespace).Delete(context.Background(), job.Name, metav1.DeleteOptions{PropagationPolicy: &fg})
@@ -264,7 +231,7 @@ func (handler *jobHandler) getJobByName(jobName string) (*batchv1.Job, error) {
 	return nil, jobErrors.NewNotFound("job", jobName)
 }
 
-func (handler *jobHandler) getAllJobs() (modelsV1.JobList, error) {
+func (handler *jobHandler) getAllJobs() (modelsv1.JobList, error) {
 	kubeJobs, err := handler.common.KubeClient.
 		BatchV1().
 		Jobs(handler.common.Env.RadixDeploymentNamespace).
@@ -312,6 +279,6 @@ func getLabelSelectorForJobComponent(componentName string) string {
 
 func getLabelSelectorForJobPods(jobName string) string {
 	return labels.SelectorFromSet(map[string]string{
-		defaultsV1.K8sJobNameLabel: jobName,
+		defaultsv1.K8sJobNameLabel: jobName,
 	}).String()
 }
