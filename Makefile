@@ -4,8 +4,7 @@ test:
 
 .PHONY: generate-mock
 generate-mock:
-	mockgen -source ./api/jobs/job_handler.go -destination ./api/jobs/mock/job_mock.go -package mock
-	mockgen -source ./api/batches/batch_handler.go -destination ./api/batches/mock/batch_mock.go -package mock
+	mockgen -source ./api/v2/handler.go -destination ./api/v2/mock/handler_mock.go -package mock
 
 .HONY: staticcheck
 staticcheck:

@@ -1,4 +1,4 @@
-package api
+package v1
 
 import (
 	"fmt"
@@ -18,14 +18,6 @@ func GetJobOwnerReference(job *batchv1.Job) metav1.OwnerReference {
 		UID:        job.UID,
 		Controller: commonUtils.BoolPtr(true),
 	}
-}
-
-//UpdateOwnerReferenceOfConfigMaps Update owner reference of a config-map
-func (handler *Handler) UpdateOwnerReferenceOfConfigMaps(namespace string, ownerReference metav1.OwnerReference, configMaps ...*corev1.ConfigMap) error {
-	for _, configMap := range configMaps {
-		configMap.OwnerReferences = append(configMap.OwnerReferences, ownerReference)
-	}
-	return handler.Kube.UpdateConfigMap(namespace, configMaps...)
 }
 
 //UpdateOwnerReferenceOfSecret Update owner reference of secrets

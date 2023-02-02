@@ -1,14 +1,14 @@
-package api
+package v1
 
 import (
 	"context"
-	"github.com/equinor/radix-job-scheduler/api/errors"
-	schedulerDefaults "github.com/equinor/radix-job-scheduler/defaults"
-	"github.com/equinor/radix-operator/pkg/apis/kube"
-	corev1 "k8s.io/api/core/v1"
 	"strings"
 
+	"github.com/equinor/radix-job-scheduler/api/errors"
+	defaultsV1 "github.com/equinor/radix-job-scheduler/models/v1/defaults"
+	"github.com/equinor/radix-operator/pkg/apis/kube"
 	batchv1 "k8s.io/api/batch/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -29,7 +29,7 @@ func (handler *Handler) GetBatch(batchName string) (*batchv1.Job, error) {
 func GetPodsToJobNameMap(pods []corev1.Pod) map[string][]corev1.Pod {
 	podsMap := make(map[string][]corev1.Pod)
 	for _, pod := range pods {
-		jobName := pod.Labels[schedulerDefaults.K8sJobNameLabel]
+		jobName := pod.Labels[defaultsV1.K8sJobNameLabel]
 		if len(jobName) > 0 {
 			podsMap[jobName] = append(podsMap[jobName], pod)
 		}

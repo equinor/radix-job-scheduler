@@ -1,47 +1,40 @@
-package batches
+package batchesv1
 
 import (
 	"context"
 	"fmt"
-	"github.com/equinor/radix-operator/pkg/apis/securitycontext"
-	"path"
+	apiErrors "github.com/equinor/radix-job-scheduler/api/errors"
+	"github.com/equinor/radix-job-scheduler/api/v1"
+	"github.com/equinor/radix-job-scheduler/api/v1/jobs"
+	v12 "github.com/equinor/radix-job-scheduler/models/v1"
 	"sort"
-	"strconv"
 	"strings"
 	"time"
 
 	commonUtils "github.com/equinor/radix-common/utils"
-	"github.com/equinor/radix-job-scheduler/api"
-	apiErrors "github.com/equinor/radix-job-scheduler/api/errors"
-	"github.com/equinor/radix-job-scheduler/api/jobs"
-	schedulerDefaults "github.com/equinor/radix-job-scheduler/defaults"
 	"github.com/equinor/radix-job-scheduler/models"
-	"github.com/equinor/radix-operator/pkg/apis/defaults"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
-	"github.com/equinor/radix-operator/pkg/apis/utils/numbers"
 	"github.com/equinor/radix-operator/pkg/apis/utils/slice"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 	log "github.com/sirupsen/logrus"
 	batchv1 "k8s.io/api/batch/v1"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes"
 )
 
 type batchHandler struct {
-	common *api.Handler
+	common *v1.Handler
 }
 
 type BatchHandler interface {
 	//GetBatches Get status of all batches
-	GetBatches() ([]models.BatchStatus, error)
+	GetBatches() ([]v12.BatchStatus, error)
 	//GetBatch Get status of a batch
-	GetBatch(batchName string) (*models.BatchStatus, error)
+	GetBatch(batchName string) (*v12.BatchStatus, error)
 	//CreateBatch Create a batch with parameters
-	CreateBatch(batchScheduleDescription *models.BatchScheduleDescription) (*models.BatchStatus, error)
+	CreateBatch(batchScheduleDescription *models.BatchScheduleDescription) (*v12.BatchStatus, error)
 	//MaintainHistoryLimit Delete outdated batches
 	MaintainHistoryLimit() error
 	//DeleteBatch Delete a batch
@@ -51,7 +44,7 @@ type BatchHandler interface {
 //New Constructor of the batch handler
 func New(env *models.Env, kube *kube.Kube, kubeClient kubernetes.Interface, radixClient radixclient.Interface) BatchHandler {
 	return &batchHandler{
-		common: &api.Handler{
+		common: &v1.Handler{
 			Kube:        kube,
 			KubeClient:  kubeClient,
 			RadixClient: radixClient,
@@ -61,7 +54,7 @@ func New(env *models.Env, kube *kube.Kube, kubeClient kubernetes.Interface, radi
 }
 
 //GetBatches Get status of all batches
-func (handler *batchHandler) GetBatches() ([]models.BatchStatus, error) {
+func (handler *batchHandler) GetBatches() ([]v12.BatchStatus, error) {
 	log.Debugf("Get batches for the namespace: %s", handler.common.Env.RadixDeploymentNamespace)
 
 	allBatches, err := handler.getAllBatches()
@@ -73,10 +66,10 @@ func (handler *batchHandler) GetBatches() ([]models.BatchStatus, error) {
 	if err != nil {
 		return nil, err
 	}
-	allBatchesPodsMap := api.GetPodsToJobNameMap(allBatchesPods)
-	allBatchStatuses := make([]models.BatchStatus, len(allBatches))
+	allBatchesPodsMap := v1.GetPodsToJobNameMap(allBatchesPods)
+	allBatchStatuses := make([]v12.BatchStatus, len(allBatches))
 	for idx, batch := range allBatches {
-		allBatchStatuses[idx] = models.BatchStatus{
+		allBatchStatuses[idx] = v12.BatchStatus{
 			JobStatus: *jobs.GetJobStatusFromJob(handler.common.KubeClient, batch,
 				allBatchesPodsMap[batch.Name]),
 		}
@@ -87,7 +80,7 @@ func (handler *batchHandler) GetBatches() ([]models.BatchStatus, error) {
 }
 
 //GetBatch Get status of a batch
-func (handler *batchHandler) GetBatch(batchName string) (*models.BatchStatus, error) {
+func (handler *batchHandler) GetBatch(batchName string) (*v12.BatchStatus, error) {
 	log.Debugf("get batches for namespace: %s", handler.common.Env.RadixDeploymentNamespace)
 	batch, err := handler.common.GetBatch(batchName)
 	if err != nil {
@@ -102,16 +95,16 @@ func (handler *batchHandler) GetBatch(batchName string) (*models.BatchStatus, er
 	if err != nil {
 		return nil, err
 	}
-	batchStatus := models.BatchStatus{
+	batchStatus := v12.BatchStatus{
 		JobStatus:   *jobs.GetJobStatusFromJob(handler.common.KubeClient, batch, batchPods),
-		JobStatuses: make([]models.JobStatus, len(batchJobs)),
+		JobStatuses: make([]v12.JobStatus, len(batchJobs)),
 	}
 
 	batchJobsPods, err := handler.common.GetPodsForLabelSelector(getLabelSelectorForBatchObjects(batchName))
 	if err != nil {
 		return nil, err
 	}
-	batchJobsPodsMap := api.GetPodsToJobNameMap(batchJobsPods)
+	batchJobsPodsMap := v1.GetPodsToJobNameMap(batchJobsPods)
 	for idx, batchJob := range batchJobs {
 		batchStatus.JobStatuses[idx] = *jobs.GetJobStatusFromJob(handler.common.KubeClient, batchJob, batchJobsPodsMap[batchJob.Name])
 	}
@@ -122,7 +115,7 @@ func (handler *batchHandler) GetBatch(batchName string) (*models.BatchStatus, er
 }
 
 //CreateBatch Create a batch with parameters
-func (handler *batchHandler) CreateBatch(batchScheduleDescription *models.BatchScheduleDescription) (*models.BatchStatus, error) {
+func (handler *batchHandler) CreateBatch(batchScheduleDescription *models.BatchScheduleDescription) (*v12.BatchStatus, error) {
 	namespace := handler.common.Env.RadixDeploymentNamespace
 	radixComponentName := handler.common.Env.RadixComponentName
 	radixDeploymentName := handler.common.Env.RadixDeploymentName
@@ -232,36 +225,18 @@ func generateBatchName(jobComponentName string) string {
 }
 
 func (handler *batchHandler) createBatch(namespace, appName, batchName string, radixJobComponent *radixv1.RadixDeployJobComponent, batchScheduleDescription *models.BatchScheduleDescription) (*batchv1.Job, error) {
-	batchScheduleDescriptionSecret, err := handler.common.CreateBatchScheduleDescriptionSecret(appName, batchName,
-		radixJobComponent.Name, batchScheduleDescription)
-	if err != nil {
-		return nil, apiErrors.NewFromError(err)
-	}
-	batch, err := handler.buildBatchJobSpec(namespace, appName, batchName, radixJobComponent,
-		batchScheduleDescriptionSecret, batchScheduleDescription)
-	if err != nil {
-		return nil, err
-	}
-	createdBatch, err := handler.common.CreateJob(namespace, batch)
-	if err != nil {
-		_ = handler.common.Kube.DeleteSecret(batchScheduleDescriptionSecret.GetNamespace(), batchScheduleDescriptionSecret.GetName())
-		return nil, err
-	}
-	err = handler.common.UpdateOwnerReferenceOfSecret(namespace, api.GetJobOwnerReference(createdBatch), batchScheduleDescriptionSecret)
-	if err != nil {
-		return nil, err
-	}
-	return createdBatch, nil
+	//TODO
+	return nil, nil
 }
 
-func (handler *batchHandler) getAllBatches() (models.JobList, error) {
+func (handler *batchHandler) getAllBatches() (v12.JobList, error) {
 	kubeBatches, err := handler.common.KubeClient.
 		BatchV1().
 		Jobs(handler.common.Env.RadixDeploymentNamespace).
 		List(
 			context.Background(),
 			metav1.ListOptions{
-				LabelSelector: api.GetLabelSelectorForBatches(handler.common.Env.RadixComponentName),
+				LabelSelector: v1.GetLabelSelectorForBatches(handler.common.Env.RadixComponentName),
 			},
 		)
 
@@ -270,122 +245,6 @@ func (handler *batchHandler) getAllBatches() (models.JobList, error) {
 	}
 
 	return slice.PointersOf(kubeBatches.Items).([]*batchv1.Job), nil
-}
-
-func (handler *batchHandler) buildBatchJobSpec(namespace, appName, batchName string, radixJobComponent *radixv1.RadixDeployJobComponent, batchScheduleDescriptionSecret *corev1.Secret, batchScheduleDescription *models.BatchScheduleDescription) (*batchv1.Job, error) {
-	container := handler.getContainer(batchName, batchScheduleDescriptionSecret)
-	volumes := getVolumes(batchScheduleDescriptionSecret)
-	jobCount := 0
-	if batchScheduleDescription != nil {
-		jobCount = len(batchScheduleDescription.JobScheduleDescriptions)
-	}
-
-	return &batchv1.Job{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: batchName,
-			Annotations: map[string]string{
-				schedulerDefaults.RadixBatchJobCountAnnotation: strconv.Itoa(jobCount),
-			},
-			Labels: map[string]string{
-				kube.RadixAppLabel:       appName,
-				kube.RadixComponentLabel: radixJobComponent.Name,
-				kube.RadixJobTypeLabel:   kube.RadixJobTypeBatchSchedule,
-			},
-		},
-		Spec: batchv1.JobSpec{
-			BackoffLimit: numbers.Int32Ptr(0),
-			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels: map[string]string{
-						kube.RadixAppLabel:       appName,
-						kube.RadixComponentLabel: radixJobComponent.Name,
-						kube.RadixJobTypeLabel:   kube.RadixJobTypeBatchSchedule,
-						kube.RadixBatchNameLabel: batchName,
-					},
-					Namespace: namespace,
-				},
-				Spec: corev1.PodSpec{
-					Containers:         []corev1.Container{*container},
-					Volumes:            volumes,
-					SecurityContext:    securitycontext.Pod(),
-					RestartPolicy:      corev1.RestartPolicyNever,
-					ServiceAccountName: defaults.RadixJobSchedulerServerServiceName,
-				},
-			},
-		},
-	}, nil
-}
-
-func (handler *batchHandler) getContainer(batchName string, batchScheduleDescriptionSecret *corev1.Secret) *corev1.Container {
-	return &corev1.Container{
-		Name:            schedulerDefaults.RadixBatchSchedulerContainerName,
-		Image:           handler.common.Env.RadixBatchSchedulerImageFullName,
-		ImagePullPolicy: corev1.PullAlways,
-		Env:             handler.getEnvironmentVariables(batchName, handler.common.Env),
-		VolumeMounts:    getVolumeMounts(batchScheduleDescriptionSecret),
-		SecurityContext: securitycontext.Container(),
-		Resources:       getResources(),
-	}
-}
-
-//keep Limits and Requests resources equal to have QoS Class "Guaranteed" https://kubernetes.io/docs/tasks/configure-pod-container/quality-service-pod/#create-a-pod-that-gets-assigned-a-qos-class-of-guaranteed
-func getResources() corev1.ResourceRequirements {
-	return corev1.ResourceRequirements{
-		Limits: corev1.ResourceList{
-			corev1.ResourceCPU:    resource.MustParse("100m"),
-			corev1.ResourceMemory: resource.MustParse("500M"),
-		},
-		Requests: corev1.ResourceList{
-			corev1.ResourceCPU:    resource.MustParse("100m"),
-			corev1.ResourceMemory: resource.MustParse("500M"),
-		},
-	}
-}
-
-func (handler *batchHandler) getEnvironmentVariables(batchName string, env *models.Env) []corev1.EnvVar {
-	return []corev1.EnvVar{
-		{Name: defaults.RadixDNSZoneEnvironmentVariable, Value: env.RadixAppName},
-		{Name: defaults.ContainerRegistryEnvironmentVariable, Value: env.RadixContainerRegistry},
-		{Name: defaults.ClusternameEnvironmentVariable, Value: env.RadixClusterName},
-		{Name: defaults.RadixActiveClusterEgressIpsEnvironmentVariable, Value: env.RadixActiveClusterEgressIps},
-		{Name: defaults.RadixAppEnvironmentVariable, Value: env.RadixAppName},
-		{Name: defaults.EnvironmentnameEnvironmentVariable, Value: env.RadixEnvironment},
-		{Name: defaults.RadixComponentEnvironmentVariable, Value: env.RadixComponentName},
-		{Name: defaults.RadixDeploymentEnvironmentVariable, Value: env.RadixDeploymentName},
-		{Name: defaults.OperatorEnvLimitDefaultCPUEnvironmentVariable, Value: env.RadixDefaultCpuLimit},
-		{Name: defaults.OperatorEnvLimitDefaultMemoryEnvironmentVariable, Value: env.RadixDefaultMemoryLimit},
-		{Name: schedulerDefaults.BatchNameEnvVarName, Value: batchName},
-		{Name: schedulerDefaults.BatchScheduleDescriptionPath,
-			Value: path.Join(schedulerDefaults.BatchSecretsMountPath, schedulerDefaults.BatchScheduleDescriptionPropertyName)},
-	}
-}
-
-func getVolumeMounts(batchScheduleDescriptionSecret *corev1.Secret) []corev1.VolumeMount {
-	if batchScheduleDescriptionSecret == nil {
-		return nil
-	}
-	return []corev1.VolumeMount{
-		{
-			Name:      batchScheduleDescriptionSecret.Name,
-			ReadOnly:  true,
-			MountPath: schedulerDefaults.BatchSecretsMountPath,
-		},
-	}
-}
-
-func getVolumes(batchScheduleDescriptionSecret *corev1.Secret) []corev1.Volume {
-	if batchScheduleDescriptionSecret == nil {
-		return nil
-	}
-	return []corev1.Volume{
-		{
-			Name: batchScheduleDescriptionSecret.Name,
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: batchScheduleDescriptionSecret.Name,
-				},
-			},
-		}}
 }
 
 func getLabelSelectorForBatchPods(batchName string) string {
@@ -408,7 +267,7 @@ func getLabelSelectorForBatchObjects(batchName string) string {
 	}).String()
 }
 
-func (handler *batchHandler) getBatchJobs(batchName string) (models.JobList, error) {
+func (handler *batchHandler) getBatchJobs(batchName string) (v12.JobList, error) {
 	kubeJobs, err := handler.common.KubeClient.
 		BatchV1().
 		Jobs(handler.common.Env.RadixDeploymentNamespace).

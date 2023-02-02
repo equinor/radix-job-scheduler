@@ -17,6 +17,11 @@ type RadixJobComponentConfig struct {
 	//
 	// required: false
 	TimeLimitSeconds *int64 `json:"timeLimitSeconds,omitempty"`
+
+	// BackoffLimit defines attempts to restart job if it fails. Corresponds to BackoffLimit in K8s.
+	//
+	// required: false
+	BackoffLimit *int32 `json:"backoffLimit,omitempty"`
 }
 
 // JobScheduleDescription holds description about scheduling job
