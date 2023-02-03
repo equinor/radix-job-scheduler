@@ -2,6 +2,7 @@ package jobs
 
 import (
 	"context"
+	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"sort"
 
 	jobErrors "github.com/equinor/radix-job-scheduler/api/errors"
@@ -34,6 +35,12 @@ type JobHandler interface {
 	MaintainHistoryLimit() error
 	//DeleteJob Delete a job
 	DeleteJob(jobName string) error
+}
+
+type completedBatchOrJobVersioned struct {
+	jobNameV1      string
+	batchNameV2    string
+	completionTime *metav1.Time
 }
 
 // New Constructor for job handler
@@ -110,46 +117,111 @@ func (handler *jobHandler) DeleteJob(jobName string) error {
 
 // MaintainHistoryLimit Delete outdated jobs
 func (handler *jobHandler) MaintainHistoryLimit() error {
+	completedRadixBatches, err := handler.common.HandlerApiV2.GetCompletedRadixBatchesSortedByCompletionTimeAsc()
+	if err != nil {
+		return err
+	}
 	jobList, err := handler.getAllJobs()
 	if err != nil {
 		return err
 	}
 
-	log.Debug("maintain history limit for succeeded jobs")
+	completedBatches := convertRadixBatchesToCompletedBatchVersioned(completedRadixBatches.SucceededSingleJobs)
+	historyLimit := handler.common.Env.RadixJobSchedulersPerEnvironmentHistoryLimit
+	log.Debug("maintain history limit for succeeded batches")
 	succeededJobs := jobList.Where(func(j *batchv1.Job) bool {
 		_, batchNameLabelExists := j.ObjectMeta.Labels[kube.RadixBatchNameLabel]
 		return j.Status.Succeeded > 0 && !batchNameLabelExists
 	})
-	if err = handler.maintainHistoryLimitForJobs(succeededJobs, handler.common.Env.RadixJobSchedulersPerEnvironmentHistoryLimit); err != nil {
+	completedBatches = append(completedBatches, convertBatchJobsToCompletedBatchVersioned(succeededJobs)...)
+	if err = handler.maintainHistoryLimitForJobs(completedBatches,
+		historyLimit); err != nil {
 		return err
 	}
 
+	completedBatches = convertRadixBatchesToCompletedBatchVersioned(completedRadixBatches.NotSucceededSingleJobs)
 	log.Debug("maintain history limit for failed jobs")
-	failedJobs := jobList.Where(func(j *batchv1.Job) bool { return j.Status.Failed > 0 })
-	if err = handler.maintainHistoryLimitForJobs(failedJobs, handler.common.Env.RadixJobSchedulersPerEnvironmentHistoryLimit); err != nil {
+	failedJobs := jobList.Where(func(j *batchv1.Job) bool {
+		_, batchNameLabelExists := j.ObjectMeta.Labels[kube.RadixBatchNameLabel]
+		return j.Status.Failed > 0 && !batchNameLabelExists
+	})
+	completedBatches = append(completedBatches, convertBatchJobsToCompletedBatchVersioned(failedJobs)...)
+	if err = handler.maintainHistoryLimitForJobs(completedBatches,
+		historyLimit); err != nil {
 		return err
 	}
-
 	return nil
 }
 
-func (handler *jobHandler) maintainHistoryLimitForJobs(jobs []*batchv1.Job, historyLimit int) error {
-	numToDelete := len(jobs) - historyLimit
+func convertRadixBatchesToCompletedBatchVersioned(radixBatches []*radixv1.RadixBatch) []completedBatchOrJobVersioned {
+	var completedBatches []completedBatchOrJobVersioned
+	for _, radixBatch := range radixBatches {
+		completedBatches = append(completedBatches, completedBatchOrJobVersioned{
+			batchNameV2:    radixBatch.GetName(),
+			completionTime: radixBatch.Status.Condition.CompletionTime,
+		})
+	}
+	return completedBatches
+}
+
+func convertBatchJobsToCompletedBatchVersioned(jobs modelsv1.JobList) []completedBatchOrJobVersioned {
+	var completedBatches []completedBatchOrJobVersioned
+	for _, job := range jobs {
+		completedBatches = append(completedBatches, completedBatchOrJobVersioned{
+			jobNameV1:      job.GetName(),
+			completionTime: job.Status.CompletionTime,
+		})
+	}
+	return completedBatches
+}
+
+func (handler *jobHandler) maintainHistoryLimitForJobs(completedBatchesVersioned []completedBatchOrJobVersioned, historyLimit int) error {
+	numToDelete := len(completedBatchesVersioned) - historyLimit
 	if numToDelete <= 0 {
-		log.Debug("no history jobs to delete")
+		log.Debug("no history batches to delete")
 		return nil
 	}
-	log.Debugf("history jobs to delete: %v", numToDelete)
+	log.Debugf("history batches to delete: %v", numToDelete)
 
-	sortedJobs := sortRJSchByCompletionTimeAsc(jobs)
+	sortedCompletedBatchesVersioned := sortCompletedBatchesByCompletionTimeAsc(completedBatchesVersioned)
 	for i := 0; i < numToDelete; i++ {
-		job := sortedJobs[i]
-		log.Debugf("deleting job %s", job.Name)
-		if err := handler.garbageCollectJob(job.Name); err != nil {
+		batchVersioned := sortedCompletedBatchesVersioned[i]
+		if len(batchVersioned.jobNameV1) > 0 {
+			log.Debugf("deleting job %s", batchVersioned.jobNameV1)
+			if err := handler.DeleteJob(batchVersioned.jobNameV1); err != nil {
+				return err
+			}
+			continue
+		}
+		log.Debugf("deleting batch for simple job %s", batchVersioned.batchNameV2)
+		if err := handler.common.HandlerApiV2.DeleteRadixBatch(batchVersioned.batchNameV2); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func sortCompletedBatchesByCompletionTimeAsc(completedBatchesVersioned []completedBatchOrJobVersioned) []completedBatchOrJobVersioned {
+	sort.Slice(completedBatchesVersioned, func(i, j int) bool {
+		batch1 := (completedBatchesVersioned)[i]
+		batch2 := (completedBatchesVersioned)[j]
+		return isCompletedBatch1CompletedBefore2(batch1, batch2)
+	})
+	return completedBatchesVersioned
+}
+
+func isCompletedBatch1CompletedBefore2(batchVersioned1 completedBatchOrJobVersioned, batchVersioned2 completedBatchOrJobVersioned) bool {
+	batch1CompletedTime := getCompletionTimeFrom(batchVersioned1)
+	batch2CompletedTime := getCompletionTimeFrom(batchVersioned2)
+
+	return batch1CompletedTime.Before(batch2CompletedTime)
+}
+
+func getCompletionTimeFrom(batchVersioned completedBatchOrJobVersioned) *metav1.Time {
+	if batchVersioned.completionTime.IsZero() {
+		return batchVersioned.completionTime
+	}
+	return batchVersioned.completionTime
 }
 
 func (handler *jobHandler) garbageCollectJob(jobName string) (err error) {
@@ -186,29 +258,6 @@ func (handler *jobHandler) garbageCollectJob(jobName string) (err error) {
 	}
 
 	return
-}
-
-func sortRJSchByCompletionTimeAsc(jobs []*batchv1.Job) []*batchv1.Job {
-	sort.Slice(jobs, func(i, j int) bool {
-		job1 := (jobs)[i]
-		job2 := (jobs)[j]
-		return isRJS1CompletedBeforeRJS2(job1, job2)
-	})
-	return jobs
-}
-
-func isRJS1CompletedBeforeRJS2(job1 *batchv1.Job, job2 *batchv1.Job) bool {
-	rd1ActiveFrom := getCompletionTimeFrom(job1)
-	rd2ActiveFrom := getCompletionTimeFrom(job2)
-
-	return rd1ActiveFrom.Before(rd2ActiveFrom)
-}
-
-func getCompletionTimeFrom(job *batchv1.Job) *metav1.Time {
-	if job.Status.CompletionTime.IsZero() {
-		return &job.CreationTimestamp
-	}
-	return job.Status.CompletionTime
 }
 
 func (handler *jobHandler) deleteJob(job *batchv1.Job) error {
