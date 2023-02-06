@@ -2,8 +2,11 @@ package batchesv1
 
 import (
 	"context"
+	"sort"
+
 	"github.com/equinor/radix-job-scheduler/api/v1"
 	"github.com/equinor/radix-job-scheduler/api/v1/jobs"
+	apiv2 "github.com/equinor/radix-job-scheduler/api/v2"
 	"github.com/equinor/radix-job-scheduler/models"
 	modelsv1 "github.com/equinor/radix-job-scheduler/models/v1"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
@@ -16,7 +19,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes"
-	"sort"
 )
 
 type batchHandler struct {
@@ -46,10 +48,11 @@ type completedBatchVersioned struct {
 func New(env *models.Env, kube *kube.Kube, kubeClient kubernetes.Interface, radixClient radixclient.Interface) BatchHandler {
 	return &batchHandler{
 		common: &v1.Handler{
-			Kube:        kube,
-			KubeClient:  kubeClient,
-			RadixClient: radixClient,
-			Env:         env,
+			Kube:         kube,
+			KubeClient:   kubeClient,
+			RadixClient:  radixClient,
+			Env:          env,
+			HandlerApiV2: apiv2.New(env, kube, kubeClient, radixClient),
 		},
 	}
 }

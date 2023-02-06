@@ -4,12 +4,12 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	commonErrors "github.com/equinor/radix-common/utils/errors"
 	"sort"
 	"strings"
 	"time"
 
 	"github.com/equinor/radix-common/utils"
+	commonErrors "github.com/equinor/radix-common/utils/errors"
 	mergoutils "github.com/equinor/radix-common/utils/mergo"
 	"github.com/equinor/radix-common/utils/pointers"
 	"github.com/equinor/radix-common/utils/slice"
@@ -25,6 +25,15 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+)
+
+const (
+	//Max size of the secret description, including description, metadata, base64 encodes secret values, etc.
+	maxPayloadSecretSize = 1024 * 512 //0.5MB
+	//Standard secret description, metadata, etc.
+	payloadSecretAuxDataSize = 600
+	//Each entry in a secret Data has name, etc.
+	payloadSecretEntryAuxDataSize = 128
 )
 
 var (
@@ -75,9 +84,9 @@ func New(env *models.Env, kube *kube.Kube, kubeClient kubernetes.Interface, radi
 	}
 }
 
-type payloadEntry struct {
-	keySelector *radixv1.PayloadSecretKeySelector
-	payload     *string
+type radixBatchJobWithDescription struct {
+	radixBatchJob          *radixv1.RadixBatchJob
+	jobScheduleDescription *models.JobScheduleDescription
 }
 
 //GetRadixBatches Get statuses of all batches
@@ -317,7 +326,7 @@ func getJobComponentNamePart(jobComponentName string) string {
 func (h *handler) createBatch(namespace, appName, radixDeploymentName string, radixJobComponent *radixv1.RadixDeployJobComponent, batchScheduleDescription *models.BatchScheduleDescription, radixBatchType kube.RadixBatchType) (*radixv1.RadixBatch, error) {
 	batchName := generateBatchName(radixJobComponent.GetName())
 	radixJobComponentName := radixJobComponent.GetName()
-	batchJobs, err := h.buildRadixBatchJobs(namespace, appName, radixJobComponentName, batchName, batchScheduleDescription)
+	batchJobs, err := h.buildRadixBatchJobs(namespace, appName, radixJobComponentName, batchName, batchScheduleDescription, radixJobComponent.Payload)
 	if err != nil {
 		return nil, err
 	}
@@ -343,57 +352,87 @@ func (h *handler) createBatch(namespace, appName, radixDeploymentName string, ra
 		metav1.CreateOptions{})
 }
 
-func (h *handler) buildRadixBatchJobs(namespace, appName, batchName, radixJobComponentName string, batchScheduleDescription *models.BatchScheduleDescription) ([]radixv1.RadixBatchJob, error) {
-	var batchJobs []radixv1.RadixBatchJob
-	var payloadEntries []payloadEntry
+func (h *handler) buildRadixBatchJobs(namespace, appName, radixJobComponentName, batchName string, batchScheduleDescription *models.BatchScheduleDescription, radixJobComponentPayload *radixv1.RadixJobComponentPayload) ([]radixv1.RadixBatchJob, error) {
+	var radixBatchJobWithDescriptions []radixBatchJobWithDescription
+	var errs []error
 	for i, jobScheduleDescription := range batchScheduleDescription.JobScheduleDescriptions {
 		jobName := fmt.Sprintf("job%d", i)
-		job, err := buildRadixBatchJob(jobName, &jobScheduleDescription, batchScheduleDescription.DefaultRadixJobComponentConfig)
+		radixBatchJob, err := buildRadixBatchJob(jobName, &jobScheduleDescription, batchScheduleDescription.DefaultRadixJobComponentConfig)
 		if err != nil {
-			return nil, err
+			errs = append(errs, err)
+			continue
 		}
-		keySelector := &radixv1.PayloadSecretKeySelector{
-			Key: job.Name,
-		}
-		payloadEntries = append(payloadEntries, payloadEntry{
-			keySelector: keySelector,
-			payload:     &jobScheduleDescription.Payload,
+		radixBatchJobWithDescriptions = append(radixBatchJobWithDescriptions, radixBatchJobWithDescription{
+			radixBatchJob:          radixBatchJob,
+			jobScheduleDescription: &jobScheduleDescription,
 		})
-		job.PayloadSecretRef = keySelector
-		batchJobs = append(batchJobs, *job)
 	}
-	jobs, err := h.createPayloadSecrets(namespace, appName, batchName, radixJobComponentName, payloadEntries)
+	if len(errs) > 0 {
+		return nil, commonErrors.Concat(errs)
+	}
+	hasPayloadPath := radixJobComponentPayload != nil && len(radixJobComponentPayload.Path) > 0
+	err := h.createRadixBatchJobPayloadSecrets(namespace, appName, radixJobComponentName, batchName, radixBatchJobWithDescriptions, hasPayloadPath)
 	if err != nil {
-		return jobs, err
+		return nil, err
 	}
-	return batchJobs, nil
+	var radixBatchJobs []radixv1.RadixBatchJob
+	for _, item := range radixBatchJobWithDescriptions {
+		radixBatchJobs = append(radixBatchJobs, *item.radixBatchJob)
+	}
+	return radixBatchJobs, nil
 }
 
-func (h *handler) createPayloadSecrets(namespace string, appName string, batchName string, radixJobComponentName string, payloadEntries []payloadEntry) ([]radixv1.RadixBatchJob, error) {
+func (h *handler) createRadixBatchJobPayloadSecrets(namespace, appName, radixJobComponentName, batchName string, radixJobWithPayloadEntries []radixBatchJobWithDescription, hasPayloadPath bool) error {
 	accumulatedSecretSize := 0
-	const maxSecretSize = 1024 * 1024 * 512 //0.5MB
-	const entryAuxDataSize = 128
-	secretCount := 0
-	payloadsSecret := buildSecret(appName, radixJobComponentName, batchName, secretCount)
-	for ind, entry := range payloadEntries {
-		payload := []byte(*entry.payload)
-		payloadBase64 := base64.RawStdEncoding.EncodeToString(payload)
-		secretEntrySize := len(payloadBase64) + len(entry.keySelector.Key) + entryAuxDataSize
-		if accumulatedSecretSize+secretEntrySize > maxSecretSize {
-			if accumulatedSecretSize == 0 {
-				return nil, fmt.Errorf("payload is too large in the job %d - its base64 size is %d, but it expected to be less then %d", ind, secretEntrySize, maxSecretSize)
-			}
-			_, err := h.Kube.ApplySecret(namespace, payloadsSecret)
-			if err != nil {
-				return nil, err
-			}
-			secretCount = secretCount + 1
-			payloadsSecret = buildSecret(appName, radixJobComponentName, batchName, secretCount)
+	var payloadSecrets []*corev1.Secret
+	payloadsSecret := buildSecret(appName, radixJobComponentName, batchName, 0)
+	payloadSecrets = append(payloadSecrets, payloadsSecret)
+	var errs []error
+	for i, radixJobWithDescriptions := range radixJobWithPayloadEntries {
+		payloadArray := []byte(strings.TrimSpace(radixJobWithDescriptions.jobScheduleDescription.Payload))
+		if len(payloadArray) == 0 {
+			log.Debugf("no payload in the job #%d", i)
+			continue
 		}
-		payloadsSecret.Data[entry.keySelector.Key] = payload
+		if !hasPayloadPath {
+			errs = append(errs, fmt.Errorf("missing an expected paylod path, but there is a payload in the job #%d", i))
+			continue
+		}
+		payloadBase64 := base64.RawStdEncoding.EncodeToString(payloadArray)
+		secretEntrySize := len(payloadBase64) + len(radixJobWithDescriptions.radixBatchJob.Name) + payloadSecretEntryAuxDataSize
+		if payloadSecretAuxDataSize+accumulatedSecretSize+secretEntrySize > maxPayloadSecretSize {
+			if accumulatedSecretSize == 0 {
+				return fmt.Errorf("payload is too large in the job #%d - its base64 size is %d bytes, but it is expected to be less then %d bytes", i, secretEntrySize, maxPayloadSecretSize)
+			}
+			payloadsSecret = buildSecret(appName, radixJobComponentName, batchName, len(payloadSecrets))
+			payloadSecrets = append(payloadSecrets, payloadsSecret)
+			accumulatedSecretSize = 0
+		}
+		payloadsSecret.Data[radixJobWithDescriptions.radixBatchJob.Name] = payloadArray
 		accumulatedSecretSize = accumulatedSecretSize + secretEntrySize
+		radixJobWithDescriptions.radixBatchJob.PayloadSecretRef = &radixv1.PayloadSecretKeySelector{
+			LocalObjectReference: radixv1.LocalObjectReference{Name: payloadsSecret.GetName()},
+			Key:                  radixJobWithDescriptions.radixBatchJob.Name,
+		}
 	}
-	return nil, nil
+	if len(errs) > 0 {
+		return commonErrors.Concat(errs)
+	}
+	return h.createSecrets(namespace, payloadSecrets)
+}
+
+func (h *handler) createSecrets(namespace string, secrets []*corev1.Secret) error {
+	var errs []error
+	for _, secret := range secrets {
+		if secret.Data == nil || len(secret.Data) == 0 {
+			continue //if Data is empty, the secret is not used in any jobs
+		}
+		_, err := h.Kube.KubeClient().CoreV1().Secrets(namespace).Create(context.TODO(), secret, metav1.CreateOptions{})
+		if err != nil {
+			errs = append(errs, err)
+		}
+	}
+	return commonErrors.Concat(errs)
 }
 
 func buildSecret(appName, radixJobComponentName, batchName string, secretIndex int) *corev1.Secret {
