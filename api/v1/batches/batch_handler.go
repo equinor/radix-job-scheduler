@@ -71,24 +71,24 @@ func (handler *batchHandler) GetBatches() ([]modelsv1.BatchStatus, error) {
 		return nil, err
 	}
 	allBatchesPodsMap := v1.GetPodsToJobNameMap(allBatchesPods)
-	var allBatchStatuses []modelsv1.BatchStatus
+	var allRadixBatchStatuses []modelsv1.BatchStatus
 	for idx, batch := range allBatches {
-		allBatchStatuses[idx] = modelsv1.BatchStatus{
+		allRadixBatchStatuses[idx] = modelsv1.BatchStatus{
 			JobStatus: *jobs.GetJobStatusFromJob(handler.common.KubeClient, batch,
 				allBatchesPodsMap[batch.Name]),
 		}
 	}
-	log.Debugf("Found %v batches for namespace %s", len(allBatchStatuses), handler.common.Env.RadixDeploymentNamespace)
-	radixBatchStatuses, err := handler.common.HandlerApiV2.GetRadixBatches()
+	log.Debugf("Found %v batches for namespace %s", len(allRadixBatchStatuses), handler.common.Env.RadixDeploymentNamespace)
+	radixBatches, err := handler.common.HandlerApiV2.GetRadixBatches()
 	if err != nil {
 		return nil, err
 	}
-	for _, radixBatchStatus := range radixBatchStatuses {
-		radixBatchStatus := radixBatchStatus
-		batchStatus := GetBatchStatusFromRadixBatchStatusModel(&radixBatchStatus)
-		allBatchStatuses = append(allBatchStatuses, *batchStatus)
+	for _, radixBatch := range radixBatches {
+		radixBatch := radixBatch
+		radixBatchStatus := GetBatchStatusFromRadixBatchStatusModel(&radixBatch)
+		allRadixBatchStatuses = append(allRadixBatchStatuses, *radixBatchStatus)
 	}
-	return allBatchStatuses, nil
+	return allRadixBatchStatuses, nil
 }
 
 //GetBatch Get status of a batch
@@ -97,11 +97,11 @@ func (handler *batchHandler) GetBatch(batchName string) (*modelsv1.BatchStatus, 
 	batch, err := handler.common.GetBatch(batchName)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			radixBatch, err := handler.common.HandlerApiV2.GetRadixBatch(batchName)
+			radixBatchStatus, err := handler.common.HandlerApiV2.GetRadixBatchStatus(batchName)
 			if err != nil {
 				return nil, err
 			}
-			return GetBatchStatusFromRadixBatchStatus(batchName, radixBatch), nil
+			return GetBatchStatusFromRadixBatchStatus(batchName, radixBatchStatus), nil
 		}
 		return nil, err
 	}

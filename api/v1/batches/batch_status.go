@@ -41,16 +41,16 @@ func GetBatchStatusFromRadixBatchStatus(batchName string, radixBatchStatus *radi
 	return &jobStatus
 }
 
-// GetBatchStatusFromRadixBatchStatusModel Gets batch status from RadixBatchStatus model
-func GetBatchStatusFromRadixBatchStatusModel(radixBatchStatus *modelsv2.RadixBatchStatus) *modelsv1.BatchStatus {
+// GetBatchStatusFromRadixBatchStatusModel Gets batch status from RadixBatch model
+func GetBatchStatusFromRadixBatchStatusModel(radixBatch *modelsv2.RadixBatch) *modelsv1.BatchStatus {
 	jobStatus := modelsv1.BatchStatus{
 		JobStatus: modelsv1.JobStatus{
-			BatchName: radixBatchStatus.Name,
-			Created:   radixBatchStatus.CreationTime,
-			Started:   utils.FormatTime(radixBatchStatus.Status.Condition.ActiveTime),
-			Ended:     utils.FormatTime(radixBatchStatus.Status.Condition.CompletionTime),
-			Status:    radixBatchStatus.Status.Condition.Reason, //TODO ?
-			Message:   radixBatchStatus.Status.Condition.Message,
+			BatchName: radixBatch.Name,
+			Created:   radixBatch.CreationTime,
+			Started:   utils.FormatTime(radixBatch.Status.Condition.ActiveTime),
+			Ended:     utils.FormatTime(radixBatch.Status.Condition.CompletionTime),
+			Status:    radixBatch.Status.Condition.Reason, //TODO ?
+			Message:   radixBatch.Status.Condition.Message,
 		},
 	}
 	return &jobStatus

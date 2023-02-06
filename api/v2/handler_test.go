@@ -93,22 +93,22 @@ func Test_createBatch(t *testing.T) {
 			assert.NotNil(t, rd)
 
 			var err error
-			var createdBatchStatus *radixv1.RadixBatch
+			var createdRadixBatch *radixv1.RadixBatch
 			if ts.expectedBatchType == kube.RadixBatchTypeBatch {
-				createdBatchStatus, err = h.CreateRadixBatch(&ts.batchDescription)
+				createdRadixBatch, err = h.CreateRadixBatch(&ts.batchDescription)
 			} else {
 				var jobScheduleDescription *models.JobScheduleDescription
 				if len(ts.batchDescription.JobScheduleDescriptions) > 0 {
 					jobScheduleDescription = &ts.batchDescription.JobScheduleDescriptions[0]
 				}
-				createdBatchStatus, err = h.CreateRadixBatchSingleJob(jobScheduleDescription)
+				createdRadixBatch, err = h.CreateRadixBatchSingleJob(jobScheduleDescription)
 			}
 			if ts.expectedError {
 				assert.NotNil(t, err)
 				return
 			}
 			assert.Nil(t, err)
-			assert.NotNil(t, createdBatchStatus)
+			assert.NotNil(t, createdRadixBatch)
 
 			scheduledBatchList, err := h.RadixClient.RadixV1().RadixBatches(rd.Namespace).List(context.Background(),
 				metav1.ListOptions{})
