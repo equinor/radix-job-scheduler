@@ -150,6 +150,10 @@ func (handler *jobHandler) MaintainHistoryLimit() error {
 		historyLimit); err != nil {
 		return err
 	}
+	err = handler.common.HandlerApiV2.GarbageCollectPayloadSecrets()
+	if err != nil {
+		return err
+	}
 	return nil
 }
 

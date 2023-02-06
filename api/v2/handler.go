@@ -24,6 +24,8 @@ import (
 	log "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -60,6 +62,8 @@ type Handler interface {
 	CreateRadixBatchSingleJob(*models.JobScheduleDescription) (*radixv1.RadixBatch, error)
 	//MaintainHistoryLimit Delete outdated batches
 	MaintainHistoryLimit() error
+	// GarbageCollectPayloadSecrets Delete orphaned payload secrets
+	GarbageCollectPayloadSecrets() error
 	//DeleteRadixBatch Delete a batch
 	DeleteRadixBatch(string) error
 	// GetCompletedRadixBatchesSortedByCompletionTimeAsc Gets completed RadixBatch lists for Env.RadixComponentName
@@ -182,7 +186,22 @@ func (h *handler) CreateRadixBatchSingleJob(jobScheduleDescription *models.JobSc
 func (h *handler) DeleteRadixBatch(batchName string) error {
 	log.Debugf("delete batch %s for namespace: %s", batchName, h.Env.RadixDeploymentNamespace)
 	fg := metav1.DeletePropagationBackground
-	return h.RadixClient.RadixV1().RadixBatches(h.Env.RadixDeploymentNamespace).Delete(context.Background(), batchName, metav1.DeleteOptions{PropagationPolicy: &fg})
+	err := h.RadixClient.RadixV1().RadixBatches(h.Env.RadixDeploymentNamespace).Delete(context.Background(), batchName, metav1.DeleteOptions{PropagationPolicy: &fg})
+	if err != nil {
+		return err
+	}
+	secrets, err := h.GetSecretsForRadixBatch(batchName)
+	if err != nil {
+		return err
+	}
+	var errs []error
+	for _, secret := range secrets {
+		err := h.DeleteSecret(secret)
+		if err != nil {
+			errs = append(errs, err)
+		}
+	}
+	return commonErrors.Concat(errs)
 }
 
 //MaintainHistoryLimit Delete outdated batches
@@ -205,6 +224,11 @@ func (h *handler) MaintainHistoryLimit() error {
 	}
 	log.Debug("maintain history limit for not succeeded single jobs")
 	if err := h.maintainHistoryLimitForBatches(completedRadixBatches.NotSucceededSingleJobs, historyLimit); err != nil {
+		errs = append(errs, err)
+	}
+	log.Debug("delete orphaned payload secrets")
+	err := h.GarbageCollectPayloadSecrets()
+	if err != nil {
 		errs = append(errs, err)
 	}
 	return commonErrors.Concat(errs)
@@ -443,7 +467,7 @@ func buildSecret(appName, radixJobComponentName, batchName string, secretIndex i
 			Labels: radixLabels.Merge(
 				radixLabels.ForApplicationName(appName),
 				radixLabels.ForComponentName(radixJobComponentName),
-				radixLabels.ForBatchJobName(batchName),
+				radixLabels.ForBatchName(batchName),
 			),
 		},
 		Data: make(map[string][]byte),
@@ -486,6 +510,43 @@ func (h *handler) getRadixBatches(labels ...map[string]string) ([]*radixv1.Radix
 
 func (h *handler) getRadixBatch(batchName string) (*radixv1.RadixBatch, error) {
 	return h.RadixClient.RadixV1().RadixBatches(h.Env.RadixDeploymentNamespace).Get(context.TODO(), batchName, metav1.GetOptions{})
+}
+
+// GarbageCollectPayloadSecrets Delete orphaned payload secrets
+func (h *handler) GarbageCollectPayloadSecrets() error {
+	jobTypeLabelRequirement, err := labels.NewRequirement(kube.RadixBatchNameLabel, selection.Exists, []string{})
+	if err != nil {
+		return err
+	}
+	payloadSecrets, err := h.Kube.ListSecretsWithSelector(h.Env.RadixDeploymentNamespace, jobTypeLabelRequirement.String())
+	if err != nil {
+		return err
+	}
+	radixBatches, err := h.getRadixBatches(radixLabels.ForComponentName(h.Env.RadixComponentName))
+	if err != nil {
+		return err
+	}
+	batchNames := make(map[string]bool)
+	for _, radixBatch := range radixBatches {
+		batchNames[radixBatch.Name] = true
+	}
+	yesterday := time.Now().Add(time.Hour * -24)
+	for _, payloadSecret := range payloadSecrets {
+		if payloadSecret.GetCreationTimestamp().After(yesterday) {
+			continue
+		}
+		payloadSecretBatchName, ok := payloadSecret.GetLabels()[kube.RadixBatchNameLabel]
+		if !ok {
+			continue
+		}
+		if _, ok := batchNames[payloadSecretBatchName]; !ok {
+			err := h.DeleteSecret(payloadSecret)
+			if err != nil {
+				log.Errorf("failed deleting of an orphaned payload secret %s in the namespace %s", payloadSecret.GetName(), payloadSecret.GetNamespace())
+			}
+		}
+	}
+	return nil
 }
 
 func applyDefaultJobDescriptionProperties(jobScheduleDescription *models.JobScheduleDescription, defaultRadixJobComponentConfig *models.RadixJobComponentConfig) error {

@@ -1,31 +1,23 @@
 package apiv2
 
 import (
-	"context"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 )
 
-//GetSecretsForJob Get secrets for the job
-func (h *handler) GetSecretsForJob(jobName string) (*corev1.SecretList, error) {
-	return h.KubeClient.CoreV1().Secrets(h.Env.RadixDeploymentNamespace).List(
-		context.TODO(),
-		metav1.ListOptions{
-			LabelSelector: getLabelSelectorForSecret(jobName, h.Env.RadixComponentName),
-		},
-	)
+//GetSecretsForRadixBatch Get secrets for the RadixBatch
+func (h *handler) GetSecretsForRadixBatch(batchName string) ([]*corev1.Secret, error) {
+	return h.Kube.ListSecretsWithSelector(h.Env.RadixDeploymentNamespace, getLabelSelectorForRadixBatchSecret(batchName))
 }
 
-//DeleteSecret Delete the service for the job
+//DeleteSecret Delete the service
 func (h *handler) DeleteSecret(secret *corev1.Secret) error {
-	return h.KubeClient.CoreV1().Secrets(secret.Namespace).Delete(context.TODO(), secret.Name, metav1.DeleteOptions{})
+	return h.Kube.DeleteSecret(secret.Namespace, secret.Name)
 }
 
-func getLabelSelectorForSecret(jobName, componentName string) string {
+func getLabelSelectorForRadixBatchSecret(batchName string) string {
 	return labels.SelectorFromSet(map[string]string{
-		kube.RadixComponentLabel: componentName,
-		kube.RadixJobNameLabel:   jobName,
+		kube.RadixBatchNameLabel: batchName,
 	}).String()
 }
