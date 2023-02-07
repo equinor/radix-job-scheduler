@@ -412,7 +412,7 @@ func creteJobName(radixBatchType kube.RadixBatchType, jobIndex int) string {
 	if radixBatchType == kube.RadixBatchTypeBatch {
 		return fmt.Sprintf("job%d", jobIndex)
 	}
-	return utils.RandStringSeed(8, defaultSrc)
+	return strings.ToLower(utils.RandStringSeed(8, defaultSrc))
 }
 
 func (h *handler) createRadixBatchJobPayloadSecrets(namespace, appName, radixJobComponentName, batchName string, radixJobWithPayloadEntries []radixBatchJobWithDescription, hasPayloadPath bool) error {
