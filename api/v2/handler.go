@@ -352,7 +352,7 @@ func getJobComponentNamePart(jobComponentName string) string {
 func (h *handler) createBatch(namespace, appName, radixDeploymentName string, radixJobComponent *radixv1.RadixDeployJobComponent, batchScheduleDescription *models.BatchScheduleDescription, radixBatchType kube.RadixBatchType) (*radixv1.RadixBatch, error) {
 	batchName := generateBatchName(radixJobComponent.GetName())
 	radixJobComponentName := radixJobComponent.GetName()
-	batchJobs, err := h.buildRadixBatchJobs(namespace, appName, radixJobComponentName, batchName, batchScheduleDescription, radixJobComponent.Payload, radixBatchType)
+	radixBatchJobs, err := h.buildRadixBatchJobs(namespace, appName, radixJobComponentName, batchName, batchScheduleDescription, radixJobComponent.Payload, radixBatchType)
 	if err != nil {
 		return nil, err
 	}
@@ -367,7 +367,7 @@ func (h *handler) createBatch(namespace, appName, radixDeploymentName string, ra
 			),
 		},
 		Spec: radixv1.RadixBatchSpec{
-			Jobs: batchJobs,
+			Jobs: radixBatchJobs,
 			RadixDeploymentJobRef: radixv1.RadixDeploymentJobComponentSelector{
 				LocalObjectReference: radixv1.LocalObjectReference{Name: radixDeploymentName},
 				Job:                  radixJobComponentName,
@@ -381,8 +381,8 @@ func (h *handler) createBatch(namespace, appName, radixDeploymentName string, ra
 func (h *handler) buildRadixBatchJobs(namespace, appName, radixJobComponentName, batchName string, batchScheduleDescription *models.BatchScheduleDescription, radixJobComponentPayload *radixv1.RadixJobComponentPayload, radixBatchType kube.RadixBatchType) ([]radixv1.RadixBatchJob, error) {
 	var radixBatchJobWithDescriptions []radixBatchJobWithDescription
 	var errs []error
-	for i, jobScheduleDescription := range batchScheduleDescription.JobScheduleDescriptions {
-		jobName := creteJobName(radixBatchType, i)
+	for jobIndex, jobScheduleDescription := range batchScheduleDescription.JobScheduleDescriptions {
+		jobName := creteJobName(radixBatchType, jobIndex)
 		radixBatchJob, err := buildRadixBatchJob(jobName, &jobScheduleDescription, batchScheduleDescription.DefaultRadixJobComponentConfig)
 		if err != nil {
 			errs = append(errs, err)
@@ -396,8 +396,8 @@ func (h *handler) buildRadixBatchJobs(namespace, appName, radixJobComponentName,
 	if len(errs) > 0 {
 		return nil, commonErrors.Concat(errs)
 	}
-	hasPayloadPath := radixJobComponentPayload != nil && len(radixJobComponentPayload.Path) > 0
-	err := h.createRadixBatchJobPayloadSecrets(namespace, appName, radixJobComponentName, batchName, radixBatchJobWithDescriptions, hasPayloadPath)
+	radixJobComponentHasPayloadPath := radixJobComponentPayload != nil && len(radixJobComponentPayload.Path) > 0
+	err := h.createRadixBatchJobPayloadSecrets(namespace, appName, radixJobComponentName, batchName, radixBatchJobWithDescriptions, radixJobComponentHasPayloadPath)
 	if err != nil {
 		return nil, err
 	}
@@ -415,37 +415,42 @@ func creteJobName(radixBatchType kube.RadixBatchType, jobIndex int) string {
 	return strings.ToLower(utils.RandStringSeed(8, defaultSrc))
 }
 
-func (h *handler) createRadixBatchJobPayloadSecrets(namespace, appName, radixJobComponentName, batchName string, radixJobWithPayloadEntries []radixBatchJobWithDescription, hasPayloadPath bool) error {
+func (h *handler) createRadixBatchJobPayloadSecrets(namespace, appName, radixJobComponentName, batchName string, radixJobWithPayloadEntries []radixBatchJobWithDescription, radixJobComponentHasPayloadPath bool) error {
 	accumulatedSecretSize := 0
 	var payloadSecrets []*corev1.Secret
 	payloadsSecret := buildSecret(appName, radixJobComponentName, batchName, 0)
 	payloadSecrets = append(payloadSecrets, payloadsSecret)
 	var errs []error
-	for i, radixJobWithDescriptions := range radixJobWithPayloadEntries {
-		payloadArray := []byte(strings.TrimSpace(radixJobWithDescriptions.jobScheduleDescription.Payload))
-		if len(payloadArray) == 0 {
-			log.Debugf("no payload in the job #%d", i)
+	for jobIndex, radixJobWithDescriptions := range radixJobWithPayloadEntries {
+		payload := []byte(strings.TrimSpace(radixJobWithDescriptions.jobScheduleDescription.Payload))
+		if len(payload) == 0 {
+			log.Debugf("no payload in the job #%d", jobIndex)
 			continue
 		}
-		if !hasPayloadPath {
-			errs = append(errs, fmt.Errorf("missing an expected paylod path, but there is a payload in the job #%d", i))
+		if !radixJobComponentHasPayloadPath {
+			errs = append(errs, fmt.Errorf("missing an expected payload path, but there is a payload in the job #%d", jobIndex))
 			continue
 		}
-		payloadBase64 := base64.RawStdEncoding.EncodeToString(payloadArray)
-		secretEntrySize := len(payloadBase64) + len(radixJobWithDescriptions.radixBatchJob.Name) + payloadSecretEntryAuxDataSize
+
+		radixBatchJob := radixJobWithDescriptions.radixBatchJob
+		payloadBase64 := base64.RawStdEncoding.EncodeToString(payload)
+		secretEntrySize := len(payloadBase64) + len(radixBatchJob.Name) + payloadSecretEntryAuxDataSize //preliminary estimate of a payload secret entry
 		if payloadSecretAuxDataSize+accumulatedSecretSize+secretEntrySize > maxPayloadSecretSize {
-			if accumulatedSecretSize == 0 {
-				return fmt.Errorf("payload is too large in the job #%d - its base64 size is %d bytes, but it is expected to be less then %d bytes", i, secretEntrySize, maxPayloadSecretSize)
+			if len(payloadsSecret.Data) == 0 {
+				//this is the first entry in the secret, and it is too large to be stored to the secret - no reason to create new secret.
+				return fmt.Errorf("payload is too large in the job #%d - its base64 size is %d bytes, but it is expected to be less then %d bytes", jobIndex, secretEntrySize, maxPayloadSecretSize)
 			}
 			payloadsSecret = buildSecret(appName, radixJobComponentName, batchName, len(payloadSecrets))
 			payloadSecrets = append(payloadSecrets, payloadsSecret)
 			accumulatedSecretSize = 0
 		}
-		payloadsSecret.Data[radixJobWithDescriptions.radixBatchJob.Name] = payloadArray
+
+		payloadsSecret.Data[radixBatchJob.Name] = payload
 		accumulatedSecretSize = accumulatedSecretSize + secretEntrySize
-		radixJobWithDescriptions.radixBatchJob.PayloadSecretRef = &radixv1.PayloadSecretKeySelector{
+
+		radixBatchJob.PayloadSecretRef = &radixv1.PayloadSecretKeySelector{
 			LocalObjectReference: radixv1.LocalObjectReference{Name: payloadsSecret.GetName()},
-			Key:                  radixJobWithDescriptions.radixBatchJob.Name,
+			Key:                  radixBatchJob.Name,
 		}
 	}
 	if len(errs) > 0 {

@@ -28,13 +28,13 @@ type JobHandler interface {
 	//GetJobs Get status of all jobs
 	GetJobs() ([]modelsv1.JobStatus, error)
 	//GetJob Get status of a job
-	GetJob(name string) (*modelsv1.JobStatus, error)
-	//CreateJob Create a job with parameters. `batchName` is optional.
-	CreateJob(jobScheduleDescription *models.JobScheduleDescription, batchName string) (*modelsv1.JobStatus, error)
+	GetJob(string) (*modelsv1.JobStatus, error)
+	//CreateJob Create a job with parameters
+	CreateJob(*models.JobScheduleDescription) (*modelsv1.JobStatus, error)
 	//MaintainHistoryLimit Delete outdated jobs
 	MaintainHistoryLimit() error
 	//DeleteJob Delete a job
-	DeleteJob(jobName string) error
+	DeleteJob(string) error
 }
 
 type completedBatchOrJobVersioned struct {
@@ -98,8 +98,7 @@ func (handler *jobHandler) GetJob(jobName string) (*modelsv1.JobStatus, error) {
 }
 
 // CreateJob Create a job with parameters
-func (handler *jobHandler) CreateJob(jobScheduleDescription *models.JobScheduleDescription,
-	batchName string) (*modelsv1.JobStatus, error) {
+func (handler *jobHandler) CreateJob(jobScheduleDescription *models.JobScheduleDescription) (*modelsv1.JobStatus, error) {
 	//TODO remove batchName ?
 	log.Debugf("create job for namespace: %s", handler.common.Env.RadixDeploymentNamespace)
 	radixBatch, err := handler.common.HandlerApiV2.CreateRadixBatchSingleJob(jobScheduleDescription)
