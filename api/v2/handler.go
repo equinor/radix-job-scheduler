@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"math/rand"
 	"sort"
 	"strings"
 	"time"
@@ -40,6 +41,7 @@ const (
 
 var (
 	authTransformer mergo.Transformers = mergoutils.CombinedTransformer{Transformers: []mergo.Transformers{mergoutils.BoolPtrTransformer{}}}
+	defaultSrc                         = rand.NewSource(time.Now().UnixNano())
 )
 
 type handler struct {
@@ -350,7 +352,7 @@ func getJobComponentNamePart(jobComponentName string) string {
 func (h *handler) createBatch(namespace, appName, radixDeploymentName string, radixJobComponent *radixv1.RadixDeployJobComponent, batchScheduleDescription *models.BatchScheduleDescription, radixBatchType kube.RadixBatchType) (*radixv1.RadixBatch, error) {
 	batchName := generateBatchName(radixJobComponent.GetName())
 	radixJobComponentName := radixJobComponent.GetName()
-	batchJobs, err := h.buildRadixBatchJobs(namespace, appName, radixJobComponentName, batchName, batchScheduleDescription, radixJobComponent.Payload)
+	batchJobs, err := h.buildRadixBatchJobs(namespace, appName, radixJobComponentName, batchName, batchScheduleDescription, radixJobComponent.Payload, radixBatchType)
 	if err != nil {
 		return nil, err
 	}
@@ -376,11 +378,11 @@ func (h *handler) createBatch(namespace, appName, radixDeploymentName string, ra
 		metav1.CreateOptions{})
 }
 
-func (h *handler) buildRadixBatchJobs(namespace, appName, radixJobComponentName, batchName string, batchScheduleDescription *models.BatchScheduleDescription, radixJobComponentPayload *radixv1.RadixJobComponentPayload) ([]radixv1.RadixBatchJob, error) {
+func (h *handler) buildRadixBatchJobs(namespace, appName, radixJobComponentName, batchName string, batchScheduleDescription *models.BatchScheduleDescription, radixJobComponentPayload *radixv1.RadixJobComponentPayload, radixBatchType kube.RadixBatchType) ([]radixv1.RadixBatchJob, error) {
 	var radixBatchJobWithDescriptions []radixBatchJobWithDescription
 	var errs []error
 	for i, jobScheduleDescription := range batchScheduleDescription.JobScheduleDescriptions {
-		jobName := fmt.Sprintf("job%d", i)
+		jobName := creteJobName(radixBatchType, i)
 		radixBatchJob, err := buildRadixBatchJob(jobName, &jobScheduleDescription, batchScheduleDescription.DefaultRadixJobComponentConfig)
 		if err != nil {
 			errs = append(errs, err)
@@ -404,6 +406,13 @@ func (h *handler) buildRadixBatchJobs(namespace, appName, radixJobComponentName,
 		radixBatchJobs = append(radixBatchJobs, *item.radixBatchJob)
 	}
 	return radixBatchJobs, nil
+}
+
+func creteJobName(radixBatchType kube.RadixBatchType, jobIndex int) string {
+	if radixBatchType == kube.RadixBatchTypeBatch {
+		return fmt.Sprintf("job%d", jobIndex)
+	}
+	return utils.RandStringSeed(8, defaultSrc)
 }
 
 func (h *handler) createRadixBatchJobPayloadSecrets(namespace, appName, radixJobComponentName, batchName string, radixJobWithPayloadEntries []radixBatchJobWithDescription, hasPayloadPath bool) error {
