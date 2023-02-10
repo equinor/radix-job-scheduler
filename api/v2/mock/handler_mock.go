@@ -10,7 +10,6 @@ import (
 	apiv2 "github.com/equinor/radix-job-scheduler/api/v2"
 	models "github.com/equinor/radix-job-scheduler/models"
 	modelsv2 "github.com/equinor/radix-job-scheduler/models/v2"
-	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	gomock "github.com/golang/mock/gomock"
 )
 
@@ -38,10 +37,10 @@ func (m *MockHandler) EXPECT() *MockHandlerMockRecorder {
 }
 
 // CreateRadixBatch mocks base method.
-func (m *MockHandler) CreateRadixBatch(arg0 *models.BatchScheduleDescription) (*v1.RadixBatch, error) {
+func (m *MockHandler) CreateRadixBatch(arg0 *models.BatchScheduleDescription) (*modelsv2.RadixBatch, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateRadixBatch", arg0)
-	ret0, _ := ret[0].(*v1.RadixBatch)
+	ret0, _ := ret[0].(*modelsv2.RadixBatch)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -53,10 +52,10 @@ func (mr *MockHandlerMockRecorder) CreateRadixBatch(arg0 interface{}) *gomock.Ca
 }
 
 // CreateRadixBatchSingleJob mocks base method.
-func (m *MockHandler) CreateRadixBatchSingleJob(arg0 *models.JobScheduleDescription) (*v1.RadixBatch, error) {
+func (m *MockHandler) CreateRadixBatchSingleJob(arg0 *models.JobScheduleDescription) (*modelsv2.RadixBatch, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateRadixBatchSingleJob", arg0)
-	ret0, _ := ret[0].(*v1.RadixBatch)
+	ret0, _ := ret[0].(*modelsv2.RadixBatch)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -110,6 +109,21 @@ func (mr *MockHandlerMockRecorder) GetCompletedRadixBatchesSortedByCompletionTim
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCompletedRadixBatchesSortedByCompletionTimeAsc", reflect.TypeOf((*MockHandler)(nil).GetCompletedRadixBatchesSortedByCompletionTimeAsc))
 }
 
+// GetRadixBatch mocks base method.
+func (m *MockHandler) GetRadixBatch(arg0 string) (*modelsv2.RadixBatch, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetRadixBatch", arg0)
+	ret0, _ := ret[0].(*modelsv2.RadixBatch)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetRadixBatch indicates an expected call of GetRadixBatch.
+func (mr *MockHandlerMockRecorder) GetRadixBatch(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRadixBatch", reflect.TypeOf((*MockHandler)(nil).GetRadixBatch), arg0)
+}
+
 // GetRadixBatchSingleJobs mocks base method.
 func (m *MockHandler) GetRadixBatchSingleJobs() ([]modelsv2.RadixBatch, error) {
 	m.ctrl.T.Helper()
@@ -123,21 +137,6 @@ func (m *MockHandler) GetRadixBatchSingleJobs() ([]modelsv2.RadixBatch, error) {
 func (mr *MockHandlerMockRecorder) GetRadixBatchSingleJobs() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRadixBatchSingleJobs", reflect.TypeOf((*MockHandler)(nil).GetRadixBatchSingleJobs))
-}
-
-// GetRadixBatchStatus mocks base method.
-func (m *MockHandler) GetRadixBatch(arg0 string) (*v1.RadixBatchStatus, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetRadixBatchStatus", arg0)
-	ret0, _ := ret[0].(*v1.RadixBatchStatus)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetRadixBatchStatus indicates an expected call of GetRadixBatchStatus.
-func (mr *MockHandlerMockRecorder) GetRadixBatchStatus(arg0 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRadixBatchStatus", reflect.TypeOf((*MockHandler)(nil).GetRadixBatch), arg0)
 }
 
 // GetRadixBatches mocks base method.
