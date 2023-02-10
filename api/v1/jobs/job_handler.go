@@ -2,15 +2,16 @@ package jobs
 
 import (
 	"context"
-	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"sort"
 
+	"github.com/equinor/radix-common/utils"
 	jobErrors "github.com/equinor/radix-job-scheduler/api/errors"
 	"github.com/equinor/radix-job-scheduler/api/v1"
 	apiv2 "github.com/equinor/radix-job-scheduler/api/v2"
 	"github.com/equinor/radix-job-scheduler/models"
 	modelsv1 "github.com/equinor/radix-job-scheduler/models/v1"
 	defaultsv1 "github.com/equinor/radix-job-scheduler/models/v1/defaults"
+	modelsv2 "github.com/equinor/radix-job-scheduler/models/v2"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	"github.com/equinor/radix-operator/pkg/apis/utils/slice"
 	log "github.com/sirupsen/logrus"
@@ -40,7 +41,7 @@ type JobHandler interface {
 type completedBatchOrJobVersioned struct {
 	jobNameV1      string
 	batchNameV2    string
-	completionTime *metav1.Time
+	completionTime string
 }
 
 // New Constructor for job handler
@@ -156,12 +157,12 @@ func (handler *jobHandler) MaintainHistoryLimit() error {
 	return nil
 }
 
-func convertRadixBatchesToCompletedBatchVersioned(radixBatches []*radixv1.RadixBatch) []completedBatchOrJobVersioned {
+func convertRadixBatchesToCompletedBatchVersioned(radixBatches []*modelsv2.RadixBatch) []completedBatchOrJobVersioned {
 	var completedBatches []completedBatchOrJobVersioned
 	for _, radixBatch := range radixBatches {
 		completedBatches = append(completedBatches, completedBatchOrJobVersioned{
-			batchNameV2:    radixBatch.GetName(),
-			completionTime: radixBatch.Status.Condition.CompletionTime,
+			batchNameV2:    radixBatch.Name,
+			completionTime: radixBatch.Ended,
 		})
 	}
 	return completedBatches
@@ -172,7 +173,7 @@ func convertBatchJobsToCompletedBatchVersioned(jobs modelsv1.JobList) []complete
 	for _, job := range jobs {
 		completedBatches = append(completedBatches, completedBatchOrJobVersioned{
 			jobNameV1:      job.GetName(),
-			completionTime: job.Status.CompletionTime,
+			completionTime: utils.FormatTime(job.Status.CompletionTime),
 		})
 	}
 	return completedBatches
@@ -214,17 +215,7 @@ func sortCompletedBatchesByCompletionTimeAsc(completedBatchesVersioned []complet
 }
 
 func isCompletedBatch1CompletedBefore2(batchVersioned1 completedBatchOrJobVersioned, batchVersioned2 completedBatchOrJobVersioned) bool {
-	batch1CompletedTime := getCompletionTimeFrom(batchVersioned1)
-	batch2CompletedTime := getCompletionTimeFrom(batchVersioned2)
-
-	return batch1CompletedTime.Before(batch2CompletedTime)
-}
-
-func getCompletionTimeFrom(batchVersioned completedBatchOrJobVersioned) *metav1.Time {
-	if batchVersioned.completionTime.IsZero() {
-		return batchVersioned.completionTime
-	}
-	return batchVersioned.completionTime
+	return batchVersioned1.completionTime < batchVersioned2.completionTime
 }
 
 func (handler *jobHandler) garbageCollectJob(jobName string) (err error) {
