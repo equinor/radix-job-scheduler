@@ -7,10 +7,11 @@ import (
 	"strings"
 
 	"github.com/equinor/radix-common/utils"
+	"github.com/equinor/radix-job-scheduler/models"
 	modelsv1 "github.com/equinor/radix-job-scheduler/models/v1"
 	defaultsv1 "github.com/equinor/radix-job-scheduler/models/v1/defaults"
+	modelsv2 "github.com/equinor/radix-job-scheduler/models/v2"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
-	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	v1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -28,17 +29,17 @@ func GetJobStatusFromJob(kubeClient kubernetes.Interface, job *v1.Job, jobPods [
 		Started: utils.FormatTime(job.Status.StartTime),
 		Ended:   getJobEndTimestamp(job),
 	}
-	status := modelsv1.GetStatusFromJobStatus(job.Status)
+	status := models.GetStatusFromJobStatus(job.Status)
 
 	jobStatus.Status = status.String()
 	jobStatus.JobId = job.ObjectMeta.Labels[defaultsv1.RadixJobIdLabel]   //Not empty, if JobId exists
 	jobStatus.BatchName = job.ObjectMeta.Labels[kube.RadixBatchNameLabel] //Not empty, if BatchName exists
-	if status != modelsv1.Running {
+	if status != models.Running {
 		// if the job is not in state 'Running', we check that job's pod status reason
 		for _, pod := range jobPods {
 			if pod.Status.Reason == "DeadlineExceeded" {
 				// if the pod's status reason is 'DeadlineExceeded', the entire job also gets that status
-				jobStatus.Status = modelsv1.DeadlineExceeded.String()
+				jobStatus.Status = models.DeadlineExceeded.String()
 				jobStatus.Message = pod.Status.Message
 				return &jobStatus
 			}
@@ -54,17 +55,17 @@ func GetJobStatusFromJob(kubeClient kubernetes.Interface, job *v1.Job, jobPods [
 			switch {
 			case cs.State.Terminated != nil:
 				//  job with one or more 'terminated' containers gets status 'Stopped'
-				jobStatus.Status = modelsv1.Stopped.String()
+				jobStatus.Status = models.Stopped.String()
 				jobStatus.Message = cs.State.Terminated.Message
 
 				return &jobStatus
 			case cs.State.Waiting != nil:
 				if _, ok := imageErrors[cs.State.Waiting.Reason]; ok {
 					// if container waits because of inaccessible image, the job is 'Failed'
-					jobStatus.Status = modelsv1.Failed.String()
+					jobStatus.Status = models.Failed.String()
 				} else {
 					// if container waits for any other reason, job is 'Waiting'
-					jobStatus.Status = modelsv1.Waiting.String()
+					jobStatus.Status = models.Waiting.String()
 				}
 				jobStatus.Started = ""
 				message := cs.State.Waiting.Message
@@ -86,25 +87,31 @@ func GetJobStatusFromJob(kubeClient kubernetes.Interface, job *v1.Job, jobPods [
 			if lastCondition.Status == corev1.ConditionTrue {
 				continue
 			}
-			jobStatus.Status = modelsv1.Waiting.String()
+			jobStatus.Status = models.Waiting.String()
 			jobStatus.Message = fmt.Sprintf("%s %s", lastCondition.Reason, lastCondition.Message)
 		}
 	}
 	return &jobStatus
 }
 
-// GetJobStatusFromRadixBatchJob Gets job status from RadixBatch
-func GetJobStatusFromRadixBatchJob(radixBatch *radixv1.RadixBatch) *modelsv1.JobStatus {
+// GetSingleJobStatusFromRadixBatchJob Gets job status from RadixBatch
+func GetSingleJobStatusFromRadixBatchJob(radixBatch *modelsv2.RadixBatch) *modelsv1.JobStatus {
 	jobStatus := modelsv1.JobStatus{
-		JobId:     "", //TODO ?
-		BatchName: radixBatch.GetName(),
-		Name:      radixBatch.GetName(), //TODO ?
-		Created:   utils.FormatTime(&radixBatch.ObjectMeta.CreationTimestamp),
-		Started:   utils.FormatTime(radixBatch.Status.Condition.ActiveTime),
-		Ended:     utils.FormatTime(radixBatch.Status.Condition.CompletionTime),
-		Status:    radixBatch.Status.Condition.Reason, //TODO ?
-		Message:   radixBatch.Status.Condition.Message,
+		BatchName: radixBatch.Name,
 	}
+	if len(radixBatch.JobStatuses) != 1 {
+		return &jobStatus
+	}
+
+	radixBatchJobStatus := radixBatch.JobStatuses[0]
+
+	jobStatus.JobId = radixBatchJobStatus.JobId
+	jobStatus.Name = radixBatchJobStatus.Name
+	jobStatus.Created = radixBatchJobStatus.CreationTime
+	jobStatus.Started = radixBatchJobStatus.Started
+	jobStatus.Ended = radixBatchJobStatus.Ended
+	jobStatus.Status = radixBatchJobStatus.Status
+	jobStatus.Message = radixBatchJobStatus.Message
 	return &jobStatus
 }
 

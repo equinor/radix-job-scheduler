@@ -56,12 +56,12 @@ type Handler interface {
 	GetRadixBatches() ([]modelsv2.RadixBatch, error)
 	//GetRadixBatchSingleJobs Get status of all single jobs
 	GetRadixBatchSingleJobs() ([]modelsv2.RadixBatch, error)
-	//GetRadixBatchStatus Get status of a batch
-	GetRadixBatchStatus(string) (*radixv1.RadixBatchStatus, error)
+	//GetRadixBatch Get a batch
+	GetRadixBatch(string) (*modelsv2.RadixBatch, error)
 	//CreateRadixBatch Create a batch with parameters
-	CreateRadixBatch(*models.BatchScheduleDescription) (*radixv1.RadixBatch, error)
+	CreateRadixBatch(*models.BatchScheduleDescription) (*modelsv2.RadixBatch, error)
 	//CreateRadixBatchSingleJob Create a batch with single job parameters
-	CreateRadixBatchSingleJob(*models.JobScheduleDescription) (*radixv1.RadixBatch, error)
+	CreateRadixBatchSingleJob(*models.JobScheduleDescription) (*modelsv2.RadixBatch, error)
 	//MaintainHistoryLimit Delete outdated batches
 	MaintainHistoryLimit() error
 	// GarbageCollectPayloadSecrets Delete orphaned payload secrets
@@ -119,32 +119,108 @@ func (h *handler) getRadixBatchStatus(radixBatchType kube.RadixBatchType) ([]mod
 
 	var radixBatchStatuses []modelsv2.RadixBatch
 	for _, radixBatch := range radixBatches {
-		radixBatchStatus := radixBatch.Status
-		radixBatchStatuses = append(radixBatchStatuses, modelsv2.RadixBatch{
-			Name:         radixBatch.GetName(),
-			CreationTime: utils.FormatTime(pointers.Ptr(radixBatch.GetCreationTimestamp())),
-			Status:       radixBatchStatus,
-		})
+		radixBatchStatuses = append(radixBatchStatuses, convertToRadixBatch(radixBatch))
 	}
 	return radixBatchStatuses, nil
 }
 
-//GetRadixBatchStatus Get status of a batch
-func (h *handler) GetRadixBatchStatus(batchName string) (*radixv1.RadixBatchStatus, error) {
+func convertToRadixBatch(radixBatch *radixv1.RadixBatch) modelsv2.RadixBatch {
+	batch := modelsv2.RadixBatch{
+		Name:         radixBatch.GetName(),
+		CreationTime: utils.FormatTime(pointers.Ptr(radixBatch.GetCreationTimestamp())),
+		Started:      utils.FormatTime(radixBatch.Status.Condition.ActiveTime),
+		Ended:        utils.FormatTime(radixBatch.Status.Condition.CompletionTime),
+		Status:       GetRadixBatchStatus(radixBatch).String(),
+		Message:      radixBatch.Status.Condition.Message,
+		JobStatuses:  convertToRadixBatchJobStatuses(radixBatch, radixBatch.Status.JobStatuses),
+	}
+	return batch
+}
+
+func convertToRadixBatchJobStatuses(radixBatch *radixv1.RadixBatch, radixBatchJobStatuses []radixv1.RadixBatchJobStatus) []modelsv2.RadixBatchJobStatus {
+	radixBatchJobsStatuses := make(map[string]radixv1.RadixBatchJobStatus)
+	for _, jobStatus := range radixBatchJobStatuses {
+		jobStatus := jobStatus
+		radixBatchJobsStatuses[jobStatus.Name] = jobStatus
+	}
+	var jobStatuses []modelsv2.RadixBatchJobStatus
+	for _, radixBatchJob := range radixBatch.Spec.Jobs {
+		radixBatchJobStatus := modelsv2.RadixBatchJobStatus{
+			Name:  radixBatchJob.Name,
+			JobId: radixBatchJob.JobId,
+		}
+		if jobStatus, ok := radixBatchJobsStatuses[radixBatchJob.Name]; ok {
+			radixBatchJobStatus.CreationTime = utils.FormatTime(jobStatus.CreationTime)
+			radixBatchJobStatus.Started = utils.FormatTime(jobStatus.StartTime)
+			radixBatchJobStatus.Ended = utils.FormatTime(jobStatus.EndTime)
+			radixBatchJobStatus.Status = GetRadixBatchJobStatusFromPhase(radixBatchJob, jobStatus.Phase).String()
+			radixBatchJobStatus.Message = jobStatus.Message
+		}
+		jobStatuses = append(jobStatuses, radixBatchJobStatus)
+	}
+	return jobStatuses
+}
+
+// GetRadixBatchStatus Gets the batch status
+func GetRadixBatchStatus(radixBatch *radixv1.RadixBatch) (status models.ProgressStatus) {
+	status = models.Waiting
+	switch {
+	case radixBatch.Status.Condition.Type == radixv1.BatchConditionTypeActive:
+		status = models.Running
+	case radixBatch.Status.Condition.Type == radixv1.BatchConditionTypeCompleted:
+		status = models.Succeeded
+		if slice.Any(radixBatch.Status.JobStatuses, func(jobStatus radixv1.RadixBatchJobStatus) bool {
+			return jobStatus.Phase == radixv1.BatchJobPhaseFailed
+		}) {
+			status = models.Failed
+		}
+	}
+	return
+}
+
+// GetRadixBatchJobStatusFromPhase Get batch job status by job phase
+func GetRadixBatchJobStatusFromPhase(job radixv1.RadixBatchJob, phase radixv1.RadixBatchJobPhase) (status models.ProgressStatus) {
+	status = models.Waiting
+
+	switch phase {
+	case radixv1.BatchJobPhaseActive:
+		status = models.Running
+	case radixv1.BatchJobPhaseSucceeded:
+		status = models.Succeeded
+	case radixv1.BatchJobPhaseFailed:
+		status = models.Failed
+	case radixv1.BatchJobPhaseStopped:
+		status = models.Stopped
+	}
+
+	var stop bool
+	if job.Stop != nil {
+		stop = *job.Stop
+	}
+
+	if stop && (status == models.Waiting || status == models.Running) {
+		status = models.Stopping
+	}
+
+	return
+}
+
+//GetRadixBatch Get status of a batch
+func (h *handler) GetRadixBatch(batchName string) (*modelsv2.RadixBatch, error) {
 	log.Debugf("get batch status for the batch %s for namespace: %s", batchName, h.Env.RadixDeploymentNamespace)
 	radixBatch, err := h.getRadixBatch(batchName)
 	if err != nil {
 		return nil, err
 	}
-	return &radixBatch.Status, nil
+	return pointers.Ptr(convertToRadixBatch(radixBatch)), nil
 }
 
 //CreateRadixBatch Create a batch with parameters
-func (h *handler) CreateRadixBatch(batchScheduleDescription *models.BatchScheduleDescription) (*radixv1.RadixBatch, error) {
+func (h *handler) CreateRadixBatch(batchScheduleDescription *models.BatchScheduleDescription) (*modelsv2.RadixBatch, error) {
 	return h.createRadixBatchOrJob(batchScheduleDescription, kube.RadixBatchTypeBatch)
 }
 
-func (h *handler) createRadixBatchOrJob(batchScheduleDescription *models.BatchScheduleDescription, radixBatchType kube.RadixBatchType) (*radixv1.RadixBatch, error) {
+func (h *handler) createRadixBatchOrJob(batchScheduleDescription *models.BatchScheduleDescription, radixBatchType kube.RadixBatchType) (*modelsv2.RadixBatch, error) {
 	namespace := h.Env.RadixDeploymentNamespace
 	radixComponentName := h.Env.RadixComponentName
 	radixDeploymentName := h.Env.RadixDeploymentName
@@ -170,11 +246,11 @@ func (h *handler) createRadixBatchOrJob(batchScheduleDescription *models.BatchSc
 
 	log.Debug(fmt.Sprintf("created batch %s for component %s, environment %s, in namespace: %s", createdRadixBatch.GetName(),
 		radixComponentName, radixDeployment.Spec.Environment, namespace))
-	return createdRadixBatch, nil
+	return pointers.Ptr(convertToRadixBatch(createdRadixBatch)), nil
 }
 
 //CreateRadixBatchSingleJob Create a batch single job with parameters
-func (h *handler) CreateRadixBatchSingleJob(jobScheduleDescription *models.JobScheduleDescription) (*radixv1.RadixBatch, error) {
+func (h *handler) CreateRadixBatchSingleJob(jobScheduleDescription *models.JobScheduleDescription) (*modelsv2.RadixBatch, error) {
 	if jobScheduleDescription == nil {
 		return nil, fmt.Errorf("missing expected job description")
 	}

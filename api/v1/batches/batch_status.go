@@ -1,68 +1,54 @@
 package batchesv1
 
 import (
-	"github.com/equinor/radix-common/utils"
-	"github.com/equinor/radix-job-scheduler/api/v1/jobs"
 	modelsv1 "github.com/equinor/radix-job-scheduler/models/v1"
 	modelsv2 "github.com/equinor/radix-job-scheduler/models/v2"
-	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
-	v1 "k8s.io/api/batch/v1"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/client-go/kubernetes"
 )
 
 // GetBatchStatusFromRadixBatch Gets batch status from RadixBatch
-func GetBatchStatusFromRadixBatch(radixBatch *radixv1.RadixBatch) *modelsv1.BatchStatus {
-	jobStatus := modelsv1.BatchStatus{
-		JobStatus: modelsv1.JobStatus{
-			BatchName: radixBatch.GetName(),
-			Created:   utils.FormatTime(&radixBatch.ObjectMeta.CreationTimestamp),
-			Started:   utils.FormatTime(radixBatch.Status.Condition.ActiveTime),
-			Ended:     utils.FormatTime(radixBatch.Status.Condition.CompletionTime),
-			Status:    radixBatch.Status.Condition.Reason, //TODO ?
-			Message:   radixBatch.Status.Condition.Message,
-		},
-	}
-	return &jobStatus
-}
-
-// GetBatchStatusFromRadixBatchStatus Gets batch status from RadixBatchStatus
-func GetBatchStatusFromRadixBatchStatus(batchName string, radixBatchStatus *radixv1.RadixBatchStatus) *modelsv1.BatchStatus {
-	jobStatus := modelsv1.BatchStatus{
-		JobStatus: modelsv1.JobStatus{
-			BatchName: batchName,
-			//Created:   utils.FormatTime(&radixBatchStatus.Condition..CreationTimestamp),  TODO
-			Started: utils.FormatTime(radixBatchStatus.Condition.ActiveTime),
-			Ended:   utils.FormatTime(radixBatchStatus.Condition.CompletionTime),
-			Status:  radixBatchStatus.Condition.Reason, //TODO ?
-			Message: radixBatchStatus.Condition.Message,
-		},
-	}
-	return &jobStatus
-}
-
-// GetBatchStatusFromRadixBatchStatusModel Gets batch status from RadixBatch model
-func GetBatchStatusFromRadixBatchStatusModel(radixBatch *modelsv2.RadixBatch) *modelsv1.BatchStatus {
+func GetBatchStatusFromRadixBatch(radixBatch *modelsv2.RadixBatch) *modelsv1.BatchStatus {
 	jobStatus := modelsv1.BatchStatus{
 		JobStatus: modelsv1.JobStatus{
 			BatchName: radixBatch.Name,
 			Created:   radixBatch.CreationTime,
-			Started:   utils.FormatTime(radixBatch.Status.Condition.ActiveTime),
-			Ended:     utils.FormatTime(radixBatch.Status.Condition.CompletionTime),
-			Status:    radixBatch.Status.Condition.Reason, //TODO ?
-			Message:   radixBatch.Status.Condition.Message,
+			Started:   radixBatch.Started,
+			Ended:     radixBatch.Ended,
+			Status:    radixBatch.Status,
+			Message:   radixBatch.Message,
 		},
 	}
 	return &jobStatus
 }
 
-// GetBatchStatusFromJob Gets job from a k8s jobs for the batch
-func GetBatchStatusFromJob(kubeClient kubernetes.Interface, job *v1.Job, jobPods []corev1.Pod) (*modelsv1.BatchStatus, error) {
-	batchJobStatus := jobs.GetJobStatusFromJob(kubeClient, job, jobPods)
-	batchJobStatus.BatchName = job.GetName()
-	batchStatus := modelsv1.BatchStatus{
-		JobStatus: *batchJobStatus,
+// GetBatchStatusFromRadixBatchStatus Gets batch status from RadixBatchJobStatus
+func GetBatchStatusFromRadixBatchStatus(batchName string, radixBatch *modelsv2.RadixBatch) *modelsv1.BatchStatus {
+	jobStatus := modelsv1.BatchStatus{
+		JobStatus: modelsv1.JobStatus{
+			BatchName: batchName,
+			Created:   radixBatch.CreationTime,
+			Status:    radixBatch.Status,
+			Message:   radixBatch.Message,
+			Started:   radixBatch.Started,
+			Ended:     radixBatch.Ended,
+		},
 	}
-	//TODO 		JobStatuses: nil,
-	return &batchStatus, nil
+	var jobStatuses []modelsv1.JobStatus
+	for _, jobStatus := range radixBatch.JobStatuses {
+		jobStatuses = append(jobStatuses, getJobStatusFromRadixBatchJobsStatus(batchName, jobStatus))
+	}
+	jobStatus.JobStatuses = jobStatuses
+	return &jobStatus
+}
+
+func getJobStatusFromRadixBatchJobsStatus(batchName string, jobStatus modelsv2.RadixBatchJobStatus) modelsv1.JobStatus {
+	return modelsv1.JobStatus{
+		JobId:     jobStatus.JobId,
+		BatchName: batchName,
+		Name:      jobStatus.Name,
+		Created:   jobStatus.CreationTime,
+		Started:   jobStatus.Started,
+		Ended:     jobStatus.Ended,
+		Status:    jobStatus.Status,
+		Message:   jobStatus.Message,
+	}
 }

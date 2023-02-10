@@ -85,7 +85,7 @@ func (handler *batchHandler) GetBatches() ([]modelsv1.BatchStatus, error) {
 	}
 	for _, radixBatch := range radixBatches {
 		radixBatch := radixBatch
-		radixBatchStatus := GetBatchStatusFromRadixBatchStatusModel(&radixBatch)
+		radixBatchStatus := GetBatchStatusFromRadixBatch(&radixBatch)
 		allRadixBatchStatuses = append(allRadixBatchStatuses, *radixBatchStatus)
 	}
 	return allRadixBatchStatuses, nil
@@ -97,7 +97,7 @@ func (handler *batchHandler) GetBatch(batchName string) (*modelsv1.BatchStatus, 
 	batch, err := handler.common.GetBatch(batchName)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			radixBatchStatus, err := handler.common.HandlerApiV2.GetRadixBatchStatus(batchName)
+			radixBatchStatus, err := handler.common.HandlerApiV2.GetRadixBatch(batchName)
 			if err != nil {
 				return nil, err
 			}

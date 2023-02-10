@@ -1,4 +1,4 @@
-package v1
+package models
 
 import (
 	v1 "k8s.io/api/batch/v1"

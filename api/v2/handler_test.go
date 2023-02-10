@@ -6,6 +6,7 @@ import (
 
 	"github.com/equinor/radix-common/utils/pointers"
 	"github.com/equinor/radix-job-scheduler/models"
+	modelsv2 "github.com/equinor/radix-job-scheduler/models/v2"
 	testUtils "github.com/equinor/radix-job-scheduler/utils/test"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
@@ -93,7 +94,7 @@ func Test_createBatch(t *testing.T) {
 			assert.NotNil(t, rd)
 
 			var err error
-			var createdRadixBatch *radixv1.RadixBatch
+			var createdRadixBatch *modelsv2.RadixBatch
 			if ts.expectedBatchType == kube.RadixBatchTypeBatch {
 				createdRadixBatch, err = h.CreateRadixBatch(&ts.batchDescription)
 			} else {

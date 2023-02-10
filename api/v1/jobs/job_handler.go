@@ -105,7 +105,7 @@ func (handler *jobHandler) CreateJob(jobScheduleDescription *models.JobScheduleD
 	if err != nil {
 		return nil, err
 	}
-	return GetJobStatusFromRadixBatchJob(radixBatch), nil
+	return GetSingleJobStatusFromRadixBatchJob(radixBatch), nil
 }
 
 // DeleteJob Delete a job
