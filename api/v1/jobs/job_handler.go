@@ -2,11 +2,13 @@ package jobs
 
 import (
 	"context"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"sort"
+	"strings"
 
 	"github.com/equinor/radix-common/utils"
 	jobErrors "github.com/equinor/radix-job-scheduler/api/errors"
-	"github.com/equinor/radix-job-scheduler/api/v1"
+	apiv1 "github.com/equinor/radix-job-scheduler/api/v1"
 	apiv2 "github.com/equinor/radix-job-scheduler/api/v2"
 	"github.com/equinor/radix-job-scheduler/models"
 	modelsv1 "github.com/equinor/radix-job-scheduler/models/v1"
@@ -22,7 +24,7 @@ import (
 )
 
 type jobHandler struct {
-	common *v1.Handler
+	common *apiv1.Handler
 }
 
 type JobHandler interface {
@@ -49,7 +51,7 @@ func New(env *models.Env, kube *kube.Kube) JobHandler {
 	kubeClient := kube.KubeClient()
 	radixClient := kube.RadixClient()
 	return &jobHandler{
-		common: &v1.Handler{
+		common: &apiv1.Handler{
 			Kube:         kube,
 			KubeClient:   kubeClient,
 			RadixClient:  radixClient,
@@ -72,12 +74,24 @@ func (handler *jobHandler) GetJobs() ([]modelsv1.JobStatus, error) {
 	if err != nil {
 		return nil, err
 	}
-	podsMap := v1.GetPodsToJobNameMap(pods)
+	podsMap := apiv1.GetPodsToJobNameMap(pods)
 	jobs := make([]modelsv1.JobStatus, len(kubeJobs))
 	for idx, k8sJob := range kubeJobs {
 		jobs[idx] = *GetJobStatusFromJob(handler.common.KubeClient, k8sJob, podsMap[k8sJob.Name])
 	}
 
+	//Use ApiV2 for backward compatibility
+	radixBatches, err := handler.common.HandlerApiV2.GetRadixBatchSingleJobs()
+	if err != nil {
+		return nil, err
+	}
+	for _, radixBatch := range radixBatches {
+		if len(radixBatch.JobStatuses) != 1 {
+			continue
+		}
+		jobName := apiv1.ComposeSingleJobName(radixBatch.Name, radixBatch.JobStatuses[0].Name)
+		jobs = append(jobs, apiv1.GetJobStatusFromRadixBatchJobsStatus("", jobName, radixBatch.JobStatuses[0]))
+	}
 	log.Debugf("Found %v jobs for namespace %s", len(jobs), handler.common.Env.RadixDeploymentNamespace)
 	return jobs, nil
 }
@@ -85,6 +99,18 @@ func (handler *jobHandler) GetJobs() ([]modelsv1.JobStatus, error) {
 // GetJob Get status of a job
 func (handler *jobHandler) GetJob(jobName string) (*modelsv1.JobStatus, error) {
 	log.Debugf("get jobs for namespace: %s", handler.common.Env.RadixDeploymentNamespace)
+	//Use ApiV2 for backward compatibility
+	if batchName, jobName, ok := apiv1.ParseBatchAndJobNameFromScheduledJobName(jobName); ok {
+		radixBatch, err := handler.common.HandlerApiV2.GetRadixBatch(batchName)
+		if err == nil {
+			if len(radixBatch.JobStatuses) == 1 && strings.EqualFold(radixBatch.JobStatuses[0].Name, jobName) {
+				jobName := apiv1.ComposeSingleJobName(batchName, radixBatch.JobStatuses[0].Name)
+				jobsStatus := apiv1.GetJobStatusFromRadixBatchJobsStatus("", jobName, radixBatch.JobStatuses[0])
+				return &jobsStatus, nil
+			}
+		}
+	}
+
 	job, err := handler.getJobByName(jobName)
 	if err != nil {
 		return nil, err
@@ -102,6 +128,7 @@ func (handler *jobHandler) GetJob(jobName string) (*modelsv1.JobStatus, error) {
 func (handler *jobHandler) CreateJob(jobScheduleDescription *models.JobScheduleDescription) (*modelsv1.JobStatus, error) {
 	//TODO remove batchName ?
 	log.Debugf("create job for namespace: %s", handler.common.Env.RadixDeploymentNamespace)
+	//Use ApiV2 for backward compatibility
 	radixBatch, err := handler.common.HandlerApiV2.CreateRadixBatchSingleJob(jobScheduleDescription)
 	if err != nil {
 		return nil, err
@@ -219,6 +246,17 @@ func isCompletedBatch1CompletedBefore2(batchVersioned1 completedBatchOrJobVersio
 }
 
 func (handler *jobHandler) garbageCollectJob(jobName string) (err error) {
+	//Use ApiV2 for backward compatibility
+	if batchName, _, ok := apiv1.ParseBatchAndJobNameFromScheduledJobName(jobName); ok {
+		err := handler.common.HandlerApiV2.DeleteRadixBatch(batchName)
+		if err == nil {
+			return nil
+		}
+		if !errors.IsNotFound(err) {
+			return err
+		}
+	}
+
 	job, err := handler.getJobByName(jobName)
 	if err != nil {
 		return

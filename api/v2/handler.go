@@ -132,12 +132,12 @@ func convertToRadixBatch(radixBatch *radixv1.RadixBatch) modelsv2.RadixBatch {
 		Ended:        utils.FormatTime(radixBatch.Status.Condition.CompletionTime),
 		Status:       GetRadixBatchStatus(radixBatch).String(),
 		Message:      radixBatch.Status.Condition.Message,
-		JobStatuses:  convertToRadixBatchJobStatuses(radixBatch, radixBatch.Status.JobStatuses),
+		JobStatuses:  getRadixBatchJobStatusesFromRadixBatch(radixBatch, radixBatch.Status.JobStatuses),
 	}
 	return batch
 }
 
-func convertToRadixBatchJobStatuses(radixBatch *radixv1.RadixBatch, radixBatchJobStatuses []radixv1.RadixBatchJobStatus) []modelsv2.RadixBatchJobStatus {
+func getRadixBatchJobStatusesFromRadixBatch(radixBatch *radixv1.RadixBatch, radixBatchJobStatuses []radixv1.RadixBatchJobStatus) []modelsv2.RadixBatchJobStatus {
 	radixBatchJobsStatuses := make(map[string]radixv1.RadixBatchJobStatus)
 	for _, jobStatus := range radixBatchJobStatuses {
 		jobStatus := jobStatus

@@ -79,7 +79,6 @@ func (handler *batchHandler) GetBatches() ([]modelsv1.BatchStatus, error) {
 				allBatchesPodsMap[batch.Name]),
 		}
 	}
-	log.Debugf("Found %v batches for namespace %s", len(allRadixBatchStatuses), handler.common.Env.RadixDeploymentNamespace)
 	radixBatches, err := handler.common.HandlerApiV2.GetRadixBatches()
 	if err != nil {
 		return nil, err
@@ -89,6 +88,7 @@ func (handler *batchHandler) GetBatches() ([]modelsv1.BatchStatus, error) {
 		radixBatchStatus := GetBatchStatusFromRadixBatch(&radixBatch)
 		allRadixBatchStatuses = append(allRadixBatchStatuses, *radixBatchStatus)
 	}
+	log.Debugf("Found %v batches for namespace %s", len(allRadixBatchStatuses), handler.common.Env.RadixDeploymentNamespace)
 	return allRadixBatchStatuses, nil
 }
 
@@ -98,11 +98,11 @@ func (handler *batchHandler) GetBatch(batchName string) (*modelsv1.BatchStatus, 
 	batch, err := handler.common.GetBatch(batchName)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			radixBatchStatus, err := handler.common.HandlerApiV2.GetRadixBatch(batchName)
+			radixBatch, err := handler.common.HandlerApiV2.GetRadixBatch(batchName)
 			if err != nil {
 				return nil, err
 			}
-			return GetBatchStatusFromRadixBatchStatus(batchName, radixBatchStatus), nil
+			return GetBatchStatusFromRadixBatch(radixBatch), nil
 		}
 		return nil, err
 	}

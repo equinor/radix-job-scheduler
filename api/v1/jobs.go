@@ -2,6 +2,9 @@ package v1
 
 import (
 	"context"
+	"fmt"
+	modelsv1 "github.com/equinor/radix-job-scheduler/models/v1"
+	modelsv2 "github.com/equinor/radix-job-scheduler/models/v2"
 	"strings"
 
 	"github.com/equinor/radix-job-scheduler/api/errors"
@@ -41,4 +44,35 @@ func GetPodsToJobNameMap(pods []corev1.Pod) map[string][]corev1.Pod {
 func (handler *Handler) CreateJob(namespace string, job *batchv1.Job) (*batchv1.Job, error) {
 	return handler.KubeClient.BatchV1().Jobs(namespace).Create(context.Background(), job,
 		metav1.CreateOptions{})
+}
+
+// GetJobStatusFromRadixBatchJobsStatus Get Job status from RadixBatchJob
+func GetJobStatusFromRadixBatchJobsStatus(batchName, jobName string, jobStatus modelsv2.RadixBatchJobStatus) modelsv1.JobStatus {
+	return modelsv1.JobStatus{
+		JobId:     jobStatus.JobId,
+		BatchName: batchName,
+		Name:      jobName,
+		Created:   jobStatus.CreationTime,
+		Started:   jobStatus.Started,
+		Ended:     jobStatus.Ended,
+		Status:    jobStatus.Status,
+		Message:   jobStatus.Message,
+	}
+}
+
+// ComposeSingleJobName from RadixBatchJob
+func ComposeSingleJobName(batchName, batchJobName string) string {
+	return fmt.Sprintf("%s-%s", batchName, batchJobName)
+}
+
+// ParseBatchAndJobNameFromScheduledJobName Decompose V2 batch name and jobs name from V1 job-name
+func ParseBatchAndJobNameFromScheduledJobName(scheduleJobName string) (batchName, batchJobName string, ok bool) {
+	scheduleJobNameParts := strings.Split(scheduleJobName, "-")
+	if len(scheduleJobNameParts) < 2 {
+		return
+	}
+	batchName = strings.Join(scheduleJobNameParts[:len(scheduleJobNameParts)-1], "-")
+	batchJobName = scheduleJobNameParts[len(scheduleJobNameParts)-1]
+	ok = true
+	return
 }
