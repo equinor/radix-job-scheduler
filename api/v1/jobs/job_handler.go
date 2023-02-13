@@ -2,7 +2,7 @@ package jobs
 
 import (
 	"context"
-	"k8s.io/apimachinery/pkg/api/errors"
+	"github.com/equinor/radix-common/utils/slice"
 	"sort"
 	"strings"
 
@@ -15,10 +15,10 @@ import (
 	defaultsv1 "github.com/equinor/radix-job-scheduler/models/v1/defaults"
 	modelsv2 "github.com/equinor/radix-job-scheduler/models/v2"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
-	"github.com/equinor/radix-operator/pkg/apis/utils/slice"
 	log "github.com/sirupsen/logrus"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 )
@@ -156,7 +156,7 @@ func (handler *jobHandler) MaintainHistoryLimit() error {
 	completedBatches := convertRadixBatchesToCompletedBatchVersioned(completedRadixBatches.SucceededSingleJobs)
 	historyLimit := handler.common.Env.RadixJobSchedulersPerEnvironmentHistoryLimit
 	log.Debug("maintain history limit for succeeded batches")
-	succeededJobs := jobList.Where(func(j *batchv1.Job) bool {
+	succeededJobs := slice.FindAll(jobList, func(j *batchv1.Job) bool {
 		_, batchNameLabelExists := j.ObjectMeta.Labels[kube.RadixBatchNameLabel]
 		return j.Status.Succeeded > 0 && !batchNameLabelExists
 	})
@@ -168,7 +168,7 @@ func (handler *jobHandler) MaintainHistoryLimit() error {
 
 	completedBatches = convertRadixBatchesToCompletedBatchVersioned(completedRadixBatches.NotSucceededSingleJobs)
 	log.Debug("maintain history limit for failed jobs")
-	failedJobs := jobList.Where(func(j *batchv1.Job) bool {
+	failedJobs := slice.FindAll(jobList, func(j *batchv1.Job) bool {
 		_, batchNameLabelExists := j.ObjectMeta.Labels[kube.RadixBatchNameLabel]
 		return j.Status.Failed > 0 && !batchNameLabelExists
 	})
@@ -195,7 +195,7 @@ func convertRadixBatchesToCompletedBatchVersioned(radixBatches []*modelsv2.Radix
 	return completedBatches
 }
 
-func convertBatchJobsToCompletedBatchVersioned(jobs modelsv1.JobList) []completedBatchOrJobVersioned {
+func convertBatchJobsToCompletedBatchVersioned(jobs []*batchv1.Job) []completedBatchOrJobVersioned {
 	var completedBatches []completedBatchOrJobVersioned
 	for _, job := range jobs {
 		completedBatches = append(completedBatches, completedBatchOrJobVersioned{
@@ -303,7 +303,7 @@ func (handler *jobHandler) getJobByName(jobName string) (*batchv1.Job, error) {
 		return nil, err
 	}
 
-	allJobs = allJobs.Where(func(j *batchv1.Job) bool { return j.Name == jobName })
+	allJobs = slice.FindAll(allJobs, func(j *batchv1.Job) bool { return j.Name == jobName })
 
 	if len(allJobs) == 1 {
 		return allJobs[0], nil
@@ -312,7 +312,7 @@ func (handler *jobHandler) getJobByName(jobName string) (*batchv1.Job, error) {
 	return nil, jobErrors.NewNotFound("job", jobName)
 }
 
-func (handler *jobHandler) getAllJobs() (modelsv1.JobList, error) {
+func (handler *jobHandler) getAllJobs() ([]*batchv1.Job, error) {
 	kubeJobs, err := handler.common.KubeClient.
 		BatchV1().
 		Jobs(handler.common.Env.RadixDeploymentNamespace).
@@ -322,12 +322,16 @@ func (handler *jobHandler) getAllJobs() (modelsv1.JobList, error) {
 				LabelSelector: getLabelSelectorForJobComponent(handler.common.Env.RadixComponentName),
 			},
 		)
-
 	if err != nil {
 		return nil, err
 	}
 
-	return slice.PointersOf(kubeJobs.Items).([]*batchv1.Job), nil
+	var jobs []*batchv1.Job
+	for _, job := range kubeJobs.Items {
+		job := job
+		jobs = append(jobs, &job)
+	}
+	return jobs, nil
 }
 
 // getJobPods jobName is optional, when empty - returns all job-pods for the namespace

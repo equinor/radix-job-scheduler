@@ -82,10 +82,10 @@ func Test_createBatch(t *testing.T) {
 		env := models.NewEnv()
 
 		h := &handler{
-			Kube:        kubeUtil,
-			KubeClient:  kubeClient,
-			RadixClient: radixClient,
-			Env:         env,
+			kubeUtil:    kubeUtil,
+			kubeClient:  kubeClient,
+			radixClient: radixClient,
+			env:         env,
 		}
 		t.Run(ts.name, func(t *testing.T) {
 			t.Parallel()
@@ -111,7 +111,7 @@ func Test_createBatch(t *testing.T) {
 			assert.Nil(t, err)
 			assert.NotNil(t, createdRadixBatch)
 
-			scheduledBatchList, err := h.RadixClient.RadixV1().RadixBatches(rd.Namespace).List(context.Background(),
+			scheduledBatchList, err := h.radixClient.RadixV1().RadixBatches(rd.Namespace).List(context.Background(),
 				metav1.ListOptions{})
 			assert.Nil(t, err)
 

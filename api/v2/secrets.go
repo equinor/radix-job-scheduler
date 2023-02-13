@@ -8,12 +8,12 @@ import (
 
 //GetSecretsForRadixBatch Get secrets for the RadixBatch
 func (h *handler) GetSecretsForRadixBatch(batchName string) ([]*corev1.Secret, error) {
-	return h.Kube.ListSecretsWithSelector(h.Env.RadixDeploymentNamespace, getLabelSelectorForRadixBatchSecret(batchName))
+	return h.kubeUtil.ListSecretsWithSelector(h.env.RadixDeploymentNamespace, getLabelSelectorForRadixBatchSecret(batchName))
 }
 
 //DeleteSecret Delete the service
 func (h *handler) DeleteSecret(secret *corev1.Secret) error {
-	return h.Kube.DeleteSecret(secret.Namespace, secret.Name)
+	return h.kubeUtil.DeleteSecret(secret.Namespace, secret.Name)
 }
 
 func getLabelSelectorForRadixBatchSecret(batchName string) string {

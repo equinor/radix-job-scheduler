@@ -5,6 +5,7 @@ import (
 	"sort"
 
 	"github.com/equinor/radix-common/utils"
+	"github.com/equinor/radix-common/utils/slice"
 	"github.com/equinor/radix-job-scheduler/api/v1"
 	"github.com/equinor/radix-job-scheduler/api/v1/jobs"
 	apiv2 "github.com/equinor/radix-job-scheduler/api/v2"
@@ -12,7 +13,6 @@ import (
 	modelsv1 "github.com/equinor/radix-job-scheduler/models/v1"
 	modelsv2 "github.com/equinor/radix-job-scheduler/models/v2"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
-	"github.com/equinor/radix-operator/pkg/apis/utils/slice"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 	log "github.com/sirupsen/logrus"
 	batchv1 "k8s.io/api/batch/v1"
@@ -39,9 +39,17 @@ type BatchHandler interface {
 	DeleteBatch(batchName string) error
 }
 
+type completedBatchVersionType string
+
+const (
+	completedBatchVersionV1 completedBatchVersionType = "V1"
+	completedBatchVersionV2 completedBatchVersionType = "V2"
+)
+
 type completedBatchVersioned struct {
-	batchNameV1    string
+	batchName      string
 	batchNameV2    string
+	version        completedBatchVersionType
 	completionTime string
 }
 
@@ -73,18 +81,17 @@ func (handler *batchHandler) GetBatches() ([]modelsv1.BatchStatus, error) {
 	}
 	allBatchesPodsMap := v1.GetPodsToJobNameMap(allBatchesPods)
 	var allRadixBatchStatuses []modelsv1.BatchStatus
-	for idx, batch := range allBatches {
-		allRadixBatchStatuses[idx] = modelsv1.BatchStatus{
+	for _, batch := range allBatches {
+		allRadixBatchStatuses = append(allRadixBatchStatuses, modelsv1.BatchStatus{
 			JobStatus: *jobs.GetJobStatusFromJob(handler.common.KubeClient, batch,
 				allBatchesPodsMap[batch.Name]),
-		}
+		})
 	}
 	radixBatches, err := handler.common.HandlerApiV2.GetRadixBatches()
 	if err != nil {
 		return nil, err
 	}
 	for _, radixBatch := range radixBatches {
-		radixBatch := radixBatch
 		radixBatchStatus := GetBatchStatusFromRadixBatch(&radixBatch)
 		allRadixBatchStatuses = append(allRadixBatchStatuses, *radixBatchStatus)
 	}
@@ -170,7 +177,7 @@ func (handler *batchHandler) MaintainHistoryLimit() error {
 
 	completedBatches := convertRadixBatchesToCompletedBatchVersioned(completedRadixBatches.SucceededRadixBatches)
 	log.Debug("maintain history limit for succeeded batches")
-	succeededBatches := batchList.Where(func(j *batchv1.Job) bool { return j.Status.Succeeded > 0 })
+	succeededBatches := slice.FindAll(batchList, func(j *batchv1.Job) bool { return j.Status.Succeeded > 0 })
 	completedBatches = append(completedBatches, convertBatchJobsToCompletedBatchVersioned(succeededBatches)...)
 	if err = handler.maintainHistoryLimitForBatches(completedBatches,
 		handler.common.Env.RadixJobSchedulersPerEnvironmentHistoryLimit); err != nil {
@@ -179,7 +186,7 @@ func (handler *batchHandler) MaintainHistoryLimit() error {
 
 	completedBatches = convertRadixBatchesToCompletedBatchVersioned(completedRadixBatches.NotSucceededRadixBatches)
 	log.Debug("maintain history limit for failed batches")
-	failedBatches := batchList.Where(func(j *batchv1.Job) bool { return j.Status.Failed > 0 })
+	failedBatches := slice.FindAll(batchList, func(j *batchv1.Job) bool { return j.Status.Failed > 0 })
 	completedBatches = append(completedBatches, convertBatchJobsToCompletedBatchVersioned(failedBatches)...)
 	if err = handler.maintainHistoryLimitForBatches(completedBatches,
 		handler.common.Env.RadixJobSchedulersPerEnvironmentHistoryLimit); err != nil {
@@ -192,18 +199,20 @@ func convertRadixBatchesToCompletedBatchVersioned(radixBatches []*modelsv2.Radix
 	var completedBatches []completedBatchVersioned
 	for _, radixBatch := range radixBatches {
 		completedBatches = append(completedBatches, completedBatchVersioned{
-			batchNameV2:    radixBatch.Name,
+			batchName:      radixBatch.Name,
+			version:        completedBatchVersionV2,
 			completionTime: radixBatch.Ended,
 		})
 	}
 	return completedBatches
 }
 
-func convertBatchJobsToCompletedBatchVersioned(batchJobs modelsv1.JobList) []completedBatchVersioned {
+func convertBatchJobsToCompletedBatchVersioned(batchJobs []*batchv1.Job) []completedBatchVersioned {
 	var completedBatches []completedBatchVersioned
 	for _, radixBatch := range batchJobs {
 		completedBatches = append(completedBatches, completedBatchVersioned{
-			batchNameV1:    radixBatch.GetName(),
+			batchName:      radixBatch.GetName(),
+			version:        completedBatchVersionV1,
 			completionTime: utils.FormatTime(radixBatch.Status.CompletionTime),
 		})
 	}
@@ -221,15 +230,15 @@ func (handler *batchHandler) maintainHistoryLimitForBatches(completedBatchesVers
 	sortedCompletedBatchesVersioned := sortCompletedBatchesByCompletionTimeAsc(completedBatchesVersioned)
 	for i := 0; i < numToDelete; i++ {
 		batchVersioned := sortedCompletedBatchesVersioned[i]
-		if len(batchVersioned.batchNameV1) > 0 {
-			log.Debugf("deleting batch batch job %s", batchVersioned.batchNameV1)
-			if err := handler.DeleteBatch(batchVersioned.batchNameV1); err != nil {
+		if batchVersioned.version == completedBatchVersionV1 {
+			log.Debugf("deleting batch batch job %s", batchVersioned.batchName)
+			if err := handler.DeleteBatch(batchVersioned.batchName); err != nil {
 				return err
 			}
 			continue
 		}
-		log.Debugf("deleting batch %s", batchVersioned.batchNameV2)
-		if err := handler.common.HandlerApiV2.DeleteRadixBatch(batchVersioned.batchNameV2); err != nil {
+		log.Debugf("deleting batch %s", batchVersioned.batchName)
+		if err := handler.common.HandlerApiV2.DeleteRadixBatch(batchVersioned.batchName); err != nil {
 			return err
 		}
 	}
@@ -249,7 +258,7 @@ func isCompletedBatch1CompletedBefore2(batchVersioned1 completedBatchVersioned, 
 	return batchVersioned1.completionTime < batchVersioned2.completionTime
 }
 
-func (handler *batchHandler) getAllBatches() (modelsv1.JobList, error) {
+func (handler *batchHandler) getAllBatches() ([]*batchv1.Job, error) {
 	kubeBatches, err := handler.common.KubeClient.
 		BatchV1().
 		Jobs(handler.common.Env.RadixDeploymentNamespace).
@@ -287,7 +296,7 @@ func getLabelSelectorForBatchObjects(batchName string) string {
 	}).String()
 }
 
-func (handler *batchHandler) getBatchJobs(batchName string) (modelsv1.JobList, error) {
+func (handler *batchHandler) getBatchJobs(batchName string) ([]*batchv1.Job, error) {
 	kubeJobs, err := handler.common.KubeClient.
 		BatchV1().
 		Jobs(handler.common.Env.RadixDeploymentNamespace).
