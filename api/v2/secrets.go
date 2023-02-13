@@ -1,9 +1,9 @@
 package apiv2
 
 import (
-	"github.com/equinor/radix-operator/pkg/apis/kube"
+	"github.com/equinor/radix-operator/pkg/apis/utils/labels"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/labels"
+	kubeLabels "k8s.io/apimachinery/pkg/labels"
 )
 
 //GetSecretsForRadixBatch Get secrets for the RadixBatch
@@ -17,7 +17,5 @@ func (h *handler) DeleteSecret(secret *corev1.Secret) error {
 }
 
 func getLabelSelectorForRadixBatchSecret(batchName string) string {
-	return labels.SelectorFromSet(map[string]string{
-		kube.RadixBatchNameLabel: batchName,
-	}).String()
+	return kubeLabels.SelectorFromSet(labels.ForBatchName(batchName)).String()
 }

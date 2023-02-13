@@ -3,7 +3,9 @@ package apiv2
 import (
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
+	"k8s.io/apimachinery/pkg/types"
 	"math/rand"
 	"sort"
 	"strings"
@@ -25,8 +27,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/selection"
+	"k8s.io/apimachinery/pkg/util/strategicpatch"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -70,6 +71,10 @@ type Handler interface {
 	DeleteRadixBatch(string) error
 	// GetCompletedRadixBatchesSortedByCompletionTimeAsc Gets completed RadixBatch lists for env.RadixComponentName
 	GetCompletedRadixBatchesSortedByCompletionTimeAsc() (*CompletedRadixBatches, error)
+	//StopRadixBatch Stop a batch
+	StopRadixBatch(string) error
+	//StopRadixBatchJob Stop a batch job
+	StopRadixBatchJob(string, string) error
 }
 
 // CompletedRadixBatches Completed RadixBatch lists
@@ -282,6 +287,70 @@ func (h *handler) DeleteRadixBatch(batchName string) error {
 	return commonErrors.Concat(errs)
 }
 
+//StopRadixBatch Stop a batch
+func (h *handler) StopRadixBatch(batchName string) error {
+	namespace := h.env.RadixDeploymentNamespace
+	log.Debugf("stop batch %s for namespace: %s", batchName, namespace)
+	oldRadixBatch, err := h.radixClient.RadixV1().RadixBatches(namespace).Get(context.Background(), batchName, metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+	newRadixBatch := oldRadixBatch.DeepCopy()
+
+	for jobIndex := range newRadixBatch.Spec.Jobs {
+		newRadixBatch.Spec.Jobs[jobIndex].Stop = pointers.Ptr(true)
+	}
+	return h.patchRadixBatch(oldRadixBatch, newRadixBatch)
+}
+
+//StopRadixBatchJob Stop a batch job
+func (h *handler) StopRadixBatchJob(batchName, jobName string) error {
+	namespace := h.env.RadixDeploymentNamespace
+	log.Debugf("stop a job %s in the batch %s for namespace: %s", jobName, batchName, namespace)
+	oldRadixBatch, err := h.radixClient.RadixV1().RadixBatches(namespace).Get(context.Background(), batchName, metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+	newRadixBatch := oldRadixBatch.DeepCopy()
+
+	for jobIndex, radixBatchJob := range newRadixBatch.Spec.Jobs {
+		if !strings.EqualFold(radixBatchJob.Name, jobName) {
+			continue
+		}
+		newRadixBatch.Spec.Jobs[jobIndex].Stop = pointers.Ptr(true)
+		return h.patchRadixBatch(oldRadixBatch, newRadixBatch)
+	}
+	return fmt.Errorf("not found a job %s in the batch %s", jobName, batchName)
+}
+
+func (h *handler) patchRadixBatch(oldRadixBatch *radixv1.RadixBatch, newRadixBatch *radixv1.RadixBatch) error {
+	namespace := h.env.RadixDeploymentNamespace
+	oldRadixBatchJSON, err := json.Marshal(oldRadixBatch)
+	if err != nil {
+		return fmt.Errorf("failed to marshal old RadixBatch object: %v", err)
+	}
+	newRadixBatchJSON, err := json.Marshal(newRadixBatch)
+	if err != nil {
+		return fmt.Errorf("failed to marshal new RadixBatch object: %v", err)
+	}
+
+	patchBytes, err := strategicpatch.CreateTwoWayMergePatch(oldRadixBatchJSON, newRadixBatchJSON, radixv1.RadixBatch{})
+	if err != nil {
+		return fmt.Errorf("failed to create two way merge patch RadixBatch objects: %v", err)
+	}
+
+	if !kube.IsEmptyPatch(patchBytes) {
+		_, err := h.radixClient.RadixV1().RadixBatches(namespace).Patch(context.TODO(), oldRadixBatch.GetName(), types.StrategicMergePatchType, patchBytes, metav1.PatchOptions{})
+		if err != nil {
+			return fmt.Errorf("failed to patch RadixBatch object: %v", err)
+		}
+		log.Debugf("Patched RadixBatch: %s in namespace %s", oldRadixBatch.GetName(), namespace)
+	} else {
+		log.Debugf("No need to patch RadixBatch: %s ", oldRadixBatch.GetName())
+	}
+	return nil
+}
+
 //MaintainHistoryLimit Delete outdated batches
 func (h *handler) MaintainHistoryLimit() error {
 	completedRadixBatches, _ := h.GetCompletedRadixBatchesSortedByCompletionTimeAsc()
@@ -467,7 +536,7 @@ func (h *handler) buildRadixBatchJobs(namespace, appName, radixJobComponentName,
 	var radixBatchJobWithDescriptions []radixBatchJobWithDescription
 	var errs []error
 	for jobIndex, jobScheduleDescription := range batchScheduleDescription.JobScheduleDescriptions {
-		jobName := creteJobName(radixBatchType, jobIndex)
+		jobName := createJobName(radixBatchType, jobIndex)
 		radixBatchJob, err := buildRadixBatchJob(jobName, &jobScheduleDescription, batchScheduleDescription.DefaultRadixJobComponentConfig)
 		if err != nil {
 			errs = append(errs, err)
@@ -493,7 +562,7 @@ func (h *handler) buildRadixBatchJobs(namespace, appName, radixJobComponentName,
 	return radixBatchJobs, nil
 }
 
-func creteJobName(radixBatchType kube.RadixBatchType, jobIndex int) string {
+func createJobName(radixBatchType kube.RadixBatchType, jobIndex int) string {
 	if radixBatchType == kube.RadixBatchTypeBatch {
 		return fmt.Sprintf("job%d", jobIndex)
 	}
@@ -545,17 +614,16 @@ func (h *handler) createRadixBatchJobPayloadSecrets(namespace, appName, radixJob
 }
 
 func (h *handler) createSecrets(namespace string, secrets []*corev1.Secret) error {
-	var errs []error
 	for _, secret := range secrets {
 		if secret.Data == nil || len(secret.Data) == 0 {
 			continue //if Data is empty, the secret is not used in any jobs
 		}
 		_, err := h.kubeUtil.KubeClient().CoreV1().Secrets(namespace).Create(context.TODO(), secret, metav1.CreateOptions{})
 		if err != nil {
-			errs = append(errs, err)
+			return err
 		}
 	}
-	return commonErrors.Concat(errs)
+	return nil
 }
 
 func buildSecret(appName, radixJobComponentName, batchName string, secretIndex int) *corev1.Secret {
@@ -585,7 +653,6 @@ func buildRadixBatchJob(jobName string, jobScheduleDescription *models.JobSchedu
 		Node:             jobScheduleDescription.Node,
 		TimeLimitSeconds: jobScheduleDescription.TimeLimitSeconds,
 		BackoffLimit:     jobScheduleDescription.BackoffLimit,
-		Stop:             nil,
 	}, nil
 }
 
@@ -613,11 +680,11 @@ func (h *handler) getRadixBatch(batchName string) (*radixv1.RadixBatch, error) {
 
 // GarbageCollectPayloadSecrets Delete orphaned payload secrets
 func (h *handler) GarbageCollectPayloadSecrets() error {
-	jobTypeLabelRequirement, err := labels.NewRequirement(kube.RadixBatchNameLabel, selection.Exists, []string{})
+	radixBatchNameLabelExists, err := radixLabels.RequirementRadixBatchNameLabelExists()
 	if err != nil {
 		return err
 	}
-	payloadSecrets, err := h.kubeUtil.ListSecretsWithSelector(h.env.RadixDeploymentNamespace, jobTypeLabelRequirement.String())
+	payloadSecrets, err := h.kubeUtil.ListSecretsWithSelector(h.env.RadixDeploymentNamespace, radixBatchNameLabelExists.String())
 	if err != nil {
 		return err
 	}

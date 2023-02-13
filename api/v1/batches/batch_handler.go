@@ -13,12 +13,13 @@ import (
 	modelsv1 "github.com/equinor/radix-job-scheduler/models/v1"
 	modelsv2 "github.com/equinor/radix-job-scheduler/models/v2"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
+	"github.com/equinor/radix-operator/pkg/apis/utils/labels"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 	log "github.com/sirupsen/logrus"
 	batchv1 "k8s.io/api/batch/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
+	kubeLabels "k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -48,7 +49,6 @@ const (
 
 type completedBatchVersioned struct {
 	batchName      string
-	batchNameV2    string
 	version        completedBatchVersionType
 	completionTime string
 }
@@ -277,23 +277,22 @@ func (handler *batchHandler) getAllBatches() ([]*batchv1.Job, error) {
 }
 
 func getLabelSelectorForBatchPods(batchName string) string {
-	return labels.SelectorFromSet(map[string]string{
-		kube.RadixJobTypeLabel:   kube.RadixJobTypeBatchSchedule,
-		kube.RadixBatchNameLabel: batchName,
-	}).String()
+	return kubeLabels.SelectorFromSet(
+		labels.Merge(
+			labels.ForBatchName(batchName),
+			labels.ForBatchScheduleJobType(),
+		)).String()
 }
 
 func getLabelSelectorForAllBatchesPods() string {
-	return labels.SelectorFromSet(map[string]string{
-		kube.RadixJobTypeLabel: kube.RadixJobTypeBatchSchedule,
-	}).String()
+	return kubeLabels.SelectorFromSet(labels.ForBatchScheduleJobType()).String()
 }
 
 func getLabelSelectorForBatchObjects(batchName string) string {
-	return labels.SelectorFromSet(map[string]string{
-		kube.RadixJobTypeLabel:   kube.RadixJobTypeJobSchedule,
-		kube.RadixBatchNameLabel: batchName,
-	}).String()
+	return kubeLabels.SelectorFromSet(labels.Merge(
+		labels.ForBatchName(batchName),
+		labels.ForJobScheduleJobType(),
+	)).String()
 }
 
 func (handler *batchHandler) getBatchJobs(batchName string) ([]*batchv1.Job, error) {
