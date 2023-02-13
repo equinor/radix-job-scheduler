@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/equinor/radix-common/utils"
+	apiv1 "github.com/equinor/radix-job-scheduler/api/v1"
 	"github.com/equinor/radix-job-scheduler/models"
 	modelsv1 "github.com/equinor/radix-job-scheduler/models/v1"
 	defaultsv1 "github.com/equinor/radix-job-scheduler/models/v1/defaults"
@@ -95,24 +96,21 @@ func GetJobStatusFromJob(kubeClient kubernetes.Interface, job *v1.Job, jobPods [
 }
 
 // GetSingleJobStatusFromRadixBatchJob Gets job status from RadixBatch
-func GetSingleJobStatusFromRadixBatchJob(radixBatch *modelsv2.RadixBatch) *modelsv1.JobStatus {
-	jobStatus := modelsv1.JobStatus{
-		BatchName: radixBatch.Name,
-	}
+func GetSingleJobStatusFromRadixBatchJob(radixBatch *modelsv2.RadixBatch) (*modelsv1.JobStatus, error) {
 	if len(radixBatch.JobStatuses) != 1 {
-		return &jobStatus
+		return nil, fmt.Errorf("batch should have only one job")
 	}
-
 	radixBatchJobStatus := radixBatch.JobStatuses[0]
-
-	jobStatus.JobId = radixBatchJobStatus.JobId
-	jobStatus.Name = radixBatchJobStatus.Name
-	jobStatus.Created = radixBatchJobStatus.CreationTime
-	jobStatus.Started = radixBatchJobStatus.Started
-	jobStatus.Ended = radixBatchJobStatus.Ended
-	jobStatus.Status = radixBatchJobStatus.Status
-	jobStatus.Message = radixBatchJobStatus.Message
-	return &jobStatus
+	jobStatus := modelsv1.JobStatus{
+		JobId:   radixBatchJobStatus.JobId,
+		Name:    apiv1.ComposeSingleJobName(radixBatch.Name, radixBatchJobStatus.Name),
+		Created: radixBatchJobStatus.CreationTime,
+		Started: radixBatchJobStatus.Started,
+		Ended:   radixBatchJobStatus.Ended,
+		Status:  radixBatchJobStatus.Status,
+		Message: radixBatchJobStatus.Message,
+	}
+	return &jobStatus, nil
 }
 
 func getJobEndTimestamp(job *v1.Job) string {

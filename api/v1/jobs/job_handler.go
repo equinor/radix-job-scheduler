@@ -2,11 +2,11 @@ package jobs
 
 import (
 	"context"
-	"github.com/equinor/radix-common/utils/slice"
 	"sort"
 	"strings"
 
 	"github.com/equinor/radix-common/utils"
+	"github.com/equinor/radix-common/utils/slice"
 	jobErrors "github.com/equinor/radix-job-scheduler/api/errors"
 	apiv1 "github.com/equinor/radix-job-scheduler/api/v1"
 	apiv2 "github.com/equinor/radix-job-scheduler/api/v2"
@@ -133,7 +133,7 @@ func (handler *jobHandler) CreateJob(jobScheduleDescription *models.JobScheduleD
 	if err != nil {
 		return nil, err
 	}
-	return GetSingleJobStatusFromRadixBatchJob(radixBatch), nil
+	return GetSingleJobStatusFromRadixBatchJob(radixBatch)
 }
 
 // DeleteJob Delete a job
