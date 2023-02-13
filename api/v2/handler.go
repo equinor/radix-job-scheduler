@@ -3,9 +3,7 @@ package apiv2
 import (
 	"context"
 	"encoding/base64"
-	"encoding/json"
 	"fmt"
-	"k8s.io/apimachinery/pkg/types"
 	"math/rand"
 	"sort"
 	"strings"
@@ -27,8 +25,8 @@ import (
 	log "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/strategicpatch"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/util/retry"
 )
 
 const (
@@ -313,7 +311,7 @@ func (h *handler) StopRadixBatch(batchName string) error {
 		}
 		newRadixBatch.Spec.Jobs[jobIndex].Stop = pointers.Ptr(true)
 	}
-	return h.patchRadixBatch(radixBatch, newRadixBatch)
+	return h.updateRadixBatch(newRadixBatch)
 }
 
 //StopRadixBatchJob Stop a batch job
@@ -339,36 +337,21 @@ func (h *handler) StopRadixBatchJob(batchName, jobName string) error {
 			return fmt.Errorf("cannot stop the job %s with the status %s in the batch %s", jobName, string(jobStatus.Phase), batchName)
 		}
 		newRadixBatch.Spec.Jobs[jobIndex].Stop = pointers.Ptr(true)
-		return h.patchRadixBatch(radixBatch, newRadixBatch)
+		return h.updateRadixBatch(newRadixBatch)
 	}
 	return fmt.Errorf("not found a job %s in the batch %s", jobName, batchName)
 }
 
-func (h *handler) patchRadixBatch(oldRadixBatch *radixv1.RadixBatch, newRadixBatch *radixv1.RadixBatch) error {
+func (h *handler) updateRadixBatch(radixBatch *radixv1.RadixBatch) error {
 	namespace := h.env.RadixDeploymentNamespace
-	oldRadixBatchJSON, err := json.Marshal(oldRadixBatch)
+	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		_, err := h.radixClient.RadixV1().RadixBatches(namespace).Update(context.Background(), radixBatch, metav1.UpdateOptions{})
+		return err
+	})
 	if err != nil {
-		return fmt.Errorf("failed to marshal old RadixBatch object: %v", err)
+		return fmt.Errorf("failed to patch RadixBatch object: %v", err)
 	}
-	newRadixBatchJSON, err := json.Marshal(newRadixBatch)
-	if err != nil {
-		return fmt.Errorf("failed to marshal new RadixBatch object: %v", err)
-	}
-
-	patchBytes, err := strategicpatch.CreateTwoWayMergePatch(oldRadixBatchJSON, newRadixBatchJSON, radixv1.RadixBatch{})
-	if err != nil {
-		return fmt.Errorf("failed to create two way merge patch RadixBatch objects: %v", err)
-	}
-
-	if !kube.IsEmptyPatch(patchBytes) {
-		_, err := h.radixClient.RadixV1().RadixBatches(namespace).Patch(context.TODO(), oldRadixBatch.GetName(), types.StrategicMergePatchType, patchBytes, metav1.PatchOptions{})
-		if err != nil {
-			return fmt.Errorf("failed to patch RadixBatch object: %v", err)
-		}
-		log.Debugf("Patched RadixBatch: %s in namespace %s", oldRadixBatch.GetName(), namespace)
-	} else {
-		log.Debugf("No need to patch RadixBatch: %s ", oldRadixBatch.GetName())
-	}
+	log.Debugf("Patched RadixBatch: %s in namespace %s", radixBatch.GetName(), namespace)
 	return nil
 }
 
