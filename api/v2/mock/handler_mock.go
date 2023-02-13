@@ -167,3 +167,31 @@ func (mr *MockHandlerMockRecorder) MaintainHistoryLimit() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MaintainHistoryLimit", reflect.TypeOf((*MockHandler)(nil).MaintainHistoryLimit))
 }
+
+// StopRadixBatch mocks base method.
+func (m *MockHandler) StopRadixBatch(arg0 string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StopRadixBatch", arg0)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// StopRadixBatch indicates an expected call of StopRadixBatch.
+func (mr *MockHandlerMockRecorder) StopRadixBatch(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StopRadixBatch", reflect.TypeOf((*MockHandler)(nil).StopRadixBatch), arg0)
+}
+
+// StopRadixBatchJob mocks base method.
+func (m *MockHandler) StopRadixBatchJob(arg0, arg1 string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StopRadixBatchJob", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// StopRadixBatchJob indicates an expected call of StopRadixBatchJob.
+func (mr *MockHandlerMockRecorder) StopRadixBatchJob(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StopRadixBatchJob", reflect.TypeOf((*MockHandler)(nil).StopRadixBatchJob), arg0, arg1)
+}
