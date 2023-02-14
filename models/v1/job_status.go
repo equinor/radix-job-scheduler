@@ -1,4 +1,4 @@
-package models
+package v1
 
 // JobStatus holds general information about job status
 // swagger:model JobStatus

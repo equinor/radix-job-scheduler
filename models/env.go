@@ -6,8 +6,6 @@ import (
 	"strconv"
 	"strings"
 
-	commonUtils "github.com/equinor/radix-common/utils"
-	schedulerDefaults "github.com/equinor/radix-job-scheduler/defaults"
 	"github.com/equinor/radix-operator/pkg/apis/defaults"
 	"github.com/equinor/radix-operator/pkg/apis/utils"
 	log "github.com/sirupsen/logrus"
@@ -45,7 +43,6 @@ func NewEnv() *Env {
 		useSwagger                                   = envVarIsTrueOrYes(os.Getenv("USE_SWAGGER"))
 		radixDNSZone                                 = strings.TrimSpace(os.Getenv(defaults.RadixDNSZoneEnvironmentVariable))
 		radixClusterName                             = strings.TrimSpace(os.Getenv(defaults.ClusternameEnvironmentVariable))
-		radixClusterType                             = strings.TrimSpace(os.Getenv(defaults.RadixClusterTypeEnvironmentVariable))
 		radixActiveClusterEgressIps                  = strings.TrimSpace(os.Getenv(defaults.RadixActiveClusterEgressIpsEnvironmentVariable))
 		radixAppName                                 = strings.TrimSpace(os.Getenv(defaults.RadixAppEnvironmentVariable))
 		radixEnv                                     = strings.TrimSpace(os.Getenv(defaults.EnvironmentnameEnvironmentVariable))
@@ -54,10 +51,6 @@ func NewEnv() *Env {
 		radixJobSchedulersPerEnvironmentHistoryLimit = strings.TrimSpace(os.Getenv("RADIX_JOB_SCHEDULERS_PER_ENVIRONMENT_HISTORY_LIMIT"))
 		radixPorts                                   = strings.TrimSpace(os.Getenv(defaults.RadixPortsEnvironmentVariable))
 		radixContainerRegistry                       = strings.TrimSpace(os.Getenv(defaults.ContainerRegistryEnvironmentVariable))
-		radixDefaultCpuLimit                         = strings.TrimSpace(os.Getenv(
-			defaults.OperatorEnvLimitDefaultCPUEnvironmentVariable))
-		radixDefaultMemoryLimit = strings.TrimSpace(os.Getenv(
-			defaults.OperatorEnvLimitDefaultMemoryEnvironmentVariable))
 	)
 	env := Env{
 		RadixDNSZone:                radixDNSZone,
@@ -71,21 +64,10 @@ func NewEnv() *Env {
 		RadixDeploymentNamespace:    utils.GetEnvironmentNamespace(radixAppName, radixEnv),
 		UseSwagger:                  useSwagger,
 		RadixJobSchedulersPerEnvironmentHistoryLimit: 10,
-		RadixDefaultCpuLimit: commonUtils.TernaryString(radixDefaultCpuLimit == "",
-			schedulerDefaults.DefaultBatchCpuLimit, radixDefaultCpuLimit),
-		RadixDefaultMemoryLimit: commonUtils.TernaryString(radixDefaultMemoryLimit == "",
-			schedulerDefaults.DefaultBatchMemoryLimit, radixDefaultMemoryLimit),
-		RadixBatchSchedulerImageFullName: getRadixBatchSchedulerImageFullName(
-			radixContainerRegistry, radixClusterType),
 	}
 	setPort(radixPorts, &env)
 	setHistoryLimit(radixJobSchedulersPerEnvironmentHistoryLimit, &env)
 	return &env
-}
-
-func getRadixBatchSchedulerImageFullName(containerRegistry, radixEnv string) string {
-	tag := commonUtils.TernaryString(strings.EqualFold(radixEnv, "development"), "main-latest", "release-latest")
-	return fmt.Sprintf("%s/%s:%s", containerRegistry, schedulerDefaults.RadixBatchSchedulerImage, tag)
 }
 
 func setHistoryLimit(radixJobSchedulersPerEnvironmentHistoryLimit string, env *Env) {

@@ -1,4 +1,4 @@
-package models
+package v1
 
 // BatchStatus holds general information about batch status
 // swagger:model BatchStatus

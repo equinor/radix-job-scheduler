@@ -3,12 +3,16 @@ package jobs
 import (
 	"context"
 	"fmt"
-	"github.com/equinor/radix-job-scheduler/models"
-	"github.com/equinor/radix-operator/pkg/apis/kube"
 	"sort"
 	"strings"
 
 	"github.com/equinor/radix-common/utils"
+	apiv1 "github.com/equinor/radix-job-scheduler/api/v1"
+	"github.com/equinor/radix-job-scheduler/models"
+	modelsv1 "github.com/equinor/radix-job-scheduler/models/v1"
+	defaultsv1 "github.com/equinor/radix-job-scheduler/models/v1/defaults"
+	modelsv2 "github.com/equinor/radix-job-scheduler/models/v2"
+	"github.com/equinor/radix-operator/pkg/apis/kube"
 	v1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -19,8 +23,8 @@ var imageErrors = map[string]bool{"ImagePullBackOff": true, "ImageInspectError":
 	"ErrImageNeverPull": true, "RegistryUnavailable": true, "InvalidImageName": true}
 
 // GetJobStatusFromJob Gets job from a k8s job
-func GetJobStatusFromJob(kubeClient kubernetes.Interface, job *v1.Job, jobPods []corev1.Pod) *models.JobStatus {
-	jobStatus := models.JobStatus{
+func GetJobStatusFromJob(kubeClient kubernetes.Interface, job *v1.Job, jobPods []corev1.Pod) *modelsv1.JobStatus {
+	jobStatus := modelsv1.JobStatus{
 		Name:    job.GetName(),
 		Created: utils.FormatTime(&job.ObjectMeta.CreationTimestamp),
 		Started: utils.FormatTime(job.Status.StartTime),
@@ -29,7 +33,7 @@ func GetJobStatusFromJob(kubeClient kubernetes.Interface, job *v1.Job, jobPods [
 	status := models.GetStatusFromJobStatus(job.Status)
 
 	jobStatus.Status = status.String()
-	jobStatus.JobId = job.ObjectMeta.Labels[kube.RadixJobIdLabel]         //Not empty, if JobId exists
+	jobStatus.JobId = job.ObjectMeta.Labels[defaultsv1.RadixJobIdLabel]   //Not empty, if JobId exists
 	jobStatus.BatchName = job.ObjectMeta.Labels[kube.RadixBatchNameLabel] //Not empty, if BatchName exists
 	if status != models.Running {
 		// if the job is not in state 'Running', we check that job's pod status reason
@@ -89,6 +93,24 @@ func GetJobStatusFromJob(kubeClient kubernetes.Interface, job *v1.Job, jobPods [
 		}
 	}
 	return &jobStatus
+}
+
+// GetSingleJobStatusFromRadixBatchJob Gets job status from RadixBatch
+func GetSingleJobStatusFromRadixBatchJob(radixBatch *modelsv2.RadixBatch) (*modelsv1.JobStatus, error) {
+	if len(radixBatch.JobStatuses) != 1 {
+		return nil, fmt.Errorf("batch should have only one job")
+	}
+	radixBatchJobStatus := radixBatch.JobStatuses[0]
+	jobStatus := modelsv1.JobStatus{
+		JobId:   radixBatchJobStatus.JobId,
+		Name:    apiv1.ComposeSingleJobName(radixBatch.Name, radixBatchJobStatus.Name),
+		Created: radixBatchJobStatus.CreationTime,
+		Started: radixBatchJobStatus.Started,
+		Ended:   radixBatchJobStatus.Ended,
+		Status:  radixBatchJobStatus.Status,
+		Message: radixBatchJobStatus.Message,
+	}
+	return &jobStatus, nil
 }
 
 func getJobEndTimestamp(job *v1.Job) string {
