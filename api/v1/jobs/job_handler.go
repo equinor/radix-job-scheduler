@@ -81,6 +81,7 @@ func (handler *jobHandler) GetJobs() ([]modelsv1.JobStatus, error) {
 	}
 
 	//Use ApiV2 for backward compatibility
+	//get all single jobs (returning no batchName)
 	radixBatches, err := handler.common.HandlerApiV2.GetRadixBatchSingleJobs()
 	if err != nil {
 		return nil, err
@@ -91,6 +92,17 @@ func (handler *jobHandler) GetJobs() ([]modelsv1.JobStatus, error) {
 		}
 		jobName := apiv1.ComposeSingleJobName(radixBatch.Name, radixBatch.JobStatuses[0].Name)
 		jobs = append(jobs, apiv1.GetJobStatusFromRadixBatchJobsStatus("", jobName, radixBatch.JobStatuses[0]))
+	}
+	//get all batch jobs (returning also batchName)
+	radixBatches, err = handler.common.HandlerApiV2.GetRadixBatches()
+	if err != nil {
+		return nil, err
+	}
+	for _, radixBatch := range radixBatches {
+		for _, jobStatus := range radixBatch.JobStatuses {
+			jobName := apiv1.ComposeSingleJobName(radixBatch.Name, jobStatus.Name)
+			jobs = append(jobs, apiv1.GetJobStatusFromRadixBatchJobsStatus(radixBatch.Name, jobName, radixBatch.JobStatuses[0]))
+		}
 	}
 	log.Debugf("Found %v jobs for namespace %s", len(jobs), handler.common.Env.RadixDeploymentNamespace)
 	return jobs, nil
@@ -103,9 +115,13 @@ func (handler *jobHandler) GetJob(jobName string) (*modelsv1.JobStatus, error) {
 	if batchName, jobName, ok := apiv1.ParseBatchAndJobNameFromScheduledJobName(jobName); ok {
 		radixBatch, err := handler.common.HandlerApiV2.GetRadixBatch(batchName)
 		if err == nil {
-			if len(radixBatch.JobStatuses) == 1 && strings.EqualFold(radixBatch.JobStatuses[0].Name, jobName) {
-				jobName := apiv1.ComposeSingleJobName(batchName, radixBatch.JobStatuses[0].Name)
-				jobsStatus := apiv1.GetJobStatusFromRadixBatchJobsStatus("", jobName, radixBatch.JobStatuses[0])
+			for _, jobStatus := range radixBatch.JobStatuses {
+				if !strings.EqualFold(jobStatus.Name, jobName) {
+					continue
+				}
+				jobName := apiv1.ComposeSingleJobName(radixBatch.Name, jobStatus.Name)
+				jobStatusBatchName := utils.TernaryString(radixBatch.BatchType == string(kube.RadixBatchTypeBatch), radixBatch.Name, "")
+				jobsStatus := apiv1.GetJobStatusFromRadixBatchJobsStatus(jobStatusBatchName, jobName, jobStatus)
 				return &jobsStatus, nil
 			}
 		}

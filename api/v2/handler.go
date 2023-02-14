@@ -130,6 +130,7 @@ func (h *handler) getRadixBatchStatus(radixBatchType kube.RadixBatchType) ([]mod
 func convertToRadixBatch(radixBatch *radixv1.RadixBatch) modelsv2.RadixBatch {
 	batch := modelsv2.RadixBatch{
 		Name:         radixBatch.GetName(),
+		BatchType:    radixBatch.Labels[kube.RadixBatchTypeLabel],
 		CreationTime: utils.FormatTime(pointers.Ptr(radixBatch.GetCreationTimestamp())),
 		Started:      utils.FormatTime(radixBatch.Status.Condition.ActiveTime),
 		Ended:        utils.FormatTime(radixBatch.Status.Condition.CompletionTime),
