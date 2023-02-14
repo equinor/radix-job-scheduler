@@ -11,22 +11,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
-//CreateService Create a service for the job API
-func (handler *Handler) CreateService(appName, jobName string, jobComponent *v1.RadixDeployJobComponent) (*corev1.
-	Service, error) {
-	if len(jobComponent.GetPorts()) == 0 {
-		return nil, nil
-	}
-	serviceName := jobName
-	service := buildServiceSpec(serviceName, jobName, jobComponent.Name, appName, jobComponent.GetPorts())
-	err := handler.Kube.ApplyService(handler.Env.RadixDeploymentNamespace, service)
-	if err != nil {
-		return nil, err
-	}
-	return service, nil
-
-}
-
 //GetServiceForJob Get the service for the job
 func (handler *Handler) GetServiceForJob(jobName string) (*corev1.ServiceList, error) {
 	return handler.KubeClient.CoreV1().Services(handler.Env.RadixDeploymentNamespace).List(
