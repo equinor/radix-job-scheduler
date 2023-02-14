@@ -10,17 +10,18 @@ import (
 func GetBatchStatusFromRadixBatch(radixBatch *modelsv2.RadixBatch) *modelsv1.BatchStatus {
 	jobStatus := modelsv1.BatchStatus{
 		JobStatus: modelsv1.JobStatus{
-			BatchName: radixBatch.Name,
-			Created:   radixBatch.CreationTime,
-			Started:   radixBatch.Started,
-			Ended:     radixBatch.Ended,
-			Status:    radixBatch.Status,
-			Message:   radixBatch.Message,
+			Name:    radixBatch.Name,
+			Created: radixBatch.CreationTime,
+			Started: radixBatch.Started,
+			Ended:   radixBatch.Ended,
+			Status:  radixBatch.Status,
+			Message: radixBatch.Message,
 		},
 	}
 	var jobStatuses []modelsv1.JobStatus
 	for _, jobStatus := range radixBatch.JobStatuses {
-		jobStatuses = append(jobStatuses, apiv1.GetJobStatusFromRadixBatchJobsStatus(radixBatch.Name, jobStatus.Name, jobStatus))
+		jobName := apiv1.ComposeSingleJobName(radixBatch.Name, jobStatus.Name)
+		jobStatuses = append(jobStatuses, apiv1.GetJobStatusFromRadixBatchJobsStatus(radixBatch.Name, jobName, jobStatus))
 	}
 	jobStatus.JobStatuses = jobStatuses
 	return &jobStatus
