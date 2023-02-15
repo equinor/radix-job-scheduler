@@ -5,17 +5,17 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/equinor/radix-job-scheduler/models"
+	"github.com/equinor/radix-job-scheduler/models/common"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type APIStatus interface {
-	Status() *models.Status
+	Status() *common.Status
 }
 
 type StatusError struct {
-	ErrStatus models.Status
+	ErrStatus common.Status
 }
 
 var _ error = &StatusError{}
@@ -38,15 +38,15 @@ func (e *StatusError) Error() string {
 }
 
 // Error implements the Error interface.
-func (e *StatusError) Status() *models.Status {
+func (e *StatusError) Status() *common.Status {
 	return &e.ErrStatus
 }
 
 func NewNotFound(kind, name string) *StatusError {
 	return &StatusError{
-		models.Status{
-			Status:  models.StatusFailure,
-			Reason:  models.StatusReasonNotFound,
+		common.Status{
+			Status:  common.StatusFailure,
+			Reason:  common.StatusReasonNotFound,
 			Code:    http.StatusNotFound,
 			Message: NotFoundMessage(kind, name),
 		},
@@ -55,9 +55,9 @@ func NewNotFound(kind, name string) *StatusError {
 
 func NewInvalid(name string) *StatusError {
 	return &StatusError{
-		models.Status{
-			Status:  models.StatusFailure,
-			Reason:  models.StatusReasonInvalid,
+		common.Status{
+			Status:  common.StatusFailure,
+			Reason:  common.StatusReasonInvalid,
 			Code:    http.StatusUnprocessableEntity,
 			Message: InvalidMessage(name),
 		},
@@ -66,9 +66,9 @@ func NewInvalid(name string) *StatusError {
 
 func NewUnknown(err error) *StatusError {
 	return &StatusError{
-		models.Status{
-			Status:  models.StatusFailure,
-			Reason:  models.StatusReasonUnknown,
+		common.Status{
+			Status:  common.StatusFailure,
+			Reason:  common.StatusReasonUnknown,
 			Code:    http.StatusInternalServerError,
 			Message: UnknownMessage(err),
 		},
@@ -97,11 +97,11 @@ func NewFromKubernetesAPIStatus(apiStatus k8sErrors.APIStatus) *StatusError {
 	}
 }
 
-func ReasonForError(err error) models.StatusReason {
+func ReasonForError(err error) common.StatusReason {
 	switch t := err.(type) {
 	case APIStatus:
 		return t.Status().Reason
 	default:
-		return models.StatusReasonUnknown
+		return common.StatusReasonUnknown
 	}
 }

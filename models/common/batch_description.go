@@ -1,4 +1,4 @@
-package models
+package common
 
 // BatchScheduleDescription holds description about batch scheduling job
 // swagger:model BatchScheduleDescription

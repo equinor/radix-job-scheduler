@@ -11,6 +11,7 @@ import (
 	apiv1 "github.com/equinor/radix-job-scheduler/api/v1"
 	apiv2 "github.com/equinor/radix-job-scheduler/api/v2"
 	"github.com/equinor/radix-job-scheduler/models"
+	"github.com/equinor/radix-job-scheduler/models/common"
 	modelsv1 "github.com/equinor/radix-job-scheduler/models/v1"
 	defaultsv1 "github.com/equinor/radix-job-scheduler/models/v1/defaults"
 	modelsv2 "github.com/equinor/radix-job-scheduler/models/v2"
@@ -33,7 +34,7 @@ type JobHandler interface {
 	//GetJob Get status of a job
 	GetJob(string) (*modelsv1.JobStatus, error)
 	//CreateJob Create a job with parameters
-	CreateJob(*models.JobScheduleDescription) (*modelsv1.JobStatus, error)
+	CreateJob(*common.JobScheduleDescription) (*modelsv1.JobStatus, error)
 	//MaintainHistoryLimit Delete outdated jobs
 	MaintainHistoryLimit() error
 	//DeleteJob Delete a job
@@ -141,7 +142,7 @@ func (handler *jobHandler) GetJob(jobName string) (*modelsv1.JobStatus, error) {
 }
 
 // CreateJob Create a job with parameters
-func (handler *jobHandler) CreateJob(jobScheduleDescription *models.JobScheduleDescription) (*modelsv1.JobStatus, error) {
+func (handler *jobHandler) CreateJob(jobScheduleDescription *common.JobScheduleDescription) (*modelsv1.JobStatus, error) {
 	//TODO remove batchName ?
 	log.Debugf("create job for namespace: %s", handler.common.Env.RadixDeploymentNamespace)
 	//Use ApiV2 for backward compatibility

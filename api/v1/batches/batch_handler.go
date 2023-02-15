@@ -6,10 +6,11 @@ import (
 
 	"github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-common/utils/slice"
-	"github.com/equinor/radix-job-scheduler/api/v1"
+	v1 "github.com/equinor/radix-job-scheduler/api/v1"
 	"github.com/equinor/radix-job-scheduler/api/v1/jobs"
 	apiv2 "github.com/equinor/radix-job-scheduler/api/v2"
 	"github.com/equinor/radix-job-scheduler/models"
+	"github.com/equinor/radix-job-scheduler/models/common"
 	modelsv1 "github.com/equinor/radix-job-scheduler/models/v1"
 	modelsv2 "github.com/equinor/radix-job-scheduler/models/v2"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
@@ -33,7 +34,7 @@ type BatchHandler interface {
 	//GetBatch Get status of a batch
 	GetBatch(batchName string) (*modelsv1.BatchStatus, error)
 	//CreateBatch Create a batch with parameters
-	CreateBatch(batchScheduleDescription *models.BatchScheduleDescription) (*modelsv1.BatchStatus, error)
+	CreateBatch(batchScheduleDescription *common.BatchScheduleDescription) (*modelsv1.BatchStatus, error)
 	//MaintainHistoryLimit Delete outdated batches
 	MaintainHistoryLimit() error
 	//DeleteBatch Delete a batch
@@ -53,7 +54,7 @@ type completedBatchVersioned struct {
 	completionTime string
 }
 
-//New Constructor of the batch handler
+// New Constructor of the batch handler
 func New(env *models.Env, kube *kube.Kube, kubeClient kubernetes.Interface, radixClient radixclient.Interface) BatchHandler {
 	return &batchHandler{
 		common: &v1.Handler{
@@ -66,7 +67,7 @@ func New(env *models.Env, kube *kube.Kube, kubeClient kubernetes.Interface, radi
 	}
 }
 
-//GetBatches Get status of all batches
+// GetBatches Get status of all batches
 func (handler *batchHandler) GetBatches() ([]modelsv1.BatchStatus, error) {
 	log.Debugf("Get batches for the namespace: %s", handler.common.Env.RadixDeploymentNamespace)
 
@@ -99,7 +100,7 @@ func (handler *batchHandler) GetBatches() ([]modelsv1.BatchStatus, error) {
 	return allRadixBatchStatuses, nil
 }
 
-//GetBatch Get status of a batch
+// GetBatch Get status of a batch
 func (handler *batchHandler) GetBatch(batchName string) (*modelsv1.BatchStatus, error) {
 	log.Debugf("get batches for namespace: %s", handler.common.Env.RadixDeploymentNamespace)
 	batch, err := handler.common.GetBatch(batchName)
@@ -141,8 +142,8 @@ func (handler *batchHandler) GetBatch(batchName string) (*modelsv1.BatchStatus, 
 	return &batchStatus, nil
 }
 
-//CreateBatch Create a batch with parameters
-func (handler *batchHandler) CreateBatch(batchScheduleDescription *models.BatchScheduleDescription) (*modelsv1.BatchStatus, error) {
+// CreateBatch Create a batch with parameters
+func (handler *batchHandler) CreateBatch(batchScheduleDescription *common.BatchScheduleDescription) (*modelsv1.BatchStatus, error) {
 	radixBatch, err := handler.common.HandlerApiV2.CreateRadixBatch(batchScheduleDescription)
 	if err != nil {
 		return nil, err
@@ -150,7 +151,7 @@ func (handler *batchHandler) CreateBatch(batchScheduleDescription *models.BatchS
 	return GetBatchStatusFromRadixBatch(radixBatch), nil
 }
 
-//DeleteBatch Delete a batch
+// DeleteBatch Delete a batch
 func (handler *batchHandler) DeleteBatch(batchName string) error {
 	log.Debugf("delete batch %s for namespace: %s", batchName, handler.common.Env.RadixDeploymentNamespace)
 	fg := metav1.DeletePropagationBackground
@@ -164,7 +165,7 @@ func (handler *batchHandler) DeleteBatch(batchName string) error {
 	return nil
 }
 
-//MaintainHistoryLimit Delete outdated batches
+// MaintainHistoryLimit Delete outdated batches
 func (handler *batchHandler) MaintainHistoryLimit() error {
 	completedRadixBatches, err := handler.common.HandlerApiV2.GetCompletedRadixBatchesSortedByCompletionTimeAsc()
 	if err != nil {
