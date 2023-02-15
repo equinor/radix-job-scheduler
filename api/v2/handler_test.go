@@ -79,7 +79,6 @@ func Test_createBatch(t *testing.T) {
 	}
 
 	for _, ts := range scenarios {
-		ts := ts
 		radixClient, kubeClient, _, kubeUtil := testUtils.SetupTest("app", "qa", "compute", "app-deploy-1", 1)
 		env := models.NewEnv()
 
@@ -90,7 +89,7 @@ func Test_createBatch(t *testing.T) {
 			env:         env,
 		}
 		t.Run(ts.name, func(t *testing.T) {
-			t.Parallel()
+			// t.Parallel()
 			params := testUtils.GetTestParams()
 			rd := params.ApplyRd(kubeUtil)
 			assert.NotNil(t, rd)

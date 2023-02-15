@@ -3,6 +3,7 @@ package apiv2
 import (
 	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"math/rand"
 	"sort"
@@ -545,6 +546,15 @@ func (h *handler) createBatch(namespace, appName, radixDeploymentName string, ra
 func (h *handler) buildRadixBatchJobs(namespace, appName, radixJobComponentName, batchName string, batchScheduleDescription *common.BatchScheduleDescription, radixJobComponentPayload *radixv1.RadixJobComponentPayload, radixBatchType kube.RadixBatchType) ([]radixv1.RadixBatchJob, error) {
 	var radixBatchJobWithDescriptions []radixBatchJobWithDescription
 	var errs []error
+
+	if batchScheduleDescription == nil {
+		return nil, errors.New("missing expected batch description")
+	}
+
+	if len(batchScheduleDescription.JobScheduleDescriptions)==0 {
+		return nil, errors.New("missing expected job descriptions")
+	}
+
 	for jobIndex, jobScheduleDescription := range batchScheduleDescription.JobScheduleDescriptions {
 		jobName := createJobName(radixBatchType, jobIndex)
 		radixBatchJob, err := buildRadixBatchJob(jobName, &jobScheduleDescription, batchScheduleDescription.DefaultRadixJobComponentConfig)
