@@ -79,6 +79,7 @@ func Test_createBatch(t *testing.T) {
 	}
 
 	for _, ts := range scenarios {
+		ts := ts
 		radixClient, kubeClient, _, kubeUtil := testUtils.SetupTest("app", "qa", "compute", "app-deploy-1", 1)
 		env := models.NewEnv()
 
