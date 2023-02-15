@@ -1,4 +1,4 @@
-package modelsv2
+package v2
 
 // RadixBatch holds general information about batch status
 // swagger:model RadixBatch

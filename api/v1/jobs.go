@@ -3,9 +3,10 @@ package v1
 import (
 	"context"
 	"fmt"
+	"strings"
+
 	modelsv1 "github.com/equinor/radix-job-scheduler/models/v1"
 	modelsv2 "github.com/equinor/radix-job-scheduler/models/v2"
-	"strings"
 
 	"github.com/equinor/radix-job-scheduler/api/errors"
 	defaultsv1 "github.com/equinor/radix-job-scheduler/models/v1/defaults"
