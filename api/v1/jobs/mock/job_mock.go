@@ -7,7 +7,7 @@ package mock
 import (
 	reflect "reflect"
 
-	models "github.com/equinor/radix-job-scheduler/models"
+	common "github.com/equinor/radix-job-scheduler/models/common"
 	v1 "github.com/equinor/radix-job-scheduler/models/v1"
 	gomock "github.com/golang/mock/gomock"
 )
@@ -36,7 +36,7 @@ func (m *MockJobHandler) EXPECT() *MockJobHandlerMockRecorder {
 }
 
 // CreateJob mocks base method.
-func (m *MockJobHandler) CreateJob(arg0 *models.JobScheduleDescription) (*v1.JobStatus, error) {
+func (m *MockJobHandler) CreateJob(arg0 *common.JobScheduleDescription) (*v1.JobStatus, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateJob", arg0)
 	ret0, _ := ret[0].(*v1.JobStatus)

@@ -6,6 +6,7 @@ import (
 
 	"github.com/equinor/radix-common/utils/pointers"
 	"github.com/equinor/radix-job-scheduler/models"
+	"github.com/equinor/radix-job-scheduler/models/common"
 	modelsv2 "github.com/equinor/radix-job-scheduler/models/v2"
 	testUtils "github.com/equinor/radix-job-scheduler/utils/test"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
@@ -17,23 +18,23 @@ import (
 func Test_createBatch(t *testing.T) {
 	type scenario struct {
 		name              string
-		batchDescription  models.BatchScheduleDescription
+		batchDescription  common.BatchScheduleDescription
 		expectedBatchType kube.RadixBatchType
 		expectedError     bool
 	}
 	scenarios := []scenario{
 		{
 			name: "batch with multiple jobs",
-			batchDescription: models.BatchScheduleDescription{JobScheduleDescriptions: []models.JobScheduleDescription{
+			batchDescription: common.BatchScheduleDescription{JobScheduleDescriptions: []common.JobScheduleDescription{
 				{
 					JobId:                   "job1",
 					Payload:                 "{}",
-					RadixJobComponentConfig: models.RadixJobComponentConfig{},
+					RadixJobComponentConfig: common.RadixJobComponentConfig{},
 				},
 				{
 					JobId:                   "job2",
 					Payload:                 "{}",
-					RadixJobComponentConfig: models.RadixJobComponentConfig{},
+					RadixJobComponentConfig: common.RadixJobComponentConfig{},
 				},
 			}},
 			expectedBatchType: kube.RadixBatchTypeBatch,
@@ -41,11 +42,11 @@ func Test_createBatch(t *testing.T) {
 		},
 		{
 			name: "batch with one job",
-			batchDescription: models.BatchScheduleDescription{JobScheduleDescriptions: []models.JobScheduleDescription{
+			batchDescription: common.BatchScheduleDescription{JobScheduleDescriptions: []common.JobScheduleDescription{
 				{
 					JobId:                   "job1",
 					Payload:                 "{}",
-					RadixJobComponentConfig: models.RadixJobComponentConfig{},
+					RadixJobComponentConfig: common.RadixJobComponentConfig{},
 				},
 			}},
 			expectedBatchType: kube.RadixBatchTypeBatch,
@@ -53,17 +54,17 @@ func Test_createBatch(t *testing.T) {
 		},
 		{
 			name:              "batch with no job failed",
-			batchDescription:  models.BatchScheduleDescription{JobScheduleDescriptions: []models.JobScheduleDescription{}},
+			batchDescription:  common.BatchScheduleDescription{JobScheduleDescriptions: []common.JobScheduleDescription{}},
 			expectedBatchType: kube.RadixBatchTypeBatch,
 			expectedError:     true,
 		},
 		{
 			name: "single job",
-			batchDescription: models.BatchScheduleDescription{JobScheduleDescriptions: []models.JobScheduleDescription{
+			batchDescription: common.BatchScheduleDescription{JobScheduleDescriptions: []common.JobScheduleDescription{
 				{
 					JobId:                   "job1",
 					Payload:                 "{}",
-					RadixJobComponentConfig: models.RadixJobComponentConfig{},
+					RadixJobComponentConfig: common.RadixJobComponentConfig{},
 				},
 			}},
 			expectedBatchType: kube.RadixBatchTypeJob,
@@ -71,7 +72,7 @@ func Test_createBatch(t *testing.T) {
 		},
 		{
 			name:              "single job with no job failed",
-			batchDescription:  models.BatchScheduleDescription{JobScheduleDescriptions: []models.JobScheduleDescription{}},
+			batchDescription:  common.BatchScheduleDescription{JobScheduleDescriptions: []common.JobScheduleDescription{}},
 			expectedBatchType: kube.RadixBatchTypeJob,
 			expectedError:     true,
 		},
@@ -88,7 +89,7 @@ func Test_createBatch(t *testing.T) {
 			env:         env,
 		}
 		t.Run(ts.name, func(t *testing.T) {
-			t.Parallel()
+			// t.Parallel()
 			params := testUtils.GetTestParams()
 			rd := params.ApplyRd(kubeUtil)
 			assert.NotNil(t, rd)
@@ -98,7 +99,7 @@ func Test_createBatch(t *testing.T) {
 			if ts.expectedBatchType == kube.RadixBatchTypeBatch {
 				createdRadixBatch, err = h.CreateRadixBatch(&ts.batchDescription)
 			} else {
-				var jobScheduleDescription *models.JobScheduleDescription
+				var jobScheduleDescription *common.JobScheduleDescription
 				if len(ts.batchDescription.JobScheduleDescriptions) > 0 {
 					jobScheduleDescription = &ts.batchDescription.JobScheduleDescriptions[0]
 				}
@@ -131,19 +132,19 @@ func Test_createBatch(t *testing.T) {
 func TestMergeJobDescriptionWithDefaultJobDescription(t *testing.T) {
 	type scenario struct {
 		name                            string
-		defaultRadixJobComponentConfig  *models.RadixJobComponentConfig
-		jobScheduleDescription          *models.JobScheduleDescription
-		expectedRadixJobComponentConfig *models.RadixJobComponentConfig
+		defaultRadixJobComponentConfig  *common.RadixJobComponentConfig
+		jobScheduleDescription          *common.JobScheduleDescription
+		expectedRadixJobComponentConfig *common.RadixJobComponentConfig
 	}
 
 	scenarios := []scenario{
 		{
 			name:                           "Only job description",
 			defaultRadixJobComponentConfig: nil,
-			jobScheduleDescription: &models.JobScheduleDescription{
+			jobScheduleDescription: &common.JobScheduleDescription{
 				JobId:   "job1",
 				Payload: "{'n':'v'}",
-				RadixJobComponentConfig: models.RadixJobComponentConfig{
+				RadixJobComponentConfig: common.RadixJobComponentConfig{
 					Resources: &radixv1.ResourceRequirements{
 						Limits:   radixv1.ResourceList{"cpu": "100m", "memory": "1000Mi"},
 						Requests: radixv1.ResourceList{"cpu": "200m", "memory": "2000Mi"},
@@ -153,7 +154,7 @@ func TestMergeJobDescriptionWithDefaultJobDescription(t *testing.T) {
 					BackoffLimit:     pointers.Ptr(int32(1)),
 				},
 			},
-			expectedRadixJobComponentConfig: &models.RadixJobComponentConfig{
+			expectedRadixJobComponentConfig: &common.RadixJobComponentConfig{
 				Resources: &radixv1.ResourceRequirements{
 					Limits:   radixv1.ResourceList{"cpu": "100m", "memory": "1000Mi"},
 					Requests: radixv1.ResourceList{"cpu": "200m", "memory": "2000Mi"},
@@ -165,7 +166,7 @@ func TestMergeJobDescriptionWithDefaultJobDescription(t *testing.T) {
 		},
 		{
 			name: "Only default job description",
-			defaultRadixJobComponentConfig: &models.RadixJobComponentConfig{
+			defaultRadixJobComponentConfig: &common.RadixJobComponentConfig{
 				Resources: &radixv1.ResourceRequirements{
 					Limits:   radixv1.ResourceList{"cpu": "100m", "memory": "1000Mi"},
 					Requests: radixv1.ResourceList{"cpu": "200m", "memory": "2000Mi"},
@@ -174,8 +175,8 @@ func TestMergeJobDescriptionWithDefaultJobDescription(t *testing.T) {
 				TimeLimitSeconds: pointers.Ptr(int64(1000)),
 				BackoffLimit:     pointers.Ptr(int32(1)),
 			},
-			jobScheduleDescription: &models.JobScheduleDescription{},
-			expectedRadixJobComponentConfig: &models.RadixJobComponentConfig{
+			jobScheduleDescription: &common.JobScheduleDescription{},
+			expectedRadixJobComponentConfig: &common.RadixJobComponentConfig{
 				Resources: &radixv1.ResourceRequirements{
 					Limits:   radixv1.ResourceList{"cpu": "100m", "memory": "1000Mi"},
 					Requests: radixv1.ResourceList{"cpu": "200m", "memory": "2000Mi"},
@@ -187,7 +188,7 @@ func TestMergeJobDescriptionWithDefaultJobDescription(t *testing.T) {
 		},
 		{
 			name: "Added values to job description",
-			defaultRadixJobComponentConfig: &models.RadixJobComponentConfig{
+			defaultRadixJobComponentConfig: &common.RadixJobComponentConfig{
 				Resources: &radixv1.ResourceRequirements{
 					Limits:   radixv1.ResourceList{"cpu": "100m"},
 					Requests: radixv1.ResourceList{"memory": "2000Mi"},
@@ -196,10 +197,10 @@ func TestMergeJobDescriptionWithDefaultJobDescription(t *testing.T) {
 				TimeLimitSeconds: pointers.Ptr(int64(1000)),
 				BackoffLimit:     nil,
 			},
-			jobScheduleDescription: &models.JobScheduleDescription{
+			jobScheduleDescription: &common.JobScheduleDescription{
 				JobId:   "job1",
 				Payload: "{'n':'v'}",
-				RadixJobComponentConfig: models.RadixJobComponentConfig{
+				RadixJobComponentConfig: common.RadixJobComponentConfig{
 					Resources: &radixv1.ResourceRequirements{
 						Limits:   radixv1.ResourceList{"memory": "1000Mi"},
 						Requests: radixv1.ResourceList{"cpu": "200m"},
@@ -209,7 +210,7 @@ func TestMergeJobDescriptionWithDefaultJobDescription(t *testing.T) {
 					BackoffLimit:     pointers.Ptr(int32(1)),
 				},
 			},
-			expectedRadixJobComponentConfig: &models.RadixJobComponentConfig{
+			expectedRadixJobComponentConfig: &common.RadixJobComponentConfig{
 				Resources: &radixv1.ResourceRequirements{
 					Limits:   radixv1.ResourceList{"cpu": "100m", "memory": "1000Mi"},
 					Requests: radixv1.ResourceList{"cpu": "200m", "memory": "2000Mi"},
@@ -221,7 +222,7 @@ func TestMergeJobDescriptionWithDefaultJobDescription(t *testing.T) {
 		},
 		{
 			name: "Not overwritten values in job description",
-			defaultRadixJobComponentConfig: &models.RadixJobComponentConfig{
+			defaultRadixJobComponentConfig: &common.RadixJobComponentConfig{
 				Resources: &radixv1.ResourceRequirements{
 					Limits:   radixv1.ResourceList{"cpu": "400m", "memory": "4000Mi"},
 					Requests: radixv1.ResourceList{"cpu": "400m", "memory": "4000Mi"},
@@ -230,10 +231,10 @@ func TestMergeJobDescriptionWithDefaultJobDescription(t *testing.T) {
 				TimeLimitSeconds: pointers.Ptr(int64(6000)),
 				BackoffLimit:     pointers.Ptr(int32(3)),
 			},
-			jobScheduleDescription: &models.JobScheduleDescription{
+			jobScheduleDescription: &common.JobScheduleDescription{
 				JobId:   "job1",
 				Payload: "{'n':'v'}",
-				RadixJobComponentConfig: models.RadixJobComponentConfig{
+				RadixJobComponentConfig: common.RadixJobComponentConfig{
 					Resources: &radixv1.ResourceRequirements{
 						Limits:   radixv1.ResourceList{"cpu": "100m", "memory": "1000Mi"},
 						Requests: radixv1.ResourceList{"cpu": "200m", "memory": "2000Mi"},
@@ -243,7 +244,7 @@ func TestMergeJobDescriptionWithDefaultJobDescription(t *testing.T) {
 					BackoffLimit:     pointers.Ptr(int32(1)),
 				},
 			},
-			expectedRadixJobComponentConfig: &models.RadixJobComponentConfig{
+			expectedRadixJobComponentConfig: &common.RadixJobComponentConfig{
 				Resources: &radixv1.ResourceRequirements{
 					Limits:   radixv1.ResourceList{"cpu": "100m", "memory": "1000Mi"},
 					Requests: radixv1.ResourceList{"cpu": "200m", "memory": "2000Mi"},
@@ -255,7 +256,7 @@ func TestMergeJobDescriptionWithDefaultJobDescription(t *testing.T) {
 		},
 		{
 			name: "Added but not overwritten values in job description",
-			defaultRadixJobComponentConfig: &models.RadixJobComponentConfig{
+			defaultRadixJobComponentConfig: &common.RadixJobComponentConfig{
 				Resources: &radixv1.ResourceRequirements{
 					Limits:   radixv1.ResourceList{"cpu": "100m", "memory": "4000Mi"},
 					Requests: radixv1.ResourceList{"cpu": "200m", "memory": "2000Mi"},
@@ -264,10 +265,10 @@ func TestMergeJobDescriptionWithDefaultJobDescription(t *testing.T) {
 				TimeLimitSeconds: pointers.Ptr(int64(1000)),
 				BackoffLimit:     pointers.Ptr(int32(3)),
 			},
-			jobScheduleDescription: &models.JobScheduleDescription{
+			jobScheduleDescription: &common.JobScheduleDescription{
 				JobId:   "job1",
 				Payload: "{'n':'v'}",
-				RadixJobComponentConfig: models.RadixJobComponentConfig{
+				RadixJobComponentConfig: common.RadixJobComponentConfig{
 					Resources: &radixv1.ResourceRequirements{
 						Limits: radixv1.ResourceList{"memory": "1000Mi"},
 					},
@@ -275,7 +276,7 @@ func TestMergeJobDescriptionWithDefaultJobDescription(t *testing.T) {
 					BackoffLimit: pointers.Ptr(int32(1)),
 				},
 			},
-			expectedRadixJobComponentConfig: &models.RadixJobComponentConfig{
+			expectedRadixJobComponentConfig: &common.RadixJobComponentConfig{
 				Resources: &radixv1.ResourceRequirements{
 					Limits:   radixv1.ResourceList{"cpu": "100m", "memory": "1000Mi"},
 					Requests: radixv1.ResourceList{"cpu": "200m", "memory": "2000Mi"},

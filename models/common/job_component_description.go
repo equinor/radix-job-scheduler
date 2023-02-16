@@ -1,8 +1,8 @@
-package models
+package common
 
 import v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 
-//RadixJobComponentConfig holds description of RadixJobComponent
+// RadixJobComponentConfig holds description of RadixJobComponent
 type RadixJobComponentConfig struct {
 	// Resource describes the compute resource requirements.
 	//

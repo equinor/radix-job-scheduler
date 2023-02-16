@@ -8,7 +8,7 @@ import (
 
 	"github.com/equinor/radix-common/utils"
 	apiv1 "github.com/equinor/radix-job-scheduler/api/v1"
-	"github.com/equinor/radix-job-scheduler/models"
+	"github.com/equinor/radix-job-scheduler/models/common"
 	modelsv1 "github.com/equinor/radix-job-scheduler/models/v1"
 	defaultsv1 "github.com/equinor/radix-job-scheduler/models/v1/defaults"
 	modelsv2 "github.com/equinor/radix-job-scheduler/models/v2"
@@ -30,17 +30,17 @@ func GetJobStatusFromJob(kubeClient kubernetes.Interface, job *v1.Job, jobPods [
 		Started: utils.FormatTime(job.Status.StartTime),
 		Ended:   getJobEndTimestamp(job),
 	}
-	status := models.GetStatusFromJobStatus(job.Status)
+	status := common.GetStatusFromJobStatus(job.Status)
 
 	jobStatus.Status = status.String()
 	jobStatus.JobId = job.ObjectMeta.Labels[defaultsv1.RadixJobIdLabel]   //Not empty, if JobId exists
 	jobStatus.BatchName = job.ObjectMeta.Labels[kube.RadixBatchNameLabel] //Not empty, if BatchName exists
-	if status != models.Running {
+	if status != common.Running {
 		// if the job is not in state 'Running', we check that job's pod status reason
 		for _, pod := range jobPods {
 			if pod.Status.Reason == "DeadlineExceeded" {
 				// if the pod's status reason is 'DeadlineExceeded', the entire job also gets that status
-				jobStatus.Status = models.DeadlineExceeded.String()
+				jobStatus.Status = common.DeadlineExceeded.String()
 				jobStatus.Message = pod.Status.Message
 				return &jobStatus
 			}
@@ -56,17 +56,17 @@ func GetJobStatusFromJob(kubeClient kubernetes.Interface, job *v1.Job, jobPods [
 			switch {
 			case cs.State.Terminated != nil:
 				//  job with one or more 'terminated' containers gets status 'Stopped'
-				jobStatus.Status = models.Stopped.String()
+				jobStatus.Status = common.Stopped.String()
 				jobStatus.Message = cs.State.Terminated.Message
 
 				return &jobStatus
 			case cs.State.Waiting != nil:
 				if _, ok := imageErrors[cs.State.Waiting.Reason]; ok {
 					// if container waits because of inaccessible image, the job is 'Failed'
-					jobStatus.Status = models.Failed.String()
+					jobStatus.Status = common.Failed.String()
 				} else {
 					// if container waits for any other reason, job is 'Waiting'
-					jobStatus.Status = models.Waiting.String()
+					jobStatus.Status = common.Waiting.String()
 				}
 				jobStatus.Started = ""
 				message := cs.State.Waiting.Message
@@ -88,7 +88,7 @@ func GetJobStatusFromJob(kubeClient kubernetes.Interface, job *v1.Job, jobPods [
 			if lastCondition.Status == corev1.ConditionTrue {
 				continue
 			}
-			jobStatus.Status = models.Waiting.String()
+			jobStatus.Status = common.Waiting.String()
 			jobStatus.Message = fmt.Sprintf("%s %s", lastCondition.Reason, lastCondition.Message)
 		}
 	}

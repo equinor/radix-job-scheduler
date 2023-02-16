@@ -7,7 +7,7 @@ package mock
 import (
 	reflect "reflect"
 
-	models "github.com/equinor/radix-job-scheduler/models"
+	common "github.com/equinor/radix-job-scheduler/models/common"
 	v1 "github.com/equinor/radix-job-scheduler/models/v1"
 	gomock "github.com/golang/mock/gomock"
 )
@@ -36,7 +36,7 @@ func (m *MockBatchHandler) EXPECT() *MockBatchHandlerMockRecorder {
 }
 
 // CreateBatch mocks base method.
-func (m *MockBatchHandler) CreateBatch(batchScheduleDescription *models.BatchScheduleDescription) (*v1.BatchStatus, error) {
+func (m *MockBatchHandler) CreateBatch(batchScheduleDescription *common.BatchScheduleDescription) (*v1.BatchStatus, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateBatch", batchScheduleDescription)
 	ret0, _ := ret[0].(*v1.BatchStatus)

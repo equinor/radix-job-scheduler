@@ -8,7 +8,7 @@ import (
 	reflect "reflect"
 
 	apiv2 "github.com/equinor/radix-job-scheduler/api/v2"
-	models "github.com/equinor/radix-job-scheduler/models"
+	common "github.com/equinor/radix-job-scheduler/models/common"
 	modelsv2 "github.com/equinor/radix-job-scheduler/models/v2"
 	gomock "github.com/golang/mock/gomock"
 )
@@ -37,7 +37,7 @@ func (m *MockHandler) EXPECT() *MockHandlerMockRecorder {
 }
 
 // CreateRadixBatch mocks base method.
-func (m *MockHandler) CreateRadixBatch(arg0 *models.BatchScheduleDescription) (*modelsv2.RadixBatch, error) {
+func (m *MockHandler) CreateRadixBatch(arg0 *common.BatchScheduleDescription) (*modelsv2.RadixBatch, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateRadixBatch", arg0)
 	ret0, _ := ret[0].(*modelsv2.RadixBatch)
@@ -52,7 +52,7 @@ func (mr *MockHandlerMockRecorder) CreateRadixBatch(arg0 interface{}) *gomock.Ca
 }
 
 // CreateRadixBatchSingleJob mocks base method.
-func (m *MockHandler) CreateRadixBatchSingleJob(arg0 *models.JobScheduleDescription) (*modelsv2.RadixBatch, error) {
+func (m *MockHandler) CreateRadixBatchSingleJob(arg0 *common.JobScheduleDescription) (*modelsv2.RadixBatch, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateRadixBatchSingleJob", arg0)
 	ret0, _ := ret[0].(*modelsv2.RadixBatch)
