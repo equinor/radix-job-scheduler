@@ -554,8 +554,8 @@ func (h *handler) buildRadixBatchJobs(namespace, appName, radixJobComponentName,
 	var radixBatchJobWithDescriptions []radixBatchJobWithDescription
 	var errs []error
 
-	for jobIndex, jobScheduleDescription := range batchScheduleDescription.JobScheduleDescriptions {
-		jobName := createJobName(radixBatchType, jobIndex)
+	for _, jobScheduleDescription := range batchScheduleDescription.JobScheduleDescriptions {
+		jobName := createJobName()
 		radixBatchJob, err := buildRadixBatchJob(jobName, &jobScheduleDescription, batchScheduleDescription.DefaultRadixJobComponentConfig)
 		if err != nil {
 			errs = append(errs, err)
@@ -581,7 +581,7 @@ func (h *handler) buildRadixBatchJobs(namespace, appName, radixJobComponentName,
 	return radixBatchJobs, nil
 }
 
-func createJobName(radixBatchType kube.RadixBatchType, jobIndex int) string {
+func createJobName() string {
 	return strings.ToLower(utils.RandStringSeed(8, defaultSrc))
 }
 
