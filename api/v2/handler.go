@@ -582,9 +582,6 @@ func (h *handler) buildRadixBatchJobs(namespace, appName, radixJobComponentName,
 }
 
 func createJobName(radixBatchType kube.RadixBatchType, jobIndex int) string {
-	if radixBatchType == kube.RadixBatchTypeBatch {
-		return fmt.Sprintf("job%d", jobIndex)
-	}
 	return strings.ToLower(utils.RandStringSeed(8, defaultSrc))
 }
 
