@@ -57,13 +57,24 @@ func NewNotFound(kind, name string) *StatusError {
 	}
 }
 
-func NewInvalid(name, reason string) *StatusError {
+func NewInvalidWithReason(name, reason string) *StatusError {
 	return &StatusError{
 		common.Status{
 			Status:  common.StatusFailure,
 			Reason:  common.StatusReasonInvalid,
 			Code:    http.StatusUnprocessableEntity,
 			Message: InvalidMessage(name, reason),
+		},
+	}
+}
+
+func NewInvalid(name string) *StatusError {
+	return &StatusError{
+		common.Status{
+			Status:  common.StatusFailure,
+			Reason:  common.StatusReasonInvalid,
+			Code:    http.StatusUnprocessableEntity,
+			Message: InvalidMessage(name, ""),
 		},
 	}
 }
@@ -95,7 +106,7 @@ func NewFromKubernetesAPIStatus(apiStatus k8sErrors.APIStatus) *StatusError {
 	case v1.StatusReasonNotFound:
 		return NewNotFound(apiStatus.Status().Details.Kind, apiStatus.Status().Details.Name)
 	case v1.StatusReasonInvalid:
-		return NewInvalid(apiStatus.Status().Details.Name,"")
+		return NewInvalid(apiStatus.Status().Details.Name)
 	default:
 		return NewUnknown(errors.New(apiStatus.Status().Message))
 	}

@@ -228,11 +228,11 @@ func (h *handler) GetRadixBatch(batchName string) (*modelsv2.RadixBatch, error) 
 // CreateRadixBatch Create a batch with parameters
 func (h *handler) CreateRadixBatch(batchScheduleDescription *common.BatchScheduleDescription) (*modelsv2.RadixBatch, error) {
 	if batchScheduleDescription == nil {
-		return nil, apiErrors.NewInvalid("batch","missing request body")
+		return nil, apiErrors.NewInvalidWithReason("batch","missing request body")
 	}
 
 	if len(batchScheduleDescription.JobScheduleDescriptions)==0 {
-		return nil, apiErrors.NewInvalid("batch","missing request body")
+		return nil, apiErrors.NewInvalidWithReason("batch","missing request body")
 	}
 
 	return h.createRadixBatchOrJob(*batchScheduleDescription, kube.RadixBatchTypeBatch)
@@ -270,7 +270,7 @@ func (h *handler) createRadixBatchOrJob(batchScheduleDescription common.BatchSch
 // CreateRadixBatchSingleJob Create a batch single job with parameters
 func (h *handler) CreateRadixBatchSingleJob(jobScheduleDescription *common.JobScheduleDescription) (*modelsv2.RadixBatch, error) {
 	if jobScheduleDescription == nil {
-		return nil, apiErrors.NewInvalid("job","missing request body")
+		return nil, apiErrors.NewInvalidWithReason("job","missing request body")
 	}
 	return h.createRadixBatchOrJob(common.BatchScheduleDescription{
 		JobScheduleDescriptions:        []common.JobScheduleDescription{*jobScheduleDescription},
