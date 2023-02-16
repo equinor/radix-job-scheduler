@@ -3,7 +3,6 @@ package apiv2
 import (
 	"context"
 	"encoding/base64"
-	"errors"
 	"fmt"
 	"math/rand"
 	"sort"
@@ -228,10 +227,18 @@ func (h *handler) GetRadixBatch(batchName string) (*modelsv2.RadixBatch, error) 
 
 // CreateRadixBatch Create a batch with parameters
 func (h *handler) CreateRadixBatch(batchScheduleDescription *common.BatchScheduleDescription) (*modelsv2.RadixBatch, error) {
-	return h.createRadixBatchOrJob(batchScheduleDescription, kube.RadixBatchTypeBatch)
+	if batchScheduleDescription == nil {
+		return nil, apiErrors.NewInvalid("batch","missing request body")
+	}
+
+	if len(batchScheduleDescription.JobScheduleDescriptions)==0 {
+		return nil, apiErrors.NewInvalid("batch","missing request body")
+	}
+
+	return h.createRadixBatchOrJob(*batchScheduleDescription, kube.RadixBatchTypeBatch)
 }
 
-func (h *handler) createRadixBatchOrJob(batchScheduleDescription *common.BatchScheduleDescription, radixBatchType kube.RadixBatchType) (*modelsv2.RadixBatch, error) {
+func (h *handler) createRadixBatchOrJob(batchScheduleDescription common.BatchScheduleDescription, radixBatchType kube.RadixBatchType) (*modelsv2.RadixBatch, error) {
 	namespace := h.env.RadixDeploymentNamespace
 	radixComponentName := h.env.RadixComponentName
 	radixDeploymentName := h.env.RadixDeploymentName
@@ -250,7 +257,7 @@ func (h *handler) createRadixBatchOrJob(batchScheduleDescription *common.BatchSc
 
 	appName := radixDeployment.Spec.AppName
 
-	createdRadixBatch, err := h.createBatch(namespace, appName, radixDeployment.GetName(), radixJobComponent, batchScheduleDescription, radixBatchType)
+	createdRadixBatch, err := h.createBatch(namespace, appName, radixDeployment.GetName(), *radixJobComponent, batchScheduleDescription, radixBatchType)
 	if err != nil {
 		return nil, apiErrors.NewFromError(err)
 	}
@@ -263,9 +270,9 @@ func (h *handler) createRadixBatchOrJob(batchScheduleDescription *common.BatchSc
 // CreateRadixBatchSingleJob Create a batch single job with parameters
 func (h *handler) CreateRadixBatchSingleJob(jobScheduleDescription *common.JobScheduleDescription) (*modelsv2.RadixBatch, error) {
 	if jobScheduleDescription == nil {
-		return nil, fmt.Errorf("missing expected job description")
+		return nil, apiErrors.NewInvalid("job","missing request body")
 	}
-	return h.createRadixBatchOrJob(&common.BatchScheduleDescription{
+	return h.createRadixBatchOrJob(common.BatchScheduleDescription{
 		JobScheduleDescriptions:        []common.JobScheduleDescription{*jobScheduleDescription},
 		DefaultRadixJobComponentConfig: nil,
 	}, kube.RadixBatchTypeJob)
@@ -514,7 +521,7 @@ func getJobComponentNamePart(jobComponentName string) string {
 	return fmt.Sprintf("%s%s", componentNamePart, strings.ToLower(utils.RandString(16-len(componentNamePart))))
 }
 
-func (h *handler) createBatch(namespace, appName, radixDeploymentName string, radixJobComponent *radixv1.RadixDeployJobComponent, batchScheduleDescription *common.BatchScheduleDescription, radixBatchType kube.RadixBatchType) (*radixv1.RadixBatch, error) {
+func (h *handler) createBatch(namespace, appName, radixDeploymentName string, radixJobComponent radixv1.RadixDeployJobComponent, batchScheduleDescription common.BatchScheduleDescription, radixBatchType kube.RadixBatchType) (*radixv1.RadixBatch, error) {
 	batchName := generateBatchName(radixJobComponent.GetName())
 	radixJobComponentName := radixJobComponent.GetName()
 	radixBatchJobs, err := h.buildRadixBatchJobs(namespace, appName, radixJobComponentName, batchName, batchScheduleDescription, radixJobComponent.Payload, radixBatchType)
@@ -543,17 +550,9 @@ func (h *handler) createBatch(namespace, appName, radixDeploymentName string, ra
 		metav1.CreateOptions{})
 }
 
-func (h *handler) buildRadixBatchJobs(namespace, appName, radixJobComponentName, batchName string, batchScheduleDescription *common.BatchScheduleDescription, radixJobComponentPayload *radixv1.RadixJobComponentPayload, radixBatchType kube.RadixBatchType) ([]radixv1.RadixBatchJob, error) {
+func (h *handler) buildRadixBatchJobs(namespace, appName, radixJobComponentName, batchName string, batchScheduleDescription common.BatchScheduleDescription, radixJobComponentPayload *radixv1.RadixJobComponentPayload, radixBatchType kube.RadixBatchType) ([]radixv1.RadixBatchJob, error) {
 	var radixBatchJobWithDescriptions []radixBatchJobWithDescription
 	var errs []error
-
-	if batchScheduleDescription == nil {
-		return nil, errors.New("missing expected batch description")
-	}
-
-	if len(batchScheduleDescription.JobScheduleDescriptions)==0 {
-		return nil, errors.New("missing expected job descriptions")
-	}
 
 	for jobIndex, jobScheduleDescription := range batchScheduleDescription.JobScheduleDescriptions {
 		jobName := createJobName(radixBatchType, jobIndex)

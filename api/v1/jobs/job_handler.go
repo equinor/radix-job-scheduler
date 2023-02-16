@@ -143,7 +143,6 @@ func (handler *jobHandler) GetJob(jobName string) (*modelsv1.JobStatus, error) {
 
 // CreateJob Create a job with parameters
 func (handler *jobHandler) CreateJob(jobScheduleDescription *common.JobScheduleDescription) (*modelsv1.JobStatus, error) {
-	//TODO remove batchName ?
 	log.Debugf("create job for namespace: %s", handler.common.Env.RadixDeploymentNamespace)
 	//Use ApiV2 for backward compatibility
 	radixBatch, err := handler.common.HandlerApiV2.CreateRadixBatchSingleJob(jobScheduleDescription)

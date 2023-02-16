@@ -24,8 +24,12 @@ func NotFoundMessage(kind, name string) string {
 	return fmt.Sprintf("%s %s not found", kind, name)
 }
 
-func InvalidMessage(name string) string {
-	return fmt.Sprintf("%s is invalid", name)
+func InvalidMessage(name, reason string) string {
+	message:=fmt.Sprintf("%s is invalid", name)
+	if len(reason)>0 {
+		message=fmt.Sprintf("%s: %s", message, reason)
+	}
+	return message
 }
 
 func UnknownMessage(err error) string {
@@ -53,13 +57,13 @@ func NewNotFound(kind, name string) *StatusError {
 	}
 }
 
-func NewInvalid(name string) *StatusError {
+func NewInvalid(name, reason string) *StatusError {
 	return &StatusError{
 		common.Status{
 			Status:  common.StatusFailure,
 			Reason:  common.StatusReasonInvalid,
 			Code:    http.StatusUnprocessableEntity,
-			Message: InvalidMessage(name),
+			Message: InvalidMessage(name, reason),
 		},
 	}
 }
@@ -91,7 +95,7 @@ func NewFromKubernetesAPIStatus(apiStatus k8sErrors.APIStatus) *StatusError {
 	case v1.StatusReasonNotFound:
 		return NewNotFound(apiStatus.Status().Details.Kind, apiStatus.Status().Details.Name)
 	case v1.StatusReasonInvalid:
-		return NewInvalid(apiStatus.Status().Details.Name)
+		return NewInvalid(apiStatus.Status().Details.Name,"")
 	default:
 		return NewUnknown(errors.New(apiStatus.Status().Message))
 	}
