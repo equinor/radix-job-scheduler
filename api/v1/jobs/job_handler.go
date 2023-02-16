@@ -2,6 +2,7 @@ package jobs
 
 import (
 	"context"
+	"fmt"
 	"sort"
 	"strings"
 
@@ -39,6 +40,8 @@ type JobHandler interface {
 	MaintainHistoryLimit() error
 	//DeleteJob Delete a job
 	DeleteJob(string) error
+	//StopJob Stop a job
+	StopJob(string) error
 }
 
 type completedBatchOrJobVersioned struct {
@@ -156,6 +159,22 @@ func (handler *jobHandler) CreateJob(jobScheduleDescription *common.JobScheduleD
 func (handler *jobHandler) DeleteJob(jobName string) error {
 	log.Debugf("delete job %s for namespace: %s", jobName, handler.common.Env.RadixDeploymentNamespace)
 	return handler.garbageCollectJob(jobName)
+}
+
+// StopJob Stop a job
+func (handler *jobHandler) StopJob(jobName string) error {
+	log.Debugf("stop the job %s for namespace: %s", jobName, handler.common.Env.RadixDeploymentNamespace)
+	if batchName, batchJobName, ok := apiv1.ParseBatchAndJobNameFromScheduledJobName(jobName); ok {
+		log.Debugf("stop the job %s for the batch %s for namespace: %s", batchJobName, batchName, handler.common.Env.RadixDeploymentNamespace)
+		err := handler.common.HandlerApiV2.StopRadixBatchJob(batchName, batchJobName)
+		if err == nil {
+			return nil
+		}
+		if !errors.IsNotFound(err) {
+			return err
+		}
+	}
+	return fmt.Errorf("job is not found or stop is not supported for this job")
 }
 
 // MaintainHistoryLimit Delete outdated jobs
