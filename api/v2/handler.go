@@ -232,7 +232,7 @@ func (h *handler) CreateRadixBatch(batchScheduleDescription *common.BatchSchedul
 	}
 
 	if len(batchScheduleDescription.JobScheduleDescriptions)==0 {
-		return nil, apiErrors.NewInvalidWithReason("batch","missing request body")
+		return nil, apiErrors.NewInvalidWithReason("batch","job description list is empty")
 	}
 
 	return h.createRadixBatchOrJob(*batchScheduleDescription, kube.RadixBatchTypeBatch)
