@@ -173,14 +173,7 @@ func (handler *batchHandler) DeleteBatch(batchName string) error {
 // StopBatch Stop a batch
 func (handler *batchHandler) StopBatch(batchName string) error {
 	log.Debugf("delete batch %s for namespace: %s", batchName, handler.common.Env.RadixDeploymentNamespace)
-	err := handler.common.HandlerApiV2.StopRadixBatch(batchName)
-	if err != nil {
-		if !errors.IsNotFound(err) {
-			return err
-		}
-		return nil
-	}
-	return fmt.Errorf("stop is not supported for this batch")
+	return handler.common.HandlerApiV2.StopRadixBatch(batchName)
 }
 
 // StopBatchJob Stop a batch job
