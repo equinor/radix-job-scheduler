@@ -106,7 +106,7 @@ func (handler *jobHandler) GetJobs() ([]modelsv1.JobStatus, error) {
 // GetJob Get status of a job
 func (handler *jobHandler) GetJob(jobName string) (*modelsv1.JobStatus, error) {
 	log.Debugf("get job %s for namespace: %s", jobName, handler.common.Env.RadixDeploymentNamespace)
-	if batchName, _, ok := parseBatchAndJobNameFromScheduledJobName(jobName); ok {
+	if batchName, _, ok := apiv1.ParseBatchAndJobNameFromScheduledJobName(jobName); ok {
 		radixBatch, err := handler.common.HandlerApiV2.GetRadixBatch(batchName)
 		if err == nil {
 			for _, jobStatus := range radixBatch.JobStatuses {
@@ -147,7 +147,7 @@ func (handler *jobHandler) CreateJob(jobScheduleDescription *common.JobScheduleD
 // DeleteJob Delete a job
 func (handler *jobHandler) DeleteJob(jobName string) error {
 	log.Debugf("delete job %s for namespace: %s", jobName, handler.common.Env.RadixDeploymentNamespace)
-	if batchName, _, ok := parseBatchAndJobNameFromScheduledJobName(jobName); ok {
+	if batchName, _, ok := apiv1.ParseBatchAndJobNameFromScheduledJobName(jobName); ok {
 		radixBatch, err := handler.common.HandlerApiV2.GetRadixBatch(batchName)
 		if err == nil && radixBatch.BatchType == string(kube.RadixBatchTypeJob) {
 			//only job in a single job batch can be deleted
@@ -164,7 +164,7 @@ func (handler *jobHandler) DeleteJob(jobName string) error {
 // StopJob Stop a job
 func (handler *jobHandler) StopJob(jobName string) error {
 	log.Debugf("stop the job %s for namespace: %s", jobName, handler.common.Env.RadixDeploymentNamespace)
-	if batchName, batchJobName, ok := parseBatchAndJobNameFromScheduledJobName(jobName); ok {
+	if batchName, batchJobName, ok := apiv1.ParseBatchAndJobNameFromScheduledJobName(jobName); ok {
 		log.Debugf("stop the job %s for the batch %s for namespace: %s", batchJobName, batchName, handler.common.Env.RadixDeploymentNamespace)
 		err := handler.common.HandlerApiV2.StopRadixBatchJob(batchName, batchJobName)
 		if err == nil {
@@ -394,15 +394,4 @@ func getLabelSelectorForJobPods(jobName string) string {
 	return labels.SelectorFromSet(map[string]string{
 		defaultsv1.K8sJobNameLabel: jobName,
 	}).String()
-}
-
-func parseBatchAndJobNameFromScheduledJobName(scheduleJobName string) (batchName, batchJobName string, ok bool) {
-	scheduleJobNameParts := strings.Split(scheduleJobName, "-")
-	if len(scheduleJobNameParts) < 2 {
-		return
-	}
-	batchName = strings.Join(scheduleJobNameParts[:len(scheduleJobNameParts)-1], "-")
-	batchJobName = scheduleJobNameParts[len(scheduleJobNameParts)-1]
-	ok = true
-	return
 }

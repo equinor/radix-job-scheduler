@@ -7,7 +7,7 @@ import (
 
 	"github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-common/utils/slice"
-	v1 "github.com/equinor/radix-job-scheduler/api/v1"
+	apiv1 "github.com/equinor/radix-job-scheduler/api/v1"
 	"github.com/equinor/radix-job-scheduler/api/v1/jobs"
 	apiv2 "github.com/equinor/radix-job-scheduler/api/v2"
 	"github.com/equinor/radix-job-scheduler/models"
@@ -26,22 +26,24 @@ import (
 )
 
 type batchHandler struct {
-	common *v1.Handler
+	common *apiv1.Handler
 }
 
 type BatchHandler interface {
 	//GetBatches Get status of all batches
 	GetBatches() ([]modelsv1.BatchStatus, error)
 	//GetBatch Get status of a batch
-	GetBatch(batchName string) (*modelsv1.BatchStatus, error)
+	GetBatch(string) (*modelsv1.BatchStatus, error)
 	//CreateBatch Create a batch with parameters
-	CreateBatch(batchScheduleDescription *common.BatchScheduleDescription) (*modelsv1.BatchStatus, error)
+	CreateBatch(*common.BatchScheduleDescription) (*modelsv1.BatchStatus, error)
 	//MaintainHistoryLimit Delete outdated batches
 	MaintainHistoryLimit() error
 	//DeleteBatch Delete a batch
-	DeleteBatch(batchName string) error
+	DeleteBatch(string) error
 	//StopBatch Stop a batch
-	StopBatch(batchName string) error
+	StopBatch(string) error
+	//StopBatchJob Stop a batch job
+	StopBatchJob(string, string) error
 }
 
 type completedBatchVersionType string
@@ -60,7 +62,7 @@ type completedBatchVersioned struct {
 // New Constructor of the batch handler
 func New(env *models.Env, kube *kube.Kube, kubeClient kubernetes.Interface, radixClient radixclient.Interface) BatchHandler {
 	return &batchHandler{
-		common: &v1.Handler{
+		common: &apiv1.Handler{
 			Kube:         kube,
 			KubeClient:   kubeClient,
 			RadixClient:  radixClient,
@@ -83,7 +85,7 @@ func (handler *batchHandler) GetBatches() ([]modelsv1.BatchStatus, error) {
 	if err != nil {
 		return nil, err
 	}
-	allBatchesPodsMap := v1.GetPodsToJobNameMap(allBatchesPods)
+	allBatchesPodsMap := apiv1.GetPodsToJobNameMap(allBatchesPods)
 	var allRadixBatchStatuses []modelsv1.BatchStatus
 	for _, batch := range allBatches {
 		allRadixBatchStatuses = append(allRadixBatchStatuses, modelsv1.BatchStatus{
@@ -135,7 +137,7 @@ func (handler *batchHandler) GetBatch(batchName string) (*modelsv1.BatchStatus, 
 	if err != nil {
 		return nil, err
 	}
-	batchJobsPodsMap := v1.GetPodsToJobNameMap(batchJobsPods)
+	batchJobsPodsMap := apiv1.GetPodsToJobNameMap(batchJobsPods)
 	for idx, batchJob := range batchJobs {
 		batchStatus.JobStatuses[idx] = *jobs.GetJobStatusFromJob(handler.common.KubeClient, batchJob, batchJobsPodsMap[batchJob.Name])
 	}
@@ -174,6 +176,19 @@ func (handler *batchHandler) StopBatch(batchName string) error {
 	err := handler.common.HandlerApiV2.StopRadixBatch(batchName)
 	if err != nil {
 		if !errors.IsNotFound(err) {
+			return err
+		}
+		return nil
+	}
+	return fmt.Errorf("stop is not supported for this batch")
+}
+
+// StopBatchJob Stop a batch job
+func (handler *batchHandler) StopBatchJob(batchName, jobName string) error {
+	log.Debugf("delete the job %s in the batch %s for namespace: %s", jobName, batchName, handler.common.Env.RadixDeploymentNamespace)
+	if batchName, jobName, ok := apiv1.ParseBatchAndJobNameFromScheduledJobName(jobName); ok {
+		err := handler.common.HandlerApiV2.StopRadixBatchJob(batchName, jobName)
+		if err != nil {
 			return err
 		}
 		return nil
@@ -282,7 +297,7 @@ func (handler *batchHandler) getAllBatches() ([]*batchv1.Job, error) {
 		List(
 			context.Background(),
 			metav1.ListOptions{
-				LabelSelector: v1.GetLabelSelectorForBatches(handler.common.Env.RadixComponentName),
+				LabelSelector: apiv1.GetLabelSelectorForBatches(handler.common.Env.RadixComponentName),
 			},
 		)
 
