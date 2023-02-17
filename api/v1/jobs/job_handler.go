@@ -8,7 +8,7 @@ import (
 
 	"github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-common/utils/slice"
-	jobErrors "github.com/equinor/radix-job-scheduler/api/errors"
+	apiErrors "github.com/equinor/radix-job-scheduler/api/errors"
 	apiv1 "github.com/equinor/radix-job-scheduler/api/v1"
 	apiv2 "github.com/equinor/radix-job-scheduler/api/v2"
 	"github.com/equinor/radix-job-scheduler/models"
@@ -174,7 +174,11 @@ func (handler *jobHandler) StopJob(jobName string) error {
 			return err
 		}
 	}
-	return fmt.Errorf("job is not found or stop is not supported for this job")
+	_, err := handler.GetJob(jobName)
+	if err == nil {
+		return fmt.Errorf("stop is not supported for this job")
+	}
+	return apiErrors.NewNotFound("job", jobName)
 }
 
 // MaintainHistoryLimit Delete outdated jobs
@@ -344,7 +348,7 @@ func (handler *jobHandler) getJobByName(jobName string) (*batchv1.Job, error) {
 		return allJobs[0], nil
 	}
 
-	return nil, jobErrors.NewNotFound("job", jobName)
+	return nil, apiErrors.NewNotFound("job", jobName)
 }
 
 func (handler *jobHandler) getAllJobs() ([]*batchv1.Job, error) {
