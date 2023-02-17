@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/equinor/radix-common/utils"
-	apiv1 "github.com/equinor/radix-job-scheduler/api/v1"
 	"github.com/equinor/radix-job-scheduler/models/common"
 	modelsv1 "github.com/equinor/radix-job-scheduler/models/v1"
 	defaultsv1 "github.com/equinor/radix-job-scheduler/models/v1/defaults"
@@ -102,13 +101,14 @@ func GetSingleJobStatusFromRadixBatchJob(radixBatch *modelsv2.RadixBatch) (*mode
 	}
 	radixBatchJobStatus := radixBatch.JobStatuses[0]
 	jobStatus := modelsv1.JobStatus{
-		JobId:   radixBatchJobStatus.JobId,
-		Name:    apiv1.ComposeSingleJobName(radixBatch.Name, radixBatchJobStatus.Name),
-		Created: radixBatchJobStatus.CreationTime,
-		Started: radixBatchJobStatus.Started,
-		Ended:   radixBatchJobStatus.Ended,
-		Status:  radixBatchJobStatus.Status,
-		Message: radixBatchJobStatus.Message,
+		BatchName: radixBatch.Name,
+		JobId:     radixBatchJobStatus.JobId,
+		Name:      radixBatchJobStatus.Name,
+		Created:   radixBatchJobStatus.CreationTime,
+		Started:   radixBatchJobStatus.Started,
+		Ended:     radixBatchJobStatus.Ended,
+		Status:    radixBatchJobStatus.Status,
+		Message:   radixBatchJobStatus.Message,
 	}
 	return &jobStatus, nil
 }

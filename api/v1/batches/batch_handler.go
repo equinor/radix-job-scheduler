@@ -2,6 +2,7 @@ package batchesv1
 
 import (
 	"context"
+	"fmt"
 	"sort"
 
 	"github.com/equinor/radix-common/utils"
@@ -39,6 +40,8 @@ type BatchHandler interface {
 	MaintainHistoryLimit() error
 	//DeleteBatch Delete a batch
 	DeleteBatch(batchName string) error
+	//StopBatch Stop a batch
+	StopBatch(batchName string) error
 }
 
 type completedBatchVersionType string
@@ -163,6 +166,19 @@ func (handler *batchHandler) DeleteBatch(batchName string) error {
 		return err
 	}
 	return nil
+}
+
+// StopBatch Stop a batch
+func (handler *batchHandler) StopBatch(batchName string) error {
+	log.Debugf("delete batch %s for namespace: %s", batchName, handler.common.Env.RadixDeploymentNamespace)
+	err := handler.common.HandlerApiV2.StopRadixBatch(batchName)
+	if err != nil {
+		if !errors.IsNotFound(err) {
+			return err
+		}
+		return nil
+	}
+	return fmt.Errorf("stop is not supported for this batch")
 }
 
 // MaintainHistoryLimit Delete outdated batches

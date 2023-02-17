@@ -2,14 +2,12 @@ package v1
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
-	modelsv1 "github.com/equinor/radix-job-scheduler/models/v1"
-	modelsv2 "github.com/equinor/radix-job-scheduler/models/v2"
-
 	"github.com/equinor/radix-job-scheduler/api/errors"
+	modelsv1 "github.com/equinor/radix-job-scheduler/models/v1"
 	defaultsv1 "github.com/equinor/radix-job-scheduler/models/v1/defaults"
+	modelsv2 "github.com/equinor/radix-job-scheduler/models/v2"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -41,18 +39,12 @@ func GetPodsToJobNameMap(pods []corev1.Pod) map[string][]corev1.Pod {
 	return podsMap
 }
 
-//CreateJob Create a job
-func (handler *Handler) CreateJob(namespace string, job *batchv1.Job) (*batchv1.Job, error) {
-	return handler.KubeClient.BatchV1().Jobs(namespace).Create(context.Background(), job,
-		metav1.CreateOptions{})
-}
-
 // GetJobStatusFromRadixBatchJobsStatus Get Job status from RadixBatchJob
-func GetJobStatusFromRadixBatchJobsStatus(batchName, jobName string, jobStatus modelsv2.RadixBatchJobStatus) modelsv1.JobStatus {
+func GetJobStatusFromRadixBatchJobsStatus(batchName string, jobStatus modelsv2.RadixBatchJobStatus) modelsv1.JobStatus {
 	return modelsv1.JobStatus{
 		JobId:     jobStatus.JobId,
 		BatchName: batchName,
-		Name:      jobName,
+		Name:      jobStatus.Name,
 		Created:   jobStatus.CreationTime,
 		Started:   jobStatus.Started,
 		Ended:     jobStatus.Ended,
@@ -61,19 +53,13 @@ func GetJobStatusFromRadixBatchJobsStatus(batchName, jobName string, jobStatus m
 	}
 }
 
-// ComposeSingleJobName from RadixBatchJob
-func ComposeSingleJobName(batchName, batchJobName string) string {
-	return fmt.Sprintf("%s-%s", batchName, batchJobName)
-}
-
-// ParseBatchAndJobNameFromScheduledJobName Decompose V2 batch name and jobs name from V1 job-name
-func ParseBatchAndJobNameFromScheduledJobName(scheduleJobName string) (batchName, batchJobName string, ok bool) {
-	scheduleJobNameParts := strings.Split(scheduleJobName, "-")
-	if len(scheduleJobNameParts) < 2 {
-		return
+// GetJobStatusFromRadixBatchJobsStatuses Get JobStatuses from RadixBatch job statuses v2
+func GetJobStatusFromRadixBatchJobsStatuses(radixBatches ...modelsv2.RadixBatch) []modelsv1.JobStatus {
+	var jobStatuses []modelsv1.JobStatus
+	for _, radixBatch := range radixBatches {
+		for _, jobStatus := range radixBatch.JobStatuses {
+			jobStatuses = append(jobStatuses, GetJobStatusFromRadixBatchJobsStatus(radixBatch.Name, jobStatus))
+		}
 	}
-	batchName = strings.Join(scheduleJobNameParts[:len(scheduleJobNameParts)-1], "-")
-	batchJobName = scheduleJobNameParts[len(scheduleJobNameParts)-1]
-	ok = true
-	return
+	return jobStatuses
 }

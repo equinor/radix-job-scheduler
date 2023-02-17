@@ -3,23 +3,23 @@ package jobs
 import (
 	"context"
 	"fmt"
-	"github.com/equinor/radix-common/utils/pointers"
-	apiv2 "github.com/equinor/radix-job-scheduler/api/v2"
-	modelsv1 "github.com/equinor/radix-job-scheduler/models/v1"
-	radixLabels "github.com/equinor/radix-operator/pkg/apis/utils/labels"
-	"github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 	"strings"
 	"testing"
 
 	"github.com/equinor/radix-common/utils/numbers"
+	"github.com/equinor/radix-common/utils/pointers"
 	apiErrors "github.com/equinor/radix-job-scheduler/api/errors"
 	api "github.com/equinor/radix-job-scheduler/api/v1"
+	apiv2 "github.com/equinor/radix-job-scheduler/api/v2"
 	modelsEnv "github.com/equinor/radix-job-scheduler/models"
 	models "github.com/equinor/radix-job-scheduler/models/common"
+	modelsv1 "github.com/equinor/radix-job-scheduler/models/v1"
 	testUtils "github.com/equinor/radix-job-scheduler/utils/test"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/equinor/radix-operator/pkg/apis/utils"
+	radixLabels "github.com/equinor/radix-operator/pkg/apis/utils/labels"
+	"github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -90,7 +90,7 @@ func addRadixBatch(radixClient versioned.Interface, jobName, componentName strin
 	}
 	labels[kube.RadixBatchTypeLabel] = string(batchJobType)
 
-	batchName, batchJobName, ok := api.ParseBatchAndJobNameFromScheduledJobName(jobName)
+	batchName, batchJobName, ok := parseBatchAndJobNameFromScheduledJobName(jobName)
 	if !ok {
 		panic(fmt.Sprintf("invalid job name %s", jobName))
 	}
@@ -218,7 +218,7 @@ func TestCreateJob(t *testing.T) {
 		jobStatus, err := handler.CreateJob(&models.JobScheduleDescription{})
 		assert.Nil(t, err)
 		assert.NotNil(t, jobStatus)
-		batchName, batchJobName, ok := api.ParseBatchAndJobNameFromScheduledJobName(jobStatus.Name)
+		batchName, batchJobName, ok := parseBatchAndJobNameFromScheduledJobName(jobStatus.Name)
 		assert.True(t, ok)
 		radixBatch, _ := radixClient.RadixV1().RadixBatches(envNamespace).Get(context.TODO(), batchName, metav1.GetOptions{})
 		assert.Len(t, radixBatch.Labels, 3)
@@ -259,7 +259,7 @@ func TestCreateJob(t *testing.T) {
 		assert.Nil(t, err)
 		assert.NotNil(t, jobStatus)
 		// Test secret spec
-		batchName, jobName, ok := api.ParseBatchAndJobNameFromScheduledJobName(jobStatus.Name)
+		batchName, jobName, ok := parseBatchAndJobNameFromScheduledJobName(jobStatus.Name)
 		assert.True(t, ok)
 		radixBatch, err := radixClient.RadixV1().RadixBatches(env.RadixDeploymentNamespace).Get(context.Background(), batchName, metav1.GetOptions{})
 		assert.NoError(t, err)
@@ -352,7 +352,7 @@ func TestCreateJob(t *testing.T) {
 		assert.NotNil(t, jobStatus)
 
 		// Test resources defined
-		batchName, jobName, ok := api.ParseBatchAndJobNameFromScheduledJobName(jobStatus.Name)
+		batchName, jobName, ok := parseBatchAndJobNameFromScheduledJobName(jobStatus.Name)
 		assert.True(t, ok)
 		radixBatch, err := radixClient.RadixV1().RadixBatches(env.RadixDeploymentNamespace).Get(context.Background(), batchName, metav1.GetOptions{})
 		assert.NoError(t, err)
@@ -396,7 +396,7 @@ func TestCreateJob(t *testing.T) {
 		assert.Nil(t, err)
 		assert.NotNil(t, jobStatus)
 
-		batchName, jobName, ok := api.ParseBatchAndJobNameFromScheduledJobName(jobStatus.Name)
+		batchName, jobName, ok := parseBatchAndJobNameFromScheduledJobName(jobStatus.Name)
 		assert.True(t, ok)
 		radixBatch, err := radixClient.RadixV1().RadixBatches(envNamespace).Get(context.Background(), batchName, metav1.GetOptions{})
 		assert.NoError(t, err)
@@ -502,7 +502,7 @@ func TestCreateJob(t *testing.T) {
 		assert.NotNil(t, jobStatus)
 		assert.Nil(t, err)
 
-		batchName, jobName, ok := api.ParseBatchAndJobNameFromScheduledJobName(jobStatus.Name)
+		batchName, jobName, ok := parseBatchAndJobNameFromScheduledJobName(jobStatus.Name)
 		assert.True(t, ok)
 		radixBatch, err := radixClient.RadixV1().RadixBatches(envNamespace).Get(context.Background(), batchName, metav1.GetOptions{})
 		assert.NoError(t, err)
@@ -686,7 +686,7 @@ func TestStopJob(t *testing.T) {
 }
 
 func createSecretForTest(appName, secretName, jobName, radixJobComponentName, namespace string, kubeClient kubernetes.Interface) {
-	batchName, batchJobName, _ := api.ParseBatchAndJobNameFromScheduledJobName(jobName)
+	batchName, batchJobName, _ := parseBatchAndJobNameFromScheduledJobName(jobName)
 	_, err := kubeClient.CoreV1().Secrets(namespace).Create(
 		context.Background(),
 		&corev1.Secret{
@@ -727,7 +727,7 @@ func getSecretByNameForTest(secrets []corev1.Secret, name string) *corev1.Secret
 }
 
 func getRadixBatchByNameForTest(radixBatches []v1.RadixBatch, jobName string) *v1.RadixBatch {
-	batchName, _, _ := api.ParseBatchAndJobNameFromScheduledJobName(jobName)
+	batchName, _, _ := parseBatchAndJobNameFromScheduledJobName(jobName)
 	for _, radixBatch := range radixBatches {
 		if radixBatch.Name == batchName {
 			return &radixBatch

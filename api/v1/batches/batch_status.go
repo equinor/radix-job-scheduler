@@ -8,7 +8,7 @@ import (
 
 // GetBatchStatusFromRadixBatch Gets batch status from RadixBatch
 func GetBatchStatusFromRadixBatch(radixBatch *modelsv2.RadixBatch) *modelsv1.BatchStatus {
-	jobStatus := modelsv1.BatchStatus{
+	return &modelsv1.BatchStatus{
 		JobStatus: modelsv1.JobStatus{
 			Name:    radixBatch.Name,
 			Created: radixBatch.CreationTime,
@@ -17,12 +17,6 @@ func GetBatchStatusFromRadixBatch(radixBatch *modelsv2.RadixBatch) *modelsv1.Bat
 			Status:  radixBatch.Status,
 			Message: radixBatch.Message,
 		},
+		JobStatuses: apiv1.GetJobStatusFromRadixBatchJobsStatuses(*radixBatch),
 	}
-	var jobStatuses []modelsv1.JobStatus
-	for _, jobStatus := range radixBatch.JobStatuses {
-		jobName := apiv1.ComposeSingleJobName(radixBatch.Name, jobStatus.Name)
-		jobStatuses = append(jobStatuses, apiv1.GetJobStatusFromRadixBatchJobsStatus(radixBatch.Name, jobName, jobStatus))
-	}
-	jobStatus.JobStatuses = jobStatuses
-	return &jobStatus
 }
