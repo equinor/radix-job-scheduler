@@ -11,7 +11,7 @@ import (
 
 //GetSecretsForJob Get secrets for the job
 func (handler *Handler) GetSecretsForJob(jobName string) (*corev1.SecretList, error) {
-	return handler.KubeClient.CoreV1().Secrets(handler.Env.RadixDeploymentNamespace).List(
+	return handler.Kube.KubeClient().CoreV1().Secrets(handler.Env.RadixDeploymentNamespace).List(
 		context.TODO(),
 		metav1.ListOptions{
 			LabelSelector: getLabelSelectorForSecret(jobName, handler.Env.RadixComponentName),
@@ -21,7 +21,7 @@ func (handler *Handler) GetSecretsForJob(jobName string) (*corev1.SecretList, er
 
 //DeleteSecret Delete the service for the job
 func (handler *Handler) DeleteSecret(secret *corev1.Secret) error {
-	return handler.KubeClient.CoreV1().Secrets(secret.Namespace).Delete(context.TODO(), secret.Name, metav1.DeleteOptions{})
+	return handler.Kube.KubeClient().CoreV1().Secrets(secret.Namespace).Delete(context.TODO(), secret.Name, metav1.DeleteOptions{})
 }
 
 func getLabelSelectorForSecret(jobName, componentName string) string {

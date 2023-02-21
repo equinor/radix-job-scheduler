@@ -25,9 +25,9 @@ func NotFoundMessage(kind, name string) string {
 }
 
 func InvalidMessage(name, reason string) string {
-	message:=fmt.Sprintf("%s is invalid", name)
-	if len(reason)>0 {
-		message=fmt.Sprintf("%s: %s", message, reason)
+	message := fmt.Sprintf("%s is invalid", name)
+	if len(reason) > 0 {
+		message = fmt.Sprintf("%s: %s", message, reason)
 	}
 	return message
 }
@@ -116,6 +116,8 @@ func ReasonForError(err error) common.StatusReason {
 	switch t := err.(type) {
 	case APIStatus:
 		return t.Status().Reason
+	case k8sErrors.APIStatus:
+		return NewFromError(err).Status().Reason
 	default:
 		return common.StatusReasonUnknown
 	}

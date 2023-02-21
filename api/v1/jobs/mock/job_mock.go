@@ -107,3 +107,17 @@ func (mr *MockJobHandlerMockRecorder) MaintainHistoryLimit() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MaintainHistoryLimit", reflect.TypeOf((*MockJobHandler)(nil).MaintainHistoryLimit))
 }
+
+// StopJob mocks base method.
+func (m *MockJobHandler) StopJob(arg0 string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StopJob", arg0)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// StopJob indicates an expected call of StopJob.
+func (mr *MockJobHandlerMockRecorder) StopJob(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StopJob", reflect.TypeOf((*MockJobHandler)(nil).StopJob), arg0)
+}

@@ -36,47 +36,47 @@ func (m *MockBatchHandler) EXPECT() *MockBatchHandlerMockRecorder {
 }
 
 // CreateBatch mocks base method.
-func (m *MockBatchHandler) CreateBatch(batchScheduleDescription *common.BatchScheduleDescription) (*v1.BatchStatus, error) {
+func (m *MockBatchHandler) CreateBatch(arg0 *common.BatchScheduleDescription) (*v1.BatchStatus, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateBatch", batchScheduleDescription)
+	ret := m.ctrl.Call(m, "CreateBatch", arg0)
 	ret0, _ := ret[0].(*v1.BatchStatus)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // CreateBatch indicates an expected call of CreateBatch.
-func (mr *MockBatchHandlerMockRecorder) CreateBatch(batchScheduleDescription interface{}) *gomock.Call {
+func (mr *MockBatchHandlerMockRecorder) CreateBatch(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateBatch", reflect.TypeOf((*MockBatchHandler)(nil).CreateBatch), batchScheduleDescription)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateBatch", reflect.TypeOf((*MockBatchHandler)(nil).CreateBatch), arg0)
 }
 
 // DeleteBatch mocks base method.
-func (m *MockBatchHandler) DeleteBatch(batchName string) error {
+func (m *MockBatchHandler) DeleteBatch(arg0 string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteBatch", batchName)
+	ret := m.ctrl.Call(m, "DeleteBatch", arg0)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DeleteBatch indicates an expected call of DeleteBatch.
-func (mr *MockBatchHandlerMockRecorder) DeleteBatch(batchName interface{}) *gomock.Call {
+func (mr *MockBatchHandlerMockRecorder) DeleteBatch(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteBatch", reflect.TypeOf((*MockBatchHandler)(nil).DeleteBatch), batchName)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteBatch", reflect.TypeOf((*MockBatchHandler)(nil).DeleteBatch), arg0)
 }
 
 // GetBatch mocks base method.
-func (m *MockBatchHandler) GetBatch(batchName string) (*v1.BatchStatus, error) {
+func (m *MockBatchHandler) GetBatch(arg0 string) (*v1.BatchStatus, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetBatch", batchName)
+	ret := m.ctrl.Call(m, "GetBatch", arg0)
 	ret0, _ := ret[0].(*v1.BatchStatus)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetBatch indicates an expected call of GetBatch.
-func (mr *MockBatchHandlerMockRecorder) GetBatch(batchName interface{}) *gomock.Call {
+func (mr *MockBatchHandlerMockRecorder) GetBatch(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBatch", reflect.TypeOf((*MockBatchHandler)(nil).GetBatch), batchName)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBatch", reflect.TypeOf((*MockBatchHandler)(nil).GetBatch), arg0)
 }
 
 // GetBatches mocks base method.
@@ -106,4 +106,32 @@ func (m *MockBatchHandler) MaintainHistoryLimit() error {
 func (mr *MockBatchHandlerMockRecorder) MaintainHistoryLimit() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MaintainHistoryLimit", reflect.TypeOf((*MockBatchHandler)(nil).MaintainHistoryLimit))
+}
+
+// StopBatch mocks base method.
+func (m *MockBatchHandler) StopBatch(arg0 string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StopBatch", arg0)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// StopBatch indicates an expected call of StopBatch.
+func (mr *MockBatchHandlerMockRecorder) StopBatch(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StopBatch", reflect.TypeOf((*MockBatchHandler)(nil).StopBatch), arg0)
+}
+
+// StopBatchJob mocks base method.
+func (m *MockBatchHandler) StopBatchJob(arg0, arg1 string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StopBatchJob", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// StopBatchJob indicates an expected call of StopBatchJob.
+func (mr *MockBatchHandlerMockRecorder) StopBatchJob(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StopBatchJob", reflect.TypeOf((*MockBatchHandler)(nil).StopBatchJob), arg0, arg1)
 }

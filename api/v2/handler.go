@@ -21,12 +21,10 @@ import (
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	radixLabels "github.com/equinor/radix-operator/pkg/apis/utils/labels"
-	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 	"github.com/imdario/mergo"
 	log "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/util/retry"
 )
 
@@ -45,10 +43,8 @@ var (
 )
 
 type handler struct {
-	kubeUtil    *kube.Kube
-	env         *models.Env
-	kubeClient  kubernetes.Interface
-	radixClient radixclient.Interface
+	kubeUtil *kube.Kube
+	env      *models.Env
 }
 
 type Handler interface {
@@ -85,12 +81,10 @@ type CompletedRadixBatches struct {
 }
 
 // New Constructor of the batch handler
-func New(env *models.Env, kube *kube.Kube, kubeClient kubernetes.Interface, radixClient radixclient.Interface) Handler {
+func New(kube *kube.Kube, env *models.Env) Handler {
 	return &handler{
-		kubeUtil:    kube,
-		kubeClient:  kubeClient,
-		radixClient: radixClient,
-		env:         env,
+		kubeUtil: kube,
+		env:      env,
 	}
 }
 
@@ -123,13 +117,13 @@ func (h *handler) getRadixBatchStatus(radixBatchType kube.RadixBatchType) ([]mod
 
 	var radixBatchStatuses []modelsv2.RadixBatch
 	for _, radixBatch := range radixBatches {
-		radixBatchStatuses = append(radixBatchStatuses, convertToRadixBatch(radixBatch))
+		radixBatchStatuses = append(radixBatchStatuses, getRadixBatchModelFromRadixBatch(radixBatch))
 	}
 	return radixBatchStatuses, nil
 }
 
-func convertToRadixBatch(radixBatch *radixv1.RadixBatch) modelsv2.RadixBatch {
-	batch := modelsv2.RadixBatch{
+func getRadixBatchModelFromRadixBatch(radixBatch *radixv1.RadixBatch) modelsv2.RadixBatch {
+	return modelsv2.RadixBatch{
 		Name:         radixBatch.GetName(),
 		BatchType:    radixBatch.Labels[kube.RadixBatchTypeLabel],
 		CreationTime: utils.FormatTime(pointers.Ptr(radixBatch.GetCreationTimestamp())),
@@ -139,15 +133,15 @@ func convertToRadixBatch(radixBatch *radixv1.RadixBatch) modelsv2.RadixBatch {
 		Message:      radixBatch.Status.Condition.Message,
 		JobStatuses:  getRadixBatchJobStatusesFromRadixBatch(radixBatch, radixBatch.Status.JobStatuses),
 	}
-	return batch
 }
 
 func getRadixBatchJobStatusesFromRadixBatch(radixBatch *radixv1.RadixBatch, radixBatchJobStatuses []radixv1.RadixBatchJobStatus) []modelsv2.RadixBatchJobStatus {
 	radixBatchJobsStatuses := getRadixBatchJobsStatusesMap(radixBatchJobStatuses)
 	var jobStatuses []modelsv2.RadixBatchJobStatus
 	for _, radixBatchJob := range radixBatch.Spec.Jobs {
+		jobName := fmt.Sprintf("%s-%s", radixBatch.Name, radixBatchJob.Name) //composed name in models are always consist of a batchName and original jobName
 		radixBatchJobStatus := modelsv2.RadixBatchJobStatus{
-			Name:  radixBatchJob.Name,
+			Name:  jobName,
 			JobId: radixBatchJob.JobId,
 		}
 		if jobStatus, ok := radixBatchJobsStatuses[radixBatchJob.Name]; ok {
@@ -222,17 +216,17 @@ func (h *handler) GetRadixBatch(batchName string) (*modelsv2.RadixBatch, error) 
 	if err != nil {
 		return nil, err
 	}
-	return pointers.Ptr(convertToRadixBatch(radixBatch)), nil
+	return pointers.Ptr(getRadixBatchModelFromRadixBatch(radixBatch)), nil
 }
 
 // CreateRadixBatch Create a batch with parameters
 func (h *handler) CreateRadixBatch(batchScheduleDescription *common.BatchScheduleDescription) (*modelsv2.RadixBatch, error) {
 	if batchScheduleDescription == nil {
-		return nil, apiErrors.NewInvalidWithReason("BatchScheduleDescription","empty request body")
+		return nil, apiErrors.NewInvalidWithReason("BatchScheduleDescription", "empty request body")
 	}
 
-	if len(batchScheduleDescription.JobScheduleDescriptions)==0 {
-		return nil, apiErrors.NewInvalidWithReason("BatchScheduleDescription","empty job description list ")
+	if len(batchScheduleDescription.JobScheduleDescriptions) == 0 {
+		return nil, apiErrors.NewInvalidWithReason("BatchScheduleDescription", "empty job description list ")
 	}
 
 	return h.createRadixBatchOrJob(*batchScheduleDescription, kube.RadixBatchTypeBatch)
@@ -244,7 +238,7 @@ func (h *handler) createRadixBatchOrJob(batchScheduleDescription common.BatchSch
 	radixDeploymentName := h.env.RadixDeploymentName
 	log.Debugf("create batch for namespace: %s", namespace)
 
-	radixDeployment, err := h.radixClient.RadixV1().RadixDeployments(namespace).
+	radixDeployment, err := h.kubeUtil.RadixClient().RadixV1().RadixDeployments(namespace).
 		Get(context.Background(), radixDeploymentName, metav1.GetOptions{})
 	if err != nil {
 		return nil, apiErrors.NewNotFound("radix deployment", radixDeploymentName)
@@ -257,20 +251,20 @@ func (h *handler) createRadixBatchOrJob(batchScheduleDescription common.BatchSch
 
 	appName := radixDeployment.Spec.AppName
 
-	createdRadixBatch, err := h.createBatch(namespace, appName, radixDeployment.GetName(), *radixJobComponent, batchScheduleDescription, radixBatchType)
+	createdRadixBatch, err := h.createRadixBatch(namespace, appName, radixDeployment.GetName(), *radixJobComponent, batchScheduleDescription, radixBatchType)
 	if err != nil {
 		return nil, apiErrors.NewFromError(err)
 	}
 
 	log.Debug(fmt.Sprintf("created batch %s for component %s, environment %s, in namespace: %s", createdRadixBatch.GetName(),
 		radixComponentName, radixDeployment.Spec.Environment, namespace))
-	return pointers.Ptr(convertToRadixBatch(createdRadixBatch)), nil
+	return pointers.Ptr(getRadixBatchModelFromRadixBatch(createdRadixBatch)), nil
 }
 
 // CreateRadixBatchSingleJob Create a batch single job with parameters
 func (h *handler) CreateRadixBatchSingleJob(jobScheduleDescription *common.JobScheduleDescription) (*modelsv2.RadixBatch, error) {
 	if jobScheduleDescription == nil {
-		return nil, apiErrors.NewInvalidWithReason("JobScheduleDescription","empty request body")
+		return nil, apiErrors.NewInvalidWithReason("JobScheduleDescription", "empty request body")
 	}
 	return h.createRadixBatchOrJob(common.BatchScheduleDescription{
 		JobScheduleDescriptions:        []common.JobScheduleDescription{*jobScheduleDescription},
@@ -282,7 +276,7 @@ func (h *handler) CreateRadixBatchSingleJob(jobScheduleDescription *common.JobSc
 func (h *handler) DeleteRadixBatch(batchName string) error {
 	log.Debugf("delete batch %s for namespace: %s", batchName, h.env.RadixDeploymentNamespace)
 	fg := metav1.DeletePropagationBackground
-	err := h.radixClient.RadixV1().RadixBatches(h.env.RadixDeploymentNamespace).Delete(context.Background(), batchName, metav1.DeleteOptions{PropagationPolicy: &fg})
+	err := h.kubeUtil.RadixClient().RadixV1().RadixBatches(h.env.RadixDeploymentNamespace).Delete(context.Background(), batchName, metav1.DeleteOptions{PropagationPolicy: &fg})
 	if err != nil {
 		return err
 	}
@@ -304,7 +298,7 @@ func (h *handler) DeleteRadixBatch(batchName string) error {
 func (h *handler) StopRadixBatch(batchName string) error {
 	namespace := h.env.RadixDeploymentNamespace
 	log.Debugf("stop batch %s for namespace: %s", batchName, namespace)
-	radixBatch, err := h.radixClient.RadixV1().RadixBatches(namespace).Get(context.Background(), batchName, metav1.GetOptions{})
+	radixBatch, err := h.kubeUtil.RadixClient().RadixV1().RadixBatches(namespace).Get(context.Background(), batchName, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
@@ -328,7 +322,7 @@ func (h *handler) StopRadixBatch(batchName string) error {
 func (h *handler) StopRadixBatchJob(batchName, jobName string) error {
 	namespace := h.env.RadixDeploymentNamespace
 	log.Debugf("stop a job %s in the batch %s for namespace: %s", jobName, batchName, namespace)
-	radixBatch, err := h.radixClient.RadixV1().RadixBatches(namespace).Get(context.Background(), batchName, metav1.GetOptions{})
+	radixBatch, err := h.kubeUtil.RadixClient().RadixV1().RadixBatches(namespace).Get(context.Background(), batchName, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
@@ -355,7 +349,7 @@ func (h *handler) StopRadixBatchJob(batchName, jobName string) error {
 func (h *handler) updateRadixBatch(radixBatch *radixv1.RadixBatch) error {
 	namespace := h.env.RadixDeploymentNamespace
 	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		_, err := h.radixClient.RadixV1().RadixBatches(namespace).Update(context.Background(), radixBatch, metav1.UpdateOptions{})
+		_, err := h.kubeUtil.RadixClient().RadixV1().RadixBatches(namespace).Update(context.Background(), radixBatch, metav1.UpdateOptions{})
 		return err
 	})
 	if err != nil {
@@ -411,7 +405,7 @@ func (h *handler) GetCompletedRadixBatchesSortedByCompletionTimeAsc() (*Complete
 }
 
 func getNotSucceededRadixBatches(radixBatches []*radixv1.RadixBatch) []*modelsv2.RadixBatch {
-	return convertToRadixBatches(slice.FindAll(radixBatches, func(radixBatch *radixv1.RadixBatch) bool {
+	return getRadixBatchModelsFromRadixBatches(slice.FindAll(radixBatches, func(radixBatch *radixv1.RadixBatch) bool {
 		return radixBatchHasType(radixBatch, kube.RadixBatchTypeBatch) && isRadixBatchNotSucceeded(radixBatch)
 	}))
 }
@@ -420,25 +414,25 @@ func getSucceededRadixBatches(radixBatches []*radixv1.RadixBatch) []*modelsv2.Ra
 	radixBatches = slice.FindAll(radixBatches, func(radixBatch *radixv1.RadixBatch) bool {
 		return radixBatchHasType(radixBatch, kube.RadixBatchTypeBatch) && isRadixBatchSucceeded(radixBatch)
 	})
-	return convertToRadixBatches(radixBatches)
+	return getRadixBatchModelsFromRadixBatches(radixBatches)
 }
 
 func getNotSucceededSingleJobs(radixBatches []*radixv1.RadixBatch) []*modelsv2.RadixBatch {
-	return convertToRadixBatches(slice.FindAll(radixBatches, func(radixBatch *radixv1.RadixBatch) bool {
+	return getRadixBatchModelsFromRadixBatches(slice.FindAll(radixBatches, func(radixBatch *radixv1.RadixBatch) bool {
 		return radixBatchHasType(radixBatch, kube.RadixBatchTypeJob) && isRadixBatchNotSucceeded(radixBatch)
 	}))
 }
 
 func getSucceededSingleJobs(radixBatches []*radixv1.RadixBatch) []*modelsv2.RadixBatch {
-	return convertToRadixBatches(slice.FindAll(radixBatches, func(radixBatch *radixv1.RadixBatch) bool {
+	return getRadixBatchModelsFromRadixBatches(slice.FindAll(radixBatches, func(radixBatch *radixv1.RadixBatch) bool {
 		return radixBatchHasType(radixBatch, kube.RadixBatchTypeJob) && isRadixBatchSucceeded(radixBatch)
 	}))
 }
 
-func convertToRadixBatches(radixBatches []*radixv1.RadixBatch) []*modelsv2.RadixBatch {
+func getRadixBatchModelsFromRadixBatches(radixBatches []*radixv1.RadixBatch) []*modelsv2.RadixBatch {
 	var batches []*modelsv2.RadixBatch
 	for _, radixBatch := range radixBatches {
-		batches = append(batches, pointers.Ptr(convertToRadixBatch(radixBatch)))
+		batches = append(batches, pointers.Ptr(getRadixBatchModelFromRadixBatch(radixBatch)))
 	}
 	return batches
 }
@@ -521,10 +515,10 @@ func getJobComponentNamePart(jobComponentName string) string {
 	return fmt.Sprintf("%s%s", componentNamePart, strings.ToLower(utils.RandString(16-len(componentNamePart))))
 }
 
-func (h *handler) createBatch(namespace, appName, radixDeploymentName string, radixJobComponent radixv1.RadixDeployJobComponent, batchScheduleDescription common.BatchScheduleDescription, radixBatchType kube.RadixBatchType) (*radixv1.RadixBatch, error) {
+func (h *handler) createRadixBatch(namespace, appName, radixDeploymentName string, radixJobComponent radixv1.RadixDeployJobComponent, batchScheduleDescription common.BatchScheduleDescription, radixBatchType kube.RadixBatchType) (*radixv1.RadixBatch, error) {
 	batchName := generateBatchName(radixJobComponent.GetName())
 	radixJobComponentName := radixJobComponent.GetName()
-	radixBatchJobs, err := h.buildRadixBatchJobs(namespace, appName, radixJobComponentName, batchName, batchScheduleDescription, radixJobComponent.Payload, radixBatchType)
+	radixBatchJobs, err := h.buildRadixBatchJobs(namespace, appName, radixJobComponentName, batchName, batchScheduleDescription, radixJobComponent.Payload)
 	if err != nil {
 		return nil, err
 	}
@@ -546,17 +540,16 @@ func (h *handler) createBatch(namespace, appName, radixDeploymentName string, ra
 			},
 		},
 	}
-	return h.radixClient.RadixV1().RadixBatches(namespace).Create(context.Background(), &radixBatch,
+	return h.kubeUtil.RadixClient().RadixV1().RadixBatches(namespace).Create(context.Background(), &radixBatch,
 		metav1.CreateOptions{})
 }
 
-func (h *handler) buildRadixBatchJobs(namespace, appName, radixJobComponentName, batchName string, batchScheduleDescription common.BatchScheduleDescription, radixJobComponentPayload *radixv1.RadixJobComponentPayload, radixBatchType kube.RadixBatchType) ([]radixv1.RadixBatchJob, error) {
+func (h *handler) buildRadixBatchJobs(namespace, appName, radixJobComponentName, batchName string, batchScheduleDescription common.BatchScheduleDescription, radixJobComponentPayload *radixv1.RadixJobComponentPayload) ([]radixv1.RadixBatchJob, error) {
 	var radixBatchJobWithDescriptions []radixBatchJobWithDescription
 	var errs []error
 
 	for _, jobScheduleDescription := range batchScheduleDescription.JobScheduleDescriptions {
-		jobName := createJobName()
-		radixBatchJob, err := buildRadixBatchJob(jobName, &jobScheduleDescription, batchScheduleDescription.DefaultRadixJobComponentConfig)
+		radixBatchJob, err := buildRadixBatchJob(&jobScheduleDescription, batchScheduleDescription.DefaultRadixJobComponentConfig)
 		if err != nil {
 			errs = append(errs, err)
 			continue
@@ -657,13 +650,13 @@ func buildSecret(appName, radixJobComponentName, batchName string, secretIndex i
 	}
 }
 
-func buildRadixBatchJob(jobName string, jobScheduleDescription *common.JobScheduleDescription, defaultJobScheduleDescription *common.RadixJobComponentConfig) (*radixv1.RadixBatchJob, error) {
+func buildRadixBatchJob(jobScheduleDescription *common.JobScheduleDescription, defaultJobScheduleDescription *common.RadixJobComponentConfig) (*radixv1.RadixBatchJob, error) {
 	err := applyDefaultJobDescriptionProperties(jobScheduleDescription, defaultJobScheduleDescription)
 	if err != nil {
 		return nil, err
 	}
 	return &radixv1.RadixBatchJob{
-		Name:             jobName,
+		Name:             createJobName(),
 		JobId:            jobScheduleDescription.JobId,
 		Resources:        jobScheduleDescription.Resources,
 		Node:             jobScheduleDescription.Node,
@@ -673,7 +666,7 @@ func buildRadixBatchJob(jobName string, jobScheduleDescription *common.JobSchedu
 }
 
 func (h *handler) getRadixBatches(labels ...map[string]string) ([]*radixv1.RadixBatch, error) {
-	radixBatchList, err := h.radixClient.
+	radixBatchList, err := h.kubeUtil.RadixClient().
 		RadixV1().
 		RadixBatches(h.env.RadixDeploymentNamespace).
 		List(
@@ -691,7 +684,7 @@ func (h *handler) getRadixBatches(labels ...map[string]string) ([]*radixv1.Radix
 }
 
 func (h *handler) getRadixBatch(batchName string) (*radixv1.RadixBatch, error) {
-	return h.radixClient.RadixV1().RadixBatches(h.env.RadixDeploymentNamespace).Get(context.TODO(), batchName, metav1.GetOptions{})
+	return h.kubeUtil.RadixClient().RadixV1().RadixBatches(h.env.RadixDeploymentNamespace).Get(context.TODO(), batchName, metav1.GetOptions{})
 }
 
 // GarbageCollectPayloadSecrets Delete orphaned payload secrets

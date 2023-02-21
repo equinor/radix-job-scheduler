@@ -11,7 +11,7 @@ import (
 
 //GetServiceForJob Get the service for the job
 func (handler *Handler) GetServiceForJob(jobName string) (*corev1.ServiceList, error) {
-	return handler.KubeClient.CoreV1().Services(handler.Env.RadixDeploymentNamespace).List(
+	return handler.Kube.KubeClient().CoreV1().Services(handler.Env.RadixDeploymentNamespace).List(
 		context.TODO(),
 		metav1.ListOptions{
 			LabelSelector: getLabelSelectorForService(jobName, handler.Env.RadixComponentName),
@@ -24,7 +24,7 @@ func (handler *Handler) DeleteService(service *corev1.Service) error {
 	if service == nil {
 		return nil
 	}
-	return handler.KubeClient.CoreV1().Services(service.Namespace).Delete(context.TODO(), service.Name, metav1.DeleteOptions{})
+	return handler.Kube.KubeClient().CoreV1().Services(service.Namespace).Delete(context.TODO(), service.Name, metav1.DeleteOptions{})
 }
 
 func getLabelSelectorForService(jobName, componentName string) string {

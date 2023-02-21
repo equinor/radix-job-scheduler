@@ -5,11 +5,12 @@ import (
 	"fmt"
 	"strings"
 
-	modelsv1 "github.com/equinor/radix-job-scheduler/models/v1"
-	modelsv2 "github.com/equinor/radix-job-scheduler/models/v2"
-
+	"github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-job-scheduler/api/errors"
+	apiv2 "github.com/equinor/radix-job-scheduler/api/v2"
+	modelsv1 "github.com/equinor/radix-job-scheduler/models/v1"
 	defaultsv1 "github.com/equinor/radix-job-scheduler/models/v1/defaults"
+	modelsv2 "github.com/equinor/radix-job-scheduler/models/v2"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -18,7 +19,7 @@ import (
 
 //GetBatch Gets a job, running a batch
 func (handler *Handler) GetBatch(batchName string) (*batchv1.Job, error) {
-	batch, err := handler.KubeClient.BatchV1().Jobs(handler.Env.RadixDeploymentNamespace).Get(context.TODO(), batchName, metav1.GetOptions{})
+	batch, err := handler.Kube.KubeClient().BatchV1().Jobs(handler.Env.RadixDeploymentNamespace).Get(context.TODO(), batchName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -41,29 +42,18 @@ func GetPodsToJobNameMap(pods []corev1.Pod) map[string][]corev1.Pod {
 	return podsMap
 }
 
-//CreateJob Create a job
-func (handler *Handler) CreateJob(namespace string, job *batchv1.Job) (*batchv1.Job, error) {
-	return handler.KubeClient.BatchV1().Jobs(namespace).Create(context.Background(), job,
-		metav1.CreateOptions{})
-}
-
 // GetJobStatusFromRadixBatchJobsStatus Get Job status from RadixBatchJob
-func GetJobStatusFromRadixBatchJobsStatus(batchName, jobName string, jobStatus modelsv2.RadixBatchJobStatus) modelsv1.JobStatus {
+func GetJobStatusFromRadixBatchJobsStatus(batchName string, jobStatus modelsv2.RadixBatchJobStatus) modelsv1.JobStatus {
 	return modelsv1.JobStatus{
 		JobId:     jobStatus.JobId,
 		BatchName: batchName,
-		Name:      jobName,
+		Name:      jobStatus.Name,
 		Created:   jobStatus.CreationTime,
 		Started:   jobStatus.Started,
 		Ended:     jobStatus.Ended,
 		Status:    jobStatus.Status,
 		Message:   jobStatus.Message,
 	}
-}
-
-// ComposeSingleJobName from RadixBatchJob
-func ComposeSingleJobName(batchName, batchJobName string) string {
-	return fmt.Sprintf("%s-%s", batchName, batchJobName)
 }
 
 // ParseBatchAndJobNameFromScheduledJobName Decompose V2 batch name and jobs name from V1 job-name
@@ -76,4 +66,32 @@ func ParseBatchAndJobNameFromScheduledJobName(scheduleJobName string) (batchName
 	batchJobName = scheduleJobNameParts[len(scheduleJobNameParts)-1]
 	ok = true
 	return
+}
+
+// GetBatchJobStatusFromRadixBatchJobsStatuses Get JobStatuses from RadixBatch job statuses v2 for batch jobs
+func GetBatchJobStatusFromRadixBatchJobsStatuses(radixBatches ...modelsv2.RadixBatch) []modelsv1.JobStatus {
+	return getJobStatusFromRadixBatchJobsStatuses(false, radixBatches...)
+}
+
+// GetSingleJobStatusFromRadixBatchJobsStatuses Get JobStatuses from RadixBatch job statuses v2 for single jobs
+func GetSingleJobStatusFromRadixBatchJobsStatuses(radixBatches ...modelsv2.RadixBatch) []modelsv1.JobStatus {
+	return getJobStatusFromRadixBatchJobsStatuses(true, radixBatches...)
+}
+
+func getJobStatusFromRadixBatchJobsStatuses(singleJob bool, radixBatches ...modelsv2.RadixBatch) []modelsv1.JobStatus {
+	var jobStatuses []modelsv1.JobStatus
+	for _, radixBatch := range radixBatches {
+		for _, jobStatus := range radixBatch.JobStatuses {
+			jobStatuses = append(jobStatuses, GetJobStatusFromRadixBatchJobsStatus(utils.TernaryString(singleJob, "", radixBatch.Name), jobStatus))
+		}
+	}
+	return jobStatuses
+}
+
+// StopJob Stop a job
+func StopJob(handlerApiV2 apiv2.Handler, jobName string) error {
+	if batchName, jobName, ok := ParseBatchAndJobNameFromScheduledJobName(jobName); ok {
+		return handlerApiV2.StopRadixBatchJob(batchName, jobName)
+	}
+	return fmt.Errorf("stop of this job is not supported")
 }

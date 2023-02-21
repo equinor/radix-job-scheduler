@@ -3,8 +3,6 @@ package test
 import (
 	"context"
 	"fmt"
-	"os"
-
 	radixUtils "github.com/equinor/radix-common/utils"
 	numbers "github.com/equinor/radix-common/utils/numbers"
 	"github.com/equinor/radix-operator/pkg/apis/defaults"
@@ -18,24 +16,25 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
-	fake3 "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned/fake"
+	"os"
+	secretstoragefake "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned/fake"
 )
 
 func SetupTest(appName, appEnvironment, appComponent, appDeployment string, historyLimit int) (versioned.Interface,
 	kubernetes.Interface, prometheusclient.Interface, *kube.Kube) {
-	os.Setenv("RADIX_APP", appName)
-	os.Setenv("RADIX_ENVIRONMENT", appEnvironment)
-	os.Setenv("RADIX_COMPONENT", appComponent)
-	os.Setenv("RADIX_DEPLOYMENT", appDeployment)
-	os.Setenv("RADIX_JOB_SCHEDULERS_PER_ENVIRONMENT_HISTORY_LIMIT", fmt.Sprint(historyLimit))
-	os.Setenv(defaults.OperatorRollingUpdateMaxUnavailable, "25%")
-	os.Setenv(defaults.OperatorRollingUpdateMaxSurge, "25%")
-	os.Setenv(defaults.OperatorEnvLimitDefaultCPUEnvironmentVariable, "200m")
-	os.Setenv(defaults.OperatorEnvLimitDefaultMemoryEnvironmentVariable, "500M")
+	_ = os.Setenv("RADIX_APP", appName)
+	_ = os.Setenv("RADIX_ENVIRONMENT", appEnvironment)
+	_ = os.Setenv("RADIX_COMPONENT", appComponent)
+	_ = os.Setenv("RADIX_DEPLOYMENT", appDeployment)
+	_ = os.Setenv("RADIX_JOB_SCHEDULERS_PER_ENVIRONMENT_HISTORY_LIMIT", fmt.Sprint(historyLimit))
+	_ = os.Setenv(defaults.OperatorRollingUpdateMaxUnavailable, "25%")
+	_ = os.Setenv(defaults.OperatorRollingUpdateMaxSurge, "25%")
+	_ = os.Setenv(defaults.OperatorEnvLimitDefaultCPUEnvironmentVariable, "200m")
+	_ = os.Setenv(defaults.OperatorEnvLimitDefaultMemoryEnvironmentVariable, "500M")
 	kubeclient := fake.NewSimpleClientset()
 	radixclient := fake2.NewSimpleClientset()
 	prometheusClient := prometheusfake.NewSimpleClientset()
-	kubeUtil, _ := kube.New(kubeclient, radixclient, fake3.NewSimpleClientset())
+	kubeUtil, _ := kube.New(kubeclient, radixclient, secretstoragefake.NewSimpleClientset())
 	return radixclient, kubeclient, prometheusClient, kubeUtil
 }
 
@@ -46,8 +45,8 @@ func (params *TestParams) ApplyRd(kubeUtil *kube.Kube) *v1.RadixDeployment {
 	for name, value := range params.EnvVarsMetadataConfigMapData {
 		metadataMap[name] = kube.EnvVarMetadata{RadixConfigValue: value}
 	}
-	kube.SetEnvVarsMetadataMapToConfigMap(envVarsMetadataConfigMap, metadataMap)
-	kubeUtil.UpdateConfigMap(params.Namespace, envVarsConfigMap, envVarsMetadataConfigMap)
+	_ = kube.SetEnvVarsMetadataMapToConfigMap(envVarsMetadataConfigMap, metadataMap)
+	_ = kubeUtil.UpdateConfigMap(params.Namespace, envVarsConfigMap, envVarsMetadataConfigMap)
 
 	rd := utils.ARadixDeployment().
 		WithDeploymentName(params.DeploymentName).
@@ -62,7 +61,7 @@ func (params *TestParams) ApplyRd(kubeUtil *kube.Kube) *v1.RadixDeployment {
 				WithEnvironmentVariables(params.RadixConfigEnvVarsMap),
 		).
 		BuildRD()
-	kubeUtil.RadixClient().RadixV1().RadixDeployments(rd.Namespace).Create(context.Background(), rd, metav1.CreateOptions{})
+	_, _ = kubeUtil.RadixClient().RadixV1().RadixDeployments(rd.Namespace).Create(context.Background(), rd, metav1.CreateOptions{})
 	return rd
 }
 
