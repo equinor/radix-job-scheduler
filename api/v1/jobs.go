@@ -2,9 +2,12 @@ package v1
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
+	"github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-job-scheduler/api/errors"
+	apiv2 "github.com/equinor/radix-job-scheduler/api/v2"
 	modelsv1 "github.com/equinor/radix-job-scheduler/models/v1"
 	defaultsv1 "github.com/equinor/radix-job-scheduler/models/v1/defaults"
 	modelsv2 "github.com/equinor/radix-job-scheduler/models/v2"
@@ -65,13 +68,30 @@ func ParseBatchAndJobNameFromScheduledJobName(scheduleJobName string) (batchName
 	return
 }
 
-// GetJobStatusFromRadixBatchJobsStatuses Get JobStatuses from RadixBatch job statuses v2
-func GetJobStatusFromRadixBatchJobsStatuses(radixBatches ...modelsv2.RadixBatch) []modelsv1.JobStatus {
+// GetBatchJobStatusFromRadixBatchJobsStatuses Get JobStatuses from RadixBatch job statuses v2 for batch jobs
+func GetBatchJobStatusFromRadixBatchJobsStatuses(radixBatches ...modelsv2.RadixBatch) []modelsv1.JobStatus {
+	return getJobStatusFromRadixBatchJobsStatuses(false, radixBatches...)
+}
+
+// GetSingleJobStatusFromRadixBatchJobsStatuses Get JobStatuses from RadixBatch job statuses v2 for single jobs
+func GetSingleJobStatusFromRadixBatchJobsStatuses(radixBatches ...modelsv2.RadixBatch) []modelsv1.JobStatus {
+	return getJobStatusFromRadixBatchJobsStatuses(true, radixBatches...)
+}
+
+func getJobStatusFromRadixBatchJobsStatuses(singleJob bool, radixBatches ...modelsv2.RadixBatch) []modelsv1.JobStatus {
 	var jobStatuses []modelsv1.JobStatus
 	for _, radixBatch := range radixBatches {
 		for _, jobStatus := range radixBatch.JobStatuses {
-			jobStatuses = append(jobStatuses, GetJobStatusFromRadixBatchJobsStatus(radixBatch.Name, jobStatus))
+			jobStatuses = append(jobStatuses, GetJobStatusFromRadixBatchJobsStatus(utils.TernaryString(singleJob, "", radixBatch.Name), jobStatus))
 		}
 	}
 	return jobStatuses
+}
+
+// StopJob Stop a job
+func StopJob(handlerApiV2 apiv2.Handler, jobName string) error {
+	if batchName, jobName, ok := ParseBatchAndJobNameFromScheduledJobName(jobName); ok {
+		return handlerApiV2.StopRadixBatchJob(batchName, jobName)
+	}
+	return fmt.Errorf("stop of this job is not supported")
 }

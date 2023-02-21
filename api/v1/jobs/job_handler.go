@@ -2,7 +2,6 @@ package jobs
 
 import (
 	"context"
-	"fmt"
 	"sort"
 	"strings"
 
@@ -86,14 +85,14 @@ func (handler *jobHandler) GetJobs() ([]modelsv1.JobStatus, error) {
 	if err != nil {
 		return nil, err
 	}
-	jobs = append(jobs, apiv1.GetJobStatusFromRadixBatchJobsStatuses(radixBatches...)...)
+	jobs = append(jobs, apiv1.GetSingleJobStatusFromRadixBatchJobsStatuses(radixBatches...)...)
 
 	//get all batch jobs
 	radixBatches, err = handler.common.HandlerApiV2.GetRadixBatches()
 	if err != nil {
 		return nil, err
 	}
-	jobs = append(jobs, apiv1.GetJobStatusFromRadixBatchJobsStatuses(radixBatches...)...)
+	jobs = append(jobs, apiv1.GetSingleJobStatusFromRadixBatchJobsStatuses(radixBatches...)...)
 
 	log.Debugf("Found %v jobs for namespace %s", len(jobs), handler.common.Env.RadixDeploymentNamespace)
 	return jobs, nil
@@ -109,7 +108,7 @@ func (handler *jobHandler) GetJob(jobName string) (*modelsv1.JobStatus, error) {
 				if !strings.EqualFold(jobStatus.Name, jobName) {
 					continue
 				}
-				jobsStatus := apiv1.GetJobStatusFromRadixBatchJobsStatus(radixBatch.Name, jobStatus)
+				jobsStatus := apiv1.GetJobStatusFromRadixBatchJobsStatus("", jobStatus)
 				return &jobsStatus, nil
 			}
 		}
@@ -160,21 +159,7 @@ func (handler *jobHandler) DeleteJob(jobName string) error {
 // StopJob Stop a job
 func (handler *jobHandler) StopJob(jobName string) error {
 	log.Debugf("stop the job %s for namespace: %s", jobName, handler.common.Env.RadixDeploymentNamespace)
-	if batchName, batchJobName, ok := apiv1.ParseBatchAndJobNameFromScheduledJobName(jobName); ok {
-		log.Debugf("stop the job %s for the batch %s for namespace: %s", batchJobName, batchName, handler.common.Env.RadixDeploymentNamespace)
-		err := handler.common.HandlerApiV2.StopRadixBatchJob(batchName, batchJobName)
-		if err == nil {
-			return nil
-		}
-		if !errors.IsNotFound(err) {
-			return err
-		}
-	}
-	_, err := handler.GetJob(jobName)
-	if err == nil {
-		return fmt.Errorf("stop is not supported for this job")
-	}
-	return apiErrors.NewNotFound("job", jobName)
+	return apiv1.StopJob(handler.common.HandlerApiV2, jobName)
 }
 
 // MaintainHistoryLimit Delete outdated jobs

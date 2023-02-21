@@ -2,7 +2,6 @@ package batchesv1
 
 import (
 	"context"
-	"fmt"
 	"sort"
 
 	"github.com/equinor/radix-common/utils"
@@ -175,14 +174,7 @@ func (handler *batchHandler) StopBatch(batchName string) error {
 // StopBatchJob Stop a batch job
 func (handler *batchHandler) StopBatchJob(batchName, jobName string) error {
 	log.Debugf("delete the job %s in the batch %s for namespace: %s", jobName, batchName, handler.common.Env.RadixDeploymentNamespace)
-	if batchName, jobName, ok := apiv1.ParseBatchAndJobNameFromScheduledJobName(jobName); ok {
-		err := handler.common.HandlerApiV2.StopRadixBatchJob(batchName, jobName)
-		if err != nil {
-			return err
-		}
-		return nil
-	}
-	return fmt.Errorf("stop is not supported for this batch")
+	return apiv1.StopJob(handler.common.HandlerApiV2, jobName)
 }
 
 // MaintainHistoryLimit Delete outdated batches
