@@ -16,13 +16,11 @@ import (
 	modelsv2 "github.com/equinor/radix-job-scheduler/models/v2"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	"github.com/equinor/radix-operator/pkg/apis/utils/labels"
-	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 	log "github.com/sirupsen/logrus"
 	batchv1 "k8s.io/api/batch/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kubeLabels "k8s.io/apimachinery/pkg/labels"
-	"k8s.io/client-go/kubernetes"
 )
 
 type batchHandler struct {
@@ -60,7 +58,7 @@ type completedBatchVersioned struct {
 }
 
 // New Constructor of the batch handler
-func New(env *models.Env, kube *kube.Kube, kubeClient kubernetes.Interface, radixClient radixclient.Interface) BatchHandler {
+func New(kube *kube.Kube, env *models.Env) BatchHandler {
 	return &batchHandler{
 		common: &apiv1.Handler{
 			Kube:         kube,
