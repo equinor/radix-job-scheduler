@@ -64,10 +64,8 @@ func New(env *models.Env, kube *kube.Kube, kubeClient kubernetes.Interface, radi
 	return &batchHandler{
 		common: &apiv1.Handler{
 			Kube:         kube,
-			KubeClient:   kubeClient,
-			RadixClient:  radixClient,
 			Env:          env,
-			HandlerApiV2: apiv2.New(env, kube, kubeClient, radixClient),
+			HandlerApiV2: apiv2.New(kube, env),
 		},
 	}
 }
@@ -89,7 +87,7 @@ func (handler *batchHandler) GetBatches() ([]modelsv1.BatchStatus, error) {
 	var allRadixBatchStatuses []modelsv1.BatchStatus
 	for _, batch := range allBatches {
 		allRadixBatchStatuses = append(allRadixBatchStatuses, modelsv1.BatchStatus{
-			JobStatus: *jobs.GetJobStatusFromJob(handler.common.KubeClient, batch,
+			JobStatus: *jobs.GetJobStatusFromJob(handler.common.Kube.KubeClient(), batch,
 				allBatchesPodsMap[batch.Name]),
 		})
 	}
@@ -129,7 +127,7 @@ func (handler *batchHandler) GetBatch(batchName string) (*modelsv1.BatchStatus, 
 		return nil, err
 	}
 	batchStatus := modelsv1.BatchStatus{
-		JobStatus:   *jobs.GetJobStatusFromJob(handler.common.KubeClient, batch, batchPods),
+		JobStatus:   *jobs.GetJobStatusFromJob(handler.common.Kube.KubeClient(), batch, batchPods),
 		JobStatuses: make([]modelsv1.JobStatus, len(batchJobs)),
 	}
 
@@ -139,7 +137,7 @@ func (handler *batchHandler) GetBatch(batchName string) (*modelsv1.BatchStatus, 
 	}
 	batchJobsPodsMap := apiv1.GetPodsToJobNameMap(batchJobsPods)
 	for idx, batchJob := range batchJobs {
-		batchStatus.JobStatuses[idx] = *jobs.GetJobStatusFromJob(handler.common.KubeClient, batchJob, batchJobsPodsMap[batchJob.Name])
+		batchStatus.JobStatuses[idx] = *jobs.GetJobStatusFromJob(handler.common.Kube.KubeClient(), batchJob, batchJobsPodsMap[batchJob.Name])
 	}
 
 	log.Debugf("Found %v jobs for the batch '%s' for namespace '%s'", len(batchJobs), batchName,
@@ -160,7 +158,7 @@ func (handler *batchHandler) CreateBatch(batchScheduleDescription *common.BatchS
 func (handler *batchHandler) DeleteBatch(batchName string) error {
 	log.Debugf("delete batch %s for namespace: %s", batchName, handler.common.Env.RadixDeploymentNamespace)
 	fg := metav1.DeletePropagationBackground
-	err := handler.common.KubeClient.BatchV1().Jobs(handler.common.Env.RadixDeploymentNamespace).Delete(context.Background(), batchName, metav1.DeleteOptions{PropagationPolicy: &fg})
+	err := handler.common.Kube.KubeClient().BatchV1().Jobs(handler.common.Env.RadixDeploymentNamespace).Delete(context.Background(), batchName, metav1.DeleteOptions{PropagationPolicy: &fg})
 	if err != nil {
 		if errors.IsNotFound(err) {
 			return handler.common.HandlerApiV2.DeleteRadixBatch(batchName)
@@ -284,7 +282,7 @@ func isCompletedBatch1CompletedBefore2(batchVersioned1 completedBatchVersioned, 
 }
 
 func (handler *batchHandler) getAllBatches() ([]*batchv1.Job, error) {
-	kubeBatches, err := handler.common.KubeClient.
+	kubeBatches, err := handler.common.Kube.KubeClient().
 		BatchV1().
 		Jobs(handler.common.Env.RadixDeploymentNamespace).
 		List(
@@ -321,7 +319,7 @@ func getLabelSelectorForBatchObjects(batchName string) string {
 }
 
 func (handler *batchHandler) getBatchJobs(batchName string) ([]*batchv1.Job, error) {
-	kubeJobs, err := handler.common.KubeClient.
+	kubeJobs, err := handler.common.Kube.KubeClient().
 		BatchV1().
 		Jobs(handler.common.Env.RadixDeploymentNamespace).
 		List(

@@ -8,7 +8,7 @@ import (
 )
 
 func (handler *Handler) GetPodsForLabelSelector(labelSelector string) ([]corev1.Pod, error) {
-	podList, err := handler.KubeClient.
+	podList, err := handler.Kube.KubeClient().
 		CoreV1().
 		Pods(handler.Env.RadixDeploymentNamespace).
 		List(

@@ -51,16 +51,12 @@ type completedBatchOrJobVersioned struct {
 }
 
 // New Constructor for job handler
-func New(env *models.Env, kube *kube.Kube) JobHandler {
-	kubeClient := kube.KubeClient()
-	radixClient := kube.RadixClient()
+func New(kube *kube.Kube, env *models.Env) JobHandler {
 	return &jobHandler{
 		common: &apiv1.Handler{
 			Kube:         kube,
-			KubeClient:   kubeClient,
-			RadixClient:  radixClient,
 			Env:          env,
-			HandlerApiV2: apiv2.New(env, kube, kubeClient, radixClient),
+			HandlerApiV2: apiv2.New(kube, env),
 		},
 	}
 }
@@ -81,7 +77,7 @@ func (handler *jobHandler) GetJobs() ([]modelsv1.JobStatus, error) {
 	podsMap := apiv1.GetPodsToJobNameMap(pods)
 	jobs := make([]modelsv1.JobStatus, len(kubeJobs))
 	for idx, k8sJob := range kubeJobs {
-		jobs[idx] = *GetJobStatusFromJob(handler.common.KubeClient, k8sJob, podsMap[k8sJob.Name])
+		jobs[idx] = *GetJobStatusFromJob(handler.common.Kube.KubeClient(), k8sJob, podsMap[k8sJob.Name])
 	}
 
 	//Use ApiV2 for backward compatibility
@@ -129,7 +125,7 @@ func (handler *jobHandler) GetJob(jobName string) (*modelsv1.JobStatus, error) {
 	if err != nil {
 		return nil, err
 	}
-	jobStatus := GetJobStatusFromJob(handler.common.KubeClient, job, pods)
+	jobStatus := GetJobStatusFromJob(handler.common.Kube.KubeClient(), job, pods)
 	return jobStatus, nil
 }
 
@@ -322,7 +318,7 @@ func (handler *jobHandler) garbageCollectJob(jobName string) (err error) {
 
 func (handler *jobHandler) deleteJob(job *batchv1.Job) error {
 	fg := metav1.DeletePropagationBackground
-	return handler.common.KubeClient.BatchV1().Jobs(job.Namespace).Delete(context.Background(), job.Name, metav1.DeleteOptions{PropagationPolicy: &fg})
+	return handler.common.Kube.KubeClient().BatchV1().Jobs(job.Namespace).Delete(context.Background(), job.Name, metav1.DeleteOptions{PropagationPolicy: &fg})
 }
 
 func (handler *jobHandler) getJobByName(jobName string) (*batchv1.Job, error) {
@@ -341,7 +337,7 @@ func (handler *jobHandler) getJobByName(jobName string) (*batchv1.Job, error) {
 }
 
 func (handler *jobHandler) getAllJobs() ([]*batchv1.Job, error) {
-	kubeJobs, err := handler.common.KubeClient.
+	kubeJobs, err := handler.common.Kube.KubeClient().
 		BatchV1().
 		Jobs(handler.common.Env.RadixDeploymentNamespace).
 		List(
@@ -368,7 +364,7 @@ func (handler *jobHandler) getJobPods(jobName string) ([]corev1.Pod, error) {
 	if jobName != "" {
 		listOptions.LabelSelector = getLabelSelectorForJobPods(jobName)
 	}
-	podList, err := handler.common.KubeClient.
+	podList, err := handler.common.Kube.KubeClient().
 		CoreV1().
 		Pods(handler.common.Env.RadixDeploymentNamespace).
 		List(

@@ -16,7 +16,7 @@ import (
 
 //GetBatch Gets a job, running a batch
 func (handler *Handler) GetBatch(batchName string) (*batchv1.Job, error) {
-	batch, err := handler.KubeClient.BatchV1().Jobs(handler.Env.RadixDeploymentNamespace).Get(context.TODO(), batchName, metav1.GetOptions{})
+	batch, err := handler.Kube.KubeClient().BatchV1().Jobs(handler.Env.RadixDeploymentNamespace).Get(context.TODO(), batchName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
