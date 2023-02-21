@@ -2,6 +2,7 @@ package batchesv1
 
 import (
 	"context"
+	radixLabels "github.com/equinor/radix-operator/pkg/apis/utils/labels"
 	"testing"
 
 	"github.com/equinor/radix-common/utils/pointers"
@@ -18,7 +19,7 @@ import (
 )
 
 func TestCreateBatch(t *testing.T) {
-	radixClient, _, _, kubeUtil := testUtils.SetupTest("app", "qa", "compute", "app-deploy-1", 1)
+	radixClient, kubeClient, _, kubeUtil := testUtils.SetupTest("app", "qa", "compute", "app-deploy-1", 1)
 	env := modelsEnv.NewEnv()
 
 	h := New(kubeUtil, env)
@@ -32,12 +33,12 @@ func TestCreateBatch(t *testing.T) {
 		scheduleDescription := models.BatchScheduleDescription{JobScheduleDescriptions: []models.JobScheduleDescription{
 			{
 				JobId:                   "job1",
-				Payload:                 "{}",
+				Payload:                 "{'name1':'value1'}",
 				RadixJobComponentConfig: models.RadixJobComponentConfig{},
 			},
 			{
 				JobId:                   "job2",
-				Payload:                 "{}",
+				Payload:                 "test payload data",
 				RadixJobComponentConfig: models.RadixJobComponentConfig{},
 			},
 		}}
@@ -57,6 +58,22 @@ func TestCreateBatch(t *testing.T) {
 			scheduledBatch.ObjectMeta.Labels[kube.RadixAppLabel])
 		assert.Equal(t, string(kube.RadixBatchTypeBatch),
 			scheduledBatch.ObjectMeta.Labels[kube.RadixBatchTypeLabel])
+		secretList, err := kubeClient.CoreV1().Secrets(rd.Namespace).List(context.Background(), metav1.ListOptions{LabelSelector: radixLabels.Merge(
+			radixLabels.ForApplicationName(params.AppName),
+			radixLabels.ForComponentName(params.JobComponentName),
+			radixLabels.ForBatchName(createdBatch.Name),
+		).
+			String(),
+		})
+		assert.NoError(t, err)
+		assert.Len(t, secretList.Items, 1)
+		secret := secretList.Items[0]
+		for _, radixBatchJob := range scheduledBatch.Spec.Jobs {
+			assert.NotNil(t, radixBatchJob.PayloadSecretRef)
+			assert.Equal(t, secret.GetName(), radixBatchJob.PayloadSecretRef.Name)
+			assert.Equal(t, radixBatchJob.Name, radixBatchJob.PayloadSecretRef.Key)
+			assert.True(t, len(secret.Data[radixBatchJob.Name]) > 0)
+		}
 	})
 }
 
