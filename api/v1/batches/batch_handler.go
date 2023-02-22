@@ -31,6 +31,8 @@ type BatchHandler interface {
 	GetBatches() ([]modelsv1.BatchStatus, error)
 	//GetBatch Get status of a batch
 	GetBatch(string) (*modelsv1.BatchStatus, error)
+	//GetBatchJob Get status of a batch job
+	GetBatchJob(string, string) (*modelsv1.JobStatus, error)
 	//CreateBatch Create a batch with parameters
 	CreateBatch(*common.BatchScheduleDescription) (*modelsv1.BatchStatus, error)
 	//MaintainHistoryLimit Delete outdated batches
@@ -98,6 +100,11 @@ func (handler *batchHandler) GetBatches() ([]modelsv1.BatchStatus, error) {
 	}
 	log.Debugf("Found %v batches for namespace %s", len(allRadixBatchStatuses), handler.common.Env.RadixDeploymentNamespace)
 	return allRadixBatchStatuses, nil
+}
+
+// GetBatchJob Get status of a batch job
+func (handler *batchHandler) GetBatchJob(batchName, jobName string) (*modelsv1.JobStatus, error) {
+	return apiv1.GetBatchJob(handler.common.HandlerApiV2, batchName, jobName)
 }
 
 // GetBatch Get status of a batch
