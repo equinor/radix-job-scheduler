@@ -79,6 +79,21 @@ func (mr *MockBatchHandlerMockRecorder) GetBatch(arg0 interface{}) *gomock.Call 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBatch", reflect.TypeOf((*MockBatchHandler)(nil).GetBatch), arg0)
 }
 
+// GetBatchJob mocks base method.
+func (m *MockBatchHandler) GetBatchJob(arg0, arg1 string) (*v1.JobStatus, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetBatchJob", arg0, arg1)
+	ret0, _ := ret[0].(*v1.JobStatus)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetBatchJob indicates an expected call of GetBatchJob.
+func (mr *MockBatchHandlerMockRecorder) GetBatchJob(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBatchJob", reflect.TypeOf((*MockBatchHandler)(nil).GetBatchJob), arg0, arg1)
+}
+
 // GetBatches mocks base method.
 func (m *MockBatchHandler) GetBatches() ([]v1.BatchStatus, error) {
 	m.ctrl.T.Helper()
