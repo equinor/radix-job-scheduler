@@ -5,10 +5,10 @@ import (
 	"testing"
 
 	"github.com/equinor/radix-common/utils/pointers"
+	"github.com/equinor/radix-job-scheduler/api/test"
 	"github.com/equinor/radix-job-scheduler/models"
 	"github.com/equinor/radix-job-scheduler/models/common"
 	modelsv2 "github.com/equinor/radix-job-scheduler/models/v2"
-	testUtils "github.com/equinor/radix-job-scheduler/utils/test"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/stretchr/testify/assert"
@@ -79,7 +79,7 @@ func Test_createBatch(t *testing.T) {
 	}
 
 	for _, ts := range scenarios {
-		_, _, _, kubeUtil := testUtils.SetupTest("app", "qa", "compute", "app-deploy-1", 1)
+		_, _, _, kubeUtil := test.SetupTest("app", "qa", "compute", "app-deploy-1", 1)
 		env := models.NewEnv()
 
 		h := &handler{
@@ -88,7 +88,7 @@ func Test_createBatch(t *testing.T) {
 		}
 		t.Run(ts.name, func(t *testing.T) {
 			// t.Parallel()
-			params := testUtils.GetTestParams()
+			params := test.GetTestParams()
 			rd := params.ApplyRd(kubeUtil)
 			assert.NotNil(t, rd)
 

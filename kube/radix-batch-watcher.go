@@ -30,9 +30,10 @@ func init() {
 type Watcher struct {
 	radixInformerFactory radixinformers.SharedInformerFactory
 	batchInformer        v1.RadixBatchInformer
+	Stop                 chan struct{}
 }
 
-func New(radixClient radixclient.Interface, env *apiModels.Env, stop chan struct{}) (*Watcher, error) {
+func New(radixClient radixclient.Interface, env *apiModels.Env) (*Watcher, error) {
 	namespace := env.RadixDeploymentNamespace
 	existingRadixBatchMap, err := getRadixBatchMap(radixClient, namespace)
 	if err != nil {
@@ -41,6 +42,7 @@ func New(radixClient radixclient.Interface, env *apiModels.Env, stop chan struct
 
 	w := Watcher{
 		radixInformerFactory: radixinformers.NewSharedInformerFactory(radixClient, resyncPeriod),
+		Stop:                 make(chan struct{}),
 	}
 	w.batchInformer = w.radixInformerFactory.Radix().V1().RadixBatches()
 
@@ -104,12 +106,10 @@ func New(radixClient radixclient.Interface, env *apiModels.Env, stop chan struct
 				return
 			}
 			logger.Debugf("RadixBatch object was deleted %s", radixBatch.GetName())
-			if _, ok := existingRadixBatchMap[radixBatch.GetName()]; ok {
-				delete(existingRadixBatchMap, radixBatch.GetName())
-			}
+			delete(existingRadixBatchMap, radixBatch.GetName())
 		},
 	})
-	w.radixInformerFactory.Start(stop)
+	w.radixInformerFactory.Start(w.Stop)
 	return &w, nil
 }
 

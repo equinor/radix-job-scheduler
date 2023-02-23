@@ -13,7 +13,6 @@ import (
 	jobApi "github.com/equinor/radix-job-scheduler/api/v1/jobs"
 	kubeControllers "github.com/equinor/radix-job-scheduler/kube"
 	"github.com/equinor/radix-job-scheduler/models"
-	apiModels "github.com/equinor/radix-job-scheduler/models"
 	"github.com/equinor/radix-job-scheduler/router"
 	_ "github.com/equinor/radix-job-scheduler/swaggerui"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
@@ -23,10 +22,8 @@ import (
 	"github.com/spf13/pflag"
 )
 
-var radixBatchWatcher *kubeControllers.Watcher
-
 func main() {
-	env := apiModels.NewEnv()
+	env := models.NewEnv()
 	fs := initializeFlagSet()
 
 	var (
@@ -37,16 +34,15 @@ func main() {
 	parseFlagsFromArgs(fs)
 
 	errs := make(chan error)
-	stop := make(chan struct{})
-	defer close(stop)
+
 	kubeUtil := getKubeUtil()
 
-	watcher, err := kubeControllers.New(kubeUtil.RadixClient(), env, stop)
+	watcher, err := kubeControllers.New(kubeUtil.RadixClient(), env)
 	if err != nil {
 		log.Fatalf("failed creaing RadixBatch watcher: %v", err)
 		return
 	}
-	radixBatchWatcher = watcher
+	defer close(watcher.Stop)
 
 	go func() {
 		log.Infof("Radix job scheduler API is serving on port %s", *port)
@@ -73,7 +69,7 @@ func getKubeUtil() *kube.Kube {
 	return kubeUtil
 }
 
-func getControllers(kubeUtil *kube.Kube, env *apiModels.Env) []models.Controller {
+func getControllers(kubeUtil *kube.Kube, env *models.Env) []models.Controller {
 	return []models.Controller{
 		jobControllers.New(jobApi.New(kubeUtil, env)),
 		batchControllers.New(batchApi.New(kubeUtil, env)),

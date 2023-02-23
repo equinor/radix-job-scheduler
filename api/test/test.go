@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"k8s.io/client-go/kubernetes/fake"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -15,9 +14,7 @@ import (
 
 	radixUtils "github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-common/utils/numbers"
-	apiv1 "github.com/equinor/radix-job-scheduler/api/v1"
 	"github.com/equinor/radix-job-scheduler/models"
-	schedulerModels "github.com/equinor/radix-job-scheduler/models"
 	modelsv1 "github.com/equinor/radix-job-scheduler/models/v1"
 	"github.com/equinor/radix-job-scheduler/router"
 	"github.com/equinor/radix-operator/pkg/apis/defaults"
@@ -32,6 +29,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/kubernetes/fake"
 	secretstoragefake "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned/fake"
 )
 
@@ -62,7 +60,7 @@ func (ctrl *ControllerTestUtils) ExecuteRequestWithBody(method, path string, bod
 			reader = bytes.NewReader(payload)
 		}
 
-		serverRouter := router.NewServer(schedulerModels.NewEnv(), ctrl.controllers...)
+		serverRouter := router.NewServer(models.NewEnv(), ctrl.controllers...)
 		server := httptest.NewServer(serverRouter)
 		defer server.Close()
 		serverUrl := buildURLFromServer(server, path)
@@ -102,7 +100,7 @@ func AddRadixBatch(radixClient versioned.Interface, jobName, componentName strin
 	}
 	labels[kube.RadixBatchTypeLabel] = string(batchJobType)
 
-	batchName, batchJobName, ok := apiv1.ParseBatchAndJobNameFromScheduledJobName(jobName)
+	batchName, batchJobName, ok := ParseBatchAndJobNameFromScheduledJobName(jobName)
 	if !ok {
 		panic(fmt.Sprintf("invalid job name %s", jobName))
 	}
@@ -134,7 +132,7 @@ func AddRadixBatch(radixClient versioned.Interface, jobName, componentName strin
 }
 
 func CreateSecretForTest(appName, secretName, jobName, radixJobComponentName, namespace string, kubeClient kubernetes.Interface) {
-	batchName, batchJobName, _ := apiv1.ParseBatchAndJobNameFromScheduledJobName(jobName)
+	batchName, batchJobName, _ := ParseBatchAndJobNameFromScheduledJobName(jobName)
 	_, err := kubeClient.CoreV1().Secrets(namespace).Create(
 		context.Background(),
 		&corev1.Secret{
@@ -174,7 +172,7 @@ func GetSecretByNameForTest(secrets []corev1.Secret, name string) *corev1.Secret
 }
 
 func GetRadixBatchByNameForTest(radixBatches []v1.RadixBatch, jobName string) *v1.RadixBatch {
-	batchName, _, _ := apiv1.ParseBatchAndJobNameFromScheduledJobName(jobName)
+	batchName, _, _ := ParseBatchAndJobNameFromScheduledJobName(jobName)
 	for _, radixBatch := range radixBatches {
 		if radixBatch.Name == batchName {
 			return &radixBatch
@@ -268,4 +266,15 @@ func (params *TestParams) WithEnvVarsConfigMapData(envVars map[string]string) *T
 func (params *TestParams) WithEnvVarsMetadataConfigMapData(envVars map[string]string) *TestParams {
 	params.EnvVarsMetadataConfigMapData = envVars
 	return params
+}
+
+func ParseBatchAndJobNameFromScheduledJobName(scheduleJobName string) (batchName, batchJobName string, ok bool) {
+	scheduleJobNameParts := strings.Split(scheduleJobName, "-")
+	if len(scheduleJobNameParts) < 2 {
+		return
+	}
+	batchName = strings.Join(scheduleJobNameParts[:len(scheduleJobNameParts)-1], "-")
+	batchJobName = scheduleJobNameParts[len(scheduleJobNameParts)-1]
+	ok = true
+	return
 }
