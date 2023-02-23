@@ -18,7 +18,7 @@ __debug_bin
 # Dependency directories (remove the comment below to include it)
 # vendor/
 
-../radix-job-scheduler-server/swaggerui/statik.go
-../radix-job-scheduler-server/swaggerui_src/swagger.json
+swaggerui/statik.go
+swaggerui_src/swagger.json
 
 .idea
