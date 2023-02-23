@@ -101,14 +101,13 @@ func GetSingleJobStatusFromRadixBatchJob(radixBatch *modelsv2.RadixBatch) (*mode
 	}
 	radixBatchJobStatus := radixBatch.JobStatuses[0]
 	jobStatus := modelsv1.JobStatus{
-		BatchName: radixBatch.Name,
-		JobId:     radixBatchJobStatus.JobId,
-		Name:      radixBatchJobStatus.Name,
-		Created:   radixBatchJobStatus.CreationTime,
-		Started:   radixBatchJobStatus.Started,
-		Ended:     radixBatchJobStatus.Ended,
-		Status:    radixBatchJobStatus.Status,
-		Message:   radixBatchJobStatus.Message,
+		JobId:   radixBatchJobStatus.JobId,
+		Name:    radixBatchJobStatus.Name,
+		Created: radixBatchJobStatus.CreationTime,
+		Started: radixBatchJobStatus.Started,
+		Ended:   radixBatchJobStatus.Ended,
+		Status:  radixBatchJobStatus.Status,
+		Message: radixBatchJobStatus.Message,
 	}
 	return &jobStatus, nil
 }
