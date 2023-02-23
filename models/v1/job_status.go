@@ -49,4 +49,10 @@ type JobStatus struct {
 	// required: false
 	// example: "Error occurred"
 	Message string `json:"message,omitempty"`
+
+	// BatchType Single job or multiple jobs batch
+	//
+	// required: true
+	// example: "job"
+	BatchType string `json:"batchType"`
 }
