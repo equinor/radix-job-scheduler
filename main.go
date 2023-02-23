@@ -23,6 +23,8 @@ import (
 	"github.com/spf13/pflag"
 )
 
+var radixBatchWatcher *kubeControllers.Watcher
+
 func main() {
 	env := apiModels.NewEnv()
 	fs := initializeFlagSet()
@@ -39,8 +41,12 @@ func main() {
 	defer close(stop)
 	kubeUtil := getKubeUtil()
 
-	watcher := kubeControllers.New(kubeUtil.RadixClient(), stop)
-	log.Println(watcher)
+	watcher, err := kubeControllers.New(kubeUtil.RadixClient(), env, stop)
+	if err != nil {
+		log.Fatalf("failed creaing RadixBatch watcher: %v", err)
+		return
+	}
+	radixBatchWatcher = watcher
 
 	go func() {
 		log.Infof("Radix job scheduler API is serving on port %s", *port)
