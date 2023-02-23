@@ -256,3 +256,35 @@ func TestStopBatchJob(t *testing.T) {
 		assert.Equal(t, models.StatusReasonNotFound, apiErrors.ReasonForError(err))
 	})
 }
+
+func TestGetBatchJob(t *testing.T) {
+	t.Run("get existing job", func(t *testing.T) {
+		t.Parallel()
+		appName, appEnvironment, appComponent, appDeployment := "app", "qa", "compute", "app-deploy-1"
+		appNamespace := utils.GetEnvironmentNamespace(appName, appEnvironment)
+		radixClient, _, _, kubeUtil := testUtils.SetupTest(appName, appEnvironment, appComponent, appDeployment, 1)
+		test.AddRadixBatch(radixClient, "testbatch1-job1", appComponent, kube.RadixBatchTypeBatch, appNamespace)
+		test.AddRadixBatch(radixClient, "testbatch2-job1", appComponent, kube.RadixBatchTypeBatch, appNamespace)
+
+		handler := New(kubeUtil, modelsEnv.NewEnv())
+		job1, err := handler.GetBatchJob("testbatch1", "testbatch1-job1")
+		assert.Nil(t, err)
+		assert.Equal(t, "testbatch1-job1", job1.Name)
+		job2, err := handler.GetBatchJob("testbatch2", "testbatch2-job1")
+		assert.Nil(t, err)
+		assert.Equal(t, "testbatch2-job1", job2.Name)
+	})
+
+	t.Run("job in different app namespace", func(t *testing.T) {
+		t.Parallel()
+		appName, appEnvironment, appComponent, appDeployment := "app", "qa", "compute", "app-deploy-1"
+		radixClient, _, _, kubeUtil := testUtils.SetupTest(appName, appEnvironment, appComponent, appDeployment, 1)
+		test.AddRadixBatch(radixClient, "testbatch1-job1", appComponent, kube.RadixBatchTypeJob, "app-other")
+
+		handler := New(kubeUtil, modelsEnv.NewEnv())
+		job, err := handler.GetBatchJob("testbatch1", "testbatch1-job1")
+		assert.NotNil(t, err)
+		assert.Equal(t, models.StatusReasonNotFound, apiErrors.ReasonForError(err))
+		assert.Nil(t, job)
+	})
+}

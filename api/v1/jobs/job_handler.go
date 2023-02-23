@@ -3,7 +3,6 @@ package jobs
 import (
 	"context"
 	"sort"
-	"strings"
 
 	"github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-common/utils/slice"
@@ -85,14 +84,14 @@ func (handler *jobHandler) GetJobs() ([]modelsv1.JobStatus, error) {
 	if err != nil {
 		return nil, err
 	}
-	jobs = append(jobs, apiv1.GetSingleJobStatusFromRadixBatchJobsStatuses(radixBatches...)...)
+	jobs = append(jobs, apiv1.GetJobStatusFromRadixBatchJobsStatuses(radixBatches...)...)
 
 	//get all batch jobs
 	radixBatches, err = handler.common.HandlerApiV2.GetRadixBatches()
 	if err != nil {
 		return nil, err
 	}
-	jobs = append(jobs, apiv1.GetSingleJobStatusFromRadixBatchJobsStatuses(radixBatches...)...)
+	jobs = append(jobs, apiv1.GetJobStatusFromRadixBatchJobsStatuses(radixBatches...)...)
 
 	log.Debugf("Found %v jobs for namespace %s", len(jobs), handler.common.Env.RadixDeploymentNamespace)
 	return jobs, nil
@@ -102,18 +101,11 @@ func (handler *jobHandler) GetJobs() ([]modelsv1.JobStatus, error) {
 func (handler *jobHandler) GetJob(jobName string) (*modelsv1.JobStatus, error) {
 	log.Debugf("get job %s for namespace: %s", jobName, handler.common.Env.RadixDeploymentNamespace)
 	if batchName, _, ok := apiv1.ParseBatchAndJobNameFromScheduledJobName(jobName); ok {
-		radixBatch, err := handler.common.HandlerApiV2.GetRadixBatch(batchName)
+		jobStatus, err := apiv1.GetBatchJob(handler.common.HandlerApiV2, batchName, jobName)
 		if err == nil {
-			for _, jobStatus := range radixBatch.JobStatuses {
-				if !strings.EqualFold(jobStatus.Name, jobName) {
-					continue
-				}
-				jobsStatus := apiv1.GetJobStatusFromRadixBatchJobsStatus("", jobStatus)
-				return &jobsStatus, nil
-			}
+			return jobStatus, nil
 		}
 	}
-
 	//Use Kubernetes jobs for backward compatibility
 	job, err := handler.getJobByName(jobName)
 	if err != nil {
