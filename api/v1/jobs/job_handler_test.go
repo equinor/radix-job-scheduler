@@ -106,8 +106,12 @@ func TestGetJobs(t *testing.T) {
 	assert.Len(t, jobs, 2)
 	job1 := test.GetJobStatusByNameForTest(jobs, "job1")
 	assert.NotNil(t, job1)
+	assert.Equal(t, "testbatch1-job1", job1.Name)
+	assert.Equal(t, "", job1.BatchName)
 	job2 := test.GetJobStatusByNameForTest(jobs, "job2")
 	assert.NotNil(t, job2)
+	assert.Equal(t, "testbatch2-job2", job2.Name)
+	assert.Equal(t, "", job2.BatchName)
 }
 
 func TestGetJob(t *testing.T) {
@@ -124,9 +128,11 @@ func TestGetJob(t *testing.T) {
 		job1, err := handler.GetJob("testbatch1-job1")
 		assert.Nil(t, err)
 		assert.Equal(t, "testbatch1-job1", job1.Name)
+		assert.Equal(t, "", job1.BatchName)
 		job2, err := handler.GetJob("testbatch2-job1")
 		assert.Nil(t, err)
 		assert.Equal(t, "testbatch2-job1", job2.Name)
+		assert.Equal(t, "", job2.BatchName)
 	})
 
 	t.Run("job in different app namespace", func(t *testing.T) {
@@ -175,6 +181,7 @@ func TestCreateJob(t *testing.T) {
 		assert.NotNil(t, jobStatus)
 		batchName, batchJobName, ok := apiv1.ParseBatchAndJobNameFromScheduledJobName(jobStatus.Name)
 		assert.True(t, ok)
+		assert.Equal(t, "", jobStatus.BatchName)
 		radixBatch, _ := radixClient.RadixV1().RadixBatches(envNamespace).Get(context.TODO(), batchName, metav1.GetOptions{})
 		assert.Len(t, radixBatch.Labels, 3)
 		assert.Equal(t, appName, radixBatch.Labels[kube.RadixAppLabel])
