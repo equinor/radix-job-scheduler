@@ -37,19 +37,25 @@ type Watcher struct {
 	radixInformerFactory radixinformers.SharedInformerFactory
 	batchInformer        v1.RadixBatchInformer
 	Stop                 chan struct{}
+	webhook              string
 }
 
-func New(radixClient radixclient.Interface, env *apiModels.Env) (*Watcher, error) {
+func New(radixClient radixclient.Interface, env *apiModels.Env, radixDeployJobComponent *radixv1.RadixDeployJobComponent) (*Watcher, error) {
+	w := Watcher{Stop: make(chan struct{})}
+
+	if radixDeployJobComponent.Notifications == nil || !webhookIsValid(radixDeployJobComponent.Notifications.Webhook) {
+		return &w, nil
+	}
+
+	w.radixInformerFactory = radixinformers.NewSharedInformerFactory(radixClient, resyncPeriod)
+	w.webhook = radixDeployJobComponent.Notifications.Webhook
+
 	namespace := env.RadixDeploymentNamespace
 	existingRadixBatchMap, err := getRadixBatchMap(radixClient, namespace)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get list of RadixBatches %w", err)
 	}
 
-	w := Watcher{
-		radixInformerFactory: radixinformers.NewSharedInformerFactory(radixClient, resyncPeriod),
-		Stop:                 make(chan struct{}),
-	}
 	w.batchInformer = w.radixInformerFactory.Radix().V1().RadixBatches()
 
 	logger.Info("Setting up event handlers")
@@ -61,6 +67,11 @@ func New(radixClient radixclient.Interface, env *apiModels.Env) (*Watcher, error
 			}
 			if _, ok := existingRadixBatchMap[newRadixBatch.GetName()]; ok {
 				logger.Debugf("skip existing RadixBatch object %s", newRadixBatch.GetName())
+				return
+			}
+			err := w.notifyWebhook(newRadixBatch, newRadixBatch.Status.JobStatuses)
+			if err != nil {
+				logger.Errorf("failed notify on RadixBatch object was added %s: %v", newRadixBatch.GetName(), err)
 				return
 			}
 			logger.Debugf("RadixBatch object was added %s", newRadixBatch.GetName())
@@ -86,19 +97,10 @@ func New(radixClient radixclient.Interface, env *apiModels.Env) (*Watcher, error
 				logger.Debugf("RadixBatch job statuses have no changes in the batch %s. Do nothing", newRadixBatch.GetName())
 				return
 			}
-			// RadixBatch status and only changed job statuses
-			batchStatus := getRadixBatchModelFromRadixBatch(newRadixBatch, updatedJobStatuses)
-			statusesJson, err := json.Marshal(batchStatus)
+			err := w.notifyWebhook(newRadixBatch, updatedJobStatuses)
 			if err != nil {
-				logger.Errorf("failed serialise updatedJobStatuses %v", err)
+				logger.Errorf("failed notify on RadixBatch object was changed %s: %v", newRadixBatch.GetName(), err)
 				return
-			}
-			buf := bytes.NewReader(statusesJson)
-			resp, err := http.Post("http://localhost:8082", "application/json", buf)
-			if err != nil {
-				logger.Errorf("fail sending callback %v", err)
-			} else {
-				logger.Infof("sent update callback %s. Respond: %s", newRadixBatch.Name, resp.Status)
 			}
 			logger.Debugf("RadixBatch object was changed %s", newRadixBatch.GetName())
 		},
@@ -118,6 +120,26 @@ func New(radixClient radixclient.Interface, env *apiModels.Env) (*Watcher, error
 	})
 	w.radixInformerFactory.Start(w.Stop)
 	return &w, nil
+}
+
+func (w *Watcher) notifyWebhook(newRadixBatch *radixv1.RadixBatch, updatedJobStatuses []radixv1.RadixBatchJobStatus) error {
+	// RadixBatch status and only changed job statuses
+	batchStatus := getRadixBatchModelFromRadixBatch(newRadixBatch, updatedJobStatuses)
+	statusesJson, err := json.Marshal(batchStatus)
+	if err != nil {
+		return fmt.Errorf("failed serialise updatedJobStatuses %v", err)
+	}
+	buf := bytes.NewReader(statusesJson)
+	resp, err := http.Post(w.webhook, "application/json", buf)
+	if err != nil {
+		return fmt.Errorf("fail sending callback %v", err)
+	}
+	logger.Infof("sent update callback %s. Respond: %s", newRadixBatch.Name, resp.Status)
+	return nil
+}
+
+func webhookIsValid(webhook string) bool {
+	return len(webhook) > 0
 }
 
 func equalJobStatuses(status1, status2 *radixv1.RadixBatchJobStatus) bool {
@@ -152,15 +174,15 @@ func getRadixBatchModelFromRadixBatch(radixBatch *radixv1.RadixBatch, radixBatch
 	jobStatusBatchName := utils.TernaryString(batchType == string(kube.RadixBatchTypeJob), "", radixBatch.GetName())
 	return modelsv1.BatchStatus{
 		JobStatus: modelsv1.JobStatus{
-			Name:      radixBatch.GetName(),
-			BatchType: batchType,
-			Created:   utils.FormatTime(pointers.Ptr(radixBatch.GetCreationTimestamp())),
-			Started:   utils.FormatTime(radixBatch.Status.Condition.ActiveTime),
-			Ended:     utils.FormatTime(radixBatch.Status.Condition.CompletionTime),
-			Status:    apimodelsv2.GetRadixBatchStatus(radixBatch).String(),
-			Message:   radixBatch.Status.Condition.Message,
+			Name:    radixBatch.GetName(),
+			Created: utils.FormatTime(pointers.Ptr(radixBatch.GetCreationTimestamp())),
+			Started: utils.FormatTime(radixBatch.Status.Condition.ActiveTime),
+			Ended:   utils.FormatTime(radixBatch.Status.Condition.CompletionTime),
+			Status:  apimodelsv2.GetRadixBatchStatus(radixBatch).String(),
+			Message: radixBatch.Status.Condition.Message,
 		},
 		JobStatuses: getRadixBatchJobStatusesFromRadixBatch(radixBatch, radixBatchJobStatuses, jobStatusBatchName),
+		BatchType:   batchType,
 	}
 }
 

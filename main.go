@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/equinor/radix-job-scheduler/utils/radix"
 	"net/http"
 	"os"
 	"os/signal"
@@ -37,7 +38,13 @@ func main() {
 
 	kubeUtil := getKubeUtil()
 
-	watcher, err := kubeControllers.New(kubeUtil.RadixClient(), env)
+	radixDeployJobComponent, err := radix.GetRadixDeployJobComponentByName(kubeUtil.RadixClient(), env.RadixDeploymentNamespace, env.RadixDeploymentName, env.RadixComponentName)
+	if err != nil {
+		log.Fatalln(err)
+		return
+	}
+
+	watcher, err := kubeControllers.New(kubeUtil.RadixClient(), env, radixDeployJobComponent)
 	if err != nil {
 		log.Fatalf("failed creaing RadixBatch watcher: %v", err)
 		return

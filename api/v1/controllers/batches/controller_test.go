@@ -3,6 +3,7 @@ package batch
 import (
 	"errors"
 	"fmt"
+	"github.com/equinor/radix-operator/pkg/apis/kube"
 	"net/http"
 	"testing"
 	"time"
@@ -38,6 +39,7 @@ func TestGetBatches(t *testing.T) {
 				Ended:   commonUtils.FormatTimestamp(time.Now().Add(1 * time.Minute)),
 				Status:  "batchstatus",
 			},
+			BatchType: string(kube.RadixBatchTypeBatch),
 		}
 		batchHandler.
 			EXPECT().
@@ -103,6 +105,7 @@ func TestGetBatch(t *testing.T) {
 				Ended:   commonUtils.FormatTimestamp(time.Now().Add(1 * time.Minute)),
 				Status:  "batchstatus",
 			},
+			BatchType: string(kube.RadixBatchTypeBatch),
 		}
 		batchHandler.
 			EXPECT().
@@ -194,6 +197,7 @@ func TestCreateBatch(t *testing.T) {
 				Ended:   commonUtils.FormatTimestamp(time.Now().Add(1 * time.Minute)),
 				Status:  "batchstatus",
 			},
+			BatchType: string(kube.RadixBatchTypeBatch),
 		}
 		batchHandler := mock.NewMockBatchHandler(ctrl)
 		batchHandler.
@@ -256,6 +260,7 @@ func TestCreateBatch(t *testing.T) {
 				Ended:   commonUtils.FormatTimestamp(time.Now().Add(1 * time.Minute)),
 				Status:  "batchstatus",
 			},
+			BatchType: string(kube.RadixBatchTypeBatch),
 		}
 		batchHandler := mock.NewMockBatchHandler(ctrl)
 		batchHandler.
@@ -300,6 +305,7 @@ func TestCreateBatch(t *testing.T) {
 				Ended:   commonUtils.FormatTimestamp(time.Now().Add(1 * time.Minute)),
 				Status:  "batchstatus",
 			},
+			BatchType: string(kube.RadixBatchTypeBatch),
 		}
 		batchHandler := mock.NewMockBatchHandler(ctrl)
 		batchHandler.

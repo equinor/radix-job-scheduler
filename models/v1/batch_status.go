@@ -8,4 +8,10 @@ type BatchStatus struct {
 	// JobStatuses of the jobs in the batch
 	// required: false
 	JobStatuses []JobStatus `json:"jobStatuses,omitempty"`
+
+	// BatchType Single job or multiple jobs batch
+	//
+	// required: false
+	// example: "job"
+	BatchType string `json:"batchType,omitempty"`
 }

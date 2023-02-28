@@ -88,6 +88,7 @@ func (handler *batchHandler) GetBatches() ([]modelsv1.BatchStatus, error) {
 		allRadixBatchStatuses = append(allRadixBatchStatuses, modelsv1.BatchStatus{
 			JobStatus: *jobs.GetJobStatusFromJob(handler.common.Kube.KubeClient(), batch,
 				allBatchesPodsMap[batch.Name]),
+			BatchType: string(kube.RadixBatchTypeBatch),
 		})
 	}
 	radixBatches, err := handler.common.HandlerApiV2.GetRadixBatches()
@@ -133,6 +134,7 @@ func (handler *batchHandler) GetBatch(batchName string) (*modelsv1.BatchStatus, 
 	batchStatus := modelsv1.BatchStatus{
 		JobStatus:   *jobs.GetJobStatusFromJob(handler.common.Kube.KubeClient(), batch, batchPods),
 		JobStatuses: make([]modelsv1.JobStatus, len(batchJobs)),
+		BatchType:   string(kube.RadixBatchTypeBatch),
 	}
 
 	batchJobsPods, err := handler.common.GetPodsForLabelSelector(getLabelSelectorForBatchObjects(batchName))

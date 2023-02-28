@@ -18,5 +18,6 @@ func GetBatchStatusFromRadixBatch(radixBatch *modelsv2.RadixBatch) *modelsv1.Bat
 			Message: radixBatch.Message,
 		},
 		JobStatuses: apiv1.GetJobStatusFromRadixBatchJobsStatuses(*radixBatch),
+		BatchType:   radixBatch.BatchType,
 	}
 }
