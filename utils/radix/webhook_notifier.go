@@ -9,26 +9,16 @@ import (
 	"github.com/equinor/radix-job-scheduler/models"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/equinor/radix-operator/pkg/apis/radixvalidators"
-	log "github.com/sirupsen/logrus"
 )
 
-var webhookNotifierLogger *log.Entry
-
-func init() {
-	webhookNotifierLogger = log.WithFields(log.Fields{"radixJobScheduler": "webhook-notifier"})
-}
-
 type webhookNotifier struct {
-	logger  *log.Entry
 	enabled bool
 	webhook string
 }
 
 func NewWebhookNotifier(ra *radixv1.RadixApplication, notifications *radixv1.Notifications, env *models.Env) (Notifier, error) {
-	notifier := webhookNotifier{
-		logger: webhookNotifierLogger,
-	}
-	if notifications != nil && webhookIsValid(notifications.Webhook) {
+	notifier := webhookNotifier{}
+	if notifications != nil && webhookIsNotEmpty(notifications.Webhook) {
 		err := radixvalidators.ValidateNotifications(ra, notifications, env.RadixComponentName, env.RadixEnvironment)
 		if err != nil {
 			return nil, err
@@ -50,28 +40,31 @@ func (notifier *webhookNotifier) String() string {
 	return fmt.Sprintf("Webhook notifier is disabled")
 }
 
-func (notifier *webhookNotifier) Notify(newRadixBatch *radixv1.RadixBatch, updatedJobStatuses []radixv1.RadixBatchJobStatus) {
-	if !notifier.Enabled() {
-		return
-	}
+func (notifier *webhookNotifier) Notify(newRadixBatch *radixv1.RadixBatch, updatedJobStatuses []radixv1.RadixBatchJobStatus, errChan chan error) (done chan struct{}) {
+	done = make(chan struct{})
 	go func() {
+		if !notifier.Enabled() {
+			done <- struct{}{}
+			return
+		}
 		// RadixBatch status and only changed job statuses
 		batchStatus := getRadixBatchModelFromRadixBatch(newRadixBatch, updatedJobStatuses)
 		statusesJson, err := json.Marshal(batchStatus)
 		if err != nil {
-			notifier.logger.Errorf("failed serialise updated JobStatuses %v", err)
+			errChan <- fmt.Errorf("failed serialize updated JobStatuses %v", err)
 			return
 		}
 		buf := bytes.NewReader(statusesJson)
-		resp, err := http.Post(notifier.webhook, "application/json", buf)
+		_, err = http.Post(notifier.webhook, "application/json", buf)
 		if err != nil {
-			notifier.logger.Errorf("failed to notify on RadixBatch object create or change %s: %v", newRadixBatch.GetName(), err)
+			errChan <- fmt.Errorf("failed to notify on RadixBatch object create or change %s: %v", newRadixBatch.GetName(), err)
 			return
 		}
-		notifier.logger.Debugf("sent update callback %s. Respond: %s", newRadixBatch.Name, resp.Status)
+		done <- struct{}{}
 	}()
+	return done
 }
 
-func webhookIsValid(webhook *string) bool {
+func webhookIsNotEmpty(webhook *string) bool {
 	return webhook != nil && len(*webhook) > 0
 }

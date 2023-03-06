@@ -59,6 +59,7 @@ func NewRadixBatchWatcher(radixClient radixclient.Interface, namespace string, n
 	watcher.batchInformer = watcher.radixInformerFactory.Radix().V1().RadixBatches()
 
 	watcher.logger.Info("Setting up event handlers")
+	errChan := make(chan error)
 	watcher.batchInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(cur interface{}) {
 			newRadixBatch := cur.(*radixv1.RadixBatch)
@@ -67,7 +68,7 @@ func NewRadixBatchWatcher(radixClient radixclient.Interface, namespace string, n
 				return
 			}
 			watcher.logger.Debugf("RadixBatch object was added %s", newRadixBatch.GetName())
-			notifier.Notify(newRadixBatch, newRadixBatch.Status.JobStatuses)
+			notifier.Notify(newRadixBatch, newRadixBatch.Status.JobStatuses, errChan)
 		},
 		UpdateFunc: func(old, cur interface{}) {
 			oldRadixBatch := old.(*radixv1.RadixBatch)
@@ -78,7 +79,7 @@ func NewRadixBatchWatcher(radixClient radixclient.Interface, namespace string, n
 				return
 			}
 			watcher.logger.Debugf("RadixBatch object was changed %s", newRadixBatch.GetName())
-			notifier.Notify(newRadixBatch, updatedJobStatuses)
+			notifier.Notify(newRadixBatch, updatedJobStatuses, errChan)
 		},
 		DeleteFunc: func(obj interface{}) {
 			radixBatch, _ := obj.(*radixv1.RadixBatch)
@@ -91,7 +92,19 @@ func NewRadixBatchWatcher(radixClient radixclient.Interface, namespace string, n
 			delete(existingRadixBatchMap, radixBatch.GetName())
 		},
 	})
+
 	watcher.radixInformerFactory.Start(watcher.Stop)
+
+	go func() {
+		for {
+			select {
+			case err := <-errChan:
+				watcher.logger.Error(err)
+			case <-watcher.Stop:
+				return
+			}
+		}
+	}()
 	return &watcher, nil
 }
 
@@ -140,16 +153,20 @@ func getRadixBatchMap(radixClient radixclient.Interface, namespace string) (map[
 func getRadixBatchModelFromRadixBatch(radixBatch *radixv1.RadixBatch, radixBatchJobStatuses []radixv1.RadixBatchJobStatus) modelsv1.BatchStatus {
 	batchType := radixBatch.Labels[kube.RadixBatchTypeLabel]
 	jobStatusBatchName := utils.TernaryString(batchType == string(kube.RadixBatchTypeJob), "", radixBatch.GetName())
+	startedTime := utils.FormatTime(radixBatch.Status.Condition.ActiveTime)
+	endedTime := utils.FormatTime(radixBatch.Status.Condition.CompletionTime)
+	batchStatus := modelsv1.JobStatus{
+		Name:    radixBatch.GetName(),
+		Created: utils.FormatTime(pointers.Ptr(radixBatch.GetCreationTimestamp())),
+		Started: startedTime,
+		Ended:   endedTime,
+		Status:  apimodelsv2.GetRadixBatchStatus(radixBatch).String(),
+		Message: radixBatch.Status.Condition.Message,
+	}
+	jobStatuses := getRadixBatchJobStatusesFromRadixBatch(radixBatch, radixBatchJobStatuses, jobStatusBatchName)
 	return modelsv1.BatchStatus{
-		JobStatus: modelsv1.JobStatus{
-			Name:    radixBatch.GetName(),
-			Created: utils.FormatTime(pointers.Ptr(radixBatch.GetCreationTimestamp())),
-			Started: utils.FormatTime(radixBatch.Status.Condition.ActiveTime),
-			Ended:   utils.FormatTime(radixBatch.Status.Condition.CompletionTime),
-			Status:  apimodelsv2.GetRadixBatchStatus(radixBatch).String(),
-			Message: radixBatch.Status.Condition.Message,
-		},
-		JobStatuses: getRadixBatchJobStatusesFromRadixBatch(radixBatch, radixBatchJobStatuses, jobStatusBatchName),
+		JobStatus:   batchStatus,
+		JobStatuses: jobStatuses,
 		BatchType:   batchType,
 	}
 }
