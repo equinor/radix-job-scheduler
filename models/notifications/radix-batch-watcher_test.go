@@ -16,6 +16,12 @@ import (
 )
 
 func Test_RadixBatchWatcher(t *testing.T) {
+	activeTime := metav1.NewTime(time.Date(2020, 10, 30, 1, 1, 1, 1, &time.Location{}))
+	startJobTime1 := metav1.NewTime(activeTime.Add(1 * time.Minute))
+	startJobTime2 := metav1.NewTime(activeTime.Add(2 * time.Minute))
+	startJobTime3 := metav1.NewTime(activeTime.Add(3 * time.Minute))
+	endJobTime2 := metav1.NewTime(activeTime.Add(10 * time.Minute))
+	endJobTime3 := metav1.NewTime(activeTime.Add(12 * time.Minute))
 	type fields struct {
 		newRadixBatch    *radixv1.RadixBatch
 		updateRadixBatch func(*radixv1.RadixBatch) *radixv1.RadixBatch
@@ -89,10 +95,72 @@ func Test_RadixBatchWatcher(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "Updated batch job statuses, sends notification only about changed batch job status",
+			fields: fields{
+				newRadixBatch: &radixv1.RadixBatch{
+					ObjectMeta: metav1.ObjectMeta{Name: "batch1", Labels: labels.ForBatchType(kube.RadixBatchTypeBatch)},
+					Spec: radixv1.RadixBatchSpec{
+						Jobs: []radixv1.RadixBatchJob{{Name: "job1"}},
+					},
+					Status: radixv1.RadixBatchStatus{
+						Condition: radixv1.RadixBatchCondition{
+							ActiveTime: &activeTime,
+						},
+						JobStatuses: []radixv1.RadixBatchJobStatus{
+							{
+								Name:      "job1",
+								Reason:    "job1 reason",
+								StartTime: &startJobTime1,
+							},
+							{
+								Name: "job2",
+							},
+							{
+								Name:      "job3",
+								Reason:    "job3 reason",
+								Message:   "job3 message",
+								StartTime: &startJobTime3,
+								EndTime:   &endJobTime3,
+							},
+						},
+					},
+				},
+				updateRadixBatch: func(radixBatch *radixv1.RadixBatch) *radixv1.RadixBatch {
+					radixBatch.Status.JobStatuses[1].StartTime = &startJobTime2
+					radixBatch.Status.JobStatuses[1].Reason = "job2 reason"
+					radixBatch.Status.JobStatuses[1].Message = "job2 message"
+					radixBatch.Status.JobStatuses[1].Phase = "job2 phase"
+					radixBatch.Status.JobStatuses[1].EndTime = &endJobTime2
+					return radixBatch
+				},
+			},
+			args: args{
+				getNotifier: func(ctrl *gomock.Controller) Notifier {
+					notifier := NewMockNotifier(ctrl)
+					rbMatcher := newRadixBatchMatcher(func(radixBatch *radixv1.RadixBatch) bool {
+						return radixBatch.Name == "batch1" && *radixBatch.Status.Condition.ActiveTime == activeTime
+					})
+					jobStatusesMatcher := newRadixBatchJobStatusMatcher(func(jobStatuses []radixv1.RadixBatchJobStatus) bool {
+						return len(jobStatuses) == 1 &&
+							jobStatuses[0].Name == "job2" &&
+							jobStatuses[0].Reason == "job2 reason" &&
+							jobStatuses[0].Message == "job2 message" &&
+							jobStatuses[0].Phase == "job2 phase" &&
+							*jobStatuses[0].StartTime == startJobTime2 &&
+							*jobStatuses[0].EndTime == endJobTime2
+					})
+					notifier.EXPECT().Notify(rbMatcher,
+						jobStatusesMatcher, gomock.Any()).Times(1)
+					return notifier
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			radixClient := radixclientfake.NewSimpleClientset()
 			namespace := "app-qa"
 			var createdRadixBatch *radixv1.RadixBatch
@@ -114,7 +182,10 @@ func Test_RadixBatchWatcher(t *testing.T) {
 				return
 			}
 			assert.False(t, commonUtils.IsNil(watcher))
-			time.Sleep(time.Second * 1)
+			for !watcher.batchInformer.Informer().HasSynced() {
+				t.Log("wait for sync informer")
+				time.Sleep(time.Millisecond * 100)
+			}
 
 			if tt.fields.newRadixBatch != nil && tt.fields.updateRadixBatch == nil {
 				//when radix batch exists and during test it will be updated
@@ -130,9 +201,13 @@ func Test_RadixBatchWatcher(t *testing.T) {
 					return
 				}
 			}
-			time.Sleep(time.Second * 5)
-			watcher.Stop <- struct{}{}
+			for !watcher.batchInformer.Informer().HasSynced() {
+				t.Log("wait for sync informer")
+				time.Sleep(time.Millisecond * 100)
+			}
+			time.Sleep(time.Second * 1) //wayt to possible fail due to a missed expected call
 			ctrl.Finish()
+			watcher.Stop <- struct{}{}
 		})
 	}
 }
@@ -152,4 +227,21 @@ func (m *radixBatchMatcher) Matches(x interface{}) bool {
 
 func (m *radixBatchMatcher) String() string {
 	return "radixBatch matcher"
+}
+
+func newRadixBatchJobStatusMatcher(matches func([]radixv1.RadixBatchJobStatus) bool) *radixBatchJobStatusesMatcher {
+	return &radixBatchJobStatusesMatcher{matches: matches}
+}
+
+type radixBatchJobStatusesMatcher struct {
+	matches func([]radixv1.RadixBatchJobStatus) bool
+}
+
+func (m *radixBatchJobStatusesMatcher) Matches(x interface{}) bool {
+	radixBatchJobStatuses := x.([]radixv1.RadixBatchJobStatus)
+	return m.matches(radixBatchJobStatuses)
+}
+
+func (m *radixBatchJobStatusesMatcher) String() string {
+	return "radixBatchJobStatuses matcher"
 }
