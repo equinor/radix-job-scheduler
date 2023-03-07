@@ -6,7 +6,7 @@ import (
 	"github.com/equinor/radix-operator/pkg/apis/utils"
 )
 
-func GetRadixDeploymentWithRadixJobComponent(appName, environment, componentName string) *radixv1.RadixDeployment {
+func GetRadixDeploymentWithRadixJobComponent(appName, environment, componentName string, port int32) *radixv1.RadixDeployment {
 	return utils.NewDeploymentBuilder().
 		WithAppName(appName).
 		WithImageTag("image-tag").
@@ -14,8 +14,8 @@ func GetRadixDeploymentWithRadixJobComponent(appName, environment, componentName
 		WithJobComponent(utils.NewDeployJobComponentBuilder().
 			WithImage("radixdev.azurecr.io/some-image:image-tag").
 			WithName(componentName).
-			WithPort("http", 8080).
-			WithSchedulerPort(numbers.Int32Ptr(8080))).BuildRD()
+			WithPort("http", port).
+			WithSchedulerPort(numbers.Int32Ptr(9090))).BuildRD()
 }
 
 func GetRadixApplicationWithRadixJobComponent(appName, environment, envBranch, jobComponentName string, port int32, notifications *radixv1.Notifications) *radixv1.RadixApplication {

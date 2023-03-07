@@ -71,7 +71,7 @@ func TestNewWebhookNotifier(t *testing.T) {
 			radixClient := radixclientfake.NewSimpleClientset()
 			env := models.NewEnv()
 			ra := test.GetRadixApplicationWithRadixJobComponent(appName, environment, envBranch, "job1", 8080, tt.notifications)
-			rd := test.GetRadixDeploymentWithRadixJobComponent(appName, environment, "job1")
+			rd := test.GetRadixDeploymentWithRadixJobComponent(appName, environment, "job1", 8080)
 			_, err := radixClient.RadixV1().RadixApplications(utils.GetAppNamespace(appName)).Create(context.Background(), ra, metav1.CreateOptions{})
 			if err != nil {
 				panic(err)
