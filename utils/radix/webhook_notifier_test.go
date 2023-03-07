@@ -1,24 +1,21 @@
 package radix
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
-	commonUtils "github.com/equinor/radix-common/utils"
-	modelsv1 "github.com/equinor/radix-job-scheduler/models/v1"
-	"github.com/equinor/radix-job-scheduler/utils/radix/test"
-	"github.com/equinor/radix-operator/pkg/apis/kube"
-	"github.com/equinor/radix-operator/pkg/apis/utils/labels"
 	"io"
 	"net/http"
 	"testing"
 	"time"
 
+	commonUtils "github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-common/utils/pointers"
 	"github.com/equinor/radix-job-scheduler/models"
+	modelsv1 "github.com/equinor/radix-job-scheduler/models/v1"
+	testUtil "github.com/equinor/radix-job-scheduler/utils/radix/test"
+	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
-	"github.com/equinor/radix-operator/pkg/apis/utils"
-	radixclientfake "github.com/equinor/radix-operator/pkg/client/clientset/versioned/fake"
+	"github.com/equinor/radix-operator/pkg/apis/utils/labels"
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -68,18 +65,8 @@ func TestNewWebhookNotifier(t *testing.T) {
 			appName := "app"
 			environment := "qa"
 			envBranch := "main"
-			radixClient := radixclientfake.NewSimpleClientset()
 			env := models.NewEnv()
-			ra := test.GetRadixApplicationWithRadixJobComponent(appName, environment, envBranch, "job1", 8080, tt.notifications)
-			rd := test.GetRadixDeploymentWithRadixJobComponent(appName, environment, "job1", 8080)
-			_, err := radixClient.RadixV1().RadixApplications(utils.GetAppNamespace(appName)).Create(context.Background(), ra, metav1.CreateOptions{})
-			if err != nil {
-				panic(err)
-			}
-			_, err = radixClient.RadixV1().RadixDeployments(utils.GetEnvironmentNamespace(appName, environment)).Create(context.Background(), rd, metav1.CreateOptions{})
-			if err != nil {
-				panic(err)
-			}
+			ra := testUtil.GetRadixApplicationWithRadixJobComponent(appName, environment, envBranch, "job1", 8080, tt.notifications)
 
 			gotNotifier, err := NewWebhookNotifier(ra, tt.notifications, env)
 			if err != nil && !tt.expectedErr {
