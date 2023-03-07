@@ -145,6 +145,20 @@ func Test_webhookNotifier_Notify(t *testing.T) {
 		fields fields
 		args   args
 	}{
+		{name: "No request for not enabled notifier",
+			fields: fields{enabled: false, webhook: "http://job1:8080", expectedRequest: false, expectedError: false},
+			args: args{
+				newRadixBatch: &radixv1.RadixBatch{ObjectMeta: metav1.ObjectMeta{Name: "batch1", Labels: labels.ForBatchType(kube.RadixBatchTypeBatch)},
+					Status: radixv1.RadixBatchStatus{Condition: radixv1.RadixBatchCondition{Type: radixv1.BatchConditionTypeWaiting}}},
+				updatedJobStatuses: []radixv1.RadixBatchJobStatus{{Name: "job1"}}},
+		},
+		{name: "No request for enabled notifier with empty webhook",
+			fields: fields{enabled: true, webhook: "", expectedRequest: false, expectedError: false},
+			args: args{
+				newRadixBatch: &radixv1.RadixBatch{ObjectMeta: metav1.ObjectMeta{Name: "batch1", Labels: labels.ForBatchType(kube.RadixBatchTypeBatch)},
+					Status: radixv1.RadixBatchStatus{Condition: radixv1.RadixBatchCondition{Type: radixv1.BatchConditionTypeWaiting}}},
+				updatedJobStatuses: []radixv1.RadixBatchJobStatus{{Name: "job1"}}},
+		},
 		{name: "Waiting batch, no jobs",
 			fields: fields{enabled: true, webhook: "http://job1:8080", expectedRequest: true, expectedError: false, expectedBatchNameInJobs: "batch1"},
 			args: args{

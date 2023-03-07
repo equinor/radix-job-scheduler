@@ -43,7 +43,7 @@ func (notifier *webhookNotifier) String() string {
 func (notifier *webhookNotifier) Notify(newRadixBatch *radixv1.RadixBatch, updatedJobStatuses []radixv1.RadixBatchJobStatus, errChan chan error) (done chan struct{}) {
 	done = make(chan struct{})
 	go func() {
-		if !notifier.Enabled() {
+		if !notifier.Enabled() || len(notifier.webhook) == 0 {
 			done <- struct{}{}
 			return
 		}
