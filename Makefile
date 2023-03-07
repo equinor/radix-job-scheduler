@@ -64,3 +64,7 @@ generate-mock:
 .HONY: staticcheck
 staticcheck:
 	staticcheck `go list ./...` && go vet `go list ./...`
+
+.PHONY: mocks
+mocks:
+	mockgen -source ./models/notifications/notifier.go -destination ./models/notifications/notifier_mock.go -package notifications

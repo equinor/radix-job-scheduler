@@ -1,4 +1,4 @@
-package radix
+package notifications
 
 import (
 	"encoding/json"
@@ -11,8 +11,8 @@ import (
 	commonUtils "github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-common/utils/pointers"
 	"github.com/equinor/radix-job-scheduler/models"
+	testUtil "github.com/equinor/radix-job-scheduler/models/notifications/test"
 	modelsv1 "github.com/equinor/radix-job-scheduler/models/v1"
-	testUtil "github.com/equinor/radix-job-scheduler/utils/radix/test"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/equinor/radix-operator/pkg/apis/utils/labels"

@@ -2,10 +2,17 @@ The job scheduler server for application jobs
 
 ## Usage
 Request from application container URLs
-* `POST` `http://<job-name>:8080/api/v1/jobs` - start new job
-* `GET` `http://<job-name>:8080/api/v1/jobs` - get job list
-* `GET` `http://<job-name>:8080/api/v1/jobs/<job-name>` - get job status
-* `DELETE` `http://<job-name>:8080/api/v1/jobs/<job-name>` - stop and delete job
+* `POST` `http://<job-name>:8080/api/v1/jobs` - start a new job
+* `GET` `http://<job-name>:8080/api/v1/jobs` - get a job list
+* `GET` `http://<job-name>:8080/api/v1/jobs/<job-name>` - get a job status
+* `DELETE` `http://<job-name>:8080/api/v1/jobs/<job-name>` - delete a job
+* `POST` `http://<job-name>:8080/api/v1/jobs/<batch-name>/stop` - stop a batch
+* `POST` `http://<job-name>:8080/api/v1/batches` - start a new batch
+* `GET` `http://<job-name>:8080/api/v1/batches` - get a batch list
+* `GET` `http://<job-name>:8080/api/v1/batches/<batch-name>` - get a batch status
+* `DELETE` `http://<job-name>:8080/api/v1/batches/<batch-name>` - delete a batch
+* `POST` `http://<job-name>:8080/api/v1/batches/<batch-name>/stop` - stop a batch
+* `POST` `http://<job-name>:8080/api/v1/batches/<batch-name>/jobs/<job-name>/stop` - stop a batch job
 
 ## Developing
 
@@ -49,7 +56,7 @@ We use gomock to generate mocks used in unit test. [https://github.com/golang/mo
 
 You need to regenerate mocks if you make changes to any of the interfaces in the code, e.g. the job Handler interface
 
-Run `make generate-mock` to regenerate mocks
+Run `make mock` to regenerate mocks
 
 #### Update version
 We follow the [semantic version](https://semver.org/) as recommended by [go](https://blog.golang.org/publishing-go-modules).

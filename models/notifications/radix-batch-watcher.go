@@ -1,4 +1,4 @@
-package radix
+package notifications
 
 import (
 	"context"

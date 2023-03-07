@@ -12,6 +12,7 @@ import (
 	jobControllers "github.com/equinor/radix-job-scheduler/api/v1/controllers/jobs"
 	jobApi "github.com/equinor/radix-job-scheduler/api/v1/jobs"
 	"github.com/equinor/radix-job-scheduler/models"
+	"github.com/equinor/radix-job-scheduler/models/notifications"
 	"github.com/equinor/radix-job-scheduler/router"
 	_ "github.com/equinor/radix-job-scheduler/swaggerui"
 	"github.com/equinor/radix-job-scheduler/utils/radix"
@@ -71,19 +72,19 @@ func runApiServer(kubeUtil *kube.Kube, env *models.Env) {
 	}
 }
 
-func getRadixBatchWatcher(kubeUtil *kube.Kube, radixApplication *radixv1.RadixApplication, radixDeployJobComponent *radixv1.RadixDeployJobComponent, env *models.Env) (*radix.Watcher, error) {
-	notifier, err := radix.NewWebhookNotifier(radixApplication, radixDeployJobComponent.Notifications, env)
+func getRadixBatchWatcher(kubeUtil *kube.Kube, radixApplication *radixv1.RadixApplication, radixDeployJobComponent *radixv1.RadixDeployJobComponent, env *models.Env) (*notifications.Watcher, error) {
+	notifier, err := notifications.NewWebhookNotifier(radixApplication, radixDeployJobComponent.Notifications, env)
 	if err != nil {
-		return radix.NullRadixBatchWatcher(), err
+		return notifications.NullRadixBatchWatcher(), err
 	}
 
 	log.Infof("Created notifier: %s", notifier.String())
 	if !notifier.Enabled() {
 		log.Infoln("Notifiers are not enabled, RadixBatch event and changes watcher is skipped.")
-		return radix.NullRadixBatchWatcher(), nil
+		return notifications.NullRadixBatchWatcher(), nil
 	}
 
-	return radix.NewRadixBatchWatcher(kubeUtil.RadixClient(), env.RadixDeploymentNamespace, notifier)
+	return notifications.NewRadixBatchWatcher(kubeUtil.RadixClient(), env.RadixDeploymentNamespace, notifier)
 }
 
 func getRadixObjects(kubeUtil *kube.Kube, env *models.Env) (*radixv1.RadixApplication, *radixv1.RadixDeployJobComponent, error) {

@@ -1,4 +1,4 @@
-package radix
+package notifications
 
 import radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 
