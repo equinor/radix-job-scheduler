@@ -123,10 +123,11 @@ func (t *testTransport) RoundTrip(request *http.Request) (*http.Response, error)
 
 func Test_webhookNotifier_Notify(t *testing.T) {
 	type fields struct {
-		enabled         bool
-		webhook         string
-		expectedRequest bool
-		expectedError   bool
+		enabled                 bool
+		webhook                 string
+		expectedRequest         bool
+		expectedError           bool
+		expectedBatchNameInJobs string
 	}
 	type args struct {
 		newRadixBatch      *radixv1.RadixBatch
@@ -136,7 +137,8 @@ func Test_webhookNotifier_Notify(t *testing.T) {
 	completedTime := metav1.NewTime(activeTime.Add(30 * time.Minute))
 	startJobTime1 := metav1.NewTime(activeTime.Add(1 * time.Minute))
 	startJobTime3 := metav1.NewTime(activeTime.Add(2 * time.Minute))
-	endJobTime3 := metav1.NewTime(activeTime.Add(10 * time.Minute))
+	endJobTime1 := metav1.NewTime(activeTime.Add(10 * time.Minute))
+	endJobTime3 := metav1.NewTime(activeTime.Add(20 * time.Minute))
 
 	tests := []struct {
 		name   string
@@ -144,7 +146,7 @@ func Test_webhookNotifier_Notify(t *testing.T) {
 		args   args
 	}{
 		{name: "Waiting batch, no jobs",
-			fields: fields{enabled: true, webhook: "http://job1:8080", expectedRequest: true, expectedError: false},
+			fields: fields{enabled: true, webhook: "http://job1:8080", expectedRequest: true, expectedError: false, expectedBatchNameInJobs: "batch1"},
 			args: args{
 				newRadixBatch: &radixv1.RadixBatch{ObjectMeta: metav1.ObjectMeta{Name: "batch1", Labels: labels.ForBatchType(kube.RadixBatchTypeBatch)},
 					Status: radixv1.RadixBatchStatus{
@@ -158,7 +160,7 @@ func Test_webhookNotifier_Notify(t *testing.T) {
 				updatedJobStatuses: []radixv1.RadixBatchJobStatus{}},
 		},
 		{name: "Active batch",
-			fields: fields{enabled: true, webhook: "http://job1:8080", expectedRequest: true, expectedError: false},
+			fields: fields{enabled: true, webhook: "http://job1:8080", expectedRequest: true, expectedError: false, expectedBatchNameInJobs: "batch1"},
 			args: args{
 				newRadixBatch: &radixv1.RadixBatch{ObjectMeta: metav1.ObjectMeta{Name: "batch1", Labels: labels.ForBatchType(kube.RadixBatchTypeBatch)},
 					Status: radixv1.RadixBatchStatus{
@@ -174,7 +176,7 @@ func Test_webhookNotifier_Notify(t *testing.T) {
 				updatedJobStatuses: []radixv1.RadixBatchJobStatus{}},
 		},
 		{name: "Completed Batch with multiple jobs",
-			fields: fields{enabled: true, webhook: "http://job1:8080", expectedRequest: true, expectedError: false},
+			fields: fields{enabled: true, webhook: "http://job1:8080", expectedRequest: true, expectedError: false, expectedBatchNameInJobs: "batch1"},
 			args: args{
 				newRadixBatch: &radixv1.RadixBatch{
 					ObjectMeta: metav1.ObjectMeta{Name: "batch1", Labels: labels.ForBatchType(kube.RadixBatchTypeBatch)},
@@ -207,6 +209,35 @@ func Test_webhookNotifier_Notify(t *testing.T) {
 						Message:   "some message 456",
 						StartTime: &startJobTime3,
 						EndTime:   &endJobTime3,
+					},
+				}},
+		},
+		{name: "Completed single job batch",
+			fields: fields{enabled: true, webhook: "http://job1:8080", expectedRequest: true, expectedError: false, expectedBatchNameInJobs: ""},
+			args: args{
+				newRadixBatch: &radixv1.RadixBatch{
+					ObjectMeta: metav1.ObjectMeta{Name: "batch1", Labels: labels.ForBatchType(kube.RadixBatchTypeJob)},
+					Spec: radixv1.RadixBatchSpec{
+						Jobs: []radixv1.RadixBatchJob{{Name: "job1"}},
+					},
+					Status: radixv1.RadixBatchStatus{
+						Condition: radixv1.RadixBatchCondition{
+							Type:           radixv1.BatchConditionTypeCompleted,
+							Reason:         "some reason",
+							Message:        "some message",
+							CompletionTime: &completedTime,
+							ActiveTime:     &activeTime,
+						},
+					},
+				},
+				updatedJobStatuses: []radixv1.RadixBatchJobStatus{
+					{
+						Name:      "job1",
+						Phase:     "some job phase 753",
+						Reason:    "some reason 123",
+						Message:   "some message 456",
+						StartTime: &startJobTime1,
+						EndTime:   &endJobTime1,
 					},
 				}},
 		},
@@ -273,6 +304,7 @@ func Test_webhookNotifier_Notify(t *testing.T) {
 				}
 				for index, updateJobsStatus := range tt.args.updatedJobStatuses {
 					jobStatus := batchStatus.JobStatuses[index]
+					assert.Equal(t, tt.fields.expectedBatchNameInJobs, jobStatus.BatchName)
 					assert.Equal(t, fmt.Sprintf("%s-%s", batchStatus.Name, updateJobsStatus.Name), jobStatus.Name)
 					assertTimesEqual(t, updateJobsStatus.StartTime, jobStatus.Started, "job.Started")
 					assertTimesEqual(t, updateJobsStatus.EndTime, jobStatus.Ended, "job.EndTime")
