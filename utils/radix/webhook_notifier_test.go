@@ -6,6 +6,7 @@ import (
 	"fmt"
 	commonUtils "github.com/equinor/radix-common/utils"
 	modelsv1 "github.com/equinor/radix-job-scheduler/models/v1"
+	"github.com/equinor/radix-job-scheduler/utils/radix/test"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	"github.com/equinor/radix-operator/pkg/apis/utils/labels"
 	"io"
@@ -13,7 +14,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/equinor/radix-common/utils/numbers"
 	"github.com/equinor/radix-common/utils/pointers"
 	"github.com/equinor/radix-job-scheduler/models"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
@@ -70,18 +70,8 @@ func TestNewWebhookNotifier(t *testing.T) {
 			envBranch := "main"
 			radixClient := radixclientfake.NewSimpleClientset()
 			env := models.NewEnv()
-			ra := utils.NewRadixApplicationBuilder().WithAppName(appName).WithEnvironment(environment, envBranch).
-				WithJobComponents(utils.NewApplicationJobComponentBuilder().WithName("job1").WithPort("http", 8080).WithNotifications(tt.notifications)).
-				BuildRA()
-			rd := utils.NewDeploymentBuilder().
-				WithAppName(appName).
-				WithImageTag("image-tag").
-				WithEnvironment(environment).
-				WithJobComponent(utils.NewDeployJobComponentBuilder().
-					WithImage("radixdev.azurecr.io/some-image:image-tag").
-					WithName(appName).
-					WithPort("http", 8080).
-					WithSchedulerPort(numbers.Int32Ptr(8080))).BuildRD()
+			ra := test.GetRadixApplicationWithRadixJobComponent(appName, environment, envBranch, "job1", 8080, tt.notifications)
+			rd := test.GetRadixDeploymentWithRadixJobComponent(appName, environment, "job1")
 			_, err := radixClient.RadixV1().RadixApplications(utils.GetAppNamespace(appName)).Create(context.Background(), ra, metav1.CreateOptions{})
 			if err != nil {
 				panic(err)
