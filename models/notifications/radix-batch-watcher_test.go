@@ -17,8 +17,8 @@ import (
 
 func Test_RadixBatchWatcher(t *testing.T) {
 	type fields struct {
-		existingRadixBatch *radixv1.RadixBatch
-		modifyRadixBatch   func(*radixv1.RadixBatch) *radixv1.RadixBatch
+		newRadixBatch    *radixv1.RadixBatch
+		updateRadixBatch func(*radixv1.RadixBatch) *radixv1.RadixBatch
 	}
 	type args struct {
 		getNotifier func(*gomock.Controller) Notifier
@@ -31,7 +31,7 @@ func Test_RadixBatchWatcher(t *testing.T) {
 		{
 			name: "No batch, no notifications",
 			fields: fields{
-				existingRadixBatch: nil,
+				newRadixBatch: nil,
 			},
 			args: args{
 				getNotifier: func(ctrl *gomock.Controller) Notifier {
@@ -40,17 +40,38 @@ func Test_RadixBatchWatcher(t *testing.T) {
 			},
 		},
 		{
-			name: "Created batch, gets notifications",
+			name: "Created batch, sends notification about batch without status",
 			fields: fields{
-				existingRadixBatch: &radixv1.RadixBatch{
+				newRadixBatch: &radixv1.RadixBatch{
 					ObjectMeta: metav1.ObjectMeta{Name: "batch1", Labels: labels.ForBatchType(kube.RadixBatchTypeBatch)},
 					Spec: radixv1.RadixBatchSpec{
-						Jobs: []radixv1.RadixBatchJob{
-							{Name: "job1"},
-						},
+						Jobs: []radixv1.RadixBatchJob{{Name: "job1"}},
 					},
 				},
-				modifyRadixBatch: func(radixBatch *radixv1.RadixBatch) *radixv1.RadixBatch {
+				updateRadixBatch: nil,
+			},
+			args: args{
+				getNotifier: func(ctrl *gomock.Controller) Notifier {
+					notifier := NewMockNotifier(ctrl)
+					rbMatcher := newRadixBatchMatcher(func(radixBatch *radixv1.RadixBatch) bool {
+						return radixBatch.Name == "batch1" && radixBatch.Status.Condition == radixv1.RadixBatchCondition{}
+					})
+					notifier.EXPECT().Notify(rbMatcher,
+						nil, gomock.Any()).Times(1)
+					return notifier
+				},
+			},
+		},
+		{
+			name: "Updated only batch status, sends notification about batch status only",
+			fields: fields{
+				newRadixBatch: &radixv1.RadixBatch{
+					ObjectMeta: metav1.ObjectMeta{Name: "batch1", Labels: labels.ForBatchType(kube.RadixBatchTypeBatch)},
+					Spec: radixv1.RadixBatchSpec{
+						Jobs: []radixv1.RadixBatchJob{{Name: "job1"}},
+					},
+				},
+				updateRadixBatch: func(radixBatch *radixv1.RadixBatch) *radixv1.RadixBatch {
 					radixBatch.Status.Condition.Type = radixv1.BatchConditionTypeWaiting
 					return radixBatch
 				},
@@ -58,24 +79,27 @@ func Test_RadixBatchWatcher(t *testing.T) {
 			args: args{
 				getNotifier: func(ctrl *gomock.Controller) Notifier {
 					notifier := NewMockNotifier(ctrl)
-					matcher := newRadixBatchMatcher(func(radixBatch *radixv1.RadixBatch) bool {
-						return radixBatch.Name == "batch1"
+					rbMatcher := newRadixBatchMatcher(func(radixBatch *radixv1.RadixBatch) bool {
+						return radixBatch.Name == "batch1" &&
+							radixBatch.Status.Condition.Type == radixv1.BatchConditionTypeWaiting
 					})
-					notifier.EXPECT().Notify(matcher,
+					notifier.EXPECT().Notify(rbMatcher,
 						nil, gomock.Any()).Times(1)
 					return notifier
 				},
 			},
 		},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			radixClient := radixclientfake.NewSimpleClientset()
 			namespace := "app-qa"
 			var createdRadixBatch *radixv1.RadixBatch
 			var err error
-			if tt.fields.existingRadixBatch != nil {
-				createdRadixBatch, err = radixClient.RadixV1().RadixBatches(namespace).Create(context.Background(), tt.fields.existingRadixBatch, metav1.CreateOptions{})
+			if tt.fields.newRadixBatch != nil && tt.fields.updateRadixBatch != nil {
+				//when radix batch exists and during test it will be updated
+				createdRadixBatch, err = radixClient.RadixV1().RadixBatches(namespace).Create(context.Background(), tt.fields.newRadixBatch, metav1.CreateOptions{})
 				if err != nil {
 					assert.Fail(t, err.Error())
 					return
@@ -92,8 +116,15 @@ func Test_RadixBatchWatcher(t *testing.T) {
 			assert.False(t, commonUtils.IsNil(watcher))
 			time.Sleep(time.Second * 1)
 
-			if tt.fields.existingRadixBatch != nil && createdRadixBatch != nil && tt.fields.modifyRadixBatch != nil {
-				_, err := radixClient.RadixV1().RadixBatches(namespace).Update(context.Background(), tt.fields.modifyRadixBatch(createdRadixBatch), metav1.UpdateOptions{})
+			if tt.fields.newRadixBatch != nil && tt.fields.updateRadixBatch == nil {
+				//when radix batch exists and during test it will be updated
+				createdRadixBatch, err = radixClient.RadixV1().RadixBatches(namespace).Create(context.Background(), tt.fields.newRadixBatch, metav1.CreateOptions{})
+				if err != nil {
+					assert.Fail(t, err.Error())
+					return
+				}
+			} else if createdRadixBatch != nil && tt.fields.updateRadixBatch != nil {
+				_, err := radixClient.RadixV1().RadixBatches(namespace).Update(context.Background(), tt.fields.updateRadixBatch(createdRadixBatch), metav1.UpdateOptions{})
 				if err != nil {
 					assert.Fail(t, err.Error())
 					return
