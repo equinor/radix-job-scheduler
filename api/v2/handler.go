@@ -549,6 +549,7 @@ func (h *handler) buildRadixBatchJobs(namespace, appName, radixJobComponentName,
 	var errs []error
 
 	for _, jobScheduleDescription := range batchScheduleDescription.JobScheduleDescriptions {
+		jobScheduleDescription := jobScheduleDescription
 		radixBatchJob, err := buildRadixBatchJob(&jobScheduleDescription, batchScheduleDescription.DefaultRadixJobComponentConfig)
 		if err != nil {
 			errs = append(errs, err)
