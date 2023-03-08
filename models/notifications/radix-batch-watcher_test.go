@@ -189,7 +189,7 @@ func Test_RadixBatchWatcher(t *testing.T) {
 
 			if tt.fields.newRadixBatch != nil && tt.fields.updateRadixBatch == nil {
 				//when radix batch exists and during test it will be updated
-				createdRadixBatch, err = radixClient.RadixV1().RadixBatches(namespace).Create(context.Background(), tt.fields.newRadixBatch, metav1.CreateOptions{})
+				_, err := radixClient.RadixV1().RadixBatches(namespace).Create(context.Background(), tt.fields.newRadixBatch, metav1.CreateOptions{})
 				if err != nil {
 					assert.Fail(t, err.Error())
 					return

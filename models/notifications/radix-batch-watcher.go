@@ -32,7 +32,6 @@ type Watcher struct {
 	radixInformerFactory radixinformers.SharedInformerFactory
 	batchInformer        v1.RadixBatchInformer
 	Stop                 chan struct{}
-	webhook              string
 	logger               *log.Entry
 }
 

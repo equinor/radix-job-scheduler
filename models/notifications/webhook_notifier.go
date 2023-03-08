@@ -37,7 +37,7 @@ func (notifier *webhookNotifier) String() string {
 	if notifier.enabled {
 		return fmt.Sprintf("Webhook notifier is enabled. Webhook: %s", notifier.webhook)
 	}
-	return fmt.Sprintf("Webhook notifier is disabled")
+	return "Webhook notifier is disabled"
 }
 
 func (notifier *webhookNotifier) Notify(newRadixBatch *radixv1.RadixBatch, updatedJobStatuses []radixv1.RadixBatchJobStatus, errChan chan error) (done chan struct{}) {
