@@ -4,8 +4,6 @@ import (
 	"context"
 	"testing"
 
-	radixLabels "github.com/equinor/radix-operator/pkg/apis/utils/labels"
-
 	"github.com/equinor/radix-common/utils/pointers"
 	"github.com/equinor/radix-common/utils/slice"
 	apiErrors "github.com/equinor/radix-job-scheduler/api/errors"
