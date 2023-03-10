@@ -4,7 +4,10 @@ import (
 	"context"
 	"testing"
 
+	radixLabels "github.com/equinor/radix-operator/pkg/apis/utils/labels"
+
 	"github.com/equinor/radix-common/utils/pointers"
+	"github.com/equinor/radix-common/utils/slice"
 	apiErrors "github.com/equinor/radix-job-scheduler/api/errors"
 	"github.com/equinor/radix-job-scheduler/api/test"
 	modelsEnv "github.com/equinor/radix-job-scheduler/models"
@@ -14,6 +17,7 @@ import (
 	"github.com/equinor/radix-operator/pkg/apis/utils"
 	radixLabels "github.com/equinor/radix-operator/pkg/apis/utils/labels"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -46,8 +50,7 @@ func TestCreateBatch(t *testing.T) {
 		assert.NoError(t, err)
 		scheduledBatch, err := radixClient.RadixV1().RadixBatches(rd.Namespace).Get(context.Background(), createdBatch.Name,
 			metav1.GetOptions{})
-		assert.Nil(t, err)
-		assert.NotNil(t, scheduledBatch)
+		require.NoError(t, err)
 		assert.Equal(t, createdBatch.Name, scheduledBatch.Name)
 		assert.Equal(t, len(scheduleDescription.JobScheduleDescriptions),
 			len(scheduledBatch.Spec.Jobs))
@@ -57,6 +60,10 @@ func TestCreateBatch(t *testing.T) {
 			scheduledBatch.ObjectMeta.Labels[kube.RadixAppLabel])
 		assert.Equal(t, string(kube.RadixBatchTypeBatch),
 			scheduledBatch.ObjectMeta.Labels[kube.RadixBatchTypeLabel])
+		assert.Len(t, scheduledBatch.Spec.Jobs, 2)
+		assert.ElementsMatch(t, []string{"job1", "job2"},
+			slice.Map(scheduledBatch.Spec.Jobs, func(job radixv1.RadixBatchJob) string { return job.JobId }))
+
 		secretList, err := kubeClient.CoreV1().Secrets(rd.Namespace).List(context.Background(), metav1.ListOptions{LabelSelector: radixLabels.Merge(
 			radixLabels.ForApplicationName(params.AppName),
 			radixLabels.ForComponentName(params.JobComponentName),
@@ -65,13 +72,33 @@ func TestCreateBatch(t *testing.T) {
 			String(),
 		})
 		assert.NoError(t, err)
-		assert.Len(t, secretList.Items, 1)
+		require.Len(t, secretList.Items, 1)
 		secret := secretList.Items[0]
+		assert.Len(t, secret.Data, 2)
+
+		expectedSecrets := slice.Reduce(
+			scheduleDescription.JobScheduleDescriptions,
+			map[string]string{},
+			func(acc map[string]string, job models.JobScheduleDescription) map[string]string {
+				acc[job.JobId] = job.Payload
+				return acc
+			},
+		)
+		jobNameIdMap := slice.Reduce(
+			scheduledBatch.Spec.Jobs,
+			map[string]string{},
+			func(acc map[string]string, job radixv1.RadixBatchJob) map[string]string {
+				acc[job.Name] = job.JobId
+				return acc
+			})
+
 		for _, radixBatchJob := range scheduledBatch.Spec.Jobs {
 			assert.NotNil(t, radixBatchJob.PayloadSecretRef)
 			assert.Equal(t, secret.GetName(), radixBatchJob.PayloadSecretRef.Name)
-			assert.Equal(t, radixBatchJob.Name, radixBatchJob.PayloadSecretRef.Key)
-			assert.True(t, len(secret.Data[radixBatchJob.Name]) > 0)
+			expectedSecret := expectedSecrets[jobNameIdMap[radixBatchJob.Name]]
+			assert.Equal(t, expectedSecret, string(secret.Data[radixBatchJob.PayloadSecretRef.Key]))
+			assert.True(t, len(secret.Data[radixBatchJob.PayloadSecretRef.Key]) > 0)
+
 		}
 	})
 }
