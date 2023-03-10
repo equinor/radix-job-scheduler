@@ -1,0 +1,15 @@
+name: radix-job-scheduler-pr
+on:
+  pull_request:
+    branches:
+    - main
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v1
+    - name: Build docker image
+      env:
+        REF: ${{ github. sha }}
+      run: docker build -t radix-job-scheduler:${REF##*/} .
