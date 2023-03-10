@@ -3,8 +3,8 @@ module github.com/equinor/radix-job-scheduler
 go 1.18
 
 require (
-	github.com/equinor/radix-common v1.2.7
-	github.com/equinor/radix-operator v1.99.1000-0.20230303151947-374198aa59f3
+	github.com/equinor/radix-common v1.2.9
+	github.com/equinor/radix-operator v1.33.0
 	github.com/golang/mock v1.6.0
 	github.com/gorilla/handlers v1.5.1
 	github.com/gorilla/mux v1.8.0
@@ -45,7 +45,6 @@ require (
 	github.com/prometheus/client_model v0.2.0 // indirect
 	github.com/prometheus/common v0.32.1 // indirect
 	github.com/prometheus/procfs v0.7.3 // indirect
-	github.com/stretchr/objx v0.5.0 // indirect
 	golang.org/x/net v0.0.0-20220520000938-2e3eb7b945c2 // indirect
 	golang.org/x/oauth2 v0.0.0-20220411215720-9780585627b5 // indirect
 	golang.org/x/sys v0.0.0-20220715151400-c0bba94af5f8 // indirect

@@ -6,9 +6,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/equinor/radix-job-scheduler/models"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
-	"github.com/equinor/radix-operator/pkg/apis/radixvalidators"
 )
 
 type webhookNotifier struct {
@@ -16,13 +14,9 @@ type webhookNotifier struct {
 	webhook string
 }
 
-func NewWebhookNotifier(ra *radixv1.RadixApplication, notifications *radixv1.Notifications, env *models.Env) (Notifier, error) {
+func NewWebhookNotifier(notifications *radixv1.Notifications) (Notifier, error) {
 	notifier := webhookNotifier{}
 	if notifications != nil && webhookIsNotEmpty(notifications.Webhook) {
-		err := radixvalidators.ValidateNotifications(ra, notifications, env.RadixComponentName, env.RadixEnvironment)
-		if err != nil {
-			return nil, err
-		}
 		notifier.enabled = true
 		notifier.webhook = *notifications.Webhook
 	}

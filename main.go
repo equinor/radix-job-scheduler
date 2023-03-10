@@ -28,13 +28,13 @@ func main() {
 	env := models.NewEnv()
 	kubeUtil := getKubeUtil()
 
-	radixApplication, radixDeployJobComponent, err := getRadixObjects(kubeUtil, env)
+	radixDeployJobComponent, err := radix.GetRadixDeployJobComponentByName(kubeUtil.RadixClient(), env.RadixDeploymentNamespace, env.RadixDeploymentName, env.RadixComponentName)
 	if err != nil {
 		log.Fatalln(err)
 		return
 	}
 
-	radixBatchWatcher, err := getRadixBatchWatcher(kubeUtil, radixApplication, radixDeployJobComponent, env)
+	radixBatchWatcher, err := getRadixBatchWatcher(kubeUtil, radixDeployJobComponent, env)
 	if err != nil {
 		log.Fatalln(err)
 		return
@@ -72,8 +72,8 @@ func runApiServer(kubeUtil *kube.Kube, env *models.Env) {
 	}
 }
 
-func getRadixBatchWatcher(kubeUtil *kube.Kube, radixApplication *radixv1.RadixApplication, radixDeployJobComponent *radixv1.RadixDeployJobComponent, env *models.Env) (*notifications.Watcher, error) {
-	notifier, err := notifications.NewWebhookNotifier(radixApplication, radixDeployJobComponent.Notifications, env)
+func getRadixBatchWatcher(kubeUtil *kube.Kube, radixDeployJobComponent *radixv1.RadixDeployJobComponent, env *models.Env) (*notifications.Watcher, error) {
+	notifier, err := notifications.NewWebhookNotifier(radixDeployJobComponent.Notifications)
 	if err != nil {
 		return notifications.NullRadixBatchWatcher(), err
 	}
@@ -85,18 +85,6 @@ func getRadixBatchWatcher(kubeUtil *kube.Kube, radixApplication *radixv1.RadixAp
 	}
 
 	return notifications.NewRadixBatchWatcher(kubeUtil.RadixClient(), env.RadixDeploymentNamespace, notifier)
-}
-
-func getRadixObjects(kubeUtil *kube.Kube, env *models.Env) (*radixv1.RadixApplication, *radixv1.RadixDeployJobComponent, error) {
-	radixApplication, err := radix.GetRadixApplicationByName(kubeUtil.RadixClient(), env.RadixAppName)
-	if err != nil {
-		return nil, nil, err
-	}
-	radixDeployJobComponent, err := radix.GetRadixDeployJobComponentByName(kubeUtil.RadixClient(), env.RadixDeploymentNamespace, env.RadixDeploymentName, env.RadixComponentName)
-	if err != nil {
-		return nil, nil, err
-	}
-	return radixApplication, radixDeployJobComponent, err
 }
 
 func getKubeUtil() *kube.Kube {

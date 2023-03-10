@@ -10,8 +10,6 @@ import (
 
 	commonUtils "github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-common/utils/pointers"
-	"github.com/equinor/radix-job-scheduler/models"
-	testUtil "github.com/equinor/radix-job-scheduler/models/notifications/test"
 	modelsv1 "github.com/equinor/radix-job-scheduler/models/v1"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
@@ -48,27 +46,11 @@ func TestNewWebhookNotifier(t *testing.T) {
 			notifications:   &radixv1.Notifications{Webhook: pointers.Ptr("http://job1:8080")},
 			expectedEnabled: true, expectedWebhook: "http://job1:8080", expectedErr: false,
 		},
-		{
-			name:            "Invalid webhook to non existing job component name",
-			notifications:   &radixv1.Notifications{Webhook: pointers.Ptr("http://not-existing-job:8080")},
-			expectedEnabled: false, expectedWebhook: "", expectedErr: true,
-		},
-		{
-			name:            "Invalid webhook to non existing job component port",
-			notifications:   &radixv1.Notifications{Webhook: pointers.Ptr("http://job1:8081")},
-			expectedEnabled: false, expectedWebhook: "", expectedErr: true,
-		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			appName := "app"
-			environment := "qa"
-			envBranch := "main"
-			env := models.NewEnv()
-			ra := testUtil.GetRadixApplicationWithRadixJobComponent(appName, environment, envBranch, "job1", 8080, tt.notifications)
-
-			gotNotifier, err := NewWebhookNotifier(ra, tt.notifications, env)
+			gotNotifier, err := NewWebhookNotifier(tt.notifications)
 			if err != nil && !tt.expectedErr {
 				t.Errorf("not expected error %v", err)
 				return
