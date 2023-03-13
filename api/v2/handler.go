@@ -601,6 +601,7 @@ func buildSecret(appName, radixJobComponentName, batchName string, secretIndex i
 				radixLabels.ForApplicationName(appName),
 				radixLabels.ForComponentName(radixJobComponentName),
 				radixLabels.ForBatchName(batchName),
+				radixLabels.ForJobScheduleJobType(),
 			),
 		},
 		Data: make(map[string][]byte),

@@ -230,10 +230,11 @@ func TestCreateJob(t *testing.T) {
 		secretName := batchJob.PayloadSecretRef.Name
 		secret, _ := kubeClient.CoreV1().Secrets(envNamespace).Get(context.TODO(), secretName, metav1.GetOptions{})
 		assert.NotNil(t, secret)
-		assert.Len(t, secret.Labels, 3)
+		assert.Len(t, secret.Labels, 4)
 		assert.Equal(t, appName, secret.Labels[kube.RadixAppLabel])
 		assert.Equal(t, appJobComponent, secret.Labels[kube.RadixComponentLabel])
 		assert.Equal(t, batchName, secret.Labels[kube.RadixBatchNameLabel])
+		assert.Equal(t, kube.RadixJobTypeJobSchedule, secret.Labels[kube.RadixJobTypeLabel])
 		jobPayloadPropertyName := batchJob.PayloadSecretRef.Key
 		payloadBytes := secret.Data[jobPayloadPropertyName]
 		assert.Equal(t, payloadString, string(payloadBytes))

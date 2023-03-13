@@ -96,7 +96,7 @@ func TestCreateBatch(t *testing.T) {
 			expectedSecret := expectedSecrets[jobNameIdMap[radixBatchJob.Name]]
 			assert.Equal(t, expectedSecret, string(secret.Data[radixBatchJob.PayloadSecretRef.Key]))
 			assert.True(t, len(secret.Data[radixBatchJob.PayloadSecretRef.Key]) > 0)
-
+			assert.Equal(t, kube.RadixJobTypeJobSchedule, secret.Labels[kube.RadixJobTypeLabel])
 		}
 	})
 }
