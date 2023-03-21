@@ -21,6 +21,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/selection"
 )
 
 type jobHandler struct {
@@ -320,7 +321,7 @@ func (handler *jobHandler) getAllJobs() ([]*batchv1.Job, error) {
 		List(
 			context.Background(),
 			metav1.ListOptions{
-				LabelSelector: getLabelSelectorForJobComponent(handler.common.Env.RadixComponentName),
+				LabelSelector: getLabelSelectorForJobComponentForObsoleteJobs(handler.common.Env.RadixComponentName),
 			},
 		)
 	if err != nil {
@@ -356,11 +357,15 @@ func (handler *jobHandler) getJobPods(jobName string) ([]corev1.Pod, error) {
 	return podList.Items, nil
 }
 
-func getLabelSelectorForJobComponent(componentName string) string {
-	return labels.SelectorFromSet(map[string]string{
-		kube.RadixComponentLabel: componentName,
-		kube.RadixJobTypeLabel:   kube.RadixJobTypeJobSchedule,
-	}).String()
+func getLabelSelectorForJobComponentForObsoleteJobs(componentName string) string {
+	reqNoBatchJobName, _ := labels.NewRequirement(kube.RadixBatchJobNameLabel, selection.DoesNotExist, []string{})
+	reqComponentName, _ := labels.NewRequirement(kube.RadixComponentLabel, selection.Equals, []string{componentName})
+	reqJobTypeJobScheduler, _ := labels.NewRequirement(kube.RadixJobTypeLabel, selection.Equals, []string{kube.RadixJobTypeJobSchedule})
+	return labels.NewSelector().
+		Add(*reqNoBatchJobName).
+		Add(*reqComponentName).
+		Add(*reqJobTypeJobScheduler).
+		String()
 }
 
 func getLabelSelectorForJobPods(jobName string) string {
