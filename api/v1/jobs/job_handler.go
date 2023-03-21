@@ -365,8 +365,7 @@ func getLabelSelectorForJobComponentForObsoleteJobs(componentName string) string
 	selector = selector.Add(*reqNoBatchJobName)
 	selector = selector.Add(*reqComponentName)
 	selector = selector.Add(*reqJobTypeJobScheduler)
-	s := selector.String()
-	return s
+	return selector.String()
 }
 
 func getLabelSelectorForJobPods(jobName string) string {
