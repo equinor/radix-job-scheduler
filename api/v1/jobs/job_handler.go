@@ -361,11 +361,11 @@ func getLabelSelectorForJobComponentForObsoleteJobs(componentName string) string
 	reqNoBatchJobName, _ := labels.NewRequirement(kube.RadixBatchJobNameLabel, selection.DoesNotExist, []string{})
 	reqComponentName, _ := labels.NewRequirement(kube.RadixComponentLabel, selection.Equals, []string{componentName})
 	reqJobTypeJobScheduler, _ := labels.NewRequirement(kube.RadixJobTypeLabel, selection.Equals, []string{kube.RadixJobTypeJobSchedule})
-	selector := labels.NewSelector()
-	selector = selector.Add(*reqNoBatchJobName)
-	selector = selector.Add(*reqComponentName)
-	selector = selector.Add(*reqJobTypeJobScheduler)
-	return selector.String()
+	return labels.NewSelector().
+		Add(*reqNoBatchJobName).
+		Add(*reqComponentName).
+		Add(*reqJobTypeJobScheduler).
+		String()
 }
 
 func getLabelSelectorForJobPods(jobName string) string {
