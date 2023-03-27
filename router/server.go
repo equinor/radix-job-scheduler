@@ -7,7 +7,7 @@ import (
 	"github.com/equinor/radix-job-scheduler/utils"
 	"github.com/gorilla/mux"
 	"github.com/rakyll/statik/fs"
-	"github.com/urfave/negroni/v2"
+	"github.com/urfave/negroni/v3"
 )
 
 const apiVersionRoute = "/api/v1"
