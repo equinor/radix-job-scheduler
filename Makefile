@@ -21,10 +21,6 @@ echo:
 	@echo "BRANCH : " $(BRANCH)
 	@echo "TAG : " $(TAG)
 
-.PHONY: test
-test:
-	go test -cover `go list ./...`
-
 # This make command is only needed for local testing now
 # we also do make swagger inside Dockerfile
 .PHONY: swagger
@@ -55,16 +51,13 @@ docker-push-main:
 test:
 	go test -cover `go list ./...`
 
-.PHONY: generate-mock
-generate-mock:
+.PHONY: mocks
+mocks:
 	mockgen -source ./api/v2/handler.go -destination ./api/v2/mock/handler_mock.go -package mock
 	mockgen -source ./api/v1/jobs/job_handler.go -destination ./api/v1/jobs/mock/job_mock.go -package mock
 	mockgen -source ./api/v1/batches/batch_handler.go -destination ./api/v1/batches/mock/batch_mock.go -package mock
+	mockgen -source ./models/notifications/notifier.go -destination ./models/notifications/notifier_mock.go -package notifications
 
 .HONY: staticcheck
 staticcheck:
 	staticcheck `go list ./...` && go vet `go list ./...`
-
-.PHONY: mocks
-mocks:
-	mockgen -source ./models/notifications/notifier.go -destination ./models/notifications/notifier_mock.go -package notifications
