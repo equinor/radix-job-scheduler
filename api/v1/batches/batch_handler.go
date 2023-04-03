@@ -13,6 +13,7 @@ import (
 	"github.com/equinor/radix-job-scheduler/models"
 	"github.com/equinor/radix-job-scheduler/models/common"
 	modelsv1 "github.com/equinor/radix-job-scheduler/models/v1"
+	defaultsv1 "github.com/equinor/radix-job-scheduler/models/v1/defaults"
 	modelsv2 "github.com/equinor/radix-job-scheduler/models/v2"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	"github.com/equinor/radix-operator/pkg/apis/utils/labels"
@@ -98,7 +99,7 @@ func (handler *batchHandler) GetBatches() ([]modelsv1.BatchStatus, error) {
 	if err != nil {
 		return nil, err
 	}
-	if len(radixBatches) > 0 {
+	if len(radixBatches) == 0 {
 		log.Debugf("No batches found for namespace %s", handler.common.Env.RadixDeploymentNamespace)
 		return allRadixBatchStatuses, nil
 	}
@@ -117,10 +118,10 @@ func (handler *batchHandler) GetBatches() ([]modelsv1.BatchStatus, error) {
 }
 
 func setBatchJobEventMessages(radixBatchStatus *modelsv1.BatchStatus, batchJobPodsMap map[string]corev1.Pod, eventMessageForPods map[string]string) {
-	for _, jobStatus := range radixBatchStatus.JobStatuses {
-		if batchJobPod, ok := batchJobPodsMap[jobStatus.Name]; ok {
+	for i := 0; i < len(radixBatchStatus.JobStatuses); i++ {
+		if batchJobPod, ok := batchJobPodsMap[radixBatchStatus.JobStatuses[i].Name]; ok {
 			if eventMessage, ok := eventMessageForPods[batchJobPod.Name]; ok {
-				jobStatus.Message = eventMessage
+				radixBatchStatus.JobStatuses[i].Message = eventMessage
 			}
 		}
 	}
@@ -192,7 +193,7 @@ func (handler *batchHandler) getRadixBatchJobMessagesAndPodMaps(selectorForBatch
 		return nil, nil, err
 	}
 	batchJobPodsMap := slice.Reduce(radixBatchesPods, make(map[string]corev1.Pod), func(acc map[string]corev1.Pod, pod corev1.Pod) map[string]corev1.Pod {
-		if batchJobName, ok := pod.GetLabels()[kube.RadixBatchJobNameLabel]; ok {
+		if batchJobName, ok := pod.GetLabels()[defaultsv1.K8sJobNameLabel]; ok {
 			acc[batchJobName] = pod
 		}
 		return acc
