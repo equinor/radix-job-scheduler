@@ -97,7 +97,8 @@ func (handler *jobHandler) GetJobs() ([]modelsv1.JobStatus, error) {
 	}
 	jobStatuses = append(jobStatuses, apiv1.GetJobStatusFromRadixBatchJobsStatuses(radixBatches...)...)
 
-	eventMessageForPods, batchJobPodsMap, err := handler.common.GetRadixBatchJobMessagesAndPodMaps(apiv1.GetLabelSelectorForAllRadixBatchesPods(handler.common.Env.RadixComponentName))
+	labelSelectorForAllRadixBatchesPods := apiv1.GetLabelSelectorForAllRadixBatchesPods(handler.common.Env.RadixComponentName)
+	eventMessageForPods, batchJobPodsMap, err := handler.common.GetRadixBatchJobMessagesAndPodMaps(labelSelectorForAllRadixBatchesPods)
 	if err != nil {
 		return nil, err
 	}
@@ -117,7 +118,8 @@ func (handler *jobHandler) GetJob(jobName string) (*modelsv1.JobStatus, error) {
 		if err != nil {
 			return nil, err
 		}
-		eventMessageForPods, batchJobPodsMap, err := handler.common.GetRadixBatchJobMessagesAndPodMaps(apiv1.GetLabelSelectorForRadixBatchesPods(handler.common.Env.RadixComponentName, batchName))
+		labelSelectorForRadixBatchesPods := apiv1.GetLabelSelectorForRadixBatchesPods(handler.common.Env.RadixComponentName, batchName)
+		eventMessageForPods, batchJobPodsMap, err := handler.common.GetRadixBatchJobMessagesAndPodMaps(labelSelectorForRadixBatchesPods)
 		if err != nil {
 			return nil, err
 		}
