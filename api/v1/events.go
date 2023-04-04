@@ -69,6 +69,9 @@ func (handler *Handler) GetRadixBatchJobMessagesAndPodMaps(selectorForRadixBatch
 
 // SetBatchJobEventMessageToBatchJobStatus sets the event message for the batch job status
 func SetBatchJobEventMessageToBatchJobStatus(jobStatus *modelsv1.JobStatus, batchJobPodsMap map[string]corev1.Pod, eventMessageForPods map[string]string) {
+	if jobStatus == nil || len(jobStatus.Message) > 0 {
+		return
+	}
 	if batchJobPod, ok := batchJobPodsMap[jobStatus.Name]; ok {
 		if eventMessage, ok := eventMessageForPods[batchJobPod.Name]; ok {
 			jobStatus.Message = eventMessage
