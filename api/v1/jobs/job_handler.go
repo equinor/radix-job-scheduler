@@ -64,6 +64,7 @@ func New(kube *kube.Kube, env *models.Env) JobHandler {
 func (handler *jobHandler) GetJobs() ([]modelsv1.JobStatus, error) {
 	log.Debugf("Get Jobs for namespace: %s", handler.common.Env.RadixDeploymentNamespace)
 
+	// Use Kubernetes jobs for backward compatibility
 	kubeJobs, err := handler.getAllJobs()
 	if err != nil {
 		return nil, err
@@ -79,7 +80,6 @@ func (handler *jobHandler) GetJobs() ([]modelsv1.JobStatus, error) {
 		jobStatuses[idx] = *GetJobStatusFromJob(handler.common.Kube.KubeClient(), k8sJob, podsMap[k8sJob.Name])
 	}
 
-	// Use ApiV2 for backward compatibility
 	// get all single jobs
 	radixBatches, err := handler.common.HandlerApiV2.GetRadixBatchSingleJobs()
 	if err != nil {
@@ -126,6 +126,7 @@ func (handler *jobHandler) GetJob(jobName string) (*modelsv1.JobStatus, error) {
 		apiv1.SetBatchJobEventMessageToBatchJobStatus(jobStatus, batchJobPodsMap, eventMessageForPods)
 		return jobStatus, nil
 	}
+
 	// Use Kubernetes jobs for backward compatibility
 	job, err := handler.getJobByName(jobName)
 	if err != nil {
@@ -143,7 +144,6 @@ func (handler *jobHandler) GetJob(jobName string) (*modelsv1.JobStatus, error) {
 // CreateJob Create a job with parameters
 func (handler *jobHandler) CreateJob(jobScheduleDescription *common.JobScheduleDescription) (*modelsv1.JobStatus, error) {
 	log.Debugf("create job for namespace: %s", handler.common.Env.RadixDeploymentNamespace)
-	// Use ApiV2 for backward compatibility
 	radixBatch, err := handler.common.HandlerApiV2.CreateRadixBatchSingleJob(jobScheduleDescription)
 	if err != nil {
 		return nil, err

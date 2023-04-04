@@ -74,6 +74,7 @@ func New(kube *kube.Kube, env *models.Env) BatchHandler {
 func (handler *batchHandler) GetBatches() ([]modelsv1.BatchStatus, error) {
 	log.Debugf("Get batches for the namespace: %s", handler.common.Env.RadixDeploymentNamespace)
 
+	// Use Kubernetes jobs for backward compatibility
 	allBatches, err := handler.getAllBatches()
 	if err != nil {
 		return nil, err
@@ -92,6 +93,7 @@ func (handler *batchHandler) GetBatches() ([]modelsv1.BatchStatus, error) {
 			BatchType: string(kube.RadixBatchTypeBatch),
 		})
 	}
+
 	radixBatches, err := handler.common.HandlerApiV2.GetRadixBatches()
 	if err != nil {
 		return nil, err
@@ -143,6 +145,8 @@ func (handler *batchHandler) GetBatch(batchName string) (*modelsv1.BatchStatus, 
 		return radixBatchStatus, nil
 	}
 	log.Debugf("found Batch %s for namespace: %s", batchName, handler.common.Env.RadixDeploymentNamespace)
+
+	// Use Kubernetes jobs for backward compatibility
 	batchJobs, err := handler.getBatchJobs(batchName)
 	if err != nil {
 		return nil, err
