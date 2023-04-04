@@ -136,23 +136,22 @@ func (handler *batchHandler) GetBatchJob(batchName, jobName string) (*modelsv1.J
 func (handler *batchHandler) GetBatch(batchName string) (*modelsv1.BatchStatus, error) {
 	log.Debugf("get batches for namespace: %s", handler.common.Env.RadixDeploymentNamespace)
 
-	selectorForBatchObjects := getLabelSelectorForBatchObjects(batchName)
 	batch, err := handler.common.GetBatch(batchName)
 	if err != nil {
-		if errors.IsNotFound(err) {
-			radixBatch, err := handler.common.HandlerApiV2.GetRadixBatch(batchName)
-			if err != nil {
-				return nil, err
-			}
-			eventMessageForPods, batchJobPodsMap, err := handler.getRadixBatchJobMessagesAndPodMaps(selectorForBatchObjects)
-			if err != nil {
-				return nil, err
-			}
-			radixBatchStatus := GetBatchStatusFromRadixBatch(radixBatch)
-			setBatchJobEventMessages(radixBatchStatus, batchJobPodsMap, eventMessageForPods)
-			return radixBatchStatus, nil
+		if !errors.IsNotFound(err) {
+			return nil, err
 		}
-		return nil, err
+		radixBatch, err := handler.common.HandlerApiV2.GetRadixBatch(batchName)
+		if err != nil {
+			return nil, err
+		}
+		eventMessageForPods, batchJobPodsMap, err := handler.getRadixBatchJobMessagesAndPodMaps(handler.getLabelSelectorForRadixBatchesPods(batchName))
+		if err != nil {
+			return nil, err
+		}
+		radixBatchStatus := GetBatchStatusFromRadixBatch(radixBatch)
+		setBatchJobEventMessages(radixBatchStatus, batchJobPodsMap, eventMessageForPods)
+		return radixBatchStatus, nil
 	}
 	log.Debugf("found Batch %s for namespace: %s", batchName, handler.common.Env.RadixDeploymentNamespace)
 	batchJobs, err := handler.getBatchJobs(batchName)
@@ -169,7 +168,7 @@ func (handler *batchHandler) GetBatch(batchName string) (*modelsv1.BatchStatus, 
 		BatchType:   string(kube.RadixBatchTypeBatch),
 	}
 
-	batchJobsPods, err := handler.common.GetPodsForLabelSelector(selectorForBatchObjects)
+	batchJobsPods, err := handler.common.GetPodsForLabelSelector(getLabelSelectorForBatchObjects(batchName))
 	if err != nil {
 		return nil, err
 	}
@@ -348,14 +347,6 @@ func (handler *batchHandler) getAllBatches() ([]*batchv1.Job, error) {
 	return slice.PointersOf(kubeBatches.Items).([]*batchv1.Job), nil
 }
 
-func getLabelSelectorForBatchPods(batchName string) string {
-	return kubeLabels.SelectorFromSet(
-		labels.Merge(
-			labels.ForBatchName(batchName),
-			labels.ForBatchScheduleJobType(),
-		)).String()
-}
-
 func getLabelSelectorForAllOutdatedBatchesPods() string {
 	return kubeLabels.SelectorFromSet(labels.ForBatchScheduleJobType()).String()
 }
@@ -372,11 +363,32 @@ func (handler *batchHandler) getLabelSelectorForAllRadixBatchesPods() string {
 		",")
 }
 
+func (handler *batchHandler) getLabelSelectorForRadixBatchesPods(batchName string) string {
+	radixBatchJobNameExistsReq, _ := kubeLabels.NewRequirement(kube.RadixBatchJobNameLabel, selection.Exists, []string{})
+	radixBatchJobNameExistsSel := kubeLabels.NewSelector().Add(*radixBatchJobNameExistsReq)
+	return strings.Join([]string{kubeLabels.SelectorFromSet(
+		labels.Merge(
+			labels.ForComponentName(handler.common.Env.RadixComponentName),
+			labels.ForBatchName(batchName),
+			labels.ForJobScheduleJobType(),
+		)).String(),
+		radixBatchJobNameExistsSel.String()},
+		",")
+}
+
 func getLabelSelectorForBatchObjects(batchName string) string {
 	return kubeLabels.SelectorFromSet(labels.Merge(
 		labels.ForBatchName(batchName),
 		labels.ForJobScheduleJobType(),
 	)).String()
+}
+
+func getLabelSelectorForBatchPods(batchName string) string {
+	return kubeLabels.SelectorFromSet(
+		labels.Merge(
+			labels.ForBatchName(batchName),
+			labels.ForBatchScheduleJobType(),
+		)).String()
 }
 
 func (handler *batchHandler) getBatchJobs(batchName string) ([]*batchv1.Job, error) {
