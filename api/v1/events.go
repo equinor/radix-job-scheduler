@@ -3,16 +3,17 @@ package v1
 import (
 	"context"
 	"fmt"
-	"github.com/equinor/radix-common/utils/slice"
-	defaultsv1 "github.com/equinor/radix-job-scheduler/models/v1/defaults"
-	"github.com/equinor/radix-operator/pkg/apis/kube"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/selection"
 	"sort"
 	"strings"
 
+	"github.com/equinor/radix-common/utils/slice"
+	modelsv1 "github.com/equinor/radix-job-scheduler/models/v1"
+	defaultsv1 "github.com/equinor/radix-job-scheduler/models/v1/defaults"
+	"github.com/equinor/radix-operator/pkg/apis/kube"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/selection"
 )
 
 // GetLastEventMessageForPods returns the last event message for pods
@@ -50,6 +51,25 @@ func sortEventsAsc(events []corev1.Event) []corev1.Event {
 	return events
 }
 
+// GetRadixBatchJobMessagesAndPodMaps returns the event messages for the batch job statuses
+func (handler *Handler) GetRadixBatchJobMessagesAndPodMaps(selectorForRadixBatchPods string) (map[string]string, map[string]corev1.Pod, error) {
+	radixBatchesPods, err := handler.GetPodsForLabelSelector(selectorForRadixBatchPods)
+	if err != nil {
+		return nil, nil, err
+	}
+	eventMessageForPods, err := handler.GetLastEventMessageForPods(radixBatchesPods)
+	if err != nil {
+		return nil, nil, err
+	}
+	batchJobPodsMap := slice.Reduce(radixBatchesPods, make(map[string]corev1.Pod), func(acc map[string]corev1.Pod, pod corev1.Pod) map[string]corev1.Pod {
+		if batchJobName, ok := pod.GetLabels()[defaultsv1.K8sJobNameLabel]; ok {
+			acc[batchJobName] = pod
+		}
+		return acc
+	})
+	return eventMessageForPods, batchJobPodsMap, nil
+}
+
 func getLabelSelectorForJobComponentForJobPods(componentName string) string {
 	reqNoBatchJobName, _ := labels.NewRequirement(kube.RadixBatchJobNameLabel, selection.Exists, []string{})
 	reqComponentName, _ := labels.NewRequirement(kube.RadixComponentLabel, selection.Equals, []string{componentName})
@@ -61,4 +81,13 @@ func getLabelSelectorForJobComponentForJobPods(componentName string) string {
 		Add(*reqJobTypeJobScheduler).
 		Add(*reqJobPodScheduler).
 		String()
+}
+
+// SetBatchJobEventMessageToBatchJobStatus sets the event message for the batch job status
+func SetBatchJobEventMessageToBatchJobStatus(jobStatus *modelsv1.JobStatus, batchJobPodsMap map[string]corev1.Pod, eventMessageForPods map[string]string) {
+	if batchJobPod, ok := batchJobPodsMap[jobStatus.Name]; ok {
+		if eventMessage, ok := eventMessageForPods[batchJobPod.Name]; ok {
+			jobStatus.Message = eventMessage
+		}
+	}
 }

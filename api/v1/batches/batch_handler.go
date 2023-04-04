@@ -3,7 +3,6 @@ package batchesv1
 import (
 	"context"
 	"sort"
-	"strings"
 
 	"github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-common/utils/slice"
@@ -23,7 +22,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kubeLabels "k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/selection"
 )
 
 type batchHandler struct {
@@ -104,7 +102,7 @@ func (handler *batchHandler) GetBatches() ([]modelsv1.BatchStatus, error) {
 		return allRadixBatchStatuses, nil
 	}
 
-	eventMessageForPods, batchJobPodsMap, err := handler.getRadixBatchJobMessagesAndPodMaps(handler.getLabelSelectorForAllRadixBatchesPods())
+	eventMessageForPods, batchJobPodsMap, err := handler.getRadixBatchJobMessagesAndPodMaps(apiv1.GetLabelSelectorForAllRadixBatchesPods(handler.common.Env.RadixComponentName))
 	if err != nil {
 		return nil, err
 	}
@@ -115,16 +113,6 @@ func (handler *batchHandler) GetBatches() ([]modelsv1.BatchStatus, error) {
 	}
 	log.Debugf("Found %v batches for namespace %s", len(allRadixBatchStatuses), handler.common.Env.RadixDeploymentNamespace)
 	return allRadixBatchStatuses, nil
-}
-
-func setBatchJobEventMessages(radixBatchStatus *modelsv1.BatchStatus, batchJobPodsMap map[string]corev1.Pod, eventMessageForPods map[string]string) {
-	for i := 0; i < len(radixBatchStatus.JobStatuses); i++ {
-		if batchJobPod, ok := batchJobPodsMap[radixBatchStatus.JobStatuses[i].Name]; ok {
-			if eventMessage, ok := eventMessageForPods[batchJobPod.Name]; ok {
-				radixBatchStatus.JobStatuses[i].Message = eventMessage
-			}
-		}
-	}
 }
 
 // GetBatchJob Get status of a batch job
@@ -145,7 +133,7 @@ func (handler *batchHandler) GetBatch(batchName string) (*modelsv1.BatchStatus, 
 		if err != nil {
 			return nil, err
 		}
-		eventMessageForPods, batchJobPodsMap, err := handler.getRadixBatchJobMessagesAndPodMaps(handler.getLabelSelectorForRadixBatchesPods(batchName))
+		eventMessageForPods, batchJobPodsMap, err := handler.getRadixBatchJobMessagesAndPodMaps(apiv1.GetLabelSelectorForRadixBatchesPods(handler.common.Env.RadixComponentName, batchName))
 		if err != nil {
 			return nil, err
 		}
@@ -351,31 +339,6 @@ func getLabelSelectorForAllOutdatedBatchesPods() string {
 	return kubeLabels.SelectorFromSet(labels.ForBatchScheduleJobType()).String()
 }
 
-func (handler *batchHandler) getLabelSelectorForAllRadixBatchesPods() string {
-	radixBatchJobNameExistsReq, _ := kubeLabels.NewRequirement(kube.RadixBatchJobNameLabel, selection.Exists, []string{})
-	radixBatchJobNameExistsSel := kubeLabels.NewSelector().Add(*radixBatchJobNameExistsReq)
-	return strings.Join([]string{kubeLabels.SelectorFromSet(
-		labels.Merge(
-			labels.ForComponentName(handler.common.Env.RadixComponentName),
-			labels.ForJobScheduleJobType(),
-		)).String(),
-		radixBatchJobNameExistsSel.String()},
-		",")
-}
-
-func (handler *batchHandler) getLabelSelectorForRadixBatchesPods(batchName string) string {
-	radixBatchJobNameExistsReq, _ := kubeLabels.NewRequirement(kube.RadixBatchJobNameLabel, selection.Exists, []string{})
-	radixBatchJobNameExistsSel := kubeLabels.NewSelector().Add(*radixBatchJobNameExistsReq)
-	return strings.Join([]string{kubeLabels.SelectorFromSet(
-		labels.Merge(
-			labels.ForComponentName(handler.common.Env.RadixComponentName),
-			labels.ForBatchName(batchName),
-			labels.ForJobScheduleJobType(),
-		)).String(),
-		radixBatchJobNameExistsSel.String()},
-		",")
-}
-
 func getLabelSelectorForBatchObjects(batchName string) string {
 	return kubeLabels.SelectorFromSet(labels.Merge(
 		labels.ForBatchName(batchName),
@@ -407,4 +370,10 @@ func (handler *batchHandler) getBatchJobs(batchName string) ([]*batchv1.Job, err
 	}
 
 	return slice.PointersOf(kubeJobs.Items).([]*batchv1.Job), nil
+}
+
+func setBatchJobEventMessages(radixBatchStatus *modelsv1.BatchStatus, batchJobPodsMap map[string]corev1.Pod, eventMessageForPods map[string]string) {
+	for i := 0; i < len(radixBatchStatus.JobStatuses); i++ {
+		apiv1.SetBatchJobEventMessageToBatchJobStatus(&radixBatchStatus.JobStatuses[i], batchJobPodsMap, eventMessageForPods)
+	}
 }
