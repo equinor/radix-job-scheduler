@@ -29,17 +29,17 @@ type jobHandler struct {
 }
 
 type JobHandler interface {
-	//GetJobs Get status of all jobs
+	// GetJobs Get status of all jobs
 	GetJobs() ([]modelsv1.JobStatus, error)
-	//GetJob Get status of a job
+	// GetJob Get status of a job
 	GetJob(string) (*modelsv1.JobStatus, error)
-	//CreateJob Create a job with parameters
+	// CreateJob Create a job with parameters
 	CreateJob(*common.JobScheduleDescription) (*modelsv1.JobStatus, error)
-	//MaintainHistoryLimit Delete outdated jobs
+	// MaintainHistoryLimit Delete outdated jobs
 	MaintainHistoryLimit() error
-	//DeleteJob Delete a job
+	// DeleteJob Delete a job
 	DeleteJob(string) error
-	//StopJob Stop a job
+	// StopJob Stop a job
 	StopJob(string) error
 }
 
@@ -64,6 +64,7 @@ func New(kube *kube.Kube, env *models.Env) JobHandler {
 func (handler *jobHandler) GetJobs() ([]modelsv1.JobStatus, error) {
 	log.Debugf("Get Jobs for namespace: %s", handler.common.Env.RadixDeploymentNamespace)
 
+	// Use Kubernetes jobs for backward compatibility
 	kubeJobs, err := handler.getAllJobs()
 	if err != nil {
 		return nil, err
@@ -74,28 +75,39 @@ func (handler *jobHandler) GetJobs() ([]modelsv1.JobStatus, error) {
 		return nil, err
 	}
 	podsMap := apiv1.GetPodsToJobNameMap(pods)
-	jobs := make([]modelsv1.JobStatus, len(kubeJobs))
+	jobStatuses := make([]modelsv1.JobStatus, len(kubeJobs))
 	for idx, k8sJob := range kubeJobs {
-		jobs[idx] = *GetJobStatusFromJob(handler.common.Kube.KubeClient(), k8sJob, podsMap[k8sJob.Name])
+		jobStatuses[idx] = *GetJobStatusFromJob(handler.common.Kube.KubeClient(), k8sJob, podsMap[k8sJob.Name])
 	}
 
-	//Use ApiV2 for backward compatibility
-	//get all single jobs
+	// get all single jobs
 	radixBatches, err := handler.common.HandlerApiV2.GetRadixBatchSingleJobs()
 	if err != nil {
 		return nil, err
 	}
-	jobs = append(jobs, apiv1.GetJobStatusFromRadixBatchJobsStatuses(radixBatches...)...)
+	if err != nil {
+		return nil, err
+	}
+	jobStatuses = append(jobStatuses, apiv1.GetJobStatusFromRadixBatchJobsStatuses(radixBatches...)...)
 
-	//get all batch jobs
+	// get all batch jobs
 	radixBatches, err = handler.common.HandlerApiV2.GetRadixBatches()
 	if err != nil {
 		return nil, err
 	}
-	jobs = append(jobs, apiv1.GetJobStatusFromRadixBatchJobsStatuses(radixBatches...)...)
+	jobStatuses = append(jobStatuses, apiv1.GetJobStatusFromRadixBatchJobsStatuses(radixBatches...)...)
 
-	log.Debugf("Found %v jobs for namespace %s", len(jobs), handler.common.Env.RadixDeploymentNamespace)
-	return jobs, nil
+	labelSelectorForAllRadixBatchesPods := apiv1.GetLabelSelectorForAllRadixBatchesPods(handler.common.Env.RadixComponentName)
+	eventMessageForPods, batchJobPodsMap, err := handler.common.GetRadixBatchJobMessagesAndPodMaps(labelSelectorForAllRadixBatchesPods)
+	if err != nil {
+		return nil, err
+	}
+	for i := 0; i < len(jobStatuses); i++ {
+		apiv1.SetBatchJobEventMessageToBatchJobStatus(&jobStatuses[i], batchJobPodsMap, eventMessageForPods)
+	}
+
+	log.Debugf("Found %v jobs for namespace %s", len(jobStatuses), handler.common.Env.RadixDeploymentNamespace)
+	return jobStatuses, nil
 }
 
 // GetJob Get status of a job
@@ -103,11 +115,19 @@ func (handler *jobHandler) GetJob(jobName string) (*modelsv1.JobStatus, error) {
 	log.Debugf("get job %s for namespace: %s", jobName, handler.common.Env.RadixDeploymentNamespace)
 	if batchName, _, ok := apiv1.ParseBatchAndJobNameFromScheduledJobName(jobName); ok {
 		jobStatus, err := apiv1.GetBatchJob(handler.common.HandlerApiV2, batchName, jobName)
-		if err == nil {
-			return jobStatus, nil
+		if err != nil {
+			return nil, err
 		}
+		labelSelectorForRadixBatchesPods := apiv1.GetLabelSelectorForRadixBatchesPods(handler.common.Env.RadixComponentName, batchName)
+		eventMessageForPods, batchJobPodsMap, err := handler.common.GetRadixBatchJobMessagesAndPodMaps(labelSelectorForRadixBatchesPods)
+		if err != nil {
+			return nil, err
+		}
+		apiv1.SetBatchJobEventMessageToBatchJobStatus(jobStatus, batchJobPodsMap, eventMessageForPods)
+		return jobStatus, nil
 	}
-	//Use Kubernetes jobs for backward compatibility
+
+	// Use Kubernetes jobs for backward compatibility
 	job, err := handler.getJobByName(jobName)
 	if err != nil {
 		return nil, err
@@ -124,7 +144,6 @@ func (handler *jobHandler) GetJob(jobName string) (*modelsv1.JobStatus, error) {
 // CreateJob Create a job with parameters
 func (handler *jobHandler) CreateJob(jobScheduleDescription *common.JobScheduleDescription) (*modelsv1.JobStatus, error) {
 	log.Debugf("create job for namespace: %s", handler.common.Env.RadixDeploymentNamespace)
-	//Use ApiV2 for backward compatibility
 	radixBatch, err := handler.common.HandlerApiV2.CreateRadixBatchSingleJob(jobScheduleDescription)
 	if err != nil {
 		return nil, err
@@ -138,14 +157,14 @@ func (handler *jobHandler) DeleteJob(jobName string) error {
 	if batchName, _, ok := apiv1.ParseBatchAndJobNameFromScheduledJobName(jobName); ok {
 		radixBatch, err := handler.common.HandlerApiV2.GetRadixBatch(batchName)
 		if err == nil && radixBatch.BatchType == string(kube.RadixBatchTypeJob) {
-			//only job in a single job batch can be deleted
+			// only job in a single job batch can be deleted
 			return handler.common.HandlerApiV2.DeleteRadixBatch(batchName)
 		}
 		if err != nil && !errors.IsNotFound(err) {
 			return err
 		}
 	}
-	//Use Kubernetes jobs for backward compatibility
+	// Use Kubernetes jobs for backward compatibility
 	return handler.garbageCollectJob(jobName)
 }
 
