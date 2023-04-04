@@ -12,7 +12,6 @@ import (
 	"github.com/equinor/radix-job-scheduler/models"
 	"github.com/equinor/radix-job-scheduler/models/common"
 	modelsv1 "github.com/equinor/radix-job-scheduler/models/v1"
-	defaultsv1 "github.com/equinor/radix-job-scheduler/models/v1/defaults"
 	modelsv2 "github.com/equinor/radix-job-scheduler/models/v2"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	"github.com/equinor/radix-operator/pkg/apis/utils/labels"
@@ -102,7 +101,8 @@ func (handler *batchHandler) GetBatches() ([]modelsv1.BatchStatus, error) {
 		return allRadixBatchStatuses, nil
 	}
 
-	eventMessageForPods, batchJobPodsMap, err := handler.getRadixBatchJobMessagesAndPodMaps(apiv1.GetLabelSelectorForAllRadixBatchesPods(handler.common.Env.RadixComponentName))
+	labelSelectorForAllRadixBatchesPods := apiv1.GetLabelSelectorForAllRadixBatchesPods(handler.common.Env.RadixComponentName)
+	eventMessageForPods, batchJobPodsMap, err := handler.common.GetRadixBatchJobMessagesAndPodMaps(labelSelectorForAllRadixBatchesPods)
 	if err != nil {
 		return nil, err
 	}
@@ -133,11 +133,12 @@ func (handler *batchHandler) GetBatch(batchName string) (*modelsv1.BatchStatus, 
 		if err != nil {
 			return nil, err
 		}
-		eventMessageForPods, batchJobPodsMap, err := handler.getRadixBatchJobMessagesAndPodMaps(apiv1.GetLabelSelectorForRadixBatchesPods(handler.common.Env.RadixComponentName, batchName))
+		radixBatchStatus := GetBatchStatusFromRadixBatch(radixBatch)
+		labelSelectorForRadixBatchesPods := apiv1.GetLabelSelectorForRadixBatchesPods(handler.common.Env.RadixComponentName, batchName)
+		eventMessageForPods, batchJobPodsMap, err := handler.common.GetRadixBatchJobMessagesAndPodMaps(labelSelectorForRadixBatchesPods)
 		if err != nil {
 			return nil, err
 		}
-		radixBatchStatus := GetBatchStatusFromRadixBatch(radixBatch)
 		setBatchJobEventMessages(radixBatchStatus, batchJobPodsMap, eventMessageForPods)
 		return radixBatchStatus, nil
 	}
@@ -168,24 +169,6 @@ func (handler *batchHandler) GetBatch(batchName string) (*modelsv1.BatchStatus, 
 	log.Debugf("Found %v jobs for the batch '%s' for namespace '%s'", len(batchJobs), batchName,
 		handler.common.Env.RadixDeploymentNamespace)
 	return &batchStatus, nil
-}
-
-func (handler *batchHandler) getRadixBatchJobMessagesAndPodMaps(selectorForBatchObjects string) (map[string]string, map[string]corev1.Pod, error) {
-	radixBatchesPods, err := handler.common.GetPodsForLabelSelector(selectorForBatchObjects)
-	if err != nil {
-		return nil, nil, err
-	}
-	eventMessageForPods, err := handler.common.GetLastEventMessageForPods(radixBatchesPods)
-	if err != nil {
-		return nil, nil, err
-	}
-	batchJobPodsMap := slice.Reduce(radixBatchesPods, make(map[string]corev1.Pod), func(acc map[string]corev1.Pod, pod corev1.Pod) map[string]corev1.Pod {
-		if batchJobName, ok := pod.GetLabels()[defaultsv1.K8sJobNameLabel]; ok {
-			acc[batchJobName] = pod
-		}
-		return acc
-	})
-	return eventMessageForPods, batchJobPodsMap, nil
 }
 
 // CreateBatch Create a batch with parameters

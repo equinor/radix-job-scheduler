@@ -17,6 +17,7 @@ func GetLabelSelectorForBatches(componentName string) string {
 	).String()
 }
 
+// GetLabelSelectorForAllRadixBatchesPods Gets a label selector for all radix batches pods
 func GetLabelSelectorForAllRadixBatchesPods(componentName string) string {
 	radixBatchJobNameExistsReq, _ := kubeLabels.NewRequirement(kube.RadixBatchJobNameLabel, selection.Exists, []string{})
 	radixBatchJobNameExistsSel := kubeLabels.NewSelector().Add(*radixBatchJobNameExistsReq)
@@ -29,6 +30,7 @@ func GetLabelSelectorForAllRadixBatchesPods(componentName string) string {
 		",")
 }
 
+// GetLabelSelectorForRadixBatchesPods Gets a label selector for a radix batch pods
 func GetLabelSelectorForRadixBatchesPods(componentName, batchName string) string {
 	radixBatchJobNameExistsReq, _ := kubeLabels.NewRequirement(kube.RadixBatchJobNameLabel, selection.Exists, []string{})
 	radixBatchJobNameExistsSel := kubeLabels.NewSelector().Add(*radixBatchJobNameExistsReq)

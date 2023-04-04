@@ -9,11 +9,8 @@ import (
 	"github.com/equinor/radix-common/utils/slice"
 	modelsv1 "github.com/equinor/radix-job-scheduler/models/v1"
 	defaultsv1 "github.com/equinor/radix-job-scheduler/models/v1/defaults"
-	"github.com/equinor/radix-operator/pkg/apis/kube"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/selection"
 )
 
 // GetLastEventMessageForPods returns the last event message for pods
@@ -68,19 +65,6 @@ func (handler *Handler) GetRadixBatchJobMessagesAndPodMaps(selectorForRadixBatch
 		return acc
 	})
 	return eventMessageForPods, batchJobPodsMap, nil
-}
-
-func getLabelSelectorForJobComponentForJobPods(componentName string) string {
-	reqNoBatchJobName, _ := labels.NewRequirement(kube.RadixBatchJobNameLabel, selection.Exists, []string{})
-	reqComponentName, _ := labels.NewRequirement(kube.RadixComponentLabel, selection.Equals, []string{componentName})
-	reqJobTypeJobScheduler, _ := labels.NewRequirement(kube.RadixJobTypeLabel, selection.Equals, []string{kube.RadixJobTypeJobSchedule})
-	reqJobPodScheduler, _ := labels.NewRequirement(defaultsv1.K8sJobNameLabel, selection.Exists, []string{})
-	return labels.NewSelector().
-		Add(*reqNoBatchJobName).
-		Add(*reqComponentName).
-		Add(*reqJobTypeJobScheduler).
-		Add(*reqJobPodScheduler).
-		String()
 }
 
 // SetBatchJobEventMessageToBatchJobStatus sets the event message for the batch job status
