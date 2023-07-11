@@ -3,8 +3,8 @@ module github.com/equinor/radix-job-scheduler
 go 1.19
 
 require (
-	github.com/equinor/radix-common v1.2.10
-	github.com/equinor/radix-operator v1.35.2
+	github.com/equinor/radix-common v1.3.0
+	github.com/equinor/radix-operator v1.99.1000-0.20230711145729-cc359e3ac452
 	github.com/golang/mock v1.6.0
 	github.com/gorilla/handlers v1.5.1
 	github.com/gorilla/mux v1.8.0
@@ -18,7 +18,7 @@ require (
 	k8s.io/api v0.25.8
 	k8s.io/apimachinery v0.25.8
 	k8s.io/client-go v0.25.8
-	sigs.k8s.io/secrets-store-csi-driver v1.3.2
+	sigs.k8s.io/secrets-store-csi-driver v1.3.3
 )
 
 require (
@@ -52,6 +52,7 @@ require (
 	github.com/prometheus/client_model v0.3.0 // indirect
 	github.com/prometheus/common v0.37.0 // indirect
 	github.com/prometheus/procfs v0.8.0 // indirect
+	golang.org/x/crypto v0.0.0-20221005025214-4161e89ecf1b // indirect
 	golang.org/x/net v0.7.0 // indirect
 	golang.org/x/oauth2 v0.2.0 // indirect
 	golang.org/x/sys v0.5.0 // indirect
