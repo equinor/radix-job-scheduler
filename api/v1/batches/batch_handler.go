@@ -184,6 +184,21 @@ func (handler *batchHandler) CreateBatch(batchScheduleDescription *common.BatchS
 	return GetBatchStatusFromRadixBatch(radixBatch), nil
 }
 
+// CopyBatch Copy a batch
+func (handler *batchHandler) CopyBatch(batchName string) (*modelsv1.BatchStatus, error) {
+	namespace := handler.common.Env.RadixDeploymentNamespace
+	_, err := handler.common.Kube.RadixClient().RadixV1().RadixBatches(namespace).Get(context.Background(), batchName, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+	// radixBatch, err := handler.common.HandlerApiV2.CreateRadixBatch(batchScheduleDescription)
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// return GetBatchStatusFromRadixBatch(radixBatch), nil
+	return nil, nil
+}
+
 // DeleteBatch Delete a batch
 func (handler *batchHandler) DeleteBatch(batchName string) error {
 	log.Debugf("delete batch %s for namespace: %s", batchName, handler.common.Env.RadixDeploymentNamespace)
