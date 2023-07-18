@@ -45,7 +45,7 @@ func TestGetBatches(t *testing.T) {
 		ctx := context.Background()
 		batchHandler.
 			EXPECT().
-			GetBatches(ctx).
+			GetBatches(test.RequestContextMatcher{}).
 			Return([]modelsV1.BatchStatus{batchState}, nil).
 			Times(1)
 
@@ -74,7 +74,7 @@ func TestGetBatches(t *testing.T) {
 		ctx := context.Background()
 		batchHandler.
 			EXPECT().
-			GetBatches(gomock.Any()).
+			GetBatches(test.RequestContextMatcher{}).
 			Return(nil, apiErrors.NewUnknown(fmt.Errorf("unhandled error"))).
 			Times(1)
 
@@ -113,7 +113,7 @@ func TestGetBatch(t *testing.T) {
 		ctx := context.Background()
 		batchHandler.
 			EXPECT().
-			GetBatch(ctx, batchName).
+			GetBatch(test.RequestContextMatcher{}, batchName).
 			Return(&batchState, nil).
 			Times(1)
 
@@ -142,7 +142,7 @@ func TestGetBatch(t *testing.T) {
 		ctx := context.Background()
 		batchHandler.
 			EXPECT().
-			GetBatch(ctx, gomock.Any()).
+			GetBatch(test.RequestContextMatcher{}, gomock.Any()).
 			Return(nil, apiErrors.NewNotFound(kind, batchName)).
 			Times(1)
 
@@ -170,7 +170,7 @@ func TestGetBatch(t *testing.T) {
 		ctx := context.Background()
 		batchHandler.
 			EXPECT().
-			GetBatch(ctx, gomock.Any()).
+			GetBatch(test.RequestContextMatcher{}, gomock.Any()).
 			Return(nil, errors.New("unhandled error")).
 			Times(1)
 
@@ -209,12 +209,12 @@ func TestCreateBatch(t *testing.T) {
 		ctx := context.Background()
 		batchHandler.
 			EXPECT().
-			CreateBatch(ctx, &batchScheduleDescription).
+			CreateBatch(test.RequestContextMatcher{}, &batchScheduleDescription).
 			Return(&createdBatch, nil).
 			Times(1)
 		batchHandler.
 			EXPECT().
-			MaintainHistoryLimit(ctx).
+			MaintainHistoryLimit(test.RequestContextMatcher{}).
 			Return(nil).
 			Times(1)
 		controllerTestUtils := setupTest(batchHandler)
@@ -273,12 +273,12 @@ func TestCreateBatch(t *testing.T) {
 		ctx := context.Background()
 		batchHandler.
 			EXPECT().
-			CreateBatch(ctx, &batchScheduleDescription).
+			CreateBatch(test.RequestContextMatcher{}, &batchScheduleDescription).
 			Return(&createdBatch, nil).
 			Times(1)
 		batchHandler.
 			EXPECT().
-			MaintainHistoryLimit(ctx).
+			MaintainHistoryLimit(test.RequestContextMatcher{}).
 			Return(nil).
 			Times(1)
 		controllerTestUtils := setupTest(batchHandler)
@@ -319,12 +319,12 @@ func TestCreateBatch(t *testing.T) {
 		ctx := context.Background()
 		batchHandler.
 			EXPECT().
-			CreateBatch(ctx, &batchScheduleDescription).
+			CreateBatch(test.RequestContextMatcher{}, &batchScheduleDescription).
 			Return(&createdBatch, nil).
 			Times(1)
 		batchHandler.
 			EXPECT().
-			MaintainHistoryLimit(ctx).
+			MaintainHistoryLimit(test.RequestContextMatcher{}).
 			Return(errors.New("an error")).
 			Times(1)
 		controllerTestUtils := setupTest(batchHandler)
@@ -352,11 +352,11 @@ func TestCreateBatch(t *testing.T) {
 		ctx := context.Background()
 		batchHandler.
 			EXPECT().
-			CreateBatch(ctx, gomock.Any()).
+			CreateBatch(test.RequestContextMatcher{}, gomock.Any()).
 			Times(0)
 		batchHandler.
 			EXPECT().
-			MaintainHistoryLimit(ctx).
+			MaintainHistoryLimit(test.RequestContextMatcher{}).
 			Times(0)
 		controllerTestUtils := setupTest(batchHandler)
 		responseChannel := controllerTestUtils.ExecuteRequestWithBody(ctx, http.MethodPost, "/api/v1/batches", struct{ JobScheduleDescriptions interface{} }{JobScheduleDescriptions: struct{}{}})
@@ -384,12 +384,12 @@ func TestCreateBatch(t *testing.T) {
 		ctx := context.Background()
 		batchHandler.
 			EXPECT().
-			CreateBatch(ctx, &batchScheduleDescription).
+			CreateBatch(test.RequestContextMatcher{}, &batchScheduleDescription).
 			Return(nil, apiErrors.NewNotFound(anyKind, anyName)).
 			Times(1)
 		batchHandler.
 			EXPECT().
-			MaintainHistoryLimit(ctx).
+			MaintainHistoryLimit(test.RequestContextMatcher{}).
 			Times(0)
 		controllerTestUtils := setupTest(batchHandler)
 		responseChannel := controllerTestUtils.ExecuteRequest(ctx, http.MethodPost, "/api/v1/batches")
@@ -416,12 +416,12 @@ func TestCreateBatch(t *testing.T) {
 		ctx := context.Background()
 		batchHandler.
 			EXPECT().
-			CreateBatch(ctx, &batchScheduleDescription).
+			CreateBatch(test.RequestContextMatcher{}, &batchScheduleDescription).
 			Return(nil, errors.New("any error")).
 			Times(1)
 		batchHandler.
 			EXPECT().
-			MaintainHistoryLimit(ctx).
+			MaintainHistoryLimit(test.RequestContextMatcher{}).
 			Times(0)
 		controllerTestUtils := setupTest(batchHandler)
 		responseChannel := controllerTestUtils.ExecuteRequest(ctx, http.MethodPost, "/api/v1/batches")
@@ -449,7 +449,7 @@ func TestDeleteBatch(t *testing.T) {
 		ctx := context.Background()
 		batchHandler.
 			EXPECT().
-			DeleteBatch(ctx, batchName).
+			DeleteBatch(test.RequestContextMatcher{}, batchName).
 			Return(nil).
 			Times(1)
 		controllerTestUtils := setupTest(batchHandler)
@@ -476,7 +476,7 @@ func TestDeleteBatch(t *testing.T) {
 		ctx := context.Background()
 		batchHandler.
 			EXPECT().
-			DeleteBatch(ctx, batchName).
+			DeleteBatch(test.RequestContextMatcher{}, batchName).
 			Return(apiErrors.NewNotFound("batch", batchName)).
 			Times(1)
 		controllerTestUtils := setupTest(batchHandler)
@@ -504,7 +504,7 @@ func TestDeleteBatch(t *testing.T) {
 		ctx := context.Background()
 		batchHandler.
 			EXPECT().
-			DeleteBatch(ctx, batchName).
+			DeleteBatch(test.RequestContextMatcher{}, batchName).
 			Return(errors.New("any error")).
 			Times(1)
 		controllerTestUtils := setupTest(batchHandler)
@@ -533,7 +533,7 @@ func TestStopBatch(t *testing.T) {
 		ctx := context.Background()
 		batchHandler.
 			EXPECT().
-			StopBatch(ctx, batchName).
+			StopBatch(test.RequestContextMatcher{}, batchName).
 			Return(nil).
 			Times(1)
 		controllerTestUtils := setupTest(batchHandler)
@@ -560,7 +560,7 @@ func TestStopBatch(t *testing.T) {
 		ctx := context.Background()
 		batchHandler.
 			EXPECT().
-			StopBatch(ctx, batchName).
+			StopBatch(test.RequestContextMatcher{}, batchName).
 			Return(apiErrors.NewNotFound("batch", batchName)).
 			Times(1)
 		controllerTestUtils := setupTest(batchHandler)
@@ -588,7 +588,7 @@ func TestStopBatch(t *testing.T) {
 		ctx := context.Background()
 		batchHandler.
 			EXPECT().
-			StopBatch(ctx, batchName).
+			StopBatch(test.RequestContextMatcher{}, batchName).
 			Return(errors.New("any error")).
 			Times(1)
 		controllerTestUtils := setupTest(batchHandler)
@@ -618,12 +618,12 @@ func TestStopBatchJob(t *testing.T) {
 		ctx := context.Background()
 		batchHandler.
 			EXPECT().
-			StopBatchJob(ctx, batchName, jobName).
+			StopBatchJob(test.RequestContextMatcher{}, batchName, jobName).
 			Return(nil).
 			Times(1)
 		batchHandler.
 			EXPECT().
-			MaintainHistoryLimit(ctx).
+			MaintainHistoryLimit(test.RequestContextMatcher{}).
 			Return(nil).
 			AnyTimes()
 		controllerTestUtils := setupTest(batchHandler)
@@ -654,7 +654,7 @@ func TestStopBatchJob(t *testing.T) {
 		ctx := context.Background()
 		batchHandler.
 			EXPECT().
-			StopBatchJob(ctx, batchName, jobName).
+			StopBatchJob(test.RequestContextMatcher{}, batchName, jobName).
 			Return(apiErrors.NewNotFound("batch", batchName)).
 			Times(1)
 		controllerTestUtils := setupTest(batchHandler)
@@ -683,7 +683,7 @@ func TestStopBatchJob(t *testing.T) {
 		ctx := context.Background()
 		batchHandler.
 			EXPECT().
-			StopBatchJob(ctx, batchName, jobName).
+			StopBatchJob(test.RequestContextMatcher{}, batchName, jobName).
 			Return(errors.New("any error")).
 			Times(1)
 		controllerTestUtils := setupTest(batchHandler)
@@ -749,7 +749,7 @@ func TestGetBatchJob(t *testing.T) {
 		ctx := context.Background()
 		jobHandler.
 			EXPECT().
-			GetBatchJob(ctx, gomock.Any(), gomock.Any()).
+			GetBatchJob(test.RequestContextMatcher{}, gomock.Any(), gomock.Any()).
 			Return(nil, apiErrors.NewNotFound(kind, jobName)).
 			Times(1)
 
@@ -777,7 +777,7 @@ func TestGetBatchJob(t *testing.T) {
 		ctx := context.Background()
 		jobHandler.
 			EXPECT().
-			GetBatchJob(ctx, gomock.Any(), gomock.Any()).
+			GetBatchJob(test.RequestContextMatcher{}, gomock.Any(), gomock.Any()).
 			Return(nil, errors.New("unhandled error")).
 			Times(1)
 

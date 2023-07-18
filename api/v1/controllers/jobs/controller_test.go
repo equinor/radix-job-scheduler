@@ -201,12 +201,12 @@ func TestCreateJob(t *testing.T) {
 		ctx := context.Background()
 		jobHandler.
 			EXPECT().
-			CreateJob(ctx, &jobScheduleDescription).
+			CreateJob(test.RequestContextMatcher{}, &jobScheduleDescription).
 			Return(&createdJob, nil).
 			Times(1)
 		jobHandler.
 			EXPECT().
-			MaintainHistoryLimit(ctx).
+			MaintainHistoryLimit(test.RequestContextMatcher{}).
 			Return(nil).
 			Times(1)
 		controllerTestUtils := setupTest(jobHandler)
@@ -259,12 +259,12 @@ func TestCreateJob(t *testing.T) {
 		ctx := context.Background()
 		jobHandler.
 			EXPECT().
-			CreateJob(ctx, &jobScheduleDescription).
+			CreateJob(test.RequestContextMatcher{}, &jobScheduleDescription).
 			Return(&createdJob, nil).
 			Times(1)
 		jobHandler.
 			EXPECT().
-			MaintainHistoryLimit(ctx).
+			MaintainHistoryLimit(test.RequestContextMatcher{}).
 			Return(nil).
 			Times(1)
 		controllerTestUtils := setupTest(jobHandler)
@@ -301,12 +301,12 @@ func TestCreateJob(t *testing.T) {
 		ctx := context.Background()
 		jobHandler.
 			EXPECT().
-			CreateJob(ctx, &jobScheduleDescription).
+			CreateJob(test.RequestContextMatcher{}, &jobScheduleDescription).
 			Return(&createdJob, nil).
 			Times(1)
 		jobHandler.
 			EXPECT().
-			MaintainHistoryLimit(ctx).
+			MaintainHistoryLimit(test.RequestContextMatcher{}).
 			Return(errors.New("an error")).
 			Times(1)
 		controllerTestUtils := setupTest(jobHandler)
@@ -335,11 +335,11 @@ func TestCreateJob(t *testing.T) {
 		ctx := context.Background()
 		jobHandler.
 			EXPECT().
-			CreateJob(ctx, gomock.Any()).
+			CreateJob(test.RequestContextMatcher{}, gomock.Any()).
 			Times(0)
 		jobHandler.
 			EXPECT().
-			MaintainHistoryLimit(ctx).
+			MaintainHistoryLimit(test.RequestContextMatcher{}).
 			Times(0)
 		controllerTestUtils := setupTest(jobHandler)
 		responseChannel := controllerTestUtils.ExecuteRequestWithBody(ctx, http.MethodPost, "/api/v1/jobs", struct{ Payload interface{} }{Payload: struct{}{}})
@@ -367,12 +367,12 @@ func TestCreateJob(t *testing.T) {
 		ctx := context.Background()
 		jobHandler.
 			EXPECT().
-			CreateJob(ctx, &jobScheduleDescription).
+			CreateJob(test.RequestContextMatcher{}, &jobScheduleDescription).
 			Return(nil, apiErrors.NewNotFound(anyKind, anyName)).
 			Times(1)
 		jobHandler.
 			EXPECT().
-			MaintainHistoryLimit(ctx).
+			MaintainHistoryLimit(test.RequestContextMatcher{}).
 			Times(0)
 		controllerTestUtils := setupTest(jobHandler)
 		responseChannel := controllerTestUtils.ExecuteRequest(ctx, http.MethodPost, "/api/v1/jobs")
@@ -399,12 +399,12 @@ func TestCreateJob(t *testing.T) {
 		ctx := context.Background()
 		jobHandler.
 			EXPECT().
-			CreateJob(ctx, &jobScheduleDescription).
+			CreateJob(test.RequestContextMatcher{}, &jobScheduleDescription).
 			Return(nil, errors.New("any error")).
 			Times(1)
 		jobHandler.
 			EXPECT().
-			MaintainHistoryLimit(ctx).
+			MaintainHistoryLimit(test.RequestContextMatcher{}).
 			Times(0)
 		controllerTestUtils := setupTest(jobHandler)
 		responseChannel := controllerTestUtils.ExecuteRequest(ctx, http.MethodPost, "/api/v1/jobs")
@@ -432,7 +432,7 @@ func TestDeleteJob(t *testing.T) {
 		ctx := context.Background()
 		jobHandler.
 			EXPECT().
-			DeleteJob(ctx, jobName).
+			DeleteJob(test.RequestContextMatcher{}, jobName).
 			Return(nil).
 			Times(1)
 		controllerTestUtils := setupTest(jobHandler)
@@ -459,7 +459,7 @@ func TestDeleteJob(t *testing.T) {
 		ctx := context.Background()
 		jobHandler.
 			EXPECT().
-			DeleteJob(ctx, jobName).
+			DeleteJob(test.RequestContextMatcher{}, jobName).
 			Return(apiErrors.NewNotFound("job", jobName)).
 			Times(1)
 		controllerTestUtils := setupTest(jobHandler)
@@ -487,7 +487,7 @@ func TestDeleteJob(t *testing.T) {
 		ctx := context.Background()
 		jobHandler.
 			EXPECT().
-			DeleteJob(ctx, jobName).
+			DeleteJob(test.RequestContextMatcher{}, jobName).
 			Return(errors.New("any error")).
 			Times(1)
 		controllerTestUtils := setupTest(jobHandler)
@@ -516,7 +516,7 @@ func TestStopJob(t *testing.T) {
 		ctx := context.Background()
 		jobHandler.
 			EXPECT().
-			StopJob(ctx, jobName).
+			StopJob(test.RequestContextMatcher{}, jobName).
 			Return(nil).
 			Times(1)
 		controllerTestUtils := setupTest(jobHandler)
@@ -543,7 +543,7 @@ func TestStopJob(t *testing.T) {
 		ctx := context.Background()
 		jobHandler.
 			EXPECT().
-			StopJob(ctx, jobName).
+			StopJob(test.RequestContextMatcher{}, jobName).
 			Return(apiErrors.NewNotFound("job", jobName)).
 			Times(1)
 		controllerTestUtils := setupTest(jobHandler)
@@ -571,7 +571,7 @@ func TestStopJob(t *testing.T) {
 		ctx := context.Background()
 		jobHandler.
 			EXPECT().
-			StopJob(ctx, jobName).
+			StopJob(test.RequestContextMatcher{}, jobName).
 			Return(errors.New("any error")).
 			Times(1)
 		controllerTestUtils := setupTest(jobHandler)
