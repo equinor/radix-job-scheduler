@@ -5,6 +5,7 @@
 package mock
 
 import (
+	context "context"
 	reflect "reflect"
 
 	common "github.com/equinor/radix-job-scheduler/models/common"
@@ -36,88 +37,88 @@ func (m *MockJobHandler) EXPECT() *MockJobHandlerMockRecorder {
 }
 
 // CreateJob mocks base method.
-func (m *MockJobHandler) CreateJob(arg0 *common.JobScheduleDescription) (*v1.JobStatus, error) {
+func (m *MockJobHandler) CreateJob(arg0 context.Context, arg1 *common.JobScheduleDescription) (*v1.JobStatus, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateJob", arg0)
+	ret := m.ctrl.Call(m, "CreateJob", arg0, arg1)
 	ret0, _ := ret[0].(*v1.JobStatus)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // CreateJob indicates an expected call of CreateJob.
-func (mr *MockJobHandlerMockRecorder) CreateJob(arg0 interface{}) *gomock.Call {
+func (mr *MockJobHandlerMockRecorder) CreateJob(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateJob", reflect.TypeOf((*MockJobHandler)(nil).CreateJob), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateJob", reflect.TypeOf((*MockJobHandler)(nil).CreateJob), arg0, arg1)
 }
 
 // DeleteJob mocks base method.
-func (m *MockJobHandler) DeleteJob(arg0 string) error {
+func (m *MockJobHandler) DeleteJob(arg0 context.Context, arg1 string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteJob", arg0)
+	ret := m.ctrl.Call(m, "DeleteJob", arg0, arg1)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DeleteJob indicates an expected call of DeleteJob.
-func (mr *MockJobHandlerMockRecorder) DeleteJob(arg0 interface{}) *gomock.Call {
+func (mr *MockJobHandlerMockRecorder) DeleteJob(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteJob", reflect.TypeOf((*MockJobHandler)(nil).DeleteJob), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteJob", reflect.TypeOf((*MockJobHandler)(nil).DeleteJob), arg0, arg1)
 }
 
 // GetJob mocks base method.
-func (m *MockJobHandler) GetJob(arg0 string) (*v1.JobStatus, error) {
+func (m *MockJobHandler) GetJob(arg0 context.Context, arg1 string) (*v1.JobStatus, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetJob", arg0)
+	ret := m.ctrl.Call(m, "GetJob", arg0, arg1)
 	ret0, _ := ret[0].(*v1.JobStatus)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetJob indicates an expected call of GetJob.
-func (mr *MockJobHandlerMockRecorder) GetJob(arg0 interface{}) *gomock.Call {
+func (mr *MockJobHandlerMockRecorder) GetJob(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetJob", reflect.TypeOf((*MockJobHandler)(nil).GetJob), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetJob", reflect.TypeOf((*MockJobHandler)(nil).GetJob), arg0, arg1)
 }
 
 // GetJobs mocks base method.
-func (m *MockJobHandler) GetJobs() ([]v1.JobStatus, error) {
+func (m *MockJobHandler) GetJobs(arg0 context.Context) ([]v1.JobStatus, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetJobs")
+	ret := m.ctrl.Call(m, "GetJobs", arg0)
 	ret0, _ := ret[0].([]v1.JobStatus)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetJobs indicates an expected call of GetJobs.
-func (mr *MockJobHandlerMockRecorder) GetJobs() *gomock.Call {
+func (mr *MockJobHandlerMockRecorder) GetJobs(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetJobs", reflect.TypeOf((*MockJobHandler)(nil).GetJobs))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetJobs", reflect.TypeOf((*MockJobHandler)(nil).GetJobs), arg0)
 }
 
 // MaintainHistoryLimit mocks base method.
-func (m *MockJobHandler) MaintainHistoryLimit() error {
+func (m *MockJobHandler) MaintainHistoryLimit(arg0 context.Context) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "MaintainHistoryLimit")
+	ret := m.ctrl.Call(m, "MaintainHistoryLimit", arg0)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // MaintainHistoryLimit indicates an expected call of MaintainHistoryLimit.
-func (mr *MockJobHandlerMockRecorder) MaintainHistoryLimit() *gomock.Call {
+func (mr *MockJobHandlerMockRecorder) MaintainHistoryLimit(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MaintainHistoryLimit", reflect.TypeOf((*MockJobHandler)(nil).MaintainHistoryLimit))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MaintainHistoryLimit", reflect.TypeOf((*MockJobHandler)(nil).MaintainHistoryLimit), arg0)
 }
 
 // StopJob mocks base method.
-func (m *MockJobHandler) StopJob(arg0 string) error {
+func (m *MockJobHandler) StopJob(arg0 context.Context, arg1 string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "StopJob", arg0)
+	ret := m.ctrl.Call(m, "StopJob", arg0, arg1)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // StopJob indicates an expected call of StopJob.
-func (mr *MockJobHandlerMockRecorder) StopJob(arg0 interface{}) *gomock.Call {
+func (mr *MockJobHandlerMockRecorder) StopJob(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StopJob", reflect.TypeOf((*MockJobHandler)(nil).StopJob), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StopJob", reflect.TypeOf((*MockJobHandler)(nil).StopJob), arg0, arg1)
 }

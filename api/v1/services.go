@@ -9,22 +9,22 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 )
 
-//GetServiceForJob Get the service for the job
-func (handler *Handler) GetServiceForJob(jobName string) (*corev1.ServiceList, error) {
+// GetServiceForJob Get the service for the job
+func (handler *Handler) GetServiceForJob(ctx context.Context, jobName string) (*corev1.ServiceList, error) {
 	return handler.Kube.KubeClient().CoreV1().Services(handler.Env.RadixDeploymentNamespace).List(
-		context.TODO(),
+		ctx,
 		metav1.ListOptions{
 			LabelSelector: getLabelSelectorForService(jobName, handler.Env.RadixComponentName),
 		},
 	)
 }
 
-//DeleteService Deletes a service
-func (handler *Handler) DeleteService(service *corev1.Service) error {
+// DeleteService Deletes a service
+func (handler *Handler) DeleteService(ctx context.Context, service *corev1.Service) error {
 	if service == nil {
 		return nil
 	}
-	return handler.Kube.KubeClient().CoreV1().Services(service.Namespace).Delete(context.TODO(), service.Name, metav1.DeleteOptions{})
+	return handler.Kube.KubeClient().CoreV1().Services(service.Namespace).Delete(ctx, service.Name, metav1.DeleteOptions{})
 }
 
 func getLabelSelectorForService(jobName, componentName string) string {

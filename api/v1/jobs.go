@@ -18,8 +18,8 @@ import (
 )
 
 // GetBatch Gets a job, running a batch
-func (handler *Handler) GetBatch(batchName string) (*batchv1.Job, error) {
-	batch, err := handler.Kube.KubeClient().BatchV1().Jobs(handler.Env.RadixDeploymentNamespace).Get(context.TODO(), batchName, metav1.GetOptions{})
+func (handler *Handler) GetBatch(ctx context.Context, batchName string) (*batchv1.Job, error) {
+	batch, err := handler.Kube.KubeClient().BatchV1().Jobs(handler.Env.RadixDeploymentNamespace).Get(ctx, batchName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -81,16 +81,16 @@ func GetJobStatusFromRadixBatchJobsStatuses(radixBatches ...modelsv2.RadixBatch)
 }
 
 // StopJob Stop a job
-func StopJob(handlerApiV2 apiv2.Handler, jobName string) error {
+func StopJob(ctx context.Context, handlerApiV2 apiv2.Handler, jobName string) error {
 	if batchName, jobName, ok := ParseBatchAndJobNameFromScheduledJobName(jobName); ok {
-		return handlerApiV2.StopRadixBatchJob(batchName, jobName)
+		return handlerApiV2.StopRadixBatchJob(ctx, batchName, jobName)
 	}
 	return fmt.Errorf("stop of this job is not supported")
 }
 
 // GetBatchJob Get batch job
-func GetBatchJob(handlerApiV2 apiv2.Handler, batchName, jobName string) (*modelsv1.JobStatus, error) {
-	radixBatch, err := handlerApiV2.GetRadixBatch(batchName)
+func GetBatchJob(ctx context.Context, handlerApiV2 apiv2.Handler, batchName, jobName string) (*modelsv1.JobStatus, error) {
+	radixBatch, err := handlerApiV2.GetRadixBatch(ctx, batchName)
 	if err != nil {
 		return nil, err
 	}

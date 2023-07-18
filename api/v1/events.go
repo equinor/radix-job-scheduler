@@ -14,13 +14,13 @@ import (
 )
 
 // GetLastEventMessageForPods returns the last event message for pods
-func (handler *Handler) GetLastEventMessageForPods(pods []corev1.Pod) (map[string]string, error) {
+func (handler *Handler) GetLastEventMessageForPods(ctx context.Context, pods []corev1.Pod) (map[string]string, error) {
 	podNamesMap := slice.Reduce(pods, make(map[string]struct{}), func(acc map[string]struct{}, pod corev1.Pod) map[string]struct{} {
 		acc[pod.Name] = struct{}{}
 		return acc
 	})
 	eventMap := make(map[string]string)
-	eventsList, err := handler.Kube.KubeClient().CoreV1().Events(handler.Env.RadixDeploymentNamespace).List(context.Background(), metav1.ListOptions{})
+	eventsList, err := handler.Kube.KubeClient().CoreV1().Events(handler.Env.RadixDeploymentNamespace).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return eventMap, err
 	}
@@ -49,12 +49,12 @@ func sortEventsAsc(events []corev1.Event) []corev1.Event {
 }
 
 // GetRadixBatchJobMessagesAndPodMaps returns the event messages for the batch job statuses
-func (handler *Handler) GetRadixBatchJobMessagesAndPodMaps(selectorForRadixBatchPods string) (map[string]string, map[string]corev1.Pod, error) {
-	radixBatchesPods, err := handler.GetPodsForLabelSelector(selectorForRadixBatchPods)
+func (handler *Handler) GetRadixBatchJobMessagesAndPodMaps(ctx context.Context, selectorForRadixBatchPods string) (map[string]string, map[string]corev1.Pod, error) {
+	radixBatchesPods, err := handler.GetPodsForLabelSelector(ctx, selectorForRadixBatchPods)
 	if err != nil {
 		return nil, nil, err
 	}
-	eventMessageForPods, err := handler.GetLastEventMessageForPods(radixBatchesPods)
+	eventMessageForPods, err := handler.GetLastEventMessageForPods(ctx, radixBatchesPods)
 	if err != nil {
 		return nil, nil, err
 	}

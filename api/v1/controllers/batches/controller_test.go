@@ -1,9 +1,9 @@
 package batch
 
 import (
+	"context"
 	"errors"
 	"fmt"
-	"github.com/equinor/radix-operator/pkg/apis/kube"
 	"net/http"
 	"testing"
 	"time"
@@ -15,6 +15,7 @@ import (
 	"github.com/equinor/radix-job-scheduler/api/v1/batches/mock"
 	models "github.com/equinor/radix-job-scheduler/models/common"
 	modelsV1 "github.com/equinor/radix-job-scheduler/models/v1"
+	"github.com/equinor/radix-operator/pkg/apis/kube"
 	"github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
@@ -41,14 +42,15 @@ func TestGetBatches(t *testing.T) {
 			},
 			BatchType: string(kube.RadixBatchTypeBatch),
 		}
+		ctx := context.Background()
 		batchHandler.
 			EXPECT().
-			GetBatches().
+			GetBatches(ctx).
 			Return([]modelsV1.BatchStatus{batchState}, nil).
 			Times(1)
 
 		controllerTestUtils := setupTest(batchHandler)
-		responseChannel := controllerTestUtils.ExecuteRequest(http.MethodGet, "api/v1/batches")
+		responseChannel := controllerTestUtils.ExecuteRequest(ctx, http.MethodGet, "api/v1/batches")
 		response := <-responseChannel
 		assert.NotNil(t, response)
 
@@ -69,14 +71,15 @@ func TestGetBatches(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 		batchHandler := mock.NewMockBatchHandler(ctrl)
+		ctx := context.Background()
 		batchHandler.
 			EXPECT().
-			GetBatches().
+			GetBatches(gomock.Any()).
 			Return(nil, apiErrors.NewUnknown(fmt.Errorf("unhandled error"))).
 			Times(1)
 
 		controllerTestUtils := setupTest(batchHandler)
-		responseChannel := controllerTestUtils.ExecuteRequest(http.MethodGet, "api/v1/batches")
+		responseChannel := controllerTestUtils.ExecuteRequest(ctx, http.MethodGet, "api/v1/batches")
 		response := <-responseChannel
 		assert.NotNil(t, response)
 
@@ -107,14 +110,15 @@ func TestGetBatch(t *testing.T) {
 			},
 			BatchType: string(kube.RadixBatchTypeBatch),
 		}
+		ctx := context.Background()
 		batchHandler.
 			EXPECT().
-			GetBatch(batchName).
+			GetBatch(ctx, batchName).
 			Return(&batchState, nil).
 			Times(1)
 
 		controllerTestUtils := setupTest(batchHandler)
-		responseChannel := controllerTestUtils.ExecuteRequest(http.MethodGet, fmt.Sprintf("/api/v1/batches/%s", batchName))
+		responseChannel := controllerTestUtils.ExecuteRequest(ctx, http.MethodGet, fmt.Sprintf("/api/v1/batches/%s", batchName))
 		response := <-responseChannel
 		assert.NotNil(t, response)
 
@@ -135,14 +139,15 @@ func TestGetBatch(t *testing.T) {
 		defer ctrl.Finish()
 		batchName, kind := "anybatch", "batch"
 		batchHandler := mock.NewMockBatchHandler(ctrl)
+		ctx := context.Background()
 		batchHandler.
 			EXPECT().
-			GetBatch(gomock.Any()).
+			GetBatch(ctx, gomock.Any()).
 			Return(nil, apiErrors.NewNotFound(kind, batchName)).
 			Times(1)
 
 		controllerTestUtils := setupTest(batchHandler)
-		responseChannel := controllerTestUtils.ExecuteRequest(http.MethodGet, fmt.Sprintf("/api/v1/batches/%s", batchName))
+		responseChannel := controllerTestUtils.ExecuteRequest(ctx, http.MethodGet, fmt.Sprintf("/api/v1/batches/%s", batchName))
 		response := <-responseChannel
 		assert.NotNil(t, response)
 
@@ -162,14 +167,15 @@ func TestGetBatch(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 		batchHandler := mock.NewMockBatchHandler(ctrl)
+		ctx := context.Background()
 		batchHandler.
 			EXPECT().
-			GetBatch(gomock.Any()).
+			GetBatch(ctx, gomock.Any()).
 			Return(nil, errors.New("unhandled error")).
 			Times(1)
 
 		controllerTestUtils := setupTest(batchHandler)
-		responseChannel := controllerTestUtils.ExecuteRequest(http.MethodGet, fmt.Sprintf("/api/v1/batches/%s", "anybatch"))
+		responseChannel := controllerTestUtils.ExecuteRequest(ctx, http.MethodGet, fmt.Sprintf("/api/v1/batches/%s", "anybatch"))
 		response := <-responseChannel
 		assert.NotNil(t, response)
 
@@ -200,18 +206,19 @@ func TestCreateBatch(t *testing.T) {
 			BatchType: string(kube.RadixBatchTypeBatch),
 		}
 		batchHandler := mock.NewMockBatchHandler(ctrl)
+		ctx := context.Background()
 		batchHandler.
 			EXPECT().
-			CreateBatch(&batchScheduleDescription).
+			CreateBatch(ctx, &batchScheduleDescription).
 			Return(&createdBatch, nil).
 			Times(1)
 		batchHandler.
 			EXPECT().
-			MaintainHistoryLimit().
+			MaintainHistoryLimit(ctx).
 			Return(nil).
 			Times(1)
 		controllerTestUtils := setupTest(batchHandler)
-		responseChannel := controllerTestUtils.ExecuteRequestWithBody(http.MethodPost, "/api/v1/batches", nil)
+		responseChannel := controllerTestUtils.ExecuteRequestWithBody(ctx, http.MethodPost, "/api/v1/batches", nil)
 		response := <-responseChannel
 		assert.NotNil(t, response)
 
@@ -263,18 +270,19 @@ func TestCreateBatch(t *testing.T) {
 			BatchType: string(kube.RadixBatchTypeBatch),
 		}
 		batchHandler := mock.NewMockBatchHandler(ctrl)
+		ctx := context.Background()
 		batchHandler.
 			EXPECT().
-			CreateBatch(&batchScheduleDescription).
+			CreateBatch(ctx, &batchScheduleDescription).
 			Return(&createdBatch, nil).
 			Times(1)
 		batchHandler.
 			EXPECT().
-			MaintainHistoryLimit().
+			MaintainHistoryLimit(ctx).
 			Return(nil).
 			Times(1)
 		controllerTestUtils := setupTest(batchHandler)
-		responseChannel := controllerTestUtils.ExecuteRequestWithBody(http.MethodPost, "/api/v1/batches", batchScheduleDescription)
+		responseChannel := controllerTestUtils.ExecuteRequestWithBody(ctx, http.MethodPost, "/api/v1/batches", batchScheduleDescription)
 		response := <-responseChannel
 		assert.NotNil(t, response)
 
@@ -308,18 +316,19 @@ func TestCreateBatch(t *testing.T) {
 			BatchType: string(kube.RadixBatchTypeBatch),
 		}
 		batchHandler := mock.NewMockBatchHandler(ctrl)
+		ctx := context.Background()
 		batchHandler.
 			EXPECT().
-			CreateBatch(&batchScheduleDescription).
+			CreateBatch(ctx, &batchScheduleDescription).
 			Return(&createdBatch, nil).
 			Times(1)
 		batchHandler.
 			EXPECT().
-			MaintainHistoryLimit().
+			MaintainHistoryLimit(ctx).
 			Return(errors.New("an error")).
 			Times(1)
 		controllerTestUtils := setupTest(batchHandler)
-		responseChannel := controllerTestUtils.ExecuteRequestWithBody(http.MethodPost, "/api/v1/batches", batchScheduleDescription)
+		responseChannel := controllerTestUtils.ExecuteRequestWithBody(ctx, http.MethodPost, "/api/v1/batches", batchScheduleDescription)
 		response := <-responseChannel
 		assert.NotNil(t, response)
 
@@ -340,16 +349,17 @@ func TestCreateBatch(t *testing.T) {
 		defer ctrl.Finish()
 
 		batchHandler := mock.NewMockBatchHandler(ctrl)
+		ctx := context.Background()
 		batchHandler.
 			EXPECT().
-			CreateBatch(gomock.Any()).
+			CreateBatch(ctx, gomock.Any()).
 			Times(0)
 		batchHandler.
 			EXPECT().
-			MaintainHistoryLimit().
+			MaintainHistoryLimit(ctx).
 			Times(0)
 		controllerTestUtils := setupTest(batchHandler)
-		responseChannel := controllerTestUtils.ExecuteRequestWithBody(http.MethodPost, "/api/v1/batches", struct{ JobScheduleDescriptions interface{} }{JobScheduleDescriptions: struct{}{}})
+		responseChannel := controllerTestUtils.ExecuteRequestWithBody(ctx, http.MethodPost, "/api/v1/batches", struct{ JobScheduleDescriptions interface{} }{JobScheduleDescriptions: struct{}{}})
 		response := <-responseChannel
 		assert.NotNil(t, response)
 
@@ -371,17 +381,18 @@ func TestCreateBatch(t *testing.T) {
 		batchScheduleDescription := models.BatchScheduleDescription{}
 		batchHandler := mock.NewMockBatchHandler(ctrl)
 		anyKind, anyName := "anyKind", "anyName"
+		ctx := context.Background()
 		batchHandler.
 			EXPECT().
-			CreateBatch(&batchScheduleDescription).
+			CreateBatch(ctx, &batchScheduleDescription).
 			Return(nil, apiErrors.NewNotFound(anyKind, anyName)).
 			Times(1)
 		batchHandler.
 			EXPECT().
-			MaintainHistoryLimit().
+			MaintainHistoryLimit(ctx).
 			Times(0)
 		controllerTestUtils := setupTest(batchHandler)
-		responseChannel := controllerTestUtils.ExecuteRequest(http.MethodPost, "/api/v1/batches")
+		responseChannel := controllerTestUtils.ExecuteRequest(ctx, http.MethodPost, "/api/v1/batches")
 		response := <-responseChannel
 		assert.NotNil(t, response)
 
@@ -402,17 +413,18 @@ func TestCreateBatch(t *testing.T) {
 		defer ctrl.Finish()
 		batchScheduleDescription := models.BatchScheduleDescription{}
 		batchHandler := mock.NewMockBatchHandler(ctrl)
+		ctx := context.Background()
 		batchHandler.
 			EXPECT().
-			CreateBatch(&batchScheduleDescription).
+			CreateBatch(ctx, &batchScheduleDescription).
 			Return(nil, errors.New("any error")).
 			Times(1)
 		batchHandler.
 			EXPECT().
-			MaintainHistoryLimit().
+			MaintainHistoryLimit(ctx).
 			Times(0)
 		controllerTestUtils := setupTest(batchHandler)
-		responseChannel := controllerTestUtils.ExecuteRequest(http.MethodPost, "/api/v1/batches")
+		responseChannel := controllerTestUtils.ExecuteRequest(ctx, http.MethodPost, "/api/v1/batches")
 		response := <-responseChannel
 		assert.NotNil(t, response)
 
@@ -434,13 +446,14 @@ func TestDeleteBatch(t *testing.T) {
 		defer ctrl.Finish()
 		batchName := "anybatch"
 		batchHandler := mock.NewMockBatchHandler(ctrl)
+		ctx := context.Background()
 		batchHandler.
 			EXPECT().
-			DeleteBatch(batchName).
+			DeleteBatch(ctx, batchName).
 			Return(nil).
 			Times(1)
 		controllerTestUtils := setupTest(batchHandler)
-		responseChannel := controllerTestUtils.ExecuteRequest(http.MethodDelete, fmt.Sprintf("/api/v1/batches/%s", batchName))
+		responseChannel := controllerTestUtils.ExecuteRequest(ctx, http.MethodDelete, fmt.Sprintf("/api/v1/batches/%s", batchName))
 		response := <-responseChannel
 		assert.NotNil(t, response)
 
@@ -460,13 +473,14 @@ func TestDeleteBatch(t *testing.T) {
 		defer ctrl.Finish()
 		batchName := "anybatch"
 		batchHandler := mock.NewMockBatchHandler(ctrl)
+		ctx := context.Background()
 		batchHandler.
 			EXPECT().
-			DeleteBatch(batchName).
+			DeleteBatch(ctx, batchName).
 			Return(apiErrors.NewNotFound("batch", batchName)).
 			Times(1)
 		controllerTestUtils := setupTest(batchHandler)
-		responseChannel := controllerTestUtils.ExecuteRequest(http.MethodDelete, fmt.Sprintf("/api/v1/batches/%s", batchName))
+		responseChannel := controllerTestUtils.ExecuteRequest(ctx, http.MethodDelete, fmt.Sprintf("/api/v1/batches/%s", batchName))
 		response := <-responseChannel
 		assert.NotNil(t, response)
 
@@ -487,13 +501,14 @@ func TestDeleteBatch(t *testing.T) {
 		defer ctrl.Finish()
 		batchName := "anybatch"
 		batchHandler := mock.NewMockBatchHandler(ctrl)
+		ctx := context.Background()
 		batchHandler.
 			EXPECT().
-			DeleteBatch(batchName).
+			DeleteBatch(ctx, batchName).
 			Return(errors.New("any error")).
 			Times(1)
 		controllerTestUtils := setupTest(batchHandler)
-		responseChannel := controllerTestUtils.ExecuteRequest(http.MethodDelete, fmt.Sprintf("/api/v1/batches/%s", batchName))
+		responseChannel := controllerTestUtils.ExecuteRequest(ctx, http.MethodDelete, fmt.Sprintf("/api/v1/batches/%s", batchName))
 		response := <-responseChannel
 		assert.NotNil(t, response)
 
@@ -515,13 +530,14 @@ func TestStopBatch(t *testing.T) {
 		defer ctrl.Finish()
 		batchName := "anybatch"
 		batchHandler := mock.NewMockBatchHandler(ctrl)
+		ctx := context.Background()
 		batchHandler.
 			EXPECT().
-			StopBatch(batchName).
+			StopBatch(ctx, batchName).
 			Return(nil).
 			Times(1)
 		controllerTestUtils := setupTest(batchHandler)
-		responseChannel := controllerTestUtils.ExecuteRequest(http.MethodPost, fmt.Sprintf("/api/v1/batches/%s/stop", batchName))
+		responseChannel := controllerTestUtils.ExecuteRequest(ctx, http.MethodPost, fmt.Sprintf("/api/v1/batches/%s/stop", batchName))
 		response := <-responseChannel
 		assert.NotNil(t, response)
 
@@ -541,13 +557,14 @@ func TestStopBatch(t *testing.T) {
 		defer ctrl.Finish()
 		batchName := "anybatch"
 		batchHandler := mock.NewMockBatchHandler(ctrl)
+		ctx := context.Background()
 		batchHandler.
 			EXPECT().
-			StopBatch(batchName).
+			StopBatch(ctx, batchName).
 			Return(apiErrors.NewNotFound("batch", batchName)).
 			Times(1)
 		controllerTestUtils := setupTest(batchHandler)
-		responseChannel := controllerTestUtils.ExecuteRequest(http.MethodPost, fmt.Sprintf("/api/v1/batches/%s/stop", batchName))
+		responseChannel := controllerTestUtils.ExecuteRequest(ctx, http.MethodPost, fmt.Sprintf("/api/v1/batches/%s/stop", batchName))
 		response := <-responseChannel
 		assert.NotNil(t, response)
 
@@ -568,13 +585,14 @@ func TestStopBatch(t *testing.T) {
 		defer ctrl.Finish()
 		batchName := "anybatch"
 		batchHandler := mock.NewMockBatchHandler(ctrl)
+		ctx := context.Background()
 		batchHandler.
 			EXPECT().
-			StopBatch(batchName).
+			StopBatch(ctx, batchName).
 			Return(errors.New("any error")).
 			Times(1)
 		controllerTestUtils := setupTest(batchHandler)
-		responseChannel := controllerTestUtils.ExecuteRequest(http.MethodPost, fmt.Sprintf("/api/v1/batches/%s/stop", batchName))
+		responseChannel := controllerTestUtils.ExecuteRequest(ctx, http.MethodPost, fmt.Sprintf("/api/v1/batches/%s/stop", batchName))
 		response := <-responseChannel
 		assert.NotNil(t, response)
 
@@ -597,18 +615,19 @@ func TestStopBatchJob(t *testing.T) {
 		batchName := "anybatch"
 		jobName := "anyjob"
 		batchHandler := mock.NewMockBatchHandler(ctrl)
+		ctx := context.Background()
 		batchHandler.
 			EXPECT().
-			StopBatchJob(batchName, jobName).
+			StopBatchJob(ctx, batchName, jobName).
 			Return(nil).
 			Times(1)
 		batchHandler.
 			EXPECT().
-			MaintainHistoryLimit().
+			MaintainHistoryLimit(ctx).
 			Return(nil).
 			AnyTimes()
 		controllerTestUtils := setupTest(batchHandler)
-		responseChannel := controllerTestUtils.ExecuteRequest(http.MethodPost, fmt.Sprintf("/api/v1/batches/%s/jobs/%s/stop", batchName, jobName))
+		responseChannel := controllerTestUtils.ExecuteRequest(ctx, http.MethodPost, fmt.Sprintf("/api/v1/batches/%s/jobs/%s/stop", batchName, jobName))
 		response := <-responseChannel
 		assert.NotNil(t, response)
 
@@ -632,13 +651,14 @@ func TestStopBatchJob(t *testing.T) {
 		batchName := "anybatch"
 		jobName := "anyjob"
 		batchHandler := mock.NewMockBatchHandler(ctrl)
+		ctx := context.Background()
 		batchHandler.
 			EXPECT().
-			StopBatchJob(batchName, jobName).
+			StopBatchJob(ctx, batchName, jobName).
 			Return(apiErrors.NewNotFound("batch", batchName)).
 			Times(1)
 		controllerTestUtils := setupTest(batchHandler)
-		responseChannel := controllerTestUtils.ExecuteRequest(http.MethodPost, fmt.Sprintf("/api/v1/batches/%s/jobs/%s/stop", batchName, jobName))
+		responseChannel := controllerTestUtils.ExecuteRequest(ctx, http.MethodPost, fmt.Sprintf("/api/v1/batches/%s/jobs/%s/stop", batchName, jobName))
 		response := <-responseChannel
 		assert.NotNil(t, response)
 
@@ -660,13 +680,14 @@ func TestStopBatchJob(t *testing.T) {
 		batchName := "anybatch"
 		jobName := "anyjob"
 		batchHandler := mock.NewMockBatchHandler(ctrl)
+		ctx := context.Background()
 		batchHandler.
 			EXPECT().
-			StopBatchJob(batchName, jobName).
+			StopBatchJob(ctx, batchName, jobName).
 			Return(errors.New("any error")).
 			Times(1)
 		controllerTestUtils := setupTest(batchHandler)
-		responseChannel := controllerTestUtils.ExecuteRequest(http.MethodPost, fmt.Sprintf("/api/v1/batches/%s/jobs/%s/stop", batchName, jobName))
+		responseChannel := controllerTestUtils.ExecuteRequest(ctx, http.MethodPost, fmt.Sprintf("/api/v1/batches/%s/jobs/%s/stop", batchName, jobName))
 		response := <-responseChannel
 		assert.NotNil(t, response)
 
@@ -695,14 +716,16 @@ func TestGetBatchJob(t *testing.T) {
 			Ended:   commonUtils.FormatTimestamp(time.Now().Add(1 * time.Minute)),
 			Status:  "jobstatus",
 		}
+		ctx := context.Background()
+
 		jobHandler.
 			EXPECT().
-			GetBatchJob(batchName, jobName).
+			GetBatchJob(test.RequestContextMatcher{}, batchName, jobName).
 			Return(&jobState, nil).
 			Times(1)
 
 		controllerTestUtils := setupTest(jobHandler)
-		responseChannel := controllerTestUtils.ExecuteRequest(http.MethodGet, fmt.Sprintf("/api/v1/batches/%s/jobs/%s", batchName, jobName))
+		responseChannel := controllerTestUtils.ExecuteRequest(ctx, http.MethodGet, fmt.Sprintf("/api/v1/batches/%s/jobs/%s", batchName, jobName))
 		response := <-responseChannel
 		assert.NotNil(t, response)
 
@@ -723,14 +746,15 @@ func TestGetBatchJob(t *testing.T) {
 		defer ctrl.Finish()
 		jobName, kind := "anyjob", "job"
 		jobHandler := mock.NewMockBatchHandler(ctrl)
+		ctx := context.Background()
 		jobHandler.
 			EXPECT().
-			GetBatchJob(gomock.Any(), gomock.Any()).
+			GetBatchJob(ctx, gomock.Any(), gomock.Any()).
 			Return(nil, apiErrors.NewNotFound(kind, jobName)).
 			Times(1)
 
 		controllerTestUtils := setupTest(jobHandler)
-		responseChannel := controllerTestUtils.ExecuteRequest(http.MethodGet, fmt.Sprintf("/api/v1/batches/%s/jobs/%s", "anybatch", "anyjob"))
+		responseChannel := controllerTestUtils.ExecuteRequest(ctx, http.MethodGet, fmt.Sprintf("/api/v1/batches/%s/jobs/%s", "anybatch", "anyjob"))
 		response := <-responseChannel
 		assert.NotNil(t, response)
 
@@ -750,14 +774,15 @@ func TestGetBatchJob(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 		jobHandler := mock.NewMockBatchHandler(ctrl)
+		ctx := context.Background()
 		jobHandler.
 			EXPECT().
-			GetBatchJob(gomock.Any(), gomock.Any()).
+			GetBatchJob(ctx, gomock.Any(), gomock.Any()).
 			Return(nil, errors.New("unhandled error")).
 			Times(1)
 
 		controllerTestUtils := setupTest(jobHandler)
-		responseChannel := controllerTestUtils.ExecuteRequest(http.MethodGet, fmt.Sprintf("/api/v1/batches/%s/jobs/%s", "anybatch", "anyjob"))
+		responseChannel := controllerTestUtils.ExecuteRequest(ctx, http.MethodGet, fmt.Sprintf("/api/v1/batches/%s/jobs/%s", "anybatch", "anyjob"))
 		response := <-responseChannel
 		assert.NotNil(t, response)
 

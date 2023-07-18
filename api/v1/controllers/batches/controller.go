@@ -79,33 +79,35 @@ func (controller *batchController) GetRoutes() models.Routes {
 // ---
 // summary: Create batch
 // parameters:
-// - name: batchCreation
-//   in: body
-//   description: Batch to create
-//   required: true
-//   schema:
-//       "$ref": "#/definitions/BatchScheduleDescription"
+//   - name: batchCreation
+//     in: body
+//     description: Batch to create
+//     required: true
+//     schema:
+//     "$ref": "#/definitions/BatchScheduleDescription"
+//
 // responses:
-//   "200":
-//     description: "Successful create batch"
-//     schema:
-//        "$ref": "#/definitions/BatchStatus"
-//   "400":
-//     description: "Bad request"
-//     schema:
-//        "$ref": "#/definitions/Status"
-//   "404":
-//     description: "Not found"
-//     schema:
-//        "$ref": "#/definitions/Status"
-//   "422":
-//     description: "Invalid data in request"
-//     schema:
-//        "$ref": "#/definitions/Status"
-//   "500":
-//     description: "Internal server error"
-//     schema:
-//        "$ref": "#/definitions/Status"
+//
+//	"200":
+//	  description: "Successful create batch"
+//	  schema:
+//	     "$ref": "#/definitions/BatchStatus"
+//	"400":
+//	  description: "Bad request"
+//	  schema:
+//	     "$ref": "#/definitions/Status"
+//	"404":
+//	  description: "Not found"
+//	  schema:
+//	     "$ref": "#/definitions/Status"
+//	"422":
+//	  description: "Invalid data in request"
+//	  schema:
+//	     "$ref": "#/definitions/Status"
+//	"500":
+//	  description: "Internal server error"
+//	  schema:
+//	     "$ref": "#/definitions/Status"
 func (controller *batchController) CreateBatch(w http.ResponseWriter, r *http.Request) {
 	var batchScheduleDescription schedulerModels.BatchScheduleDescription
 
@@ -116,12 +118,12 @@ func (controller *batchController) CreateBatch(w http.ResponseWriter, r *http.Re
 		}
 	}
 
-	batchState, err := controller.handler.CreateBatch(&batchScheduleDescription)
+	batchState, err := controller.handler.CreateBatch(r.Context(), &batchScheduleDescription)
 	if err != nil {
 		controller.HandleError(w, err)
 		return
 	}
-	err = controller.handler.MaintainHistoryLimit()
+	err = controller.handler.MaintainHistoryLimit(r.Context())
 	if err != nil {
 		log.Warnf("failed to maintain batch history: %v", err)
 	}
@@ -134,19 +136,20 @@ func (controller *batchController) CreateBatch(w http.ResponseWriter, r *http.Re
 // summary: Gets batches
 // parameters:
 // responses:
-//   "200":
-//     description: "Successful get batches"
-//     schema:
-//        type: "array"
-//        items:
-//           "$ref": "#/definitions/BatchStatus"
-//   "500":
-//     description: "Internal server error"
-//     schema:
-//        "$ref": "#/definitions/Status"
+//
+//	"200":
+//	  description: "Successful get batches"
+//	  schema:
+//	     type: "array"
+//	     items:
+//	        "$ref": "#/definitions/BatchStatus"
+//	"500":
+//	  description: "Internal server error"
+//	  schema:
+//	     "$ref": "#/definitions/Status"
 func (controller *batchController) GetBatches(w http.ResponseWriter, r *http.Request) {
 	log.Debug("Get batch list")
-	batches, err := controller.handler.GetBatches()
+	batches, err := controller.handler.GetBatches(r.Context())
 	if err != nil {
 		controller.HandleError(w, err)
 		return
@@ -159,28 +162,30 @@ func (controller *batchController) GetBatches(w http.ResponseWriter, r *http.Req
 // ---
 // summary: Gets batch
 // parameters:
-// - name: batchName
-//   in: path
-//   description: Name of batch
-//   type: string
-//   required: true
+//   - name: batchName
+//     in: path
+//     description: Name of batch
+//     type: string
+//     required: true
+//
 // responses:
-//   "200":
-//     description: "Successful get batch"
-//     schema:
-//        "$ref": "#/definitions/BatchStatus"
-//   "404":
-//     description: "Not found"
-//     schema:
-//        "$ref": "#/definitions/Status"
-//   "500":
-//     description: "Internal server error"
-//     schema:
-//        "$ref": "#/definitions/Status"
+//
+//	"200":
+//	  description: "Successful get batch"
+//	  schema:
+//	     "$ref": "#/definitions/BatchStatus"
+//	"404":
+//	  description: "Not found"
+//	  schema:
+//	     "$ref": "#/definitions/Status"
+//	"500":
+//	  description: "Internal server error"
+//	  schema:
+//	     "$ref": "#/definitions/Status"
 func (controller *batchController) GetBatch(w http.ResponseWriter, r *http.Request) {
 	batchName := mux.Vars(r)[batchNameParam]
 	log.Debugf("Get batch %s", batchName)
-	batch, err := controller.handler.GetBatch(batchName)
+	batch, err := controller.handler.GetBatch(r.Context(), batchName)
 	if err != nil {
 		controller.HandleError(w, err)
 		return
@@ -192,34 +197,36 @@ func (controller *batchController) GetBatch(w http.ResponseWriter, r *http.Reque
 // ---
 // summary: Gets batch job
 // parameters:
-// - name: batchName
-//   in: path
-//   description: Name of batch
-//   type: string
-//   required: true
-// - name: jobName
-//   in: path
-//   description: Name of job
-//   type: string
-//   required: true
+//   - name: batchName
+//     in: path
+//     description: Name of batch
+//     type: string
+//     required: true
+//   - name: jobName
+//     in: path
+//     description: Name of job
+//     type: string
+//     required: true
+//
 // responses:
-//   "200":
-//     description: "Successful get job"
-//     schema:
-//        "$ref": "#/definitions/JobStatus"
-//   "404":
-//     description: "Not found"
-//     schema:
-//        "$ref": "#/definitions/Status"
-//   "500":
-//     description: "Internal server error"
-//     schema:
-//        "$ref": "#/definitions/Status"
+//
+//	"200":
+//	  description: "Successful get job"
+//	  schema:
+//	     "$ref": "#/definitions/JobStatus"
+//	"404":
+//	  description: "Not found"
+//	  schema:
+//	     "$ref": "#/definitions/Status"
+//	"500":
+//	  description: "Internal server error"
+//	  schema:
+//	     "$ref": "#/definitions/Status"
 func (controller *batchController) GetBatchJob(w http.ResponseWriter, r *http.Request) {
 	batchName := mux.Vars(r)[batchNameParam]
 	jobName := mux.Vars(r)[jobNameParam]
 	log.Debugf("Get job %s from the batch %s", jobName, batchName)
-	job, err := controller.handler.GetBatchJob(batchName, jobName)
+	job, err := controller.handler.GetBatchJob(r.Context(), batchName, jobName)
 	if err != nil {
 		controller.HandleError(w, err)
 		return
@@ -231,28 +238,30 @@ func (controller *batchController) GetBatchJob(w http.ResponseWriter, r *http.Re
 // ---
 // summary: Delete batch
 // parameters:
-// - name: batchName
-//   in: path
-//   description: Name of batch
-//   type: string
-//   required: true
+//   - name: batchName
+//     in: path
+//     description: Name of batch
+//     type: string
+//     required: true
+//
 // responses:
-//   "200":
-//     description: "Successful delete batch"
-//     schema:
-//        "$ref": "#/definitions/Status"
-//   "404":
-//     description: "Not found"
-//     schema:
-//        "$ref": "#/definitions/Status"
-//   "500":
-//     description: "Internal server error"
-//     schema:
-//        "$ref": "#/definitions/Status"
+//
+//	"200":
+//	  description: "Successful delete batch"
+//	  schema:
+//	     "$ref": "#/definitions/Status"
+//	"404":
+//	  description: "Not found"
+//	  schema:
+//	     "$ref": "#/definitions/Status"
+//	"500":
+//	  description: "Internal server error"
+//	  schema:
+//	     "$ref": "#/definitions/Status"
 func (controller *batchController) DeleteBatch(w http.ResponseWriter, r *http.Request) {
 	batchName := mux.Vars(r)[batchNameParam]
 	log.Debugf("Delete batch %s", batchName)
-	err := controller.handler.DeleteBatch(batchName)
+	err := controller.handler.DeleteBatch(r.Context(), batchName)
 	if err != nil {
 		controller.HandleError(w, err)
 		return
@@ -270,27 +279,29 @@ func (controller *batchController) DeleteBatch(w http.ResponseWriter, r *http.Re
 // ---
 // summary: Stop batch
 // parameters:
-// - name: batchName
-//   in: path
-//   description: Name of batch
-//   type: string
-//   required: true
+//   - name: batchName
+//     in: path
+//     description: Name of batch
+//     type: string
+//     required: true
+//
 // responses:
-//   "200":
-//     description: "Successful stop batch"
-//     schema:
-//        "$ref": "#/definitions/Status"
-//   "404":
-//     description: "Not found"
-//     schema:
-//        "$ref": "#/definitions/Status"
-//   "500":
-//     description: "Internal server error"
-//     schema:
-//        "$ref": "#/definitions/Status"
+//
+//	"200":
+//	  description: "Successful stop batch"
+//	  schema:
+//	     "$ref": "#/definitions/Status"
+//	"404":
+//	  description: "Not found"
+//	  schema:
+//	     "$ref": "#/definitions/Status"
+//	"500":
+//	  description: "Internal server error"
+//	  schema:
+//	     "$ref": "#/definitions/Status"
 func (controller *batchController) StopBatch(w http.ResponseWriter, r *http.Request) {
 	batchName := mux.Vars(r)[batchNameParam]
-	err := controller.handler.StopBatch(batchName)
+	err := controller.handler.StopBatch(r.Context(), batchName)
 	if err != nil {
 		controller.HandleError(w, err)
 		return
@@ -308,33 +319,35 @@ func (controller *batchController) StopBatch(w http.ResponseWriter, r *http.Requ
 // ---
 // summary: Stop batch job
 // parameters:
-// - name: batchName
-//   in: path
-//   description: Name of batch
-//   type: string
-//   required: true
-// - name: jobName
-//   in: path
-//   description: Name of job
-//   type: string
-//   required: true
+//   - name: batchName
+//     in: path
+//     description: Name of batch
+//     type: string
+//     required: true
+//   - name: jobName
+//     in: path
+//     description: Name of job
+//     type: string
+//     required: true
+//
 // responses:
-//   "200":
-//     description: "Successful stop batch job"
-//     schema:
-//        "$ref": "#/definitions/Status"
-//   "404":
-//     description: "Not found"
-//     schema:
-//        "$ref": "#/definitions/Status"
-//   "500":
-//     description: "Internal server error"
-//     schema:
-//        "$ref": "#/definitions/Status"
+//
+//	"200":
+//	  description: "Successful stop batch job"
+//	  schema:
+//	     "$ref": "#/definitions/Status"
+//	"404":
+//	  description: "Not found"
+//	  schema:
+//	     "$ref": "#/definitions/Status"
+//	"500":
+//	  description: "Internal server error"
+//	  schema:
+//	     "$ref": "#/definitions/Status"
 func (controller *batchController) StopBatchJob(w http.ResponseWriter, r *http.Request) {
 	batchName := mux.Vars(r)[batchNameParam]
 	jobName := mux.Vars(r)[jobNameParam]
-	err := controller.handler.StopBatchJob(batchName, jobName)
+	err := controller.handler.StopBatchJob(r.Context(), batchName, jobName)
 	if err != nil {
 		controller.HandleError(w, err)
 		return

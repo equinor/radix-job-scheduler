@@ -44,12 +44,12 @@ func New(controllers ...models.Controller) ControllerTestUtils {
 }
 
 // ExecuteRequest Helper method to issue a http request
-func (ctrl *ControllerTestUtils) ExecuteRequest(method, path string) <-chan *http.Response {
-	return ctrl.ExecuteRequestWithBody(method, path, nil)
+func (ctrl *ControllerTestUtils) ExecuteRequest(ctx context.Context, method, path string) <-chan *http.Response {
+	return ctrl.ExecuteRequestWithBody(ctx, method, path, nil)
 }
 
 // ExecuteRequestWithBody Helper method to issue a http request with body
-func (ctrl *ControllerTestUtils) ExecuteRequestWithBody(method, path string, body interface{}) <-chan *http.Response {
+func (ctrl *ControllerTestUtils) ExecuteRequestWithBody(ctx context.Context, method, path string, body interface{}) <-chan *http.Response {
 	responseChan := make(chan *http.Response)
 
 	go func() {
@@ -64,7 +64,7 @@ func (ctrl *ControllerTestUtils) ExecuteRequestWithBody(method, path string, bod
 		server := httptest.NewServer(serverRouter)
 		defer server.Close()
 		serverUrl := buildURLFromServer(server, path)
-		request, err := http.NewRequest(method, serverUrl, reader)
+		request, err := http.NewRequestWithContext(ctx, method, serverUrl, reader)
 		if err != nil {
 			panic(err)
 		}
@@ -134,7 +134,7 @@ func AddRadixBatch(radixClient versioned.Interface, jobName, componentName strin
 func CreateSecretForTest(appName, secretName, jobName, radixJobComponentName, namespace string, kubeClient kubernetes.Interface) {
 	batchName, batchJobName, _ := ParseBatchAndJobNameFromScheduledJobName(jobName)
 	_, err := kubeClient.CoreV1().Secrets(namespace).Create(
-		context.Background(),
+		context.TODO(),
 		&corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: secretName,
@@ -222,7 +222,7 @@ func (params *TestParams) ApplyRd(kubeUtil *kube.Kube) *v1.RadixDeployment {
 				WithEnvironmentVariables(params.RadixConfigEnvVarsMap),
 		).
 		BuildRD()
-	_, _ = kubeUtil.RadixClient().RadixV1().RadixDeployments(rd.Namespace).Create(context.Background(), rd, metav1.CreateOptions{})
+	_, _ = kubeUtil.RadixClient().RadixV1().RadixDeployments(rd.Namespace).Create(context.TODO(), rd, metav1.CreateOptions{})
 	return rd
 }
 
@@ -277,4 +277,16 @@ func ParseBatchAndJobNameFromScheduledJobName(scheduleJobName string) (batchName
 	batchJobName = scheduleJobNameParts[len(scheduleJobNameParts)-1]
 	ok = true
 	return
+}
+
+type RequestContextMatcher struct {
+}
+
+func (c RequestContextMatcher) Matches(x interface{}) bool {
+	_, ok := x.(context.Context)
+	return ok
+}
+
+func (c RequestContextMatcher) String() string {
+	return "is context"
 }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"os"
@@ -28,7 +29,7 @@ func main() {
 	env := models.NewEnv()
 	kubeUtil := getKubeUtil()
 
-	radixDeployJobComponent, err := radix.GetRadixDeployJobComponentByName(kubeUtil.RadixClient(), env.RadixDeploymentNamespace, env.RadixDeploymentName, env.RadixComponentName)
+	radixDeployJobComponent, err := radix.GetRadixDeployJobComponentByName(context.Background(), kubeUtil.RadixClient(), env.RadixDeploymentNamespace, env.RadixDeploymentName, env.RadixComponentName)
 	if err != nil {
 		log.Fatalln(err)
 		return
