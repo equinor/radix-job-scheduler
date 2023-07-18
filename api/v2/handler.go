@@ -29,11 +29,11 @@ import (
 )
 
 const (
-	//Max size of the secret description, including description, metadata, base64 encodes secret values, etc.
-	maxPayloadSecretSize = 1024 * 512 //0.5MB
-	//Standard secret description, metadata, etc.
+	// Max size of the secret description, including description, metadata, base64 encodes secret values, etc.
+	maxPayloadSecretSize = 1024 * 512 // 0.5MB
+	// Standard secret description, metadata, etc.
 	payloadSecretAuxDataSize = 600
-	//Each entry in a secret Data has name, etc.
+	// Each entry in a secret Data has name, etc.
 	payloadSecretEntryAuxDataSize = 128
 )
 
@@ -48,27 +48,29 @@ type handler struct {
 }
 
 type Handler interface {
-	//GetRadixBatches Get status of all batches
+	// GetRadixBatches Get status of all batches
 	GetRadixBatches() ([]modelsv2.RadixBatch, error)
-	//GetRadixBatchSingleJobs Get status of all single jobs
+	// GetRadixBatchSingleJobs Get status of all single jobs
 	GetRadixBatchSingleJobs() ([]modelsv2.RadixBatch, error)
-	//GetRadixBatch Get a batch
+	// GetRadixBatch Get a batch
 	GetRadixBatch(string) (*modelsv2.RadixBatch, error)
-	//CreateRadixBatch Create a batch with parameters
+	// CreateRadixBatch Create a batch with parameters
 	CreateRadixBatch(*common.BatchScheduleDescription) (*modelsv2.RadixBatch, error)
-	//CreateRadixBatchSingleJob Create a batch with single job parameters
+	// CopyRadixBatch Copy a batch with deployment and optional parameters
+	CopyRadixBatch(string, string, *common.BatchScheduleDescription) (*modelsv2.RadixBatch, error)
+	// CreateRadixBatchSingleJob Create a batch with single job parameters
 	CreateRadixBatchSingleJob(*common.JobScheduleDescription) (*modelsv2.RadixBatch, error)
-	//MaintainHistoryLimit Delete outdated batches
+	// MaintainHistoryLimit Delete outdated batches
 	MaintainHistoryLimit() error
 	// GarbageCollectPayloadSecrets Delete orphaned payload secrets
 	GarbageCollectPayloadSecrets() error
-	//DeleteRadixBatch Delete a batch
+	// DeleteRadixBatch Delete a batch
 	DeleteRadixBatch(string) error
 	// GetCompletedRadixBatchesSortedByCompletionTimeAsc Gets completed RadixBatch lists for env.RadixComponentName
 	GetCompletedRadixBatchesSortedByCompletionTimeAsc() (*CompletedRadixBatches, error)
-	//StopRadixBatch Stop a batch
+	// StopRadixBatch Stop a batch
 	StopRadixBatch(string) error
-	//StopRadixBatchJob Stop a batch job
+	// StopRadixBatchJob Stop a batch job
 	StopRadixBatchJob(string, string) error
 }
 
@@ -139,7 +141,7 @@ func getRadixBatchJobStatusesFromRadixBatch(radixBatch *radixv1.RadixBatch, radi
 	radixBatchJobsStatuses := getRadixBatchJobsStatusesMap(radixBatchJobStatuses)
 	var jobStatuses []modelsv2.RadixBatchJobStatus
 	for _, radixBatchJob := range radixBatch.Spec.Jobs {
-		jobName := fmt.Sprintf("%s-%s", radixBatch.Name, radixBatchJob.Name) //composed name in models are always consist of a batchName and original jobName
+		jobName := fmt.Sprintf("%s-%s", radixBatch.Name, radixBatchJob.Name) // composed name in models are always consist of a batchName and original jobName
 		radixBatchJobStatus := modelsv2.RadixBatchJobStatus{
 			Name:  jobName,
 			JobId: radixBatchJob.JobId,
@@ -186,6 +188,15 @@ func (h *handler) CreateRadixBatch(batchScheduleDescription *common.BatchSchedul
 	}
 
 	return h.createRadixBatchOrJob(*batchScheduleDescription, kube.RadixBatchTypeBatch)
+}
+
+// CopyRadixBatch Copy a batch with deployment and optional parameters
+func (h *handler) CopyRadixBatch(batchName, deploymentName string, batchScheduleDescription *common.BatchScheduleDescription) (*modelsv2.RadixBatch, error) {
+	radixBatch, err := h.GetRadixBatch(batchName)
+	if err != nil {
+		return nil, err
+	}
+	return h.copyRadixBatchOrJob(radixBatch, deploymentName, batchScheduleDescription)
 }
 
 func (h *handler) createRadixBatchOrJob(batchScheduleDescription common.BatchScheduleDescription, radixBatchType kube.RadixBatchType) (*modelsv2.RadixBatch, error) {
@@ -554,10 +565,10 @@ func (h *handler) createRadixBatchJobPayloadSecrets(namespace, appName, radixJob
 
 		radixBatchJob := radixJobWithDescriptions.radixBatchJob
 		payloadBase64 := base64.RawStdEncoding.EncodeToString(payload)
-		secretEntrySize := len(payloadBase64) + len(radixBatchJob.Name) + payloadSecretEntryAuxDataSize //preliminary estimate of a payload secret entry
+		secretEntrySize := len(payloadBase64) + len(radixBatchJob.Name) + payloadSecretEntryAuxDataSize // preliminary estimate of a payload secret entry
 		if payloadSecretAuxDataSize+accumulatedSecretSize+secretEntrySize > maxPayloadSecretSize {
 			if len(payloadsSecret.Data) == 0 {
-				//this is the first entry in the secret, and it is too large to be stored to the secret - no reason to create new secret.
+				// this is the first entry in the secret, and it is too large to be stored to the secret - no reason to create new secret.
 				return fmt.Errorf("payload is too large in the job #%d - its base64 size is %d bytes, but it is expected to be less then %d bytes", jobIndex, secretEntrySize, maxPayloadSecretSize)
 			}
 			payloadsSecret = buildSecret(appName, radixJobComponentName, batchName, len(payloadSecrets))
@@ -582,7 +593,7 @@ func (h *handler) createRadixBatchJobPayloadSecrets(namespace, appName, radixJob
 func (h *handler) createSecrets(namespace string, secrets []*corev1.Secret) error {
 	for _, secret := range secrets {
 		if secret.Data == nil || len(secret.Data) == 0 {
-			continue //if Data is empty, the secret is not used in any jobs
+			continue // if Data is empty, the secret is not used in any jobs
 		}
 		_, err := h.kubeUtil.KubeClient().CoreV1().Secrets(namespace).Create(context.TODO(), secret, metav1.CreateOptions{})
 		if err != nil {
@@ -680,6 +691,11 @@ func (h *handler) GarbageCollectPayloadSecrets() error {
 		}
 	}
 	return nil
+}
+
+func (h *handler) copyRadixBatchOrJob(radixBatch *modelsv2.RadixBatch, deploymentName string, batchScheduleDescription *common.BatchScheduleDescription) (*modelsv2.RadixBatch, error) {
+	// TODO
+	return nil, nil
 }
 
 func applyDefaultJobDescriptionProperties(jobScheduleDescription *common.JobScheduleDescription, defaultRadixJobComponentConfig *common.RadixJobComponentConfig) error {
