@@ -1,6 +1,6 @@
 module github.com/equinor/radix-job-scheduler
 
-go 1.19
+go 1.20
 
 require (
 	github.com/equinor/radix-common v1.3.0

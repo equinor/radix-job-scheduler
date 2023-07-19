@@ -66,35 +66,33 @@ func (controller *jobController) GetRoutes() models.Routes {
 // ---
 // summary: Create job
 // parameters:
-//   - name: jobCreation
-//     in: body
-//     description: Job to create
-//     required: true
-//     schema:
-//     "$ref": "#/definitions/JobScheduleDescription"
-//
+// - name: jobCreation
+//   in: body
+//   description: Job to create
+//   required: true
+//   schema:
+//       "$ref": "#/definitions/JobScheduleDescription"
 // responses:
-//
-//	"200":
-//	  description: "Successful create job"
-//	  schema:
-//	     "$ref": "#/definitions/JobStatus"
-//	"400":
-//	  description: "Bad request"
-//	  schema:
-//	     "$ref": "#/definitions/Status"
-//	"404":
-//	  description: "Not found"
-//	  schema:
-//	     "$ref": "#/definitions/Status"
-//	"422":
-//	  description: "Invalid data in request"
-//	  schema:
-//	     "$ref": "#/definitions/Status"
-//	"500":
-//	  description: "Internal server error"
-//	  schema:
-//	     "$ref": "#/definitions/Status"
+//   "200":
+//     description: "Successful create job"
+//     schema:
+//        "$ref": "#/definitions/JobStatus"
+//   "400":
+//     description: "Bad request"
+//     schema:
+//        "$ref": "#/definitions/Status"
+//   "404":
+//     description: "Not found"
+//     schema:
+//        "$ref": "#/definitions/Status"
+//   "422":
+//     description: "Invalid data in request"
+//     schema:
+//        "$ref": "#/definitions/Status"
+//   "500":
+//     description: "Internal server error"
+//     schema:
+//        "$ref": "#/definitions/Status"
 func (controller *jobController) CreateJob(w http.ResponseWriter, r *http.Request) {
 	var jobScheduleDescription apiModels.JobScheduleDescription
 
@@ -123,17 +121,16 @@ func (controller *jobController) CreateJob(w http.ResponseWriter, r *http.Reques
 // summary: Gets jobs
 // parameters:
 // responses:
-//
-//	"200":
-//	  description: "Successful get jobs"
-//	  schema:
-//	     type: "array"
-//	     items:
-//	        "$ref": "#/definitions/JobStatus"
-//	"500":
-//	  description: "Internal server error"
-//	  schema:
-//	     "$ref": "#/definitions/Status"
+//   "200":
+//     description: "Successful get jobs"
+//     schema:
+//        type: "array"
+//        items:
+//           "$ref": "#/definitions/JobStatus"
+//   "500":
+//     description: "Internal server error"
+//     schema:
+//        "$ref": "#/definitions/Status"
 func (controller *jobController) GetJobs(w http.ResponseWriter, r *http.Request) {
 	log.Debug("Get job list")
 	jobs, err := controller.handler.GetJobs(r.Context())
@@ -149,26 +146,24 @@ func (controller *jobController) GetJobs(w http.ResponseWriter, r *http.Request)
 // ---
 // summary: Gets job
 // parameters:
-//   - name: jobName
-//     in: path
-//     description: Name of job
-//     type: string
-//     required: true
-//
+// - name: jobName
+//   in: path
+//   description: Name of job
+//   type: string
+//   required: true
 // responses:
-//
-//	"200":
-//	  description: "Successful get job"
-//	  schema:
-//	     "$ref": "#/definitions/JobStatus"
-//	"404":
-//	  description: "Not found"
-//	  schema:
-//	     "$ref": "#/definitions/Status"
-//	"500":
-//	  description: "Internal server error"
-//	  schema:
-//	     "$ref": "#/definitions/Status"
+//   "200":
+//     description: "Successful get job"
+//     schema:
+//        "$ref": "#/definitions/JobStatus"
+//   "404":
+//     description: "Not found"
+//     schema:
+//        "$ref": "#/definitions/Status"
+//   "500":
+//     description: "Internal server error"
+//     schema:
+//        "$ref": "#/definitions/Status"
 func (controller *jobController) GetJob(w http.ResponseWriter, r *http.Request) {
 	jobName := mux.Vars(r)[jobNameParam]
 	log.Debugf("Get job %s", jobName)
@@ -184,26 +179,24 @@ func (controller *jobController) GetJob(w http.ResponseWriter, r *http.Request) 
 // ---
 // summary: Delete job
 // parameters:
-//   - name: jobName
-//     in: path
-//     description: Name of job
-//     type: string
-//     required: true
-//
+// - name: jobName
+//   in: path
+//   description: Name of job
+//   type: string
+//   required: true
 // responses:
-//
-//	"200":
-//	  description: "Successful delete job"
-//	  schema:
-//	     "$ref": "#/definitions/Status"
-//	"404":
-//	  description: "Not found"
-//	  schema:
-//	     "$ref": "#/definitions/Status"
-//	"500":
-//	  description: "Internal server error"
-//	  schema:
-//	     "$ref": "#/definitions/Status"
+//   "200":
+//     description: "Successful delete job"
+//     schema:
+//        "$ref": "#/definitions/Status"
+//   "404":
+//     description: "Not found"
+//     schema:
+//        "$ref": "#/definitions/Status"
+//   "500":
+//     description: "Internal server error"
+//     schema:
+//        "$ref": "#/definitions/Status"
 func (controller *jobController) DeleteJob(w http.ResponseWriter, r *http.Request) {
 	jobName := mux.Vars(r)[jobNameParam]
 	log.Debugf("Delete job %s", jobName)
@@ -225,26 +218,24 @@ func (controller *jobController) DeleteJob(w http.ResponseWriter, r *http.Reques
 // ---
 // summary: Stop job
 // parameters:
-//   - name: jobName
-//     in: path
-//     description: Name of job
-//     type: string
-//     required: true
-//
+// - name: jobName
+//   in: path
+//   description: Name of job
+//   type: string
+//   required: true
 // responses:
-//
-//	"200":
-//	  description: "Successful delete job"
-//	  schema:
-//	     "$ref": "#/definitions/Status"
-//	"404":
-//	  description: "Not found"
-//	  schema:
-//	     "$ref": "#/definitions/Status"
-//	"500":
-//	  description: "Internal server error"
-//	  schema:
-//	     "$ref": "#/definitions/Status"
+//   "200":
+//     description: "Successful delete job"
+//     schema:
+//        "$ref": "#/definitions/Status"
+//   "404":
+//     description: "Not found"
+//     schema:
+//        "$ref": "#/definitions/Status"
+//   "500":
+//     description: "Internal server error"
+//     schema:
+//        "$ref": "#/definitions/Status"
 func (controller *jobController) StopJob(w http.ResponseWriter, r *http.Request) {
 	jobName := mux.Vars(r)[jobNameParam]
 
