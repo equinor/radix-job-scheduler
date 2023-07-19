@@ -37,18 +37,18 @@ func (m *MockBatchHandler) EXPECT() *MockBatchHandlerMockRecorder {
 }
 
 // CopyBatch mocks base method.
-func (m *MockBatchHandler) CopyBatch(arg0 context.Context, arg1, arg2 string, arg3 *common.BatchScheduleDescription) (*v1.BatchStatus, error) {
+func (m *MockBatchHandler) CopyBatch(arg0 context.Context, arg1, arg2 string) (*v1.BatchStatus, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CopyBatch", arg0, arg1, arg2, arg3)
+	ret := m.ctrl.Call(m, "CopyBatch", arg0, arg1, arg2)
 	ret0, _ := ret[0].(*v1.BatchStatus)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // CopyBatch indicates an expected call of CopyBatch.
-func (mr *MockBatchHandlerMockRecorder) CopyBatch(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+func (mr *MockBatchHandlerMockRecorder) CopyBatch(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CopyBatch", reflect.TypeOf((*MockBatchHandler)(nil).CopyBatch), arg0, arg1, arg2, arg3)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CopyBatch", reflect.TypeOf((*MockBatchHandler)(nil).CopyBatch), arg0, arg1, arg2)
 }
 
 // CreateBatch mocks base method.

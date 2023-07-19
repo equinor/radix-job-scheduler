@@ -37,7 +37,7 @@ type BatchHandler interface {
 	// CreateBatch Create a batch with parameters
 	CreateBatch(context.Context, *common.BatchScheduleDescription) (*modelsv1.BatchStatus, error)
 	// CopyBatch Copy a batch with  deployment and optional parameters
-	CopyBatch(context.Context, string, string, *common.BatchScheduleDescription) (*modelsv1.BatchStatus, error)
+	CopyBatch(context.Context, string, string) (*modelsv1.BatchStatus, error)
 	// MaintainHistoryLimit Delete outdated batches
 	MaintainHistoryLimit(context.Context) error
 	// DeleteBatch Delete a batch
@@ -186,13 +186,8 @@ func (handler *batchHandler) CreateBatch(ctx context.Context, batchScheduleDescr
 }
 
 // CopyBatch Copy a batch with  deployment and optional parameters
-func (handler *batchHandler) CopyBatch(ctx context.Context, batchName, deploymentName string, batchScheduleDescription *common.BatchScheduleDescription) (*modelsv1.BatchStatus, error) {
-	namespace := handler.common.Env.RadixDeploymentNamespace
-	_, err := handler.common.Kube.RadixClient().RadixV1().RadixBatches(namespace).Get(ctx, batchName, metav1.GetOptions{})
-	if err != nil {
-		return nil, err
-	}
-	radixBatch, err := handler.common.HandlerApiV2.CopyRadixBatch(ctx, batchName, deploymentName, batchScheduleDescription)
+func (handler *batchHandler) CopyBatch(ctx context.Context, batchName string, deploymentName string) (*modelsv1.BatchStatus, error) {
+	radixBatch, err := handler.common.HandlerApiV2.CopyRadixBatch(ctx, batchName, deploymentName)
 	if err != nil {
 		return nil, err
 	}
