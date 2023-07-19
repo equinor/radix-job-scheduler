@@ -528,6 +528,7 @@ func (h *handler) copyRadixBatchOrJob(ctx context.Context, sourceRadixBatch *rad
 		Spec: radixv1.RadixBatchSpec{
 			RadixDeploymentJobRef: radixv1.RadixDeploymentJobComponentSelector{
 				LocalObjectReference: radixv1.LocalObjectReference{Name: radixDeploymentName},
+				Job:                  radixComponentName,
 			},
 		},
 	}
@@ -560,6 +561,7 @@ func (h *handler) setJobPayloadSecretReferences(radixBatch *radixv1.RadixBatch, 
 		sourceSecretName := radixBatch.Spec.Jobs[i].PayloadSecretRef.Name
 		if newSecretName, ok := sourceSecretNameToNewNameMap[sourceSecretName]; ok {
 			radixBatch.Spec.Jobs[i].PayloadSecretRef.Name = newSecretName
+			radixBatch.Spec.Jobs[i].PayloadSecretRef.Key = radixBatch.Spec.Jobs[i].Name
 			continue
 		}
 		return fmt.Errorf("could not find source secret name %s", sourceSecretName)
