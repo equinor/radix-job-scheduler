@@ -60,6 +60,8 @@ type Handler interface {
 	CopyRadixBatch(context.Context, string, string) (*modelsv2.RadixBatch, error)
 	// CreateRadixBatchSingleJob Create a batch with single job parameters
 	CreateRadixBatchSingleJob(context.Context, *common.JobScheduleDescription) (*modelsv2.RadixBatch, error)
+	// CopyRadixBatchSingleJob Copy a batch with single job parameters
+	CopyRadixBatchSingleJob(context.Context, string, string, string) (*modelsv2.RadixBatch, error)
 	// MaintainHistoryLimit Delete outdated batches
 	MaintainHistoryLimit(context.Context) error
 	// GarbageCollectPayloadSecrets Delete orphaned payload secrets
@@ -196,7 +198,7 @@ func (h *handler) CopyRadixBatch(ctx context.Context, batchName, deploymentName 
 	if err != nil {
 		return nil, err
 	}
-	return h.copyRadixBatchOrJob(ctx, radixBatch, deploymentName)
+	return h.copyRadixBatchOrJob(ctx, radixBatch, "", deploymentName)
 }
 
 func (h *handler) createRadixBatchOrJob(ctx context.Context, batchScheduleDescription common.BatchScheduleDescription, radixBatchType kube.RadixBatchType) (*modelsv2.RadixBatch, error) {
@@ -237,6 +239,15 @@ func (h *handler) CreateRadixBatchSingleJob(ctx context.Context, jobScheduleDesc
 		JobScheduleDescriptions:        []common.JobScheduleDescription{*jobScheduleDescription},
 		DefaultRadixJobComponentConfig: nil,
 	}, kube.RadixBatchTypeJob)
+}
+
+// CopyRadixBatchSingleJob Copy a batch with single job parameters
+func (h *handler) CopyRadixBatchSingleJob(ctx context.Context, batchName, jobName, deploymentName string) (*modelsv2.RadixBatch, error) {
+	radixBatch, err := h.getRadixBatch(ctx, batchName)
+	if err != nil {
+		return nil, err
+	}
+	return h.copyRadixBatchOrJob(ctx, radixBatch, jobName, deploymentName)
 }
 
 // DeleteRadixBatch Delete a batch
@@ -510,7 +521,7 @@ func (h *handler) createRadixBatch(ctx context.Context, namespace, appName, radi
 		metav1.CreateOptions{})
 }
 
-func (h *handler) copyRadixBatchOrJob(ctx context.Context, sourceRadixBatch *radixv1.RadixBatch, radixDeploymentName string) (*modelsv2.RadixBatch, error) {
+func (h *handler) copyRadixBatchOrJob(ctx context.Context, sourceRadixBatch *radixv1.RadixBatch, sourceJobName string, radixDeploymentName string) (*modelsv2.RadixBatch, error) {
 	namespace := h.env.RadixDeploymentNamespace
 	log.Debugf("copy batch %s for namespace: %s", sourceRadixBatch.GetName(), namespace)
 	radixDeployment, err := h.kubeUtil.RadixClient().RadixV1().RadixDeployments(namespace).
@@ -533,8 +544,8 @@ func (h *handler) copyRadixBatchOrJob(ctx context.Context, sourceRadixBatch *rad
 		},
 	}
 
-	sourceJobNameToNewNameMap := h.copyBatchJobs(sourceRadixBatch, &radixBatch)
-	sourceSecretNameToNewNameMap, err := h.copyPayloadSecrets(ctx, sourceRadixBatch, namespace, appName, radixComponentName, radixBatch.GetName(), sourceJobNameToNewNameMap)
+	sourceJobNameToNewNameMap := h.copyBatchJobs(sourceRadixBatch, &radixBatch, sourceJobName)
+	sourceSecretNameToNewNameMap, err := h.copyPayloadSecrets(ctx, sourceRadixBatch, namespace, appName, radixComponentName, radixBatch.GetName(), sourceJobNameToNewNameMap, sourceJobName)
 	if err != nil {
 		return nil, err
 	}
@@ -569,9 +580,12 @@ func (h *handler) setJobPayloadSecretReferences(radixBatch *radixv1.RadixBatch, 
 	return nil
 }
 
-func (h *handler) copyBatchJobs(sourceRadixBatch *radixv1.RadixBatch, radixBatch *radixv1.RadixBatch) map[string]string {
+func (h *handler) copyBatchJobs(sourceRadixBatch *radixv1.RadixBatch, radixBatch *radixv1.RadixBatch, sourceJobName string) map[string]string {
 	sourceJobNameToNewNameMap := make(map[string]string, len(sourceRadixBatch.Spec.Jobs))
 	for _, sourceJob := range sourceRadixBatch.Spec.Jobs {
+		if sourceJobName != "" && sourceJob.Name != sourceJobName {
+			continue
+		}
 		job := sourceJob.DeepCopy()
 		job.Name = createJobName()
 		sourceJobNameToNewNameMap[sourceJob.Name] = job.Name
@@ -580,7 +594,7 @@ func (h *handler) copyBatchJobs(sourceRadixBatch *radixv1.RadixBatch, radixBatch
 	return sourceJobNameToNewNameMap
 }
 
-func (h *handler) copyPayloadSecrets(ctx context.Context, sourceRadixBatch *radixv1.RadixBatch, namespace, appName, radixComponentName, batchName string, sourceJobNameToNewNameMap map[string]string) (map[string]string, error) {
+func (h *handler) copyPayloadSecrets(ctx context.Context, sourceRadixBatch *radixv1.RadixBatch, namespace, appName, radixComponentName, batchName string, sourceJobNameToNewNameMap map[string]string, sourceJobName string) (map[string]string, error) {
 	sourceBatchSecrets, err := h.GetSecretsForRadixBatch(sourceRadixBatch.GetName())
 	if err != nil {
 		return nil, err
@@ -590,9 +604,15 @@ func (h *handler) copyPayloadSecrets(ctx context.Context, sourceRadixBatch *radi
 	for _, sourceSecret := range sourceBatchSecrets {
 		payloadsSecret := buildSecret(appName, radixComponentName, batchName, len(payloadSecrets))
 		for sourceJobNameAsKey, value := range sourceSecret.Data {
+			if sourceJobName != "" && sourceJobName != sourceJobNameAsKey {
+				continue
+			}
 			if jobName, ok := sourceJobNameToNewNameMap[sourceJobNameAsKey]; ok {
 				payloadsSecret.Data[jobName] = value
 			}
+		}
+		if len(payloadsSecret.Data) == 0 {
+			continue
 		}
 		sourceSecretNameToNewNameMap[sourceSecret.GetName()] = payloadsSecret.GetName()
 		payloadSecrets = append(payloadSecrets, payloadsSecret)

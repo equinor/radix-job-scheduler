@@ -35,6 +35,8 @@ type JobHandler interface {
 	GetJob(context.Context, string) (*modelsv1.JobStatus, error)
 	// CreateJob Create a job with parameters
 	CreateJob(context.Context, *common.JobScheduleDescription) (*modelsv1.JobStatus, error)
+	// CopyJob Copy a job with parameters
+	CopyJob(context.Context, string, string) (*modelsv1.JobStatus, error)
 	// MaintainHistoryLimit Delete outdated jobs
 	MaintainHistoryLimit(context.Context) error
 	// DeleteJob Delete a job
@@ -145,6 +147,16 @@ func (handler *jobHandler) GetJob(ctx context.Context, jobName string) (*modelsv
 func (handler *jobHandler) CreateJob(ctx context.Context, jobScheduleDescription *common.JobScheduleDescription) (*modelsv1.JobStatus, error) {
 	log.Debugf("create job for namespace: %s", handler.common.Env.RadixDeploymentNamespace)
 	radixBatch, err := handler.common.HandlerApiV2.CreateRadixBatchSingleJob(ctx, jobScheduleDescription)
+	if err != nil {
+		return nil, err
+	}
+	return GetSingleJobStatusFromRadixBatchJob(radixBatch)
+}
+
+// CopyJob Copy a job with  deployment and optional parameters
+func (handler *jobHandler) CopyJob(ctx context.Context, jobName string, deploymentName string) (*modelsv1.JobStatus, error) {
+	log.Debugf("stop the job %s for namespace: %s", jobName, handler.common.Env.RadixDeploymentNamespace)
+	radixBatch, err := apiv1.CopyJob(ctx, handler.common.HandlerApiV2, jobName, deploymentName)
 	if err != nil {
 		return nil, err
 	}

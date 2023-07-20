@@ -80,6 +80,14 @@ func GetJobStatusFromRadixBatchJobsStatuses(radixBatches ...modelsv2.RadixBatch)
 	return jobStatuses
 }
 
+// CopyJob Copy a job
+func CopyJob(ctx context.Context, handlerApiV2 apiv2.Handler, jobName, deploymentName string) (*modelsv2.RadixBatch, error) {
+	if batchName, jobName, ok := ParseBatchAndJobNameFromScheduledJobName(jobName); ok {
+		return handlerApiV2.CopyRadixBatchSingleJob(ctx, batchName, jobName, deploymentName)
+	}
+	return nil, fmt.Errorf("copy of this job is not supported")
+}
+
 // StopJob Stop a job
 func StopJob(ctx context.Context, handlerApiV2 apiv2.Handler, jobName string) error {
 	if batchName, jobName, ok := ParseBatchAndJobNameFromScheduledJobName(jobName); ok {
