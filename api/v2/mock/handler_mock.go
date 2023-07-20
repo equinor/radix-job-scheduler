@@ -52,6 +52,21 @@ func (mr *MockHandlerMockRecorder) CopyRadixBatch(arg0, arg1, arg2 interface{}) 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CopyRadixBatch", reflect.TypeOf((*MockHandler)(nil).CopyRadixBatch), arg0, arg1, arg2)
 }
 
+// CopyRadixBatchSingleJob mocks base method.
+func (m *MockHandler) CopyRadixBatchSingleJob(arg0 context.Context, arg1, arg2, arg3 string) (*v2.RadixBatch, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CopyRadixBatchSingleJob", arg0, arg1, arg2, arg3)
+	ret0, _ := ret[0].(*v2.RadixBatch)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CopyRadixBatchSingleJob indicates an expected call of CopyRadixBatchSingleJob.
+func (mr *MockHandlerMockRecorder) CopyRadixBatchSingleJob(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CopyRadixBatchSingleJob", reflect.TypeOf((*MockHandler)(nil).CopyRadixBatchSingleJob), arg0, arg1, arg2, arg3)
+}
+
 // CreateRadixBatch mocks base method.
 func (m *MockHandler) CreateRadixBatch(arg0 context.Context, arg1 *common.BatchScheduleDescription) (*v2.RadixBatch, error) {
 	m.ctrl.T.Helper()

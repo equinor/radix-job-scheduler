@@ -36,6 +36,21 @@ func (m *MockJobHandler) EXPECT() *MockJobHandlerMockRecorder {
 	return m.recorder
 }
 
+// CopyJob mocks base method.
+func (m *MockJobHandler) CopyJob(arg0 context.Context, arg1, arg2 string) (*v1.JobStatus, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CopyJob", arg0, arg1, arg2)
+	ret0, _ := ret[0].(*v1.JobStatus)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CopyJob indicates an expected call of CopyJob.
+func (mr *MockJobHandlerMockRecorder) CopyJob(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CopyJob", reflect.TypeOf((*MockJobHandler)(nil).CopyJob), arg0, arg1, arg2)
+}
+
 // CreateJob mocks base method.
 func (m *MockJobHandler) CreateJob(arg0 context.Context, arg1 *common.JobScheduleDescription) (*v1.JobStatus, error) {
 	m.ctrl.T.Helper()
