@@ -35,7 +35,7 @@ type JobHandler interface {
 	GetJob(ctx context.Context, jobName string) (*modelsv1.JobStatus, error)
 	// CreateJob Create a job with parameters
 	CreateJob(ctx context.Context, jobScheduleDescription *common.JobScheduleDescription) (*modelsv1.JobStatus, error)
-	// CopyJob Copy a job with parameters
+	// CopyJob creates a copy of an existing job with deploymentName as value for radixDeploymentJobRef.name
 	CopyJob(ctx context.Context, jobName string, deploymentName string) (*modelsv1.JobStatus, error)
 	// MaintainHistoryLimit Delete outdated jobs
 	MaintainHistoryLimit(ctx context.Context) error
