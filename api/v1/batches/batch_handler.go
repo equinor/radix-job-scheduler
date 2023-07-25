@@ -36,7 +36,7 @@ type BatchHandler interface {
 	GetBatchJob(context.Context, string, string) (*modelsv1.JobStatus, error)
 	// CreateBatch Create a batch with parameters
 	CreateBatch(context.Context, *common.BatchScheduleDescription) (*modelsv1.BatchStatus, error)
-	// CopyBatch Copy a batch with  deployment and optional parameters
+	// CopyBatch creates a copy of an existing batch with deploymentName as value for radixDeploymentJobRef.name
 	CopyBatch(context.Context, string, string) (*modelsv1.BatchStatus, error)
 	// MaintainHistoryLimit Delete outdated batches
 	MaintainHistoryLimit(context.Context) error
