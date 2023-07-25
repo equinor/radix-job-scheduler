@@ -30,19 +30,19 @@ type jobHandler struct {
 
 type JobHandler interface {
 	// GetJobs Get status of all jobs
-	GetJobs(context.Context) ([]modelsv1.JobStatus, error)
+	GetJobs(ctx context.Context) ([]modelsv1.JobStatus, error)
 	// GetJob Get status of a job
-	GetJob(context.Context, string) (*modelsv1.JobStatus, error)
+	GetJob(ctx context.Context, jobName string) (*modelsv1.JobStatus, error)
 	// CreateJob Create a job with parameters
-	CreateJob(context.Context, *common.JobScheduleDescription) (*modelsv1.JobStatus, error)
+	CreateJob(ctx context.Context, jobScheduleDescription *common.JobScheduleDescription) (*modelsv1.JobStatus, error)
 	// CopyJob Copy a job with parameters
-	CopyJob(context.Context, string, string) (*modelsv1.JobStatus, error)
+	CopyJob(ctx context.Context, jobName string, deploymentName string) (*modelsv1.JobStatus, error)
 	// MaintainHistoryLimit Delete outdated jobs
-	MaintainHistoryLimit(context.Context) error
+	MaintainHistoryLimit(ctx context.Context) error
 	// DeleteJob Delete a job
-	DeleteJob(context.Context, string) error
+	DeleteJob(ctx context.Context, jobName string) error
 	// StopJob Stop a job
-	StopJob(context.Context, string) error
+	StopJob(ctx context.Context, jobName string) error
 }
 
 type completedBatchOrJobVersioned struct {

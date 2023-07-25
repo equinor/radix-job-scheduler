@@ -49,31 +49,31 @@ type handler struct {
 
 type Handler interface {
 	// GetRadixBatches Get status of all batches
-	GetRadixBatches(context.Context) ([]modelsv2.RadixBatch, error)
+	GetRadixBatches(ctx context.Context) ([]modelsv2.RadixBatch, error)
 	// GetRadixBatchSingleJobs Get status of all single jobs
-	GetRadixBatchSingleJobs(context.Context) ([]modelsv2.RadixBatch, error)
+	GetRadixBatchSingleJobs(ctx context.Context) ([]modelsv2.RadixBatch, error)
 	// GetRadixBatch Get a batch
-	GetRadixBatch(context.Context, string) (*modelsv2.RadixBatch, error)
+	GetRadixBatch(ctx context.Context, batchName string) (*modelsv2.RadixBatch, error)
 	// CreateRadixBatch Create a batch with parameters
-	CreateRadixBatch(context.Context, *common.BatchScheduleDescription) (*modelsv2.RadixBatch, error)
+	CreateRadixBatch(ctx context.Context, batchScheduleDescription *common.BatchScheduleDescription) (*modelsv2.RadixBatch, error)
 	// CopyRadixBatch Copy a batch with deployment and optional parameters
-	CopyRadixBatch(context.Context, string, string) (*modelsv2.RadixBatch, error)
+	CopyRadixBatch(ctx context.Context, batchName, deploymentName string) (*modelsv2.RadixBatch, error)
 	// CreateRadixBatchSingleJob Create a batch with single job parameters
-	CreateRadixBatchSingleJob(context.Context, *common.JobScheduleDescription) (*modelsv2.RadixBatch, error)
+	CreateRadixBatchSingleJob(ctx context.Context, jobScheduleDescription *common.JobScheduleDescription) (*modelsv2.RadixBatch, error)
 	// CopyRadixBatchSingleJob Copy a batch with single job parameters
-	CopyRadixBatchSingleJob(context.Context, string, string, string) (*modelsv2.RadixBatch, error)
+	CopyRadixBatchSingleJob(ctx context.Context, batchName, jobName, deploymentName string) (*modelsv2.RadixBatch, error)
 	// MaintainHistoryLimit Delete outdated batches
-	MaintainHistoryLimit(context.Context) error
+	MaintainHistoryLimit(ctx context.Context) error
 	// GarbageCollectPayloadSecrets Delete orphaned payload secrets
-	GarbageCollectPayloadSecrets(context.Context) error
+	GarbageCollectPayloadSecrets(ctx context.Context) error
 	// DeleteRadixBatch Delete a batch
-	DeleteRadixBatch(context.Context, string) error
+	DeleteRadixBatch(ctx context.Context, batchName string) error
 	// GetCompletedRadixBatchesSortedByCompletionTimeAsc Gets completed RadixBatch lists for env.RadixComponentName
-	GetCompletedRadixBatchesSortedByCompletionTimeAsc(context.Context) (*CompletedRadixBatches, error)
+	GetCompletedRadixBatchesSortedByCompletionTimeAsc(ctx context.Context) (*CompletedRadixBatches, error)
 	// StopRadixBatch Stop a batch
-	StopRadixBatch(context.Context, string) error
+	StopRadixBatch(ctx context.Context, batchName string) error
 	// StopRadixBatchJob Stop a batch job
-	StopRadixBatchJob(context.Context, string, string) error
+	StopRadixBatchJob(ctx context.Context, batchName string, jobName string) error
 }
 
 // CompletedRadixBatches Completed RadixBatch lists

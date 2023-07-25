@@ -31,21 +31,21 @@ type BatchHandler interface {
 	// GetBatches Get status of all batches
 	GetBatches(ctx context.Context) ([]modelsv1.BatchStatus, error)
 	// GetBatch Get status of a batch
-	GetBatch(context.Context, string) (*modelsv1.BatchStatus, error)
+	GetBatch(ctx context.Context, batchName string) (*modelsv1.BatchStatus, error)
 	// GetBatchJob Get status of a batch job
-	GetBatchJob(context.Context, string, string) (*modelsv1.JobStatus, error)
+	GetBatchJob(ctx context.Context, batchName string, jobName string) (*modelsv1.JobStatus, error)
 	// CreateBatch Create a batch with parameters
-	CreateBatch(context.Context, *common.BatchScheduleDescription) (*modelsv1.BatchStatus, error)
+	CreateBatch(ctx context.Context, batchScheduleDescription *common.BatchScheduleDescription) (*modelsv1.BatchStatus, error)
 	// CopyBatch Copy a batch with  deployment and optional parameters
-	CopyBatch(context.Context, string, string) (*modelsv1.BatchStatus, error)
+	CopyBatch(ctx context.Context, batchName string, deploymentName string) (*modelsv1.BatchStatus, error)
 	// MaintainHistoryLimit Delete outdated batches
-	MaintainHistoryLimit(context.Context) error
+	MaintainHistoryLimit(ctx context.Context) error
 	// DeleteBatch Delete a batch
-	DeleteBatch(context.Context, string) error
+	DeleteBatch(ctx context.Context, batchName string) error
 	// StopBatch Stop a batch
-	StopBatch(context.Context, string) error
+	StopBatch(ctx context.Context, batchName string) error
 	// StopBatchJob Stop a batch job
-	StopBatchJob(context.Context, string, string) error
+	StopBatchJob(ctx context.Context, batchName string, jobName string) error
 }
 
 type completedBatchVersionType string
