@@ -201,7 +201,11 @@ func (handler *batchHandler) DeleteBatch(ctx context.Context, batchName string) 
 	err := handler.common.Kube.KubeClient().BatchV1().Jobs(handler.common.Env.RadixDeploymentNamespace).Delete(ctx, batchName, metav1.DeleteOptions{PropagationPolicy: &fg})
 	if err != nil {
 		if errors.IsNotFound(err) {
-			return handler.common.HandlerApiV2.DeleteRadixBatch(ctx, batchName)
+			err := handler.common.HandlerApiV2.DeleteRadixBatch(ctx, batchName)
+			if err != nil {
+				return err
+			}
+			return handler.common.HandlerApiV2.GarbageCollectPayloadSecrets(ctx)
 		}
 		return err
 	}
@@ -222,6 +226,10 @@ func (handler *batchHandler) StopBatchJob(ctx context.Context, batchName string,
 
 // MaintainHistoryLimit Delete outdated batches
 func (handler *batchHandler) MaintainHistoryLimit(ctx context.Context) error {
+	err := handler.common.HandlerApiV2.MaintainHistoryLimit(ctx)
+	if err != nil {
+		return err
+	}
 	completedRadixBatches, err := handler.common.HandlerApiV2.GetCompletedRadixBatchesSortedByCompletionTimeAsc(ctx)
 	if err != nil {
 		return err

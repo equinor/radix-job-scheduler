@@ -170,7 +170,11 @@ func (handler *jobHandler) DeleteJob(ctx context.Context, jobName string) error 
 		radixBatch, err := handler.common.HandlerApiV2.GetRadixBatch(ctx, batchName)
 		if err == nil && radixBatch.BatchType == string(kube.RadixBatchTypeJob) {
 			// only job in a single job batch can be deleted
-			return handler.common.HandlerApiV2.DeleteRadixBatch(ctx, batchName)
+			err := handler.common.HandlerApiV2.DeleteRadixBatch(ctx, batchName)
+			if err != nil {
+				return err
+			}
+			return handler.common.HandlerApiV2.GarbageCollectPayloadSecrets(ctx)
 		}
 		if err != nil && !errors.IsNotFound(err) {
 			return err
@@ -188,6 +192,10 @@ func (handler *jobHandler) StopJob(ctx context.Context, jobName string) error {
 
 // MaintainHistoryLimit Delete outdated jobs
 func (handler *jobHandler) MaintainHistoryLimit(ctx context.Context) error {
+	err := handler.common.HandlerApiV2.MaintainHistoryLimit(ctx)
+	if err != nil {
+		return err
+	}
 	completedRadixBatches, err := handler.common.HandlerApiV2.GetCompletedRadixBatchesSortedByCompletionTimeAsc(ctx)
 	if err != nil {
 		return err
@@ -218,10 +226,6 @@ func (handler *jobHandler) MaintainHistoryLimit(ctx context.Context) error {
 	})
 	completedBatches = append(completedBatches, convertBatchJobsToCompletedBatchVersioned(failedJobs)...)
 	if err = handler.maintainHistoryLimitForJobs(ctx, completedBatches, historyLimit); err != nil {
-		return err
-	}
-	err = handler.common.HandlerApiV2.GarbageCollectPayloadSecrets(ctx)
-	if err != nil {
 		return err
 	}
 	return nil

@@ -254,22 +254,7 @@ func (h *handler) CopyRadixBatchSingleJob(ctx context.Context, batchName, jobNam
 func (h *handler) DeleteRadixBatch(ctx context.Context, batchName string) error {
 	log.Debugf("delete batch %s for namespace: %s", batchName, h.env.RadixDeploymentNamespace)
 	fg := metav1.DeletePropagationBackground
-	err := h.kubeUtil.RadixClient().RadixV1().RadixBatches(h.env.RadixDeploymentNamespace).Delete(ctx, batchName, metav1.DeleteOptions{PropagationPolicy: &fg})
-	if err != nil {
-		return err
-	}
-	secrets, err := h.GetSecretsForRadixBatch(batchName)
-	if err != nil {
-		return err
-	}
-	var errs []error
-	for _, secret := range secrets {
-		err := h.DeleteSecret(secret)
-		if err != nil {
-			errs = append(errs, err)
-		}
-	}
-	return commonErrors.Concat(errs)
+	return h.kubeUtil.RadixClient().RadixV1().RadixBatches(h.env.RadixDeploymentNamespace).Delete(ctx, batchName, metav1.DeleteOptions{PropagationPolicy: &fg})
 }
 
 // StopRadixBatch Stop a batch
@@ -442,7 +427,7 @@ func isRadixBatchJobFailed(jobStatus radixv1.RadixBatchJobStatus) bool {
 func (h *handler) maintainHistoryLimitForBatches(ctx context.Context, radixBatchesSortedByCompletionTimeAsc []*modelsv2.RadixBatch, historyLimit int) error {
 	numToDelete := len(radixBatchesSortedByCompletionTimeAsc) - historyLimit
 	if numToDelete <= 0 {
-		log.Debug("no history batches to delete")
+		log.Debugf("no history batches to delete: %d batches, %d history limit", len(radixBatchesSortedByCompletionTimeAsc), historyLimit)
 		return nil
 	}
 	log.Debugf("history batches to delete: %v", numToDelete)
@@ -714,21 +699,25 @@ func (h *handler) getRadixBatch(ctx context.Context, batchName string) (*radixv1
 
 // GarbageCollectPayloadSecrets Delete orphaned payload secrets
 func (h *handler) GarbageCollectPayloadSecrets(ctx context.Context) error {
+	log.Debugf("Garbage collecting payload secrets")
 	payloadSecretRefNames, _ := h.getJobComponentPayloadSecretRefNames(ctx)
 	payloadSecrets, err := h.kubeUtil.ListSecretsWithSelector(h.env.RadixDeploymentNamespace, radixLabels.GetRadixBatchDescendantsSelector(h.env.RadixComponentName).String())
 	if err != nil {
 		return err
 	}
+	log.Debugf("%d payload secrets, %d secret reference unique names", len(payloadSecrets), len(payloadSecretRefNames))
 	yesterday := time.Now().Add(time.Hour * -24)
 	for _, payloadSecret := range payloadSecrets {
-		if payloadSecret.GetCreationTimestamp().After(yesterday) {
-			continue // keep secrets, created in the last 24 hours
-		}
 		if _, ok := payloadSecretRefNames[payloadSecret.GetName()]; !ok {
+			if payloadSecret.GetCreationTimestamp().After(yesterday) {
+				log.Debugf("skipping deletion of an orphaned payload secret %s, created within 24 hours", payloadSecret.GetName())
+				continue
+			}
 			err := h.DeleteSecret(payloadSecret)
 			if err != nil {
-				log.Errorf("failed deleting of an orphaned payload secret %s in the namespace %s", payloadSecret.GetName(), payloadSecret.GetNamespace())
+				log.Errorf("failed deleting of an orphaned payload secret %s", payloadSecret.GetName())
 			}
+			log.Debugf("deleted an orphaned payload secret %s", payloadSecret.GetName())
 		}
 	}
 	return nil
