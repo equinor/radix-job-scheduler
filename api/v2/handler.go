@@ -529,7 +529,6 @@ func (h *handler) copyRadixBatchOrJob(ctx context.Context, sourceRadixBatch *rad
 	if err != nil {
 		return nil, apiErrors.NewNotFound("radix deployment", radixDeploymentName)
 	}
-	appName := radixDeployment.Spec.AppName
 	radixComponentName := h.env.RadixComponentName
 	radixBatch := radixv1.RadixBatch{
 		ObjectMeta: metav1.ObjectMeta{
@@ -541,18 +540,8 @@ func (h *handler) copyRadixBatchOrJob(ctx context.Context, sourceRadixBatch *rad
 				LocalObjectReference: radixv1.LocalObjectReference{Name: radixDeploymentName},
 				Job:                  radixComponentName,
 			},
+			Jobs: h.copyBatchJobs(sourceRadixBatch, sourceJobName),
 		},
-	}
-
-	sourceJobNameToNewNameMap := h.copyBatchJobs(sourceRadixBatch, &radixBatch, sourceJobName)
-	sourceSecretNameToNewNameMap, err := h.copyPayloadSecrets(ctx, sourceRadixBatch, namespace, appName, radixComponentName, radixBatch.GetName(), sourceJobNameToNewNameMap, sourceJobName)
-	if err != nil {
-		return nil, err
-	}
-
-	err = h.setJobPayloadSecretReferences(&radixBatch, sourceSecretNameToNewNameMap)
-	if err != nil {
-		return nil, err
 	}
 
 	createdRadixBatch, err := h.kubeUtil.RadixClient().RadixV1().RadixBatches(namespace).Create(ctx, &radixBatch, metav1.CreateOptions{})
@@ -564,64 +553,17 @@ func (h *handler) copyRadixBatchOrJob(ctx context.Context, sourceRadixBatch *rad
 	return pointers.Ptr(getRadixBatchModelFromRadixBatch(createdRadixBatch)), nil
 }
 
-func (h *handler) setJobPayloadSecretReferences(radixBatch *radixv1.RadixBatch, sourceSecretNameToNewNameMap map[string]string) error {
-	for i := 0; i < len(radixBatch.Spec.Jobs); i++ {
-		if radixBatch.Spec.Jobs[i].PayloadSecretRef == nil {
-			continue
-		}
-		sourceSecretName := radixBatch.Spec.Jobs[i].PayloadSecretRef.Name
-		if newSecretName, ok := sourceSecretNameToNewNameMap[sourceSecretName]; ok {
-			radixBatch.Spec.Jobs[i].PayloadSecretRef.Name = newSecretName
-			radixBatch.Spec.Jobs[i].PayloadSecretRef.Key = radixBatch.Spec.Jobs[i].Name
-			continue
-		}
-		return fmt.Errorf("could not find source secret name %s", sourceSecretName)
-	}
-	return nil
-}
-
-func (h *handler) copyBatchJobs(sourceRadixBatch *radixv1.RadixBatch, radixBatch *radixv1.RadixBatch, sourceJobName string) map[string]string {
-	sourceJobNameToNewNameMap := make(map[string]string, len(sourceRadixBatch.Spec.Jobs))
+func (h *handler) copyBatchJobs(sourceRadixBatch *radixv1.RadixBatch, sourceJobName string) []radixv1.RadixBatchJob {
+	var radixBatchJobs []radixv1.RadixBatchJob
 	for _, sourceJob := range sourceRadixBatch.Spec.Jobs {
 		if sourceJobName != "" && sourceJob.Name != sourceJobName {
 			continue
 		}
 		job := sourceJob.DeepCopy()
 		job.Name = createJobName()
-		sourceJobNameToNewNameMap[sourceJob.Name] = job.Name
-		radixBatch.Spec.Jobs = append(radixBatch.Spec.Jobs, *job)
+		radixBatchJobs = append(radixBatchJobs, *job)
 	}
-	return sourceJobNameToNewNameMap
-}
-
-func (h *handler) copyPayloadSecrets(ctx context.Context, sourceRadixBatch *radixv1.RadixBatch, namespace, appName, radixComponentName, batchName string, sourceJobNameToNewNameMap map[string]string, sourceJobName string) (map[string]string, error) {
-	sourceBatchSecrets, err := h.GetSecretsForRadixBatch(sourceRadixBatch.GetName())
-	if err != nil {
-		return nil, err
-	}
-	var payloadSecrets []*corev1.Secret
-	sourceSecretNameToNewNameMap := make(map[string]string, len(sourceBatchSecrets))
-	for _, sourceSecret := range sourceBatchSecrets {
-		payloadsSecret := buildSecret(appName, radixComponentName, batchName, len(payloadSecrets))
-		for sourceJobNameAsKey, value := range sourceSecret.Data {
-			if sourceJobName != "" && sourceJobName != sourceJobNameAsKey {
-				continue
-			}
-			if jobName, ok := sourceJobNameToNewNameMap[sourceJobNameAsKey]; ok {
-				payloadsSecret.Data[jobName] = value
-			}
-		}
-		if len(payloadsSecret.Data) == 0 {
-			continue
-		}
-		sourceSecretNameToNewNameMap[sourceSecret.GetName()] = payloadsSecret.GetName()
-		payloadSecrets = append(payloadSecrets, payloadsSecret)
-	}
-	err = h.createSecrets(ctx, namespace, payloadSecrets)
-	if err != nil {
-		return nil, err
-	}
-	return sourceSecretNameToNewNameMap, nil
+	return radixBatchJobs
 }
 
 func (h *handler) buildRadixBatchJobs(ctx context.Context, namespace, appName, radixJobComponentName, batchName string, batchScheduleDescription common.BatchScheduleDescription, radixJobComponentPayload *radixv1.RadixJobComponentPayload) ([]radixv1.RadixBatchJob, error) {
@@ -662,7 +604,7 @@ func createJobName() string {
 func (h *handler) createRadixBatchJobPayloadSecrets(ctx context.Context, namespace, appName, radixJobComponentName, batchName string, radixJobWithPayloadEntries []radixBatchJobWithDescription, radixJobComponentHasPayloadPath bool) error {
 	accumulatedSecretSize := 0
 	var payloadSecrets []*corev1.Secret
-	payloadsSecret := buildSecret(appName, radixJobComponentName, batchName, 0)
+	payloadsSecret := buildPayloadSecret(appName, radixJobComponentName, batchName, 0)
 	payloadSecrets = append(payloadSecrets, payloadsSecret)
 	var errs []error
 	for jobIndex, radixJobWithDescriptions := range radixJobWithPayloadEntries {
@@ -684,7 +626,7 @@ func (h *handler) createRadixBatchJobPayloadSecrets(ctx context.Context, namespa
 				// this is the first entry in the secret, and it is too large to be stored to the secret - no reason to create new secret.
 				return fmt.Errorf("payload is too large in the job #%d - its base64 size is %d bytes, but it is expected to be less then %d bytes", jobIndex, secretEntrySize, maxPayloadSecretSize)
 			}
-			payloadsSecret = buildSecret(appName, radixJobComponentName, batchName, len(payloadSecrets))
+			payloadsSecret = buildPayloadSecret(appName, radixJobComponentName, batchName, len(payloadSecrets))
 			payloadSecrets = append(payloadSecrets, payloadsSecret)
 			accumulatedSecretSize = 0
 		}
@@ -716,7 +658,7 @@ func (h *handler) createSecrets(ctx context.Context, namespace string, secrets [
 	return nil
 }
 
-func buildSecret(appName, radixJobComponentName, batchName string, secretIndex int) *corev1.Secret {
+func buildPayloadSecret(appName, radixJobComponentName, batchName string, secretIndex int) *corev1.Secret {
 	secretName := fmt.Sprintf("%s-payloads-%d", batchName, secretIndex)
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -726,6 +668,7 @@ func buildSecret(appName, radixJobComponentName, batchName string, secretIndex i
 				radixLabels.ForComponentName(radixJobComponentName),
 				radixLabels.ForBatchName(batchName),
 				radixLabels.ForJobScheduleJobType(),
+				radixLabels.ForRadixSecretType(kube.RadixSecretJobPayload),
 			),
 		},
 		Data: make(map[string][]byte),
@@ -771,32 +714,17 @@ func (h *handler) getRadixBatch(ctx context.Context, batchName string) (*radixv1
 
 // GarbageCollectPayloadSecrets Delete orphaned payload secrets
 func (h *handler) GarbageCollectPayloadSecrets(ctx context.Context) error {
-	radixBatchNameLabelExists, err := radixLabels.RequirementRadixBatchNameLabelExists()
+	payloadSecretRefNames, _ := h.getJobComponentPayloadSecretRefNames(ctx)
+	payloadSecrets, err := h.kubeUtil.ListSecretsWithSelector(h.env.RadixDeploymentNamespace, radixLabels.GetRadixBatchDescendantsSelector(h.env.RadixComponentName).String())
 	if err != nil {
 		return err
-	}
-	payloadSecrets, err := h.kubeUtil.ListSecretsWithSelector(h.env.RadixDeploymentNamespace, radixBatchNameLabelExists.String())
-	if err != nil {
-		return err
-	}
-	radixBatches, err := h.getRadixBatches(ctx, radixLabels.ForComponentName(h.env.RadixComponentName))
-	if err != nil {
-		return err
-	}
-	batchNames := make(map[string]bool)
-	for _, radixBatch := range radixBatches {
-		batchNames[radixBatch.Name] = true
 	}
 	yesterday := time.Now().Add(time.Hour * -24)
 	for _, payloadSecret := range payloadSecrets {
 		if payloadSecret.GetCreationTimestamp().After(yesterday) {
-			continue
+			continue // keep secrets, created in the last 24 hours
 		}
-		payloadSecretBatchName, ok := payloadSecret.GetLabels()[kube.RadixBatchNameLabel]
-		if !ok {
-			continue
-		}
-		if _, ok := batchNames[payloadSecretBatchName]; !ok {
+		if _, ok := payloadSecretRefNames[payloadSecret.GetName()]; !ok {
 			err := h.DeleteSecret(payloadSecret)
 			if err != nil {
 				log.Errorf("failed deleting of an orphaned payload secret %s in the namespace %s", payloadSecret.GetName(), payloadSecret.GetNamespace())
@@ -804,6 +732,22 @@ func (h *handler) GarbageCollectPayloadSecrets(ctx context.Context) error {
 		}
 	}
 	return nil
+}
+
+func (h *handler) getJobComponentPayloadSecretRefNames(ctx context.Context) (map[string]bool, error) {
+	radixBatches, err := h.getRadixBatches(ctx, radixLabels.ForComponentName(h.env.RadixComponentName))
+	if err != nil {
+		return nil, err
+	}
+	payloadSecretRefNames := make(map[string]bool)
+	for _, radixBatch := range radixBatches {
+		for _, job := range radixBatch.Spec.Jobs {
+			if job.PayloadSecretRef != nil {
+				payloadSecretRefNames[job.PayloadSecretRef.Name] = true
+			}
+		}
+	}
+	return payloadSecretRefNames, nil
 }
 
 func applyDefaultJobDescriptionProperties(jobScheduleDescription *common.JobScheduleDescription, defaultRadixJobComponentConfig *common.RadixJobComponentConfig) error {
