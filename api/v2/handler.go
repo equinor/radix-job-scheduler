@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"dario.cat/mergo"
 	"github.com/equinor/radix-common/utils"
 	commonErrors "github.com/equinor/radix-common/utils/errors"
 	mergoutils "github.com/equinor/radix-common/utils/mergo"
@@ -21,7 +22,6 @@ import (
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	radixLabels "github.com/equinor/radix-operator/pkg/apis/utils/labels"
-	"github.com/imdario/mergo"
 	log "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -772,39 +772,44 @@ func (h *handler) getRadixBatch(ctx context.Context, batchName string) (*radixv1
 
 // GarbageCollectPayloadSecrets Delete orphaned payload secrets
 func (h *handler) GarbageCollectPayloadSecrets(ctx context.Context) error {
-	radixBatchNameLabelExists, err := radixLabels.RequirementRadixBatchNameLabelExists()
+	log.Debugf("Garbage collecting payload secrets")
+	payloadSecretRefNames, _ := h.getJobComponentPayloadSecretRefNames(ctx)
+	payloadSecrets, err := h.kubeUtil.ListSecretsWithSelector(h.env.RadixDeploymentNamespace, radixLabels.GetRadixBatchDescendantsSelector(h.env.RadixComponentName).String())
 	if err != nil {
 		return err
 	}
-	payloadSecrets, err := h.kubeUtil.ListSecretsWithSelector(h.env.RadixDeploymentNamespace, radixBatchNameLabelExists.String())
-	if err != nil {
-		return err
-	}
-	radixBatches, err := h.getRadixBatches(ctx, radixLabels.ForComponentName(h.env.RadixComponentName))
-	if err != nil {
-		return err
-	}
-	batchNames := make(map[string]bool)
-	for _, radixBatch := range radixBatches {
-		batchNames[radixBatch.Name] = true
-	}
+	log.Debugf("%d payload secrets, %d secret reference unique names", len(payloadSecrets), len(payloadSecretRefNames))
 	yesterday := time.Now().Add(time.Hour * -24)
 	for _, payloadSecret := range payloadSecrets {
-		if payloadSecret.GetCreationTimestamp().After(yesterday) {
-			continue
-		}
-		payloadSecretBatchName, ok := payloadSecret.GetLabels()[kube.RadixBatchNameLabel]
-		if !ok {
-			continue
-		}
-		if _, ok := batchNames[payloadSecretBatchName]; !ok {
+		if _, ok := payloadSecretRefNames[payloadSecret.GetName()]; !ok {
+			if payloadSecret.GetCreationTimestamp().After(yesterday) {
+				log.Debugf("skipping deletion of an orphaned payload secret %s, created within 24 hours", payloadSecret.GetName())
+				continue
+			}
 			err := h.DeleteSecret(payloadSecret)
 			if err != nil {
-				log.Errorf("failed deleting of an orphaned payload secret %s in the namespace %s", payloadSecret.GetName(), payloadSecret.GetNamespace())
+				log.Errorf("failed deleting of an orphaned payload secret %s", payloadSecret.GetName())
 			}
+			log.Debugf("deleted an orphaned payload secret %s", payloadSecret.GetName())
 		}
 	}
 	return nil
+}
+
+func (h *handler) getJobComponentPayloadSecretRefNames(ctx context.Context) (map[string]bool, error) {
+	radixBatches, err := h.getRadixBatches(ctx, radixLabels.ForComponentName(h.env.RadixComponentName))
+	if err != nil {
+		return nil, err
+	}
+	payloadSecretRefNames := make(map[string]bool)
+	for _, radixBatch := range radixBatches {
+		for _, job := range radixBatch.Spec.Jobs {
+			if job.PayloadSecretRef != nil {
+				payloadSecretRefNames[job.PayloadSecretRef.Name] = true
+			}
+		}
+	}
+	return payloadSecretRefNames, nil
 }
 
 func applyDefaultJobDescriptionProperties(jobScheduleDescription *common.JobScheduleDescription, defaultRadixJobComponentConfig *common.RadixJobComponentConfig) error {
