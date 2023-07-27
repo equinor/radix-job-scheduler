@@ -39,6 +39,7 @@ func (notifier *webhookNotifier) Notify(newRadixBatch *radixv1.RadixBatch, updat
 	go func() {
 		if !notifier.Enabled() || len(notifier.webhook) == 0 {
 			done <- struct{}{}
+			close(done)
 			return
 		}
 		// RadixBatch status and only changed job statuses
@@ -55,6 +56,7 @@ func (notifier *webhookNotifier) Notify(newRadixBatch *radixv1.RadixBatch, updat
 			return
 		}
 		done <- struct{}{}
+		close(done)
 	}()
 	return done
 }

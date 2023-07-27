@@ -1,6 +1,7 @@
 package jobs
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -14,7 +15,7 @@ import (
 	"github.com/equinor/radix-job-scheduler/api/v1/jobs/mock"
 	models "github.com/equinor/radix-job-scheduler/models/common"
 	modelsV1 "github.com/equinor/radix-job-scheduler/models/v1"
-	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
+	"github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 )
@@ -37,14 +38,15 @@ func TestGetJobs(t *testing.T) {
 			Ended:   utils.FormatTimestamp(time.Now().Add(1 * time.Minute)),
 			Status:  "jobstatus",
 		}
+		ctx := context.Background()
 		jobHandler.
 			EXPECT().
-			GetJobs().
+			GetJobs(test.RequestContextMatcher{}).
 			Return([]modelsV1.JobStatus{jobState}, nil).
 			Times(1)
 
 		controllerTestUtils := setupTest(jobHandler)
-		responseChannel := controllerTestUtils.ExecuteRequest(http.MethodGet, "api/v1/jobs")
+		responseChannel := controllerTestUtils.ExecuteRequest(ctx, http.MethodGet, "api/v1/jobs")
 		response := <-responseChannel
 		assert.NotNil(t, response)
 
@@ -66,14 +68,15 @@ func TestGetJobs(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 		jobHandler := mock.NewMockJobHandler(ctrl)
+		ctx := context.Background()
 		jobHandler.
 			EXPECT().
-			GetJobs().
+			GetJobs(test.RequestContextMatcher{}).
 			Return(nil, errors.New("unhandled error")).
 			Times(1)
 
 		controllerTestUtils := setupTest(jobHandler)
-		responseChannel := controllerTestUtils.ExecuteRequest(http.MethodGet, "api/v1/jobs")
+		responseChannel := controllerTestUtils.ExecuteRequest(ctx, http.MethodGet, "api/v1/jobs")
 		response := <-responseChannel
 		assert.NotNil(t, response)
 
@@ -101,14 +104,15 @@ func TestGetJob(t *testing.T) {
 			Ended:   utils.FormatTimestamp(time.Now().Add(1 * time.Minute)),
 			Status:  "jobstatus",
 		}
+		ctx := context.Background()
 		jobHandler.
 			EXPECT().
-			GetJob(jobName).
+			GetJob(test.RequestContextMatcher{}, jobName).
 			Return(&jobState, nil).
 			Times(1)
 
 		controllerTestUtils := setupTest(jobHandler)
-		responseChannel := controllerTestUtils.ExecuteRequest(http.MethodGet, fmt.Sprintf("/api/v1/jobs/%s", jobName))
+		responseChannel := controllerTestUtils.ExecuteRequest(ctx, http.MethodGet, fmt.Sprintf("/api/v1/jobs/%s", jobName))
 		response := <-responseChannel
 		assert.NotNil(t, response)
 
@@ -130,14 +134,15 @@ func TestGetJob(t *testing.T) {
 		defer ctrl.Finish()
 		jobName, kind := "anyjob", "job"
 		jobHandler := mock.NewMockJobHandler(ctrl)
+		ctx := context.Background()
 		jobHandler.
 			EXPECT().
-			GetJob(gomock.Any()).
+			GetJob(test.RequestContextMatcher{}, gomock.Any()).
 			Return(nil, apiErrors.NewNotFound(kind, jobName)).
 			Times(1)
 
 		controllerTestUtils := setupTest(jobHandler)
-		responseChannel := controllerTestUtils.ExecuteRequest(http.MethodGet, fmt.Sprintf("/api/v1/jobs/%s", jobName))
+		responseChannel := controllerTestUtils.ExecuteRequest(ctx, http.MethodGet, fmt.Sprintf("/api/v1/jobs/%s", jobName))
 		response := <-responseChannel
 		assert.NotNil(t, response)
 
@@ -157,14 +162,15 @@ func TestGetJob(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 		jobHandler := mock.NewMockJobHandler(ctrl)
+		ctx := context.Background()
 		jobHandler.
 			EXPECT().
-			GetJob(gomock.Any()).
+			GetJob(test.RequestContextMatcher{}, gomock.Any()).
 			Return(nil, errors.New("unhandled error")).
 			Times(1)
 
 		controllerTestUtils := setupTest(jobHandler)
-		responseChannel := controllerTestUtils.ExecuteRequest(http.MethodGet, fmt.Sprintf("/api/v1/jobs/%s", "anyjob"))
+		responseChannel := controllerTestUtils.ExecuteRequest(ctx, http.MethodGet, fmt.Sprintf("/api/v1/jobs/%s", "anyjob"))
 		response := <-responseChannel
 		assert.NotNil(t, response)
 
@@ -192,18 +198,19 @@ func TestCreateJob(t *testing.T) {
 			Status:  "jobstatus",
 		}
 		jobHandler := mock.NewMockJobHandler(ctrl)
+		ctx := context.Background()
 		jobHandler.
 			EXPECT().
-			CreateJob(&jobScheduleDescription).
+			CreateJob(test.RequestContextMatcher{}, &jobScheduleDescription).
 			Return(&createdJob, nil).
 			Times(1)
 		jobHandler.
 			EXPECT().
-			MaintainHistoryLimit().
+			MaintainHistoryLimit(test.RequestContextMatcher{}).
 			Return(nil).
 			Times(1)
 		controllerTestUtils := setupTest(jobHandler)
-		responseChannel := controllerTestUtils.ExecuteRequestWithBody(http.MethodPost, "/api/v1/jobs", nil)
+		responseChannel := controllerTestUtils.ExecuteRequestWithBody(ctx, http.MethodPost, "/api/v1/jobs", nil)
 		response := <-responseChannel
 		assert.NotNil(t, response)
 
@@ -249,18 +256,19 @@ func TestCreateJob(t *testing.T) {
 			Status:  "jobstatus",
 		}
 		jobHandler := mock.NewMockJobHandler(ctrl)
+		ctx := context.Background()
 		jobHandler.
 			EXPECT().
-			CreateJob(&jobScheduleDescription).
+			CreateJob(test.RequestContextMatcher{}, &jobScheduleDescription).
 			Return(&createdJob, nil).
 			Times(1)
 		jobHandler.
 			EXPECT().
-			MaintainHistoryLimit().
+			MaintainHistoryLimit(test.RequestContextMatcher{}).
 			Return(nil).
 			Times(1)
 		controllerTestUtils := setupTest(jobHandler)
-		responseChannel := controllerTestUtils.ExecuteRequestWithBody(http.MethodPost, "/api/v1/jobs", jobScheduleDescription)
+		responseChannel := controllerTestUtils.ExecuteRequestWithBody(ctx, http.MethodPost, "/api/v1/jobs", jobScheduleDescription)
 		response := <-responseChannel
 		assert.NotNil(t, response)
 
@@ -290,18 +298,19 @@ func TestCreateJob(t *testing.T) {
 			Status:  "jobstatus",
 		}
 		jobHandler := mock.NewMockJobHandler(ctrl)
+		ctx := context.Background()
 		jobHandler.
 			EXPECT().
-			CreateJob(&jobScheduleDescription).
+			CreateJob(test.RequestContextMatcher{}, &jobScheduleDescription).
 			Return(&createdJob, nil).
 			Times(1)
 		jobHandler.
 			EXPECT().
-			MaintainHistoryLimit().
+			MaintainHistoryLimit(test.RequestContextMatcher{}).
 			Return(errors.New("an error")).
 			Times(1)
 		controllerTestUtils := setupTest(jobHandler)
-		responseChannel := controllerTestUtils.ExecuteRequestWithBody(http.MethodPost, "/api/v1/jobs", jobScheduleDescription)
+		responseChannel := controllerTestUtils.ExecuteRequestWithBody(ctx, http.MethodPost, "/api/v1/jobs", jobScheduleDescription)
 		response := <-responseChannel
 		assert.NotNil(t, response)
 
@@ -323,16 +332,17 @@ func TestCreateJob(t *testing.T) {
 		defer ctrl.Finish()
 
 		jobHandler := mock.NewMockJobHandler(ctrl)
+		ctx := context.Background()
 		jobHandler.
 			EXPECT().
-			CreateJob(gomock.Any()).
+			CreateJob(test.RequestContextMatcher{}, gomock.Any()).
 			Times(0)
 		jobHandler.
 			EXPECT().
-			MaintainHistoryLimit().
+			MaintainHistoryLimit(test.RequestContextMatcher{}).
 			Times(0)
 		controllerTestUtils := setupTest(jobHandler)
-		responseChannel := controllerTestUtils.ExecuteRequestWithBody(http.MethodPost, "/api/v1/jobs", struct{ Payload interface{} }{Payload: struct{}{}})
+		responseChannel := controllerTestUtils.ExecuteRequestWithBody(ctx, http.MethodPost, "/api/v1/jobs", struct{ Payload interface{} }{Payload: struct{}{}})
 		response := <-responseChannel
 		assert.NotNil(t, response)
 
@@ -354,17 +364,18 @@ func TestCreateJob(t *testing.T) {
 		jobScheduleDescription := models.JobScheduleDescription{}
 		jobHandler := mock.NewMockJobHandler(ctrl)
 		anyKind, anyName := "anyKind", "anyName"
+		ctx := context.Background()
 		jobHandler.
 			EXPECT().
-			CreateJob(&jobScheduleDescription).
+			CreateJob(test.RequestContextMatcher{}, &jobScheduleDescription).
 			Return(nil, apiErrors.NewNotFound(anyKind, anyName)).
 			Times(1)
 		jobHandler.
 			EXPECT().
-			MaintainHistoryLimit().
+			MaintainHistoryLimit(test.RequestContextMatcher{}).
 			Times(0)
 		controllerTestUtils := setupTest(jobHandler)
-		responseChannel := controllerTestUtils.ExecuteRequest(http.MethodPost, "/api/v1/jobs")
+		responseChannel := controllerTestUtils.ExecuteRequest(ctx, http.MethodPost, "/api/v1/jobs")
 		response := <-responseChannel
 		assert.NotNil(t, response)
 
@@ -385,17 +396,18 @@ func TestCreateJob(t *testing.T) {
 		defer ctrl.Finish()
 		jobScheduleDescription := models.JobScheduleDescription{}
 		jobHandler := mock.NewMockJobHandler(ctrl)
+		ctx := context.Background()
 		jobHandler.
 			EXPECT().
-			CreateJob(&jobScheduleDescription).
+			CreateJob(test.RequestContextMatcher{}, &jobScheduleDescription).
 			Return(nil, errors.New("any error")).
 			Times(1)
 		jobHandler.
 			EXPECT().
-			MaintainHistoryLimit().
+			MaintainHistoryLimit(test.RequestContextMatcher{}).
 			Times(0)
 		controllerTestUtils := setupTest(jobHandler)
-		responseChannel := controllerTestUtils.ExecuteRequest(http.MethodPost, "/api/v1/jobs")
+		responseChannel := controllerTestUtils.ExecuteRequest(ctx, http.MethodPost, "/api/v1/jobs")
 		response := <-responseChannel
 		assert.NotNil(t, response)
 
@@ -417,13 +429,14 @@ func TestDeleteJob(t *testing.T) {
 		defer ctrl.Finish()
 		jobName := "anyjob"
 		jobHandler := mock.NewMockJobHandler(ctrl)
+		ctx := context.Background()
 		jobHandler.
 			EXPECT().
-			DeleteJob(jobName).
+			DeleteJob(test.RequestContextMatcher{}, jobName).
 			Return(nil).
 			Times(1)
 		controllerTestUtils := setupTest(jobHandler)
-		responseChannel := controllerTestUtils.ExecuteRequest(http.MethodDelete, fmt.Sprintf("/api/v1/jobs/%s", jobName))
+		responseChannel := controllerTestUtils.ExecuteRequest(ctx, http.MethodDelete, fmt.Sprintf("/api/v1/jobs/%s", jobName))
 		response := <-responseChannel
 		assert.NotNil(t, response)
 
@@ -443,13 +456,14 @@ func TestDeleteJob(t *testing.T) {
 		defer ctrl.Finish()
 		jobName := "anyjob"
 		jobHandler := mock.NewMockJobHandler(ctrl)
+		ctx := context.Background()
 		jobHandler.
 			EXPECT().
-			DeleteJob(jobName).
+			DeleteJob(test.RequestContextMatcher{}, jobName).
 			Return(apiErrors.NewNotFound("job", jobName)).
 			Times(1)
 		controllerTestUtils := setupTest(jobHandler)
-		responseChannel := controllerTestUtils.ExecuteRequest(http.MethodDelete, fmt.Sprintf("/api/v1/jobs/%s", jobName))
+		responseChannel := controllerTestUtils.ExecuteRequest(ctx, http.MethodDelete, fmt.Sprintf("/api/v1/jobs/%s", jobName))
 		response := <-responseChannel
 		assert.NotNil(t, response)
 
@@ -470,13 +484,14 @@ func TestDeleteJob(t *testing.T) {
 		defer ctrl.Finish()
 		jobName := "anyjob"
 		jobHandler := mock.NewMockJobHandler(ctrl)
+		ctx := context.Background()
 		jobHandler.
 			EXPECT().
-			DeleteJob(jobName).
+			DeleteJob(test.RequestContextMatcher{}, jobName).
 			Return(errors.New("any error")).
 			Times(1)
 		controllerTestUtils := setupTest(jobHandler)
-		responseChannel := controllerTestUtils.ExecuteRequest(http.MethodDelete, fmt.Sprintf("/api/v1/jobs/%s", jobName))
+		responseChannel := controllerTestUtils.ExecuteRequest(ctx, http.MethodDelete, fmt.Sprintf("/api/v1/jobs/%s", jobName))
 		response := <-responseChannel
 		assert.NotNil(t, response)
 
@@ -498,13 +513,14 @@ func TestStopJob(t *testing.T) {
 		defer ctrl.Finish()
 		jobName := "anyjob"
 		jobHandler := mock.NewMockJobHandler(ctrl)
+		ctx := context.Background()
 		jobHandler.
 			EXPECT().
-			StopJob(jobName).
+			StopJob(test.RequestContextMatcher{}, jobName).
 			Return(nil).
 			Times(1)
 		controllerTestUtils := setupTest(jobHandler)
-		responseChannel := controllerTestUtils.ExecuteRequest(http.MethodPost, fmt.Sprintf("/api/v1/jobs/%s/stop", jobName))
+		responseChannel := controllerTestUtils.ExecuteRequest(ctx, http.MethodPost, fmt.Sprintf("/api/v1/jobs/%s/stop", jobName))
 		response := <-responseChannel
 		assert.NotNil(t, response)
 
@@ -524,13 +540,14 @@ func TestStopJob(t *testing.T) {
 		defer ctrl.Finish()
 		jobName := "anyjob"
 		jobHandler := mock.NewMockJobHandler(ctrl)
+		ctx := context.Background()
 		jobHandler.
 			EXPECT().
-			StopJob(jobName).
+			StopJob(test.RequestContextMatcher{}, jobName).
 			Return(apiErrors.NewNotFound("job", jobName)).
 			Times(1)
 		controllerTestUtils := setupTest(jobHandler)
-		responseChannel := controllerTestUtils.ExecuteRequest(http.MethodPost, fmt.Sprintf("/api/v1/jobs/%s/stop", jobName))
+		responseChannel := controllerTestUtils.ExecuteRequest(ctx, http.MethodPost, fmt.Sprintf("/api/v1/jobs/%s/stop", jobName))
 		response := <-responseChannel
 		assert.NotNil(t, response)
 
@@ -551,13 +568,14 @@ func TestStopJob(t *testing.T) {
 		defer ctrl.Finish()
 		jobName := "anyjob"
 		jobHandler := mock.NewMockJobHandler(ctrl)
+		ctx := context.Background()
 		jobHandler.
 			EXPECT().
-			StopJob(jobName).
+			StopJob(test.RequestContextMatcher{}, jobName).
 			Return(errors.New("any error")).
 			Times(1)
 		controllerTestUtils := setupTest(jobHandler)
-		responseChannel := controllerTestUtils.ExecuteRequest(http.MethodPost, fmt.Sprintf("/api/v1/jobs/%s/stop", jobName))
+		responseChannel := controllerTestUtils.ExecuteRequest(ctx, http.MethodPost, fmt.Sprintf("/api/v1/jobs/%s/stop", jobName))
 		response := <-responseChannel
 		assert.NotNil(t, response)
 

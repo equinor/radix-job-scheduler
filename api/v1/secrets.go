@@ -9,19 +9,19 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 )
 
-//GetSecretsForJob Get secrets for the job
-func (handler *Handler) GetSecretsForJob(jobName string) (*corev1.SecretList, error) {
+// GetSecretsForJob Get secrets for the job
+func (handler *Handler) GetSecretsForJob(ctx context.Context, jobName string) (*corev1.SecretList, error) {
 	return handler.Kube.KubeClient().CoreV1().Secrets(handler.Env.RadixDeploymentNamespace).List(
-		context.TODO(),
+		ctx,
 		metav1.ListOptions{
 			LabelSelector: getLabelSelectorForSecret(jobName, handler.Env.RadixComponentName),
 		},
 	)
 }
 
-//DeleteSecret Delete the service for the job
-func (handler *Handler) DeleteSecret(secret *corev1.Secret) error {
-	return handler.Kube.KubeClient().CoreV1().Secrets(secret.Namespace).Delete(context.TODO(), secret.Name, metav1.DeleteOptions{})
+// DeleteSecret Delete the service for the job
+func (handler *Handler) DeleteSecret(ctx context.Context, secret *corev1.Secret) error {
+	return handler.Kube.KubeClient().CoreV1().Secrets(secret.Namespace).Delete(ctx, secret.Name, metav1.DeleteOptions{})
 }
 
 func getLabelSelectorForSecret(jobName, componentName string) string {

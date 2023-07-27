@@ -22,7 +22,7 @@ var imageErrors = map[string]bool{"ImagePullBackOff": true, "ImageInspectError":
 	"ErrImageNeverPull": true, "RegistryUnavailable": true, "InvalidImageName": true}
 
 // GetJobStatusFromJob Gets job from a k8s job
-func GetJobStatusFromJob(kubeClient kubernetes.Interface, job *v1.Job, jobPods []corev1.Pod) *modelsv1.JobStatus {
+func GetJobStatusFromJob(ctx context.Context, kubeClient kubernetes.Interface, job *v1.Job, jobPods []corev1.Pod) *modelsv1.JobStatus {
 	jobStatus := modelsv1.JobStatus{
 		Name:    job.GetName(),
 		Created: utils.FormatTime(&job.ObjectMeta.CreationTimestamp),
@@ -32,8 +32,8 @@ func GetJobStatusFromJob(kubeClient kubernetes.Interface, job *v1.Job, jobPods [
 	status := common.GetStatusFromJobStatus(job.Status)
 
 	jobStatus.Status = status.String()
-	jobStatus.JobId = job.ObjectMeta.Labels[defaultsv1.RadixJobIdLabel]   //Not empty, if JobId exists
-	jobStatus.BatchName = job.ObjectMeta.Labels[kube.RadixBatchNameLabel] //Not empty, if BatchName exists
+	jobStatus.JobId = job.ObjectMeta.Labels[defaultsv1.RadixJobIdLabel]   // Not empty, if JobId exists
+	jobStatus.BatchName = job.ObjectMeta.Labels[kube.RadixBatchNameLabel] // Not empty, if BatchName exists
 	if status != common.Running {
 		// if the job is not in state 'Running', we check that job's pod status reason
 		for _, pod := range jobPods {
@@ -73,7 +73,7 @@ func GetJobStatusFromJob(kubeClient kubernetes.Interface, job *v1.Job, jobPods [
 					jobStatus.Message = message
 					return &jobStatus
 				}
-				jobStatus.Message = getLastEventMessageForPod(kubeClient, pod)
+				jobStatus.Message = getLastEventMessageForPod(ctx, kubeClient, pod)
 				if len(jobStatus.Message) == 0 {
 					jobStatus.Message = "Job has not been started. If it takes long time to start, please check an events list for a reason."
 				}
@@ -126,8 +126,8 @@ func getJobEndTimestamp(job *v1.Job) string {
 	return ""
 }
 
-func getLastEventMessageForPod(kubeClient kubernetes.Interface, pod corev1.Pod) string {
-	eventsList, err := kubeClient.CoreV1().Events(pod.Namespace).List(context.Background(), metav1.ListOptions{})
+func getLastEventMessageForPod(ctx context.Context, kubeClient kubernetes.Interface, pod corev1.Pod) string {
+	eventsList, err := kubeClient.CoreV1().Events(pod.Namespace).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return ""
 	}

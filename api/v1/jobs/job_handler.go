@@ -30,17 +30,19 @@ type jobHandler struct {
 
 type JobHandler interface {
 	// GetJobs Get status of all jobs
-	GetJobs() ([]modelsv1.JobStatus, error)
+	GetJobs(ctx context.Context) ([]modelsv1.JobStatus, error)
 	// GetJob Get status of a job
-	GetJob(string) (*modelsv1.JobStatus, error)
+	GetJob(ctx context.Context, jobName string) (*modelsv1.JobStatus, error)
 	// CreateJob Create a job with parameters
-	CreateJob(*common.JobScheduleDescription) (*modelsv1.JobStatus, error)
+	CreateJob(ctx context.Context, jobScheduleDescription *common.JobScheduleDescription) (*modelsv1.JobStatus, error)
+	// CopyJob creates a copy of an existing job with deploymentName as value for radixDeploymentJobRef.name
+	CopyJob(ctx context.Context, jobName string, deploymentName string) (*modelsv1.JobStatus, error)
 	// MaintainHistoryLimit Delete outdated jobs
-	MaintainHistoryLimit() error
+	MaintainHistoryLimit(ctx context.Context) error
 	// DeleteJob Delete a job
-	DeleteJob(string) error
+	DeleteJob(ctx context.Context, jobName string) error
 	// StopJob Stop a job
-	StopJob(string) error
+	StopJob(ctx context.Context, jobName string) error
 }
 
 type completedBatchOrJobVersioned struct {
@@ -61,27 +63,27 @@ func New(kube *kube.Kube, env *models.Env) JobHandler {
 }
 
 // GetJobs Get status of all jobs
-func (handler *jobHandler) GetJobs() ([]modelsv1.JobStatus, error) {
+func (handler *jobHandler) GetJobs(ctx context.Context) ([]modelsv1.JobStatus, error) {
 	log.Debugf("Get Jobs for namespace: %s", handler.common.Env.RadixDeploymentNamespace)
 
 	// Use Kubernetes jobs for backward compatibility
-	kubeJobs, err := handler.getAllJobs()
+	kubeJobs, err := handler.getAllJobs(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	pods, err := handler.getJobPods("")
+	pods, err := handler.getJobPods(ctx, "")
 	if err != nil {
 		return nil, err
 	}
 	podsMap := apiv1.GetPodsToJobNameMap(pods)
 	jobStatuses := make([]modelsv1.JobStatus, len(kubeJobs))
 	for idx, k8sJob := range kubeJobs {
-		jobStatuses[idx] = *GetJobStatusFromJob(handler.common.Kube.KubeClient(), k8sJob, podsMap[k8sJob.Name])
+		jobStatuses[idx] = *GetJobStatusFromJob(ctx, handler.common.Kube.KubeClient(), k8sJob, podsMap[k8sJob.Name])
 	}
 
 	// get all single jobs
-	radixBatches, err := handler.common.HandlerApiV2.GetRadixBatchSingleJobs()
+	radixBatches, err := handler.common.HandlerApiV2.GetRadixBatchSingleJobs(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -91,14 +93,14 @@ func (handler *jobHandler) GetJobs() ([]modelsv1.JobStatus, error) {
 	jobStatuses = append(jobStatuses, apiv1.GetJobStatusFromRadixBatchJobsStatuses(radixBatches...)...)
 
 	// get all batch jobs
-	radixBatches, err = handler.common.HandlerApiV2.GetRadixBatches()
+	radixBatches, err = handler.common.HandlerApiV2.GetRadixBatches(ctx)
 	if err != nil {
 		return nil, err
 	}
 	jobStatuses = append(jobStatuses, apiv1.GetJobStatusFromRadixBatchJobsStatuses(radixBatches...)...)
 
 	labelSelectorForAllRadixBatchesPods := apiv1.GetLabelSelectorForAllRadixBatchesPods(handler.common.Env.RadixComponentName)
-	eventMessageForPods, batchJobPodsMap, err := handler.common.GetRadixBatchJobMessagesAndPodMaps(labelSelectorForAllRadixBatchesPods)
+	eventMessageForPods, batchJobPodsMap, err := handler.common.GetRadixBatchJobMessagesAndPodMaps(ctx, labelSelectorForAllRadixBatchesPods)
 	if err != nil {
 		return nil, err
 	}
@@ -111,15 +113,15 @@ func (handler *jobHandler) GetJobs() ([]modelsv1.JobStatus, error) {
 }
 
 // GetJob Get status of a job
-func (handler *jobHandler) GetJob(jobName string) (*modelsv1.JobStatus, error) {
+func (handler *jobHandler) GetJob(ctx context.Context, jobName string) (*modelsv1.JobStatus, error) {
 	log.Debugf("get job %s for namespace: %s", jobName, handler.common.Env.RadixDeploymentNamespace)
 	if batchName, _, ok := apiv1.ParseBatchAndJobNameFromScheduledJobName(jobName); ok {
-		jobStatus, err := apiv1.GetBatchJob(handler.common.HandlerApiV2, batchName, jobName)
+		jobStatus, err := apiv1.GetBatchJob(ctx, handler.common.HandlerApiV2, batchName, jobName)
 		if err != nil {
 			return nil, err
 		}
 		labelSelectorForRadixBatchesPods := apiv1.GetLabelSelectorForRadixBatchesPods(handler.common.Env.RadixComponentName, batchName)
-		eventMessageForPods, batchJobPodsMap, err := handler.common.GetRadixBatchJobMessagesAndPodMaps(labelSelectorForRadixBatchesPods)
+		eventMessageForPods, batchJobPodsMap, err := handler.common.GetRadixBatchJobMessagesAndPodMaps(ctx, labelSelectorForRadixBatchesPods)
 		if err != nil {
 			return nil, err
 		}
@@ -128,23 +130,33 @@ func (handler *jobHandler) GetJob(jobName string) (*modelsv1.JobStatus, error) {
 	}
 
 	// Use Kubernetes jobs for backward compatibility
-	job, err := handler.getJobByName(jobName)
+	job, err := handler.getJobByName(ctx, jobName)
 	if err != nil {
 		return nil, err
 	}
 	log.Debugf("found Job %s for namespace: %s", jobName, handler.common.Env.RadixDeploymentNamespace)
-	pods, err := handler.getJobPods(job.Name)
+	pods, err := handler.getJobPods(ctx, job.Name)
 	if err != nil {
 		return nil, err
 	}
-	jobStatus := GetJobStatusFromJob(handler.common.Kube.KubeClient(), job, pods)
+	jobStatus := GetJobStatusFromJob(ctx, handler.common.Kube.KubeClient(), job, pods)
 	return jobStatus, nil
 }
 
 // CreateJob Create a job with parameters
-func (handler *jobHandler) CreateJob(jobScheduleDescription *common.JobScheduleDescription) (*modelsv1.JobStatus, error) {
+func (handler *jobHandler) CreateJob(ctx context.Context, jobScheduleDescription *common.JobScheduleDescription) (*modelsv1.JobStatus, error) {
 	log.Debugf("create job for namespace: %s", handler.common.Env.RadixDeploymentNamespace)
-	radixBatch, err := handler.common.HandlerApiV2.CreateRadixBatchSingleJob(jobScheduleDescription)
+	radixBatch, err := handler.common.HandlerApiV2.CreateRadixBatchSingleJob(ctx, jobScheduleDescription)
+	if err != nil {
+		return nil, err
+	}
+	return GetSingleJobStatusFromRadixBatchJob(radixBatch)
+}
+
+// CopyJob Copy a job with  deployment and optional parameters
+func (handler *jobHandler) CopyJob(ctx context.Context, jobName string, deploymentName string) (*modelsv1.JobStatus, error) {
+	log.Debugf("stop the job %s for namespace: %s", jobName, handler.common.Env.RadixDeploymentNamespace)
+	radixBatch, err := apiv1.CopyJob(ctx, handler.common.HandlerApiV2, jobName, deploymentName)
 	if err != nil {
 		return nil, err
 	}
@@ -152,35 +164,43 @@ func (handler *jobHandler) CreateJob(jobScheduleDescription *common.JobScheduleD
 }
 
 // DeleteJob Delete a job
-func (handler *jobHandler) DeleteJob(jobName string) error {
+func (handler *jobHandler) DeleteJob(ctx context.Context, jobName string) error {
 	log.Debugf("delete job %s for namespace: %s", jobName, handler.common.Env.RadixDeploymentNamespace)
 	if batchName, _, ok := apiv1.ParseBatchAndJobNameFromScheduledJobName(jobName); ok {
-		radixBatch, err := handler.common.HandlerApiV2.GetRadixBatch(batchName)
+		radixBatch, err := handler.common.HandlerApiV2.GetRadixBatch(ctx, batchName)
 		if err == nil && radixBatch.BatchType == string(kube.RadixBatchTypeJob) {
 			// only job in a single job batch can be deleted
-			return handler.common.HandlerApiV2.DeleteRadixBatch(batchName)
+			err := handler.common.HandlerApiV2.DeleteRadixBatch(ctx, batchName)
+			if err != nil {
+				return err
+			}
+			return handler.common.HandlerApiV2.GarbageCollectPayloadSecrets(ctx)
 		}
 		if err != nil && !errors.IsNotFound(err) {
 			return err
 		}
 	}
 	// Use Kubernetes jobs for backward compatibility
-	return handler.garbageCollectJob(jobName)
+	return handler.garbageCollectJob(ctx, jobName)
 }
 
 // StopJob Stop a job
-func (handler *jobHandler) StopJob(jobName string) error {
+func (handler *jobHandler) StopJob(ctx context.Context, jobName string) error {
 	log.Debugf("stop the job %s for namespace: %s", jobName, handler.common.Env.RadixDeploymentNamespace)
-	return apiv1.StopJob(handler.common.HandlerApiV2, jobName)
+	return apiv1.StopJob(ctx, handler.common.HandlerApiV2, jobName)
 }
 
 // MaintainHistoryLimit Delete outdated jobs
-func (handler *jobHandler) MaintainHistoryLimit() error {
-	completedRadixBatches, err := handler.common.HandlerApiV2.GetCompletedRadixBatchesSortedByCompletionTimeAsc()
+func (handler *jobHandler) MaintainHistoryLimit(ctx context.Context) error {
+	err := handler.common.HandlerApiV2.MaintainHistoryLimit(ctx)
 	if err != nil {
 		return err
 	}
-	jobList, err := handler.getAllJobs()
+	completedRadixBatches, err := handler.common.HandlerApiV2.GetCompletedRadixBatchesSortedByCompletionTimeAsc(ctx)
+	if err != nil {
+		return err
+	}
+	jobList, err := handler.getAllJobs(ctx)
 	if err != nil {
 		return err
 	}
@@ -193,7 +213,7 @@ func (handler *jobHandler) MaintainHistoryLimit() error {
 		return j.Status.Succeeded > 0 && !batchNameLabelExists
 	})
 	completedBatches = append(completedBatches, convertBatchJobsToCompletedBatchVersioned(succeededJobs)...)
-	if err = handler.maintainHistoryLimitForJobs(completedBatches,
+	if err = handler.maintainHistoryLimitForJobs(ctx, completedBatches,
 		historyLimit); err != nil {
 		return err
 	}
@@ -205,12 +225,7 @@ func (handler *jobHandler) MaintainHistoryLimit() error {
 		return j.Status.Failed > 0 && !batchNameLabelExists
 	})
 	completedBatches = append(completedBatches, convertBatchJobsToCompletedBatchVersioned(failedJobs)...)
-	if err = handler.maintainHistoryLimitForJobs(completedBatches,
-		historyLimit); err != nil {
-		return err
-	}
-	err = handler.common.HandlerApiV2.GarbageCollectPayloadSecrets()
-	if err != nil {
+	if err = handler.maintainHistoryLimitForJobs(ctx, completedBatches, historyLimit); err != nil {
 		return err
 	}
 	return nil
@@ -238,7 +253,7 @@ func convertBatchJobsToCompletedBatchVersioned(jobs []*batchv1.Job) []completedB
 	return completedBatches
 }
 
-func (handler *jobHandler) maintainHistoryLimitForJobs(completedBatchesVersioned []completedBatchOrJobVersioned, historyLimit int) error {
+func (handler *jobHandler) maintainHistoryLimitForJobs(ctx context.Context, completedBatchesVersioned []completedBatchOrJobVersioned, historyLimit int) error {
 	numToDelete := len(completedBatchesVersioned) - historyLimit
 	if numToDelete <= 0 {
 		log.Debug("no history batches to delete")
@@ -251,13 +266,13 @@ func (handler *jobHandler) maintainHistoryLimitForJobs(completedBatchesVersioned
 		batchVersioned := sortedCompletedBatchesVersioned[i]
 		if len(batchVersioned.jobNameV1) > 0 {
 			log.Debugf("deleting job %s", batchVersioned.jobNameV1)
-			if err := handler.DeleteJob(batchVersioned.jobNameV1); err != nil {
+			if err := handler.DeleteJob(ctx, batchVersioned.jobNameV1); err != nil {
 				return err
 			}
 			continue
 		}
 		log.Debugf("deleting batch for simple job %s", batchVersioned.batchNameV2)
-		if err := handler.common.HandlerApiV2.DeleteRadixBatch(batchVersioned.batchNameV2); err != nil {
+		if err := handler.common.HandlerApiV2.DeleteRadixBatch(ctx, batchVersioned.batchNameV2); err != nil {
 			return err
 		}
 	}
@@ -277,35 +292,35 @@ func isCompletedBatch1CompletedBefore2(batchVersioned1 completedBatchOrJobVersio
 	return batchVersioned1.completionTime < batchVersioned2.completionTime
 }
 
-func (handler *jobHandler) garbageCollectJob(jobName string) (err error) {
-	job, err := handler.getJobByName(jobName)
+func (handler *jobHandler) garbageCollectJob(ctx context.Context, jobName string) (err error) {
+	job, err := handler.getJobByName(ctx, jobName)
 	if err != nil {
 		return
 	}
 
-	secrets, err := handler.common.GetSecretsForJob(jobName)
+	secrets, err := handler.common.GetSecretsForJob(ctx, jobName)
 	if err != nil {
 		return
 	}
 
 	for _, secret := range secrets.Items {
-		if err = handler.common.DeleteSecret(&secret); err != nil {
+		if err = handler.common.DeleteSecret(ctx, &secret); err != nil {
 			return
 		}
 	}
 
-	services, err := handler.common.GetServiceForJob(jobName)
+	services, err := handler.common.GetServiceForJob(ctx, jobName)
 	if err != nil {
 		return
 	}
 
 	for _, service := range services.Items {
-		if err = handler.common.DeleteService(&service); err != nil {
+		if err = handler.common.DeleteService(ctx, &service); err != nil {
 			return
 		}
 	}
 
-	err = handler.deleteJob(job)
+	err = handler.deleteJob(ctx, job)
 	if err != nil {
 		return err
 	}
@@ -313,13 +328,13 @@ func (handler *jobHandler) garbageCollectJob(jobName string) (err error) {
 	return
 }
 
-func (handler *jobHandler) deleteJob(job *batchv1.Job) error {
+func (handler *jobHandler) deleteJob(ctx context.Context, job *batchv1.Job) error {
 	fg := metav1.DeletePropagationBackground
-	return handler.common.Kube.KubeClient().BatchV1().Jobs(job.Namespace).Delete(context.Background(), job.Name, metav1.DeleteOptions{PropagationPolicy: &fg})
+	return handler.common.Kube.KubeClient().BatchV1().Jobs(job.Namespace).Delete(ctx, job.Name, metav1.DeleteOptions{PropagationPolicy: &fg})
 }
 
-func (handler *jobHandler) getJobByName(jobName string) (*batchv1.Job, error) {
-	allJobs, err := handler.getAllJobs()
+func (handler *jobHandler) getJobByName(ctx context.Context, jobName string) (*batchv1.Job, error) {
+	allJobs, err := handler.getAllJobs(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -333,12 +348,12 @@ func (handler *jobHandler) getJobByName(jobName string) (*batchv1.Job, error) {
 	return nil, apiErrors.NewNotFound("job", jobName)
 }
 
-func (handler *jobHandler) getAllJobs() ([]*batchv1.Job, error) {
+func (handler *jobHandler) getAllJobs(ctx context.Context) ([]*batchv1.Job, error) {
 	kubeJobs, err := handler.common.Kube.KubeClient().
 		BatchV1().
 		Jobs(handler.common.Env.RadixDeploymentNamespace).
 		List(
-			context.Background(),
+			ctx,
 			metav1.ListOptions{
 				LabelSelector: getLabelSelectorForJobComponentForObsoleteJobs(handler.common.Env.RadixComponentName),
 			},
@@ -356,7 +371,7 @@ func (handler *jobHandler) getAllJobs() ([]*batchv1.Job, error) {
 }
 
 // getJobPods jobName is optional, when empty - returns all job-pods for the namespace
-func (handler *jobHandler) getJobPods(jobName string) ([]corev1.Pod, error) {
+func (handler *jobHandler) getJobPods(ctx context.Context, jobName string) ([]corev1.Pod, error) {
 	listOptions := metav1.ListOptions{}
 	if jobName != "" {
 		listOptions.LabelSelector = getLabelSelectorForJobPods(jobName)
@@ -365,7 +380,7 @@ func (handler *jobHandler) getJobPods(jobName string) ([]corev1.Pod, error) {
 		CoreV1().
 		Pods(handler.common.Env.RadixDeploymentNamespace).
 		List(
-			context.Background(),
+			ctx,
 			listOptions,
 		)
 

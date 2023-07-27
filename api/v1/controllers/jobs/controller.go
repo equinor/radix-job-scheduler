@@ -103,12 +103,12 @@ func (controller *jobController) CreateJob(w http.ResponseWriter, r *http.Reques
 		}
 	}
 
-	jobState, err := controller.handler.CreateJob(&jobScheduleDescription)
+	jobState, err := controller.handler.CreateJob(r.Context(), &jobScheduleDescription)
 	if err != nil {
 		controller.HandleError(w, err)
 		return
 	}
-	err = controller.handler.MaintainHistoryLimit()
+	err = controller.handler.MaintainHistoryLimit(r.Context())
 	if err != nil {
 		log.Warnf("failed to maintain job history: %v", err)
 	}
@@ -133,7 +133,7 @@ func (controller *jobController) CreateJob(w http.ResponseWriter, r *http.Reques
 //        "$ref": "#/definitions/Status"
 func (controller *jobController) GetJobs(w http.ResponseWriter, r *http.Request) {
 	log.Debug("Get job list")
-	jobs, err := controller.handler.GetJobs()
+	jobs, err := controller.handler.GetJobs(r.Context())
 	if err != nil {
 		controller.HandleError(w, err)
 		return
@@ -167,7 +167,7 @@ func (controller *jobController) GetJobs(w http.ResponseWriter, r *http.Request)
 func (controller *jobController) GetJob(w http.ResponseWriter, r *http.Request) {
 	jobName := mux.Vars(r)[jobNameParam]
 	log.Debugf("Get job %s", jobName)
-	job, err := controller.handler.GetJob(jobName)
+	job, err := controller.handler.GetJob(r.Context(), jobName)
 	if err != nil {
 		controller.HandleError(w, err)
 		return
@@ -200,7 +200,7 @@ func (controller *jobController) GetJob(w http.ResponseWriter, r *http.Request) 
 func (controller *jobController) DeleteJob(w http.ResponseWriter, r *http.Request) {
 	jobName := mux.Vars(r)[jobNameParam]
 	log.Debugf("Delete job %s", jobName)
-	err := controller.handler.DeleteJob(jobName)
+	err := controller.handler.DeleteJob(r.Context(), jobName)
 	if err != nil {
 		controller.HandleError(w, err)
 		return
@@ -239,7 +239,7 @@ func (controller *jobController) DeleteJob(w http.ResponseWriter, r *http.Reques
 func (controller *jobController) StopJob(w http.ResponseWriter, r *http.Request) {
 	jobName := mux.Vars(r)[jobNameParam]
 
-	err := controller.handler.StopJob(jobName)
+	err := controller.handler.StopJob(r.Context(), jobName)
 	if err != nil {
 		controller.HandleError(w, err)
 		return

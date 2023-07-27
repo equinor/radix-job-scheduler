@@ -7,12 +7,12 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func (handler *Handler) GetPodsForLabelSelector(labelSelector string) ([]corev1.Pod, error) {
+func (handler *Handler) GetPodsForLabelSelector(ctx context.Context, labelSelector string) ([]corev1.Pod, error) {
 	podList, err := handler.Kube.KubeClient().
 		CoreV1().
 		Pods(handler.Env.RadixDeploymentNamespace).
 		List(
-			context.TODO(),
+			ctx,
 			metav1.ListOptions{LabelSelector: labelSelector},
 		)
 

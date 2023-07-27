@@ -1,4 +1,4 @@
-FROM golang:1.19-alpine3.17 as builder
+FROM golang:1.20-alpine3.18 as builder
 ENV GO111MODULE=on
 
 RUN addgroup -S -g 1000 job-scheduler
@@ -7,7 +7,7 @@ RUN adduser -S -u 1000 -G job-scheduler job-scheduler
 RUN apk update && apk upgrade && \
     apk add bash jq alpine-sdk sed gawk git ca-certificates curl && \
     apk add --no-cache gcc musl-dev
-RUN go install honnef.co/go/tools/cmd/staticcheck@v0.3.3 && \
+RUN go install honnef.co/go/tools/cmd/staticcheck@2023.1.3 && \
     go install github.com/rakyll/statik@v0.1.7
 
     # Install go-swagger - 57786786=v0.29.0 - get release id from https://api.github.com/repos/go-swagger/go-swagger/releases

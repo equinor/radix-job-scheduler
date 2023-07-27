@@ -167,8 +167,8 @@ func Test_RadixBatchWatcher(t *testing.T) {
 			var createdRadixBatch *radixv1.RadixBatch
 			var err error
 			if tt.fields.newRadixBatch != nil && tt.fields.updateRadixBatch != nil {
-				//when radix batch exists and during test it will be updated
-				createdRadixBatch, err = radixClient.RadixV1().RadixBatches(namespace).Create(context.Background(), tt.fields.newRadixBatch, metav1.CreateOptions{})
+				// when radix batch exists and during test it will be updated
+				createdRadixBatch, err = radixClient.RadixV1().RadixBatches(namespace).Create(context.TODO(), tt.fields.newRadixBatch, metav1.CreateOptions{})
 				if err != nil {
 					assert.Fail(t, err.Error())
 					return
@@ -189,14 +189,14 @@ func Test_RadixBatchWatcher(t *testing.T) {
 			}
 
 			if tt.fields.newRadixBatch != nil && tt.fields.updateRadixBatch == nil {
-				//when radix batch exists and during test it will be updated
-				_, err := radixClient.RadixV1().RadixBatches(namespace).Create(context.Background(), tt.fields.newRadixBatch, metav1.CreateOptions{})
+				// when radix batch exists and during test it will be updated
+				_, err := radixClient.RadixV1().RadixBatches(namespace).Create(context.TODO(), tt.fields.newRadixBatch, metav1.CreateOptions{})
 				if err != nil {
 					assert.Fail(t, err.Error())
 					return
 				}
 			} else if createdRadixBatch != nil && tt.fields.updateRadixBatch != nil {
-				_, err := radixClient.RadixV1().RadixBatches(namespace).Update(context.Background(), tt.fields.updateRadixBatch(createdRadixBatch), metav1.UpdateOptions{})
+				_, err := radixClient.RadixV1().RadixBatches(namespace).Update(context.TODO(), tt.fields.updateRadixBatch(createdRadixBatch), metav1.UpdateOptions{})
 				if err != nil {
 					assert.Fail(t, err.Error())
 					return
@@ -206,7 +206,7 @@ func Test_RadixBatchWatcher(t *testing.T) {
 				t.Log("wait for sync informer")
 				time.Sleep(time.Millisecond * 100)
 			}
-			time.Sleep(time.Second * 1) //wayt to possible fail due to a missed expected call
+			time.Sleep(time.Second * 1) // wayt to possible fail due to a missed expected call
 			ctrl.Finish()
 			watcher.Stop <- struct{}{}
 		})
