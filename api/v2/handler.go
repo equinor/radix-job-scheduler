@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"dario.cat/mergo"
 	"github.com/equinor/radix-common/utils"
 	commonErrors "github.com/equinor/radix-common/utils/errors"
 	mergoutils "github.com/equinor/radix-common/utils/mergo"
@@ -21,7 +22,6 @@ import (
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	radixLabels "github.com/equinor/radix-operator/pkg/apis/utils/labels"
-	"github.com/imdario/mergo"
 	log "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
