@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"time"
 
 	radixUtils "github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-common/utils/numbers"
@@ -133,6 +134,7 @@ func AddRadixBatch(radixClient versioned.Interface, jobName, componentName strin
 
 func CreateSecretForTest(appName, secretName, jobName, radixJobComponentName, namespace string, kubeClient kubernetes.Interface) {
 	batchName, batchJobName, _ := ParseBatchAndJobNameFromScheduledJobName(jobName)
+	twoDaysAgo := time.Now().Add(-50 * time.Hour).Local()
 	_, err := kubeClient.CoreV1().Secrets(namespace).Create(
 		context.TODO(),
 		&corev1.Secret{
@@ -142,7 +144,10 @@ func CreateSecretForTest(appName, secretName, jobName, radixJobComponentName, na
 					radixLabels.ForApplicationName(appName),
 					radixLabels.ForComponentName(radixJobComponentName),
 					radixLabels.ForBatchName(batchName),
+					radixLabels.ForJobScheduleJobType(),
+					radixLabels.ForRadixSecretType(kube.RadixSecretJobPayload),
 				),
+				CreationTimestamp: metav1.NewTime(twoDaysAgo),
 			},
 			Data: map[string][]byte{batchJobName: []byte("secret")},
 		},

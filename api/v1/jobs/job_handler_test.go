@@ -230,11 +230,12 @@ func TestCreateJob(t *testing.T) {
 		secretName := batchJob.PayloadSecretRef.Name
 		secret, _ := kubeClient.CoreV1().Secrets(envNamespace).Get(context.TODO(), secretName, metav1.GetOptions{})
 		assert.NotNil(t, secret)
-		assert.Len(t, secret.Labels, 4)
+		assert.Len(t, secret.Labels, 5)
 		assert.Equal(t, appName, secret.Labels[kube.RadixAppLabel])
 		assert.Equal(t, appJobComponent, secret.Labels[kube.RadixComponentLabel])
 		assert.Equal(t, batchName, secret.Labels[kube.RadixBatchNameLabel])
 		assert.Equal(t, kube.RadixJobTypeJobSchedule, secret.Labels[kube.RadixJobTypeLabel])
+		assert.Equal(t, string(kube.RadixSecretJobPayload), secret.Labels[kube.RadixSecretTypeLabel])
 		jobPayloadPropertyName := batchJob.PayloadSecretRef.Key
 		payloadBytes := secret.Data[jobPayloadPropertyName]
 		assert.Equal(t, payloadString, string(payloadBytes))
@@ -499,11 +500,10 @@ func TestDeleteJob(t *testing.T) {
 		assert.Len(t, radixBatchList.Items, 1)
 		assert.NotNil(t, test.GetRadixBatchByNameForTest(radixBatchList.Items, "test-batch2-job1"))
 		secrets, _ := kubeClient.CoreV1().Secrets("").List(context.TODO(), metav1.ListOptions{})
-		assert.Len(t, secrets.Items, 4)
-		assert.NotNil(t, test.GetSecretByNameForTest(secrets.Items, radixBatch2.Spec.Jobs[0].PayloadSecretRef.Name))
-		assert.NotNil(t, test.GetSecretByNameForTest(secrets.Items, "secret3"))
-		assert.NotNil(t, test.GetSecretByNameForTest(secrets.Items, "secret4"))
-		assert.NotNil(t, test.GetSecretByNameForTest(secrets.Items, "secret5"))
+		assert.Len(t, secrets.Items, 3)
+		assert.NotNil(t, test.GetSecretByNameForTest(secrets.Items, radixBatch2.Spec.Jobs[0].PayloadSecretRef.Name), "remaining test-batch2-job1")
+		assert.NotNil(t, test.GetSecretByNameForTest(secrets.Items, "secret4"), "other-job-component")
+		assert.NotNil(t, test.GetSecretByNameForTest(secrets.Items, "secret5"), "other-ns")
 	})
 
 	t.Run("delete job - job name does not exist", func(t *testing.T) {

@@ -31,21 +31,21 @@ type BatchHandler interface {
 	// GetBatches Get status of all batches
 	GetBatches(ctx context.Context) ([]modelsv1.BatchStatus, error)
 	// GetBatch Get status of a batch
-	GetBatch(context.Context, string) (*modelsv1.BatchStatus, error)
+	GetBatch(ctx context.Context, batchName string) (*modelsv1.BatchStatus, error)
 	// GetBatchJob Get status of a batch job
-	GetBatchJob(context.Context, string, string) (*modelsv1.JobStatus, error)
+	GetBatchJob(ctx context.Context, batchName string, jobName string) (*modelsv1.JobStatus, error)
 	// CreateBatch Create a batch with parameters
-	CreateBatch(context.Context, *common.BatchScheduleDescription) (*modelsv1.BatchStatus, error)
-	// CopyBatch Copy a batch with  deployment and optional parameters
-	CopyBatch(context.Context, string, string) (*modelsv1.BatchStatus, error)
+	CreateBatch(ctx context.Context, batchScheduleDescription *common.BatchScheduleDescription) (*modelsv1.BatchStatus, error)
+	// CopyBatch creates a copy of an existing batch with deploymentName as value for radixDeploymentJobRef.name
+	CopyBatch(ctx context.Context, batchName string, deploymentName string) (*modelsv1.BatchStatus, error)
 	// MaintainHistoryLimit Delete outdated batches
-	MaintainHistoryLimit(context.Context) error
+	MaintainHistoryLimit(ctx context.Context) error
 	// DeleteBatch Delete a batch
-	DeleteBatch(context.Context, string) error
+	DeleteBatch(ctx context.Context, batchName string) error
 	// StopBatch Stop a batch
-	StopBatch(context.Context, string) error
+	StopBatch(ctx context.Context, batchName string) error
 	// StopBatchJob Stop a batch job
-	StopBatchJob(context.Context, string, string) error
+	StopBatchJob(ctx context.Context, batchName string, jobName string) error
 }
 
 type completedBatchVersionType string
@@ -201,7 +201,11 @@ func (handler *batchHandler) DeleteBatch(ctx context.Context, batchName string) 
 	err := handler.common.Kube.KubeClient().BatchV1().Jobs(handler.common.Env.RadixDeploymentNamespace).Delete(ctx, batchName, metav1.DeleteOptions{PropagationPolicy: &fg})
 	if err != nil {
 		if errors.IsNotFound(err) {
-			return handler.common.HandlerApiV2.DeleteRadixBatch(ctx, batchName)
+			err := handler.common.HandlerApiV2.DeleteRadixBatch(ctx, batchName)
+			if err != nil {
+				return err
+			}
+			return handler.common.HandlerApiV2.GarbageCollectPayloadSecrets(ctx)
 		}
 		return err
 	}
@@ -222,6 +226,10 @@ func (handler *batchHandler) StopBatchJob(ctx context.Context, batchName string,
 
 // MaintainHistoryLimit Delete outdated batches
 func (handler *batchHandler) MaintainHistoryLimit(ctx context.Context) error {
+	err := handler.common.HandlerApiV2.MaintainHistoryLimit(ctx)
+	if err != nil {
+		return err
+	}
 	completedRadixBatches, err := handler.common.HandlerApiV2.GetCompletedRadixBatchesSortedByCompletionTimeAsc(ctx)
 	if err != nil {
 		return err
