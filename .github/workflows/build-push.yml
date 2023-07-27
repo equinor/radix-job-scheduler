@@ -16,7 +16,7 @@ jobs:
           id: get-target-configs
           run: |
             configs=$(ls $GITHUB_WORKSPACE/.github/workflows/config/${GITHUB_REF_NAME} | jq -Rsc '. / "\n" - [""]')
-            echo ::set-output name=target_configs::${configs}
+            echo "target_configs=${configs}" >> $GITHUB_OUTPUT
   
   build-deploy-image:
     name: Build & push
