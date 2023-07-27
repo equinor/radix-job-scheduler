@@ -3,11 +3,13 @@ package jobs
 import (
 	"context"
 	"fmt"
+	apiErrors "github.com/equinor/radix-job-scheduler/api/errors"
 	apiv1 "github.com/equinor/radix-job-scheduler/api/v1"
 	apiv2 "github.com/equinor/radix-job-scheduler/api/v2"
 	"github.com/equinor/radix-job-scheduler/models"
 	"github.com/equinor/radix-job-scheduler/models/common"
 	modelsv1 "github.com/equinor/radix-job-scheduler/models/v1"
+	modelsv2 "github.com/equinor/radix-job-scheduler/models/v2"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	log "github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -120,23 +122,35 @@ func (handler *jobHandler) DeleteJob(ctx context.Context, jobName string) error 
 	log.Debugf("delete job %s for namespace: %s", jobName, handler.common.Env.RadixDeploymentNamespace)
 	batchName, _, ok := apiv1.ParseBatchAndJobNameFromScheduledJobName(jobName)
 	if !ok {
-		return fmt.Errorf("job %s is not a valid job name", jobName)
+		return apiErrors.NewInvalidWithReason(jobName, "is not a valid job name")
 	}
-	radixBatch, err := handler.common.HandlerApiV2.GetRadixBatch(ctx, batchName)
+	radixBatchStatus, err := handler.common.HandlerApiV2.GetRadixBatch(ctx, batchName)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			return fmt.Errorf("job %s not found", jobName)
+			return apiErrors.NewNotFound("batch job", jobName)
 		}
 		return err
 	}
-	if radixBatch.BatchType != string(kube.RadixBatchTypeJob) {
-		return fmt.Errorf("job %s is not a single job", jobName)
+	if radixBatchStatus.BatchType != string(kube.RadixBatchTypeJob) {
+		return apiErrors.NewInvalidWithReason(jobName, "not a single job")
+	}
+	if !jobExistInBatch(radixBatchStatus, jobName) {
+		return apiErrors.NewNotFound("batch job", jobName)
 	}
 	err = handler.common.HandlerApiV2.DeleteRadixBatch(ctx, batchName)
 	if err != nil {
 		return err
 	}
 	return handler.common.HandlerApiV2.GarbageCollectPayloadSecrets(ctx)
+}
+
+func jobExistInBatch(radixBatch *modelsv2.RadixBatch, jobName string) bool {
+	for _, jobStatus := range radixBatch.JobStatuses {
+		if jobStatus.Name == jobName {
+			return true
+		}
+	}
+	return false
 }
 
 // StopJob Stop a job

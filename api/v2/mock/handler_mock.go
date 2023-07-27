@@ -128,7 +128,7 @@ func (mr *MockHandlerMockRecorder) GarbageCollectPayloadSecrets(ctx interface{})
 // GetCompletedRadixBatchesSortedByCompletionTimeAsc mocks base method.
 func (m *MockHandler) GetCompletedRadixBatchesSortedByCompletionTimeAsc(ctx context.Context) (*apiv2.CompletedRadixBatches, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetCompletedRadixBatchesSortedByCompletionTimeAsc", ctx)
+	ret := m.ctrl.Call(m, "getCompletedRadixBatchesSortedByCompletionTimeAsc", ctx)
 	ret0, _ := ret[0].(*apiv2.CompletedRadixBatches)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
@@ -137,7 +137,7 @@ func (m *MockHandler) GetCompletedRadixBatchesSortedByCompletionTimeAsc(ctx cont
 // GetCompletedRadixBatchesSortedByCompletionTimeAsc indicates an expected call of GetCompletedRadixBatchesSortedByCompletionTimeAsc.
 func (mr *MockHandlerMockRecorder) GetCompletedRadixBatchesSortedByCompletionTimeAsc(ctx interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCompletedRadixBatchesSortedByCompletionTimeAsc", reflect.TypeOf((*MockHandler)(nil).GetCompletedRadixBatchesSortedByCompletionTimeAsc), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "getCompletedRadixBatchesSortedByCompletionTimeAsc", reflect.TypeOf((*MockHandler)(nil).GetCompletedRadixBatchesSortedByCompletionTimeAsc), ctx)
 }
 
 // GetRadixBatch mocks base method.
