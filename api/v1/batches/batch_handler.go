@@ -2,25 +2,14 @@ package batchesv1
 
 import (
 	"context"
-	"sort"
-
-	"github.com/equinor/radix-common/utils"
-	"github.com/equinor/radix-common/utils/slice"
 	apiv1 "github.com/equinor/radix-job-scheduler/api/v1"
-	"github.com/equinor/radix-job-scheduler/api/v1/jobs"
 	apiv2 "github.com/equinor/radix-job-scheduler/api/v2"
 	"github.com/equinor/radix-job-scheduler/models"
 	"github.com/equinor/radix-job-scheduler/models/common"
 	modelsv1 "github.com/equinor/radix-job-scheduler/models/v1"
-	modelsv2 "github.com/equinor/radix-job-scheduler/models/v2"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
-	"github.com/equinor/radix-operator/pkg/apis/utils/labels"
 	log "github.com/sirupsen/logrus"
-	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	kubeLabels "k8s.io/apimachinery/pkg/labels"
 )
 
 type batchHandler struct {
@@ -48,19 +37,6 @@ type BatchHandler interface {
 	StopBatchJob(ctx context.Context, batchName string, jobName string) error
 }
 
-type completedBatchVersionType string
-
-const (
-	completedBatchVersionV1 completedBatchVersionType = "V1"
-	completedBatchVersionV2 completedBatchVersionType = "V2"
-)
-
-type completedBatchVersioned struct {
-	batchName      string
-	version        completedBatchVersionType
-	completionTime string
-}
-
 // New Constructor of the batch handler
 func New(kube *kube.Kube, env *models.Env) BatchHandler {
 	return &batchHandler{
@@ -76,25 +52,7 @@ func New(kube *kube.Kube, env *models.Env) BatchHandler {
 func (handler *batchHandler) GetBatches(ctx context.Context) ([]modelsv1.BatchStatus, error) {
 	log.Debugf("Get batches for the namespace: %s", handler.common.Env.RadixDeploymentNamespace)
 
-	// Use Kubernetes jobs for backward compatibility
-	allBatches, err := handler.getAllBatches(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	allBatchesPods, err := handler.common.GetPodsForLabelSelector(ctx, getLabelSelectorForAllOutdatedBatchesPods())
-	if err != nil {
-		return nil, err
-	}
-	allBatchesPodsMap := apiv1.GetPodsToJobNameMap(allBatchesPods)
 	var allRadixBatchStatuses []modelsv1.BatchStatus
-	for _, batch := range allBatches {
-		allRadixBatchStatuses = append(allRadixBatchStatuses, modelsv1.BatchStatus{
-			JobStatus: *jobs.GetJobStatusFromJob(ctx, handler.common.Kube.KubeClient(), batch, allBatchesPodsMap[batch.Name]),
-			BatchType: string(kube.RadixBatchTypeBatch),
-		})
-	}
-
 	radixBatches, err := handler.common.HandlerApiV2.GetRadixBatches(ctx)
 	if err != nil {
 		return nil, err
@@ -126,54 +84,18 @@ func (handler *batchHandler) GetBatchJob(ctx context.Context, batchName string, 
 // GetBatch Get status of a batch
 func (handler *batchHandler) GetBatch(ctx context.Context, batchName string) (*modelsv1.BatchStatus, error) {
 	log.Debugf("get batches for namespace: %s", handler.common.Env.RadixDeploymentNamespace)
-
-	batch, err := handler.common.GetBatch(ctx, batchName)
-	if err != nil {
-		if !errors.IsNotFound(err) {
-			return nil, err
-		}
-		radixBatch, err := handler.common.HandlerApiV2.GetRadixBatch(ctx, batchName)
-		if err != nil {
-			return nil, err
-		}
-		radixBatchStatus := GetBatchStatusFromRadixBatch(radixBatch)
-		labelSelectorForRadixBatchesPods := apiv1.GetLabelSelectorForRadixBatchesPods(handler.common.Env.RadixComponentName, batchName)
-		eventMessageForPods, batchJobPodsMap, err := handler.common.GetRadixBatchJobMessagesAndPodMaps(ctx, labelSelectorForRadixBatchesPods)
-		if err != nil {
-			return nil, err
-		}
-		setBatchJobEventMessages(radixBatchStatus, batchJobPodsMap, eventMessageForPods)
-		return radixBatchStatus, nil
-	}
-	log.Debugf("found Batch %s for namespace: %s", batchName, handler.common.Env.RadixDeploymentNamespace)
-
-	// Use Kubernetes jobs for backward compatibility
-	batchJobs, err := handler.getBatchJobs(ctx, batchName)
+	radixBatch, err := handler.common.HandlerApiV2.GetRadixBatch(ctx, batchName)
 	if err != nil {
 		return nil, err
 	}
-	batchPods, err := handler.common.GetPodsForLabelSelector(ctx, getLabelSelectorForBatchPods(batchName))
+	radixBatchStatus := GetBatchStatusFromRadixBatch(radixBatch)
+	labelSelectorForRadixBatchesPods := apiv1.GetLabelSelectorForRadixBatchesPods(handler.common.Env.RadixComponentName, batchName)
+	eventMessageForPods, batchJobPodsMap, err := handler.common.GetRadixBatchJobMessagesAndPodMaps(ctx, labelSelectorForRadixBatchesPods)
 	if err != nil {
 		return nil, err
 	}
-	batchStatus := modelsv1.BatchStatus{
-		JobStatus:   *jobs.GetJobStatusFromJob(ctx, handler.common.Kube.KubeClient(), batch, batchPods),
-		JobStatuses: make([]modelsv1.JobStatus, len(batchJobs)),
-		BatchType:   string(kube.RadixBatchTypeBatch),
-	}
-
-	batchJobsPods, err := handler.common.GetPodsForLabelSelector(ctx, getLabelSelectorForBatchObjects(batchName))
-	if err != nil {
-		return nil, err
-	}
-	batchJobsPodsMap := apiv1.GetPodsToJobNameMap(batchJobsPods)
-	for idx, batchJob := range batchJobs {
-		batchStatus.JobStatuses[idx] = *jobs.GetJobStatusFromJob(ctx, handler.common.Kube.KubeClient(), batchJob, batchJobsPodsMap[batchJob.Name])
-	}
-
-	log.Debugf("Found %v jobs for the batch '%s' for namespace '%s'", len(batchJobs), batchName,
-		handler.common.Env.RadixDeploymentNamespace)
-	return &batchStatus, nil
+	setBatchJobEventMessages(radixBatchStatus, batchJobPodsMap, eventMessageForPods)
+	return radixBatchStatus, nil
 }
 
 // CreateBatch Create a batch with parameters
@@ -197,19 +119,11 @@ func (handler *batchHandler) CopyBatch(ctx context.Context, batchName string, de
 // DeleteBatch Delete a batch
 func (handler *batchHandler) DeleteBatch(ctx context.Context, batchName string) error {
 	log.Debugf("delete batch %s for namespace: %s", batchName, handler.common.Env.RadixDeploymentNamespace)
-	fg := metav1.DeletePropagationBackground
-	err := handler.common.Kube.KubeClient().BatchV1().Jobs(handler.common.Env.RadixDeploymentNamespace).Delete(ctx, batchName, metav1.DeleteOptions{PropagationPolicy: &fg})
+	err := handler.common.HandlerApiV2.DeleteRadixBatch(ctx, batchName)
 	if err != nil {
-		if errors.IsNotFound(err) {
-			err := handler.common.HandlerApiV2.DeleteRadixBatch(ctx, batchName)
-			if err != nil {
-				return err
-			}
-			return handler.common.HandlerApiV2.GarbageCollectPayloadSecrets(ctx)
-		}
 		return err
 	}
-	return nil
+	return handler.common.HandlerApiV2.GarbageCollectPayloadSecrets(ctx)
 }
 
 // StopBatch Stop a batch
@@ -226,154 +140,7 @@ func (handler *batchHandler) StopBatchJob(ctx context.Context, batchName string,
 
 // MaintainHistoryLimit Delete outdated batches
 func (handler *batchHandler) MaintainHistoryLimit(ctx context.Context) error {
-	err := handler.common.HandlerApiV2.MaintainHistoryLimit(ctx)
-	if err != nil {
-		return err
-	}
-	completedRadixBatches, err := handler.common.HandlerApiV2.GetCompletedRadixBatchesSortedByCompletionTimeAsc(ctx)
-	if err != nil {
-		return err
-	}
-	batchList, err := handler.getAllBatches(ctx)
-	if err != nil {
-		return err
-	}
-
-	completedBatches := convertRadixBatchesToCompletedBatchVersioned(completedRadixBatches.SucceededRadixBatches)
-	log.Debug("maintain history limit for succeeded batches")
-	succeededBatches := slice.FindAll(batchList, func(j *batchv1.Job) bool { return j.Status.Succeeded > 0 })
-	completedBatches = append(completedBatches, convertBatchJobsToCompletedBatchVersioned(succeededBatches)...)
-	if err = handler.maintainHistoryLimitForBatches(ctx, completedBatches,
-		handler.common.Env.RadixJobSchedulersPerEnvironmentHistoryLimit); err != nil {
-		return err
-	}
-
-	completedBatches = convertRadixBatchesToCompletedBatchVersioned(completedRadixBatches.NotSucceededRadixBatches)
-	log.Debug("maintain history limit for failed batches")
-	failedBatches := slice.FindAll(batchList, func(j *batchv1.Job) bool { return j.Status.Failed > 0 })
-	completedBatches = append(completedBatches, convertBatchJobsToCompletedBatchVersioned(failedBatches)...)
-	if err = handler.maintainHistoryLimitForBatches(ctx, completedBatches, handler.common.Env.RadixJobSchedulersPerEnvironmentHistoryLimit); err != nil {
-		return err
-	}
-	return nil
-}
-
-func convertRadixBatchesToCompletedBatchVersioned(radixBatches []*modelsv2.RadixBatch) []completedBatchVersioned {
-	var completedBatches []completedBatchVersioned
-	for _, radixBatch := range radixBatches {
-		completedBatches = append(completedBatches, completedBatchVersioned{
-			batchName:      radixBatch.Name,
-			version:        completedBatchVersionV2,
-			completionTime: radixBatch.Ended,
-		})
-	}
-	return completedBatches
-}
-
-func convertBatchJobsToCompletedBatchVersioned(batchJobs []*batchv1.Job) []completedBatchVersioned {
-	var completedBatches []completedBatchVersioned
-	for _, radixBatch := range batchJobs {
-		completedBatches = append(completedBatches, completedBatchVersioned{
-			batchName:      radixBatch.GetName(),
-			version:        completedBatchVersionV1,
-			completionTime: utils.FormatTime(radixBatch.Status.CompletionTime),
-		})
-	}
-	return completedBatches
-}
-
-func (handler *batchHandler) maintainHistoryLimitForBatches(ctx context.Context, completedBatchesVersioned []completedBatchVersioned, historyLimit int) error {
-	numToDelete := len(completedBatchesVersioned) - historyLimit
-	if numToDelete <= 0 {
-		log.Debug("no history batches to delete")
-		return nil
-	}
-	log.Debugf("history batches to delete: %v", numToDelete)
-
-	sortedCompletedBatchesVersioned := sortCompletedBatchesByCompletionTimeAsc(completedBatchesVersioned)
-	for i := 0; i < numToDelete; i++ {
-		batchVersioned := sortedCompletedBatchesVersioned[i]
-		if batchVersioned.version == completedBatchVersionV1 {
-			log.Debugf("deleting batch batch job %s", batchVersioned.batchName)
-			if err := handler.DeleteBatch(ctx, batchVersioned.batchName); err != nil {
-				return err
-			}
-			continue
-		}
-		log.Debugf("deleting batch %s", batchVersioned.batchName)
-		if err := handler.common.HandlerApiV2.DeleteRadixBatch(ctx, batchVersioned.batchName); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func sortCompletedBatchesByCompletionTimeAsc(completedBatchesVersioned []completedBatchVersioned) []completedBatchVersioned {
-	sort.Slice(completedBatchesVersioned, func(i, j int) bool {
-		batch1 := (completedBatchesVersioned)[i]
-		batch2 := (completedBatchesVersioned)[j]
-		return isCompletedBatch1CompletedBefore2(batch1, batch2)
-	})
-	return completedBatchesVersioned
-}
-
-func isCompletedBatch1CompletedBefore2(batchVersioned1 completedBatchVersioned, batchVersioned2 completedBatchVersioned) bool {
-	return batchVersioned1.completionTime < batchVersioned2.completionTime
-}
-
-func (handler *batchHandler) getAllBatches(ctx context.Context) ([]*batchv1.Job, error) {
-	kubeBatches, err := handler.common.Kube.KubeClient().
-		BatchV1().
-		Jobs(handler.common.Env.RadixDeploymentNamespace).
-		List(
-			ctx,
-			metav1.ListOptions{
-				LabelSelector: apiv1.GetLabelSelectorForBatches(handler.common.Env.RadixComponentName),
-			},
-		)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return slice.PointersOf(kubeBatches.Items).([]*batchv1.Job), nil
-}
-
-func getLabelSelectorForAllOutdatedBatchesPods() string {
-	return kubeLabels.SelectorFromSet(labels.ForBatchScheduleJobType()).String()
-}
-
-func getLabelSelectorForBatchObjects(batchName string) string {
-	return kubeLabels.SelectorFromSet(labels.Merge(
-		labels.ForBatchName(batchName),
-		labels.ForJobScheduleJobType(),
-	)).String()
-}
-
-func getLabelSelectorForBatchPods(batchName string) string {
-	return kubeLabels.SelectorFromSet(
-		labels.Merge(
-			labels.ForBatchName(batchName),
-			labels.ForBatchScheduleJobType(),
-		)).String()
-}
-
-func (handler *batchHandler) getBatchJobs(ctx context.Context, batchName string) ([]*batchv1.Job, error) {
-	kubeJobs, err := handler.common.Kube.KubeClient().
-		BatchV1().
-		Jobs(handler.common.Env.RadixDeploymentNamespace).
-		List(
-			ctx,
-			metav1.ListOptions{
-				LabelSelector: getLabelSelectorForBatchObjects(batchName),
-			},
-		)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return slice.PointersOf(kubeJobs.Items).([]*batchv1.Job), nil
+	return handler.common.HandlerApiV2.MaintainHistoryLimit(ctx)
 }
 
 func setBatchJobEventMessages(radixBatchStatus *modelsv1.BatchStatus, batchJobPodsMap map[string]corev1.Pod, eventMessageForPods map[string]string) {
