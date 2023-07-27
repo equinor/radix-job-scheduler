@@ -635,7 +635,7 @@ func (h *handler) createSecrets(ctx context.Context, namespace string, secrets [
 		if secret.Data == nil || len(secret.Data) == 0 {
 			continue // if Data is empty, the secret is not used in any jobs
 		}
-		_, err := h.kubeUtil.KubeClient().CoreV1().Secrets(namespace).Create(context.TODO(), secret, metav1.CreateOptions{})
+		_, err := h.kubeUtil.KubeClient().CoreV1().Secrets(namespace).Create(ctx, secret, metav1.CreateOptions{})
 		if err != nil {
 			return err
 		}
