@@ -5,7 +5,7 @@ go 1.20
 require (
 	dario.cat/mergo v1.0.0
 	github.com/equinor/radix-common v1.4.0
-	github.com/equinor/radix-operator v1.99.1000-0.20230727091746-1ec556b91e79
+	github.com/equinor/radix-operator v1.40.0
 	github.com/golang/mock v1.6.0
 	github.com/gorilla/handlers v1.5.1
 	github.com/gorilla/mux v1.8.0
