@@ -9,14 +9,6 @@ import (
 	"k8s.io/apimachinery/pkg/selection"
 )
 
-// GetLabelSelectorForBatches Gets a label selector for a batch scheduler job
-func GetLabelSelectorForBatches(componentName string) string {
-	return labels.Merge(
-		labels.ForComponentName(componentName),
-		labels.ForBatchScheduleJobType(),
-	).String()
-}
-
 // GetLabelSelectorForAllRadixBatchesPods Gets a label selector for all radix batches pods
 func GetLabelSelectorForAllRadixBatchesPods(componentName string) string {
 	radixBatchJobNameExistsReq, _ := kubeLabels.NewRequirement(kube.RadixBatchJobNameLabel, selection.Exists, []string{})
