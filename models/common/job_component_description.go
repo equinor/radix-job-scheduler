@@ -22,6 +22,11 @@ type RadixJobComponentConfig struct {
 	//
 	// required: false
 	BackoffLimit *int32 `json:"backoffLimit,omitempty"`
+
+	// ImageTagName defines the image tag name to use for the job image
+	//
+	// required: false
+	ImageTagName string `json:"imageTagName,omitempty"`
 }
 
 // JobScheduleDescription holds description about scheduling job

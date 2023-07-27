@@ -150,6 +150,7 @@ func TestMergeJobDescriptionWithDefaultJobDescription(t *testing.T) {
 					Node:             &radixv1.RadixNode{Gpu: "v100", GpuCount: "1"},
 					TimeLimitSeconds: pointers.Ptr(int64(1000)),
 					BackoffLimit:     pointers.Ptr(int32(1)),
+					ImageTagName:     "job1-tag",
 				},
 			},
 			expectedRadixJobComponentConfig: &common.RadixJobComponentConfig{
@@ -160,6 +161,7 @@ func TestMergeJobDescriptionWithDefaultJobDescription(t *testing.T) {
 				Node:             &radixv1.RadixNode{Gpu: "v100", GpuCount: "1"},
 				TimeLimitSeconds: pointers.Ptr(int64(1000)),
 				BackoffLimit:     pointers.Ptr(int32(1)),
+				ImageTagName:     "job1-tag",
 			},
 		},
 		{
@@ -172,6 +174,7 @@ func TestMergeJobDescriptionWithDefaultJobDescription(t *testing.T) {
 				Node:             &radixv1.RadixNode{Gpu: "v100", GpuCount: "1"},
 				TimeLimitSeconds: pointers.Ptr(int64(1000)),
 				BackoffLimit:     pointers.Ptr(int32(1)),
+				ImageTagName:     "default-tag",
 			},
 			jobScheduleDescription: &common.JobScheduleDescription{},
 			expectedRadixJobComponentConfig: &common.RadixJobComponentConfig{
@@ -182,6 +185,7 @@ func TestMergeJobDescriptionWithDefaultJobDescription(t *testing.T) {
 				Node:             &radixv1.RadixNode{Gpu: "v100", GpuCount: "1"},
 				TimeLimitSeconds: pointers.Ptr(int64(1000)),
 				BackoffLimit:     pointers.Ptr(int32(1)),
+				ImageTagName:     "default-tag",
 			},
 		},
 		{
@@ -206,6 +210,7 @@ func TestMergeJobDescriptionWithDefaultJobDescription(t *testing.T) {
 					Node:             &radixv1.RadixNode{Gpu: "v100"},
 					TimeLimitSeconds: nil,
 					BackoffLimit:     pointers.Ptr(int32(1)),
+					ImageTagName:     "job1-tag",
 				},
 			},
 			expectedRadixJobComponentConfig: &common.RadixJobComponentConfig{
@@ -216,6 +221,7 @@ func TestMergeJobDescriptionWithDefaultJobDescription(t *testing.T) {
 				Node:             &radixv1.RadixNode{Gpu: "v100", GpuCount: "1"},
 				TimeLimitSeconds: pointers.Ptr(int64(1000)),
 				BackoffLimit:     pointers.Ptr(int32(1)),
+				ImageTagName:     "job1-tag",
 			},
 		},
 		{
@@ -228,6 +234,7 @@ func TestMergeJobDescriptionWithDefaultJobDescription(t *testing.T) {
 				Node:             &radixv1.RadixNode{Gpu: "P100", GpuCount: "5"},
 				TimeLimitSeconds: pointers.Ptr(int64(6000)),
 				BackoffLimit:     pointers.Ptr(int32(3)),
+				ImageTagName:     "default-tag",
 			},
 			jobScheduleDescription: &common.JobScheduleDescription{
 				JobId:   "job1",
@@ -240,6 +247,7 @@ func TestMergeJobDescriptionWithDefaultJobDescription(t *testing.T) {
 					Node:             &radixv1.RadixNode{Gpu: "v100", GpuCount: "1"},
 					TimeLimitSeconds: pointers.Ptr(int64(1000)),
 					BackoffLimit:     pointers.Ptr(int32(1)),
+					ImageTagName:     "job1-tag",
 				},
 			},
 			expectedRadixJobComponentConfig: &common.RadixJobComponentConfig{
@@ -250,6 +258,7 @@ func TestMergeJobDescriptionWithDefaultJobDescription(t *testing.T) {
 				Node:             &radixv1.RadixNode{Gpu: "v100", GpuCount: "1"},
 				TimeLimitSeconds: pointers.Ptr(int64(1000)),
 				BackoffLimit:     pointers.Ptr(int32(1)),
+				ImageTagName:     "job1-tag",
 			},
 		},
 		{
@@ -262,6 +271,7 @@ func TestMergeJobDescriptionWithDefaultJobDescription(t *testing.T) {
 				Node:             &radixv1.RadixNode{Gpu: "P100", GpuCount: "1"},
 				TimeLimitSeconds: pointers.Ptr(int64(1000)),
 				BackoffLimit:     pointers.Ptr(int32(3)),
+				ImageTagName:     "default-tag",
 			},
 			jobScheduleDescription: &common.JobScheduleDescription{
 				JobId:   "job1",
@@ -282,6 +292,7 @@ func TestMergeJobDescriptionWithDefaultJobDescription(t *testing.T) {
 				Node:             &radixv1.RadixNode{Gpu: "v100", GpuCount: "1"},
 				TimeLimitSeconds: pointers.Ptr(int64(1000)),
 				BackoffLimit:     pointers.Ptr(int32(1)),
+				ImageTagName:     "default-tag",
 			},
 		},
 	}
