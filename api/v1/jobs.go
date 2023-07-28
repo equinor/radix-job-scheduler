@@ -6,41 +6,11 @@ import (
 	"strings"
 
 	"github.com/equinor/radix-common/utils"
-	"github.com/equinor/radix-job-scheduler/api/errors"
 	apiv2 "github.com/equinor/radix-job-scheduler/api/v2"
 	modelsv1 "github.com/equinor/radix-job-scheduler/models/v1"
-	defaultsv1 "github.com/equinor/radix-job-scheduler/models/v1/defaults"
 	modelsv2 "github.com/equinor/radix-job-scheduler/models/v2"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
-	batchv1 "k8s.io/api/batch/v1"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
-
-// GetBatch Gets a job, running a batch
-func (handler *Handler) GetBatch(ctx context.Context, batchName string) (*batchv1.Job, error) {
-	batch, err := handler.Kube.KubeClient().BatchV1().Jobs(handler.Env.RadixDeploymentNamespace).Get(ctx, batchName, metav1.GetOptions{})
-	if err != nil {
-		return nil, err
-	}
-	if strings.EqualFold(batch.ObjectMeta.Labels[kube.RadixComponentLabel], handler.Env.RadixComponentName) &&
-		strings.EqualFold(batch.ObjectMeta.Labels[kube.RadixJobTypeLabel], kube.RadixJobTypeBatchSchedule) {
-		return batch, nil
-	}
-	return batch, errors.NewNotFound("job", batchName)
-}
-
-// GetPodsToJobNameMap Gets a map of pods to K8sJobNameLabel label as keys
-func GetPodsToJobNameMap(pods []corev1.Pod) map[string][]corev1.Pod {
-	podsMap := make(map[string][]corev1.Pod)
-	for _, pod := range pods {
-		jobName := pod.Labels[defaultsv1.K8sJobNameLabel]
-		if len(jobName) > 0 {
-			podsMap[jobName] = append(podsMap[jobName], pod)
-		}
-	}
-	return podsMap
-}
 
 // GetJobStatusFromRadixBatchJobsStatus Get Job status from RadixBatchJob
 func GetJobStatusFromRadixBatchJobsStatus(batchName string, jobStatus modelsv2.RadixBatchJobStatus) modelsv1.JobStatus {

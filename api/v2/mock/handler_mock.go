@@ -8,7 +8,6 @@ import (
 	context "context"
 	reflect "reflect"
 
-	apiv2 "github.com/equinor/radix-job-scheduler/api/v2"
 	common "github.com/equinor/radix-job-scheduler/models/common"
 	v2 "github.com/equinor/radix-job-scheduler/models/v2"
 	gomock "github.com/golang/mock/gomock"
@@ -123,21 +122,6 @@ func (m *MockHandler) GarbageCollectPayloadSecrets(ctx context.Context) error {
 func (mr *MockHandlerMockRecorder) GarbageCollectPayloadSecrets(ctx interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GarbageCollectPayloadSecrets", reflect.TypeOf((*MockHandler)(nil).GarbageCollectPayloadSecrets), ctx)
-}
-
-// GetCompletedRadixBatchesSortedByCompletionTimeAsc mocks base method.
-func (m *MockHandler) GetCompletedRadixBatchesSortedByCompletionTimeAsc(ctx context.Context) (*apiv2.CompletedRadixBatches, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetCompletedRadixBatchesSortedByCompletionTimeAsc", ctx)
-	ret0, _ := ret[0].(*apiv2.CompletedRadixBatches)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetCompletedRadixBatchesSortedByCompletionTimeAsc indicates an expected call of GetCompletedRadixBatchesSortedByCompletionTimeAsc.
-func (mr *MockHandlerMockRecorder) GetCompletedRadixBatchesSortedByCompletionTimeAsc(ctx interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCompletedRadixBatchesSortedByCompletionTimeAsc", reflect.TypeOf((*MockHandler)(nil).GetCompletedRadixBatchesSortedByCompletionTimeAsc), ctx)
 }
 
 // GetRadixBatch mocks base method.
