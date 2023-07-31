@@ -137,7 +137,7 @@ func equalBatchStatuses(status1, status2 *radixv1.RadixBatchStatus) bool {
 }
 
 func getRadixBatchMap(radixClient radixclient.Interface, namespace string) (map[string]*radixv1.RadixBatch, error) {
-	radixBatchList, err := radixClient.RadixV1().RadixBatches(namespace).List(context.Background(), metav1.ListOptions{})
+	radixBatchList, err := radixClient.RadixV1().RadixBatches(namespace).List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -178,7 +178,7 @@ func getRadixBatchJobStatusesFromRadixBatch(radixBatch *radixv1.RadixBatch, radi
 		if !ok {
 			continue
 		}
-		jobName := fmt.Sprintf("%s-%s", radixBatch.Name, radixBatchJobStatus.Name) //composed name in models are always consist of a batchName and original jobName
+		jobName := fmt.Sprintf("%s-%s", radixBatch.Name, radixBatchJobStatus.Name) // composed name in models are always consist of a batchName and original jobName
 		jobStatus := modelsv1.JobStatus{
 			BatchName: jobStatusBatchName,
 			Name:      jobName,

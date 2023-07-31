@@ -11,9 +11,9 @@ import (
 )
 
 // GetRadixDeployJobComponentByName Gets RadixDeployJobComponent by name from the RadixDeployment
-func GetRadixDeployJobComponentByName(radixClient radixclient.Interface, namespace, radixDeploymentName, radixJobComponentName string) (*radixv1.RadixDeployJobComponent, error) {
+func GetRadixDeployJobComponentByName(ctx context.Context, radixClient radixclient.Interface, namespace, radixDeploymentName, radixJobComponentName string) (*radixv1.RadixDeployJobComponent, error) {
 	radixDeployment, err := radixClient.RadixV1().RadixDeployments(namespace).
-		Get(context.Background(), radixDeploymentName, metav1.GetOptions{})
+		Get(ctx, radixDeploymentName, metav1.GetOptions{})
 	if err != nil {
 		return nil, apiErrors.NewNotFound("radix deployment", radixDeploymentName)
 	}
