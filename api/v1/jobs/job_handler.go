@@ -50,20 +50,22 @@ func New(kube *kube.Kube, env *models.Env) JobHandler {
 // GetJobs Get status of all jobs
 func (handler *jobHandler) GetJobs(ctx context.Context) ([]modelsv1.JobStatus, error) {
 	log.Debugf("Get Jobs for namespace: %s", handler.common.Env.RadixDeploymentNamespace)
-	var jobStatuses []modelsv1.JobStatus
-	// get all single jobs
-	radixBatches, err := handler.common.HandlerApiV2.GetRadixBatchSingleJobs(ctx)
-	if err != nil {
-		return nil, err
-	}
-	jobStatuses = append(jobStatuses, apiv1.GetJobStatusFromRadixBatchJobsStatuses(radixBatches...)...)
 
-	// get all batch jobs
-	radixBatches, err = handler.common.HandlerApiV2.GetRadixBatches(ctx)
+	singleJobRadixBatches, err := handler.common.HandlerApiV2.GetRadixBatchSingleJobs(ctx)
 	if err != nil {
 		return nil, err
 	}
-	jobStatuses = append(jobStatuses, apiv1.GetJobStatusFromRadixBatchJobsStatuses(radixBatches...)...)
+	singleJobStatuses := apiv1.GetJobStatusFromRadixBatchJobsStatuses(singleJobRadixBatches...)
+
+	radixBatches, err := handler.common.HandlerApiV2.GetRadixBatches(ctx)
+	if err != nil {
+		return nil, err
+	}
+	batchJobsStatuses := apiv1.GetJobStatusFromRadixBatchJobsStatuses(radixBatches...)
+
+	jobStatuses := make([]modelsv1.JobStatus, 0, len(singleJobStatuses)+len(batchJobsStatuses))
+	jobStatuses = append(jobStatuses, singleJobStatuses...)
+	jobStatuses = append(jobStatuses, batchJobsStatuses...)
 
 	labelSelectorForAllRadixBatchesPods := apiv1.GetLabelSelectorForAllRadixBatchesPods(handler.common.Env.RadixComponentName)
 	eventMessageForPods, batchJobPodsMap, err := handler.common.GetRadixBatchJobMessagesAndPodMaps(ctx, labelSelectorForAllRadixBatchesPods)

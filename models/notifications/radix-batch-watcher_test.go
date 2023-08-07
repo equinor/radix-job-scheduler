@@ -63,7 +63,7 @@ func Test_RadixBatchWatcher(t *testing.T) {
 						return radixBatch.Name == "batch1" && radixBatch.Status.Condition == radixv1.RadixBatchCondition{}
 					})
 					notifier.EXPECT().Notify(rbMatcher,
-						nil, gomock.Any()).Times(1)
+						[]radixv1.RadixBatchJobStatus{}, gomock.Any()).Times(1)
 					return notifier
 				},
 			},
@@ -90,7 +90,7 @@ func Test_RadixBatchWatcher(t *testing.T) {
 							radixBatch.Status.Condition.Type == radixv1.BatchConditionTypeWaiting
 					})
 					notifier.EXPECT().Notify(rbMatcher,
-						nil, gomock.Any()).Times(1)
+						[]radixv1.RadixBatchJobStatus{}, gomock.Any()).Times(1)
 					return notifier
 				},
 			},
@@ -206,7 +206,7 @@ func Test_RadixBatchWatcher(t *testing.T) {
 				t.Log("wait for sync informer")
 				time.Sleep(time.Millisecond * 100)
 			}
-			time.Sleep(time.Second * 1) // wayt to possible fail due to a missed expected call
+			time.Sleep(time.Second * 1) // wait to possible fail due to a missed expected call
 			ctrl.Finish()
 			watcher.Stop <- struct{}{}
 		})

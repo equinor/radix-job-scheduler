@@ -40,7 +40,7 @@ func ParseBatchAndJobNameFromScheduledJobName(scheduleJobName string) (batchName
 
 // GetJobStatusFromRadixBatchJobsStatuses Get JobStatuses from RadixBatch job statuses v2
 func GetJobStatusFromRadixBatchJobsStatuses(radixBatches ...modelsv2.RadixBatch) []modelsv1.JobStatus {
-	var jobStatuses []modelsv1.JobStatus
+	jobStatuses := make([]modelsv1.JobStatus, 0, len(radixBatches))
 	for _, radixBatch := range radixBatches {
 		jobStatusBatchName := getJobStatusBatchName(&radixBatch)
 		for _, jobStatus := range radixBatch.JobStatuses {

@@ -52,14 +52,14 @@ func New(kube *kube.Kube, env *models.Env) BatchHandler {
 func (handler *batchHandler) GetBatches(ctx context.Context) ([]modelsv1.BatchStatus, error) {
 	log.Debugf("Get batches for the namespace: %s", handler.common.Env.RadixDeploymentNamespace)
 
-	var allRadixBatchStatuses []modelsv1.BatchStatus
 	radixBatches, err := handler.common.HandlerApiV2.GetRadixBatches(ctx)
 	if err != nil {
 		return nil, err
 	}
+	radixBatchStatuses := make([]modelsv1.BatchStatus, 0, len(radixBatches))
 	if len(radixBatches) == 0 {
 		log.Debugf("No batches found for namespace %s", handler.common.Env.RadixDeploymentNamespace)
-		return allRadixBatchStatuses, nil
+		return radixBatchStatuses, nil
 	}
 
 	labelSelectorForAllRadixBatchesPods := apiv1.GetLabelSelectorForAllRadixBatchesPods(handler.common.Env.RadixComponentName)
@@ -70,10 +70,10 @@ func (handler *batchHandler) GetBatches(ctx context.Context) ([]modelsv1.BatchSt
 	for _, radixBatch := range radixBatches {
 		radixBatchStatus := GetBatchStatusFromRadixBatch(&radixBatch)
 		setBatchJobEventMessages(radixBatchStatus, batchJobPodsMap, eventMessageForPods)
-		allRadixBatchStatuses = append(allRadixBatchStatuses, *radixBatchStatus)
+		radixBatchStatuses = append(radixBatchStatuses, *radixBatchStatus)
 	}
-	log.Debugf("Found %v batches for namespace %s", len(allRadixBatchStatuses), handler.common.Env.RadixDeploymentNamespace)
-	return allRadixBatchStatuses, nil
+	log.Debugf("Found %v batches for namespace %s", len(radixBatchStatuses), handler.common.Env.RadixDeploymentNamespace)
+	return radixBatchStatuses, nil
 }
 
 // GetBatchJob Get status of a batch job
