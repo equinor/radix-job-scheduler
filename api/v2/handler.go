@@ -117,7 +117,7 @@ func (h *handler) getRadixBatchStatus(ctx context.Context, radixBatchType kube.R
 	}
 	log.Debugf("Found %v batches for namespace %s", len(radixBatches), h.env.RadixDeploymentNamespace)
 
-	var radixBatchStatuses []modelsv2.RadixBatch
+	radixBatchStatuses := make([]modelsv2.RadixBatch, 0, len(radixBatches))
 	for _, radixBatch := range radixBatches {
 		radixBatchStatuses = append(radixBatchStatuses, getRadixBatchModelFromRadixBatch(radixBatch))
 	}
@@ -139,7 +139,7 @@ func getRadixBatchModelFromRadixBatch(radixBatch *radixv1.RadixBatch) modelsv2.R
 
 func getRadixBatchJobStatusesFromRadixBatch(radixBatch *radixv1.RadixBatch, radixBatchJobStatuses []radixv1.RadixBatchJobStatus) []modelsv2.RadixBatchJobStatus {
 	radixBatchJobsStatuses := getRadixBatchJobsStatusesMap(radixBatchJobStatuses)
-	var jobStatuses []modelsv2.RadixBatchJobStatus
+	jobStatuses := make([]modelsv2.RadixBatchJobStatus, 0, len(radixBatch.Spec.Jobs))
 	for _, radixBatchJob := range radixBatch.Spec.Jobs {
 		jobName := fmt.Sprintf("%s-%s", radixBatch.Name, radixBatchJob.Name) // composed name in models are always consist of a batchName and original jobName
 		radixBatchJobStatus := modelsv2.RadixBatchJobStatus{
@@ -394,7 +394,7 @@ func getSucceededSingleJobs(radixBatches []*radixv1.RadixBatch) []*modelsv2.Radi
 }
 
 func getRadixBatchModelsFromRadixBatches(radixBatches []*radixv1.RadixBatch) []*modelsv2.RadixBatch {
-	var batches []*modelsv2.RadixBatch
+	batches := make([]*modelsv2.RadixBatch, 0, len(radixBatches))
 	for _, radixBatch := range radixBatches {
 		batches = append(batches, pointers.Ptr(getRadixBatchModelFromRadixBatch(radixBatch)))
 	}
@@ -544,7 +544,7 @@ func (h *handler) copyRadixBatchOrJob(ctx context.Context, sourceRadixBatch *rad
 }
 
 func (h *handler) copyBatchJobs(sourceRadixBatch *radixv1.RadixBatch, sourceJobName string) []radixv1.RadixBatchJob {
-	var radixBatchJobs []radixv1.RadixBatchJob
+	radixBatchJobs := make([]radixv1.RadixBatchJob, 0, len(sourceRadixBatch.Spec.Jobs))
 	for _, sourceJob := range sourceRadixBatch.Spec.Jobs {
 		if sourceJobName != "" && sourceJob.Name != sourceJobName {
 			continue
@@ -580,7 +580,7 @@ func (h *handler) buildRadixBatchJobs(ctx context.Context, namespace, appName, r
 	if err != nil {
 		return nil, err
 	}
-	var radixBatchJobs []radixv1.RadixBatchJob
+	radixBatchJobs := make([]radixv1.RadixBatchJob, 0, len(radixBatchJobWithDescriptions))
 	for _, item := range radixBatchJobWithDescriptions {
 		radixBatchJobs = append(radixBatchJobs, *item.radixBatchJob)
 	}
