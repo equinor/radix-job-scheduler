@@ -67,7 +67,11 @@ func NewRadixBatchWatcher(radixClient radixclient.Interface, namespace string, n
 				return
 			}
 			watcher.logger.Debugf("RadixBatch object was added %s", newRadixBatch.GetName())
-			notifier.Notify(newRadixBatch, newRadixBatch.Status.JobStatuses, errChan)
+			jobStatuses := newRadixBatch.Status.JobStatuses
+			if len(jobStatuses) == 0 {
+				jobStatuses = make([]radixv1.RadixBatchJobStatus, 0)
+			}
+			notifier.Notify(newRadixBatch, jobStatuses, errChan)
 		},
 		UpdateFunc: func(old, cur interface{}) {
 			oldRadixBatch := old.(*radixv1.RadixBatch)
@@ -113,7 +117,7 @@ func getUpdatedJobStatuses(oldRadixBatch *radixv1.RadixBatch, newRadixBatch *rad
 		batchJobStatus := jobStatus
 		oldJobStatuses[batchJobStatus.Name] = batchJobStatus
 	}
-	var updatedJobStatuses []radixv1.RadixBatchJobStatus
+	updatedJobStatuses := make([]radixv1.RadixBatchJobStatus, 0, len(newRadixBatch.Status.JobStatuses))
 	for _, newJobStatus := range newRadixBatch.Status.JobStatuses {
 		if oldJobStatus, ok := oldJobStatuses[newJobStatus.Name]; !ok || !equalJobStatuses(&oldJobStatus, &newJobStatus) {
 			updatedJobStatuses = append(updatedJobStatuses, newJobStatus)
@@ -172,7 +176,7 @@ func getRadixBatchModelFromRadixBatch(radixBatch *radixv1.RadixBatch, radixBatch
 
 func getRadixBatchJobStatusesFromRadixBatch(radixBatch *radixv1.RadixBatch, radixBatchJobStatuses []radixv1.RadixBatchJobStatus, jobStatusBatchName string) []modelsv1.JobStatus {
 	radixBatchJobsMap := getRadixBatchJobsMap(radixBatch.Spec.Jobs)
-	var jobStatuses []modelsv1.JobStatus
+	jobStatuses := make([]modelsv1.JobStatus, 0, len(radixBatchJobStatuses))
 	for _, radixBatchJobStatus := range radixBatchJobStatuses {
 		radixBatchJob, ok := radixBatchJobsMap[radixBatchJobStatus.Name]
 		if !ok {
