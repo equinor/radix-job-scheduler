@@ -131,7 +131,7 @@ func (handler *jobHandler) DeleteJob(ctx context.Context, jobName string) error 
 		if errors.IsNotFound(err) {
 			return apiErrors.NewNotFound("batch job", jobName)
 		}
-		return err
+		return apiErrors.NewFromError(err)
 	}
 	if radixBatchStatus.BatchType != string(kube.RadixBatchTypeJob) {
 		return apiErrors.NewInvalidWithReason(jobName, "not a single job")
@@ -141,7 +141,10 @@ func (handler *jobHandler) DeleteJob(ctx context.Context, jobName string) error 
 	}
 	err = handler.common.HandlerApiV2.DeleteRadixBatch(ctx, batchName)
 	if err != nil {
-		return err
+		if errors.IsNotFound(err) {
+			return apiErrors.NewNotFound("batch job", jobName)
+		}
+		return apiErrors.NewFromError(err)
 	}
 	return handler.common.HandlerApiV2.GarbageCollectPayloadSecrets(ctx)
 }
