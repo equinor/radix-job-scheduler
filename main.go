@@ -35,6 +35,10 @@ func main() {
 		return
 	}
 
+	// TODO: delete me, just development
+	s := "http://localhost:8030"
+	radixDeployJobComponent.Notifications.Webhook = &s
+
 	radixBatchWatcher, err := getRadixBatchWatcher(kubeUtil, radixDeployJobComponent, env)
 	if err != nil {
 		log.Fatalln(err)
