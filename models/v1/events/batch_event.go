@@ -11,14 +11,14 @@ type BatchEvent struct {
 	// Event Event type
 	//
 	// required: true
-	// example: "Created"
+	// example: "Create"
 	Event Event `json:"event,omitempty"`
 }
 
 type Event string
 
 const (
-	Created Event = "Created"
-	Updated Event = "Updated"
-	Deleted Event = "Deleted"
+	Create Event = "Create"
+	Update Event = "Update"
+	Delete Event = "Delete"
 )

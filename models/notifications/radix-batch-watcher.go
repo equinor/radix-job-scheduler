@@ -72,7 +72,7 @@ func NewRadixBatchWatcher(radixClient radixclient.Interface, namespace string, n
 			if len(jobStatuses) == 0 {
 				jobStatuses = make([]radixv1.RadixBatchJobStatus, 0)
 			}
-			notifier.Notify(events.Created, newRadixBatch, jobStatuses, errChan)
+			notifier.Notify(events.Create, newRadixBatch, jobStatuses, errChan)
 		},
 		UpdateFunc: func(old, cur interface{}) {
 			oldRadixBatch := old.(*radixv1.RadixBatch)
@@ -83,7 +83,7 @@ func NewRadixBatchWatcher(radixClient radixclient.Interface, namespace string, n
 				return
 			}
 			watcher.logger.Debugf("RadixBatch object was changed %s", newRadixBatch.GetName())
-			notifier.Notify(events.Updated, newRadixBatch, updatedJobStatuses, errChan)
+			notifier.Notify(events.Update, newRadixBatch, updatedJobStatuses, errChan)
 		},
 		DeleteFunc: func(obj interface{}) {
 			radixBatch, _ := obj.(*radixv1.RadixBatch)
@@ -97,7 +97,7 @@ func NewRadixBatchWatcher(radixClient radixclient.Interface, namespace string, n
 			if len(jobStatuses) == 0 {
 				jobStatuses = make([]radixv1.RadixBatchJobStatus, 0)
 			}
-			notifier.Notify(events.Deleted, radixBatch, jobStatuses, errChan)
+			notifier.Notify(events.Delete, radixBatch, jobStatuses, errChan)
 			delete(existingRadixBatchMap, radixBatch.GetName())
 		},
 	})
