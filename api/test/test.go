@@ -195,7 +195,6 @@ func SetupTest(appName, appEnvironment, appComponent, appDeployment string, hist
 	_ = os.Setenv("RADIX_JOB_SCHEDULERS_PER_ENVIRONMENT_HISTORY_LIMIT", fmt.Sprint(historyLimit))
 	_ = os.Setenv(defaults.OperatorRollingUpdateMaxUnavailable, "25%")
 	_ = os.Setenv(defaults.OperatorRollingUpdateMaxSurge, "25%")
-	_ = os.Setenv(defaults.OperatorEnvLimitDefaultCPUEnvironmentVariable, "200m")
 	_ = os.Setenv(defaults.OperatorEnvLimitDefaultMemoryEnvironmentVariable, "500M")
 	kubeclient := fake.NewSimpleClientset()
 	radixclient := radixclientfake.NewSimpleClientset()
