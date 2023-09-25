@@ -44,7 +44,7 @@ type JobStatus struct {
 	// example: Waiting
 	Status string `json:"status,omitempty"`
 
-	// Status message, if any, of the job
+	// Message, if any, of the job
 	//
 	// required: false
 	// example: "Error occurred"

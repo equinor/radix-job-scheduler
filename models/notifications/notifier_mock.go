@@ -7,6 +7,7 @@ package notifications
 import (
 	reflect "reflect"
 
+	events "github.com/equinor/radix-job-scheduler/models/v1/events"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	gomock "github.com/golang/mock/gomock"
 )
@@ -49,17 +50,17 @@ func (mr *MockNotifierMockRecorder) Enabled() *gomock.Call {
 }
 
 // Notify mocks base method.
-func (m *MockNotifier) Notify(arg0 *v1.RadixBatch, arg1 []v1.RadixBatchJobStatus, arg2 chan error) chan struct{} {
+func (m *MockNotifier) Notify(event events.Event, radixBatch *v1.RadixBatch, jopbStatuses []v1.RadixBatchJobStatus, errChan chan error) chan struct{} {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Notify", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "Notify", event, radixBatch, jopbStatuses, errChan)
 	ret0, _ := ret[0].(chan struct{})
 	return ret0
 }
 
 // Notify indicates an expected call of Notify.
-func (mr *MockNotifierMockRecorder) Notify(arg0, arg1, arg2 interface{}) *gomock.Call {
+func (mr *MockNotifierMockRecorder) Notify(event, radixBatch, jopbStatuses, errChan interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Notify", reflect.TypeOf((*MockNotifier)(nil).Notify), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Notify", reflect.TypeOf((*MockNotifier)(nil).Notify), event, radixBatch, jopbStatuses, errChan)
 }
 
 // String mocks base method.
