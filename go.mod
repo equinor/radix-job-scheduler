@@ -1,10 +1,12 @@
 module github.com/equinor/radix-job-scheduler
 
-go 1.20
+go 1.21
+
+toolchain go1.21.0
 
 require (
 	dario.cat/mergo v1.0.0
-	github.com/equinor/radix-common v1.4.0
+	github.com/equinor/radix-common v1.5.0
 	github.com/equinor/radix-operator v1.40.1
 	github.com/golang/mock v1.6.0
 	github.com/gorilla/handlers v1.5.1
@@ -15,9 +17,9 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.8.4
 	github.com/urfave/negroni/v3 v3.0.0
-	k8s.io/api v0.26.7
-	k8s.io/apimachinery v0.26.7
-	k8s.io/client-go v0.26.7
+	k8s.io/api v0.27.6
+	k8s.io/apimachinery v0.27.6
+	k8s.io/client-go v0.27.6
 	sigs.k8s.io/secrets-store-csi-driver v1.3.3
 )
 
