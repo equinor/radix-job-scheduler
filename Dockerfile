@@ -1,4 +1,4 @@
-FROM golang:1.20-alpine3.18 as builder
+FROM golang:1.21-alpine3.18 as builder
 ENV GO111MODULE=on
 
 RUN addgroup -S -g 1000 job-scheduler
