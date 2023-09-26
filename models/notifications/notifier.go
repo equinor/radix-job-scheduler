@@ -1,11 +1,14 @@
 package notifications
 
-import radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
+import (
+	"github.com/equinor/radix-job-scheduler/models/v1/events"
+	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
+)
 
 // Notifier to notify about RadixBatch events and changes
 type Notifier interface {
 	// Notify Send notification
-	Notify(*radixv1.RadixBatch, []radixv1.RadixBatchJobStatus, chan error) chan struct{}
+	Notify(event events.Event, radixBatch *radixv1.RadixBatch, jopbStatuses []radixv1.RadixBatchJobStatus, errChan chan error) chan struct{}
 	// Enabled The notifier is enabled and can be used
 	Enabled() bool
 	// String Describes the notifier
