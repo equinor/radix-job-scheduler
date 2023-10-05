@@ -94,10 +94,14 @@ func (controller *jobController) GetRoutes() models.Routes {
 //     schema:
 //        "$ref": "#/definitions/Status"
 func (controller *jobController) CreateJob(w http.ResponseWriter, r *http.Request) {
-	var jobScheduleDescription apiModels.JobScheduleDescription
+	log.Debugf("Create Job. Request content length %d", r.ContentLength)
 
+	log.Debugf("Read the request body")
+	var jobScheduleDescription apiModels.JobScheduleDescription
 	if body, _ := io.ReadAll(r.Body); len(body) > 0 {
+		log.Debugf("Read %d bytes", len(body))
 		if err := json.Unmarshal(body, &jobScheduleDescription); err != nil {
+			log.Errorf("failed to unmarshal jobScheduleDescription: %v", err)
 			controller.HandleError(w, apiErrors.NewInvalid("payload"))
 			return
 		}
@@ -238,6 +242,7 @@ func (controller *jobController) DeleteJob(w http.ResponseWriter, r *http.Reques
 //        "$ref": "#/definitions/Status"
 func (controller *jobController) StopJob(w http.ResponseWriter, r *http.Request) {
 	jobName := mux.Vars(r)[jobNameParam]
+	log.Debugf("Stop the job %s", jobName)
 
 	err := controller.handler.StopJob(r.Context(), jobName)
 	if err != nil {

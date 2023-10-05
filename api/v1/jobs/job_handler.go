@@ -3,6 +3,7 @@ package jobs
 import (
 	"context"
 	"fmt"
+
 	apiErrors "github.com/equinor/radix-job-scheduler/api/errors"
 	apiv1 "github.com/equinor/radix-job-scheduler/api/v1"
 	apiv2 "github.com/equinor/radix-job-scheduler/api/v2"
@@ -101,7 +102,7 @@ func (handler *jobHandler) GetJob(ctx context.Context, jobName string) (*modelsv
 
 // CreateJob Create a job with parameters
 func (handler *jobHandler) CreateJob(ctx context.Context, jobScheduleDescription *common.JobScheduleDescription) (*modelsv1.JobStatus, error) {
-	log.Debugf("create job for namespace: %s", handler.common.Env.RadixDeploymentNamespace)
+	log.Debugf("Create job for namespace: %s", handler.common.Env.RadixDeploymentNamespace)
 	radixBatch, err := handler.common.HandlerApiV2.CreateRadixBatchSingleJob(ctx, jobScheduleDescription)
 	if err != nil {
 		return nil, err

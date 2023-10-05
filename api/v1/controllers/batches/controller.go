@@ -107,10 +107,14 @@ func (controller *batchController) GetRoutes() models.Routes {
 //     schema:
 //        "$ref": "#/definitions/Status"
 func (controller *batchController) CreateBatch(w http.ResponseWriter, r *http.Request) {
+	log.Debugf("Create Batch. Request content length %d", r.ContentLength)
 	var batchScheduleDescription schedulerModels.BatchScheduleDescription
 
+	log.Debugf("Read the request body")
 	if body, _ := io.ReadAll(r.Body); len(body) > 0 {
+		log.Debugf("Read %d bytes", len(body))
 		if err := json.Unmarshal(body, &batchScheduleDescription); err != nil {
+			log.Errorf("failed to unmarshal batchScheduleDescription: %v", err)
 			controller.HandleError(w, apiErrors.NewInvalid("BatchScheduleDescription"))
 			return
 		}
@@ -334,6 +338,7 @@ func (controller *batchController) StopBatch(w http.ResponseWriter, r *http.Requ
 func (controller *batchController) StopBatchJob(w http.ResponseWriter, r *http.Request) {
 	batchName := mux.Vars(r)[batchNameParam]
 	jobName := mux.Vars(r)[jobNameParam]
+	log.Debugf("Stop the job %s in the batch %s ", jobName, batchName)
 	err := controller.handler.StopBatchJob(r.Context(), batchName, jobName)
 	if err != nil {
 		controller.HandleError(w, err)
