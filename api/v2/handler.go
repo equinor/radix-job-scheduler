@@ -183,16 +183,23 @@ func (h *handler) CreateRadixBatch(ctx context.Context, batchScheduleDescription
 	if batchScheduleDescription == nil {
 		return nil, apiErrors.NewInvalidWithReason("BatchScheduleDescription", "empty request body")
 	}
+	log.Infof("Create Radix Batch for %d jobs", len(batchScheduleDescription.JobScheduleDescriptions))
 
 	if len(batchScheduleDescription.JobScheduleDescriptions) == 0 {
 		return nil, apiErrors.NewInvalidWithReason("BatchScheduleDescription", "empty job description list ")
 	}
 
-	return h.createRadixBatchOrJob(ctx, *batchScheduleDescription, kube.RadixBatchTypeBatch)
+	radixBatch, err := h.createRadixBatchOrJob(ctx, *batchScheduleDescription, kube.RadixBatchTypeBatch)
+	if err != nil {
+		return nil, err
+	}
+	log.Infof("Radix Batch %s has been created", radixBatch.Name)
+	return radixBatch, nil
 }
 
 // CopyRadixBatch Copy a batch with deployment and optional parameters
 func (h *handler) CopyRadixBatch(ctx context.Context, batchName, deploymentName string) (*modelsv2.RadixBatch, error) {
+	log.Debugf("Copy Radix Batch %s for the deployment %s", batchName, deploymentName)
 	radixBatch, err := h.getRadixBatch(ctx, batchName)
 	if err != nil {
 		return nil, err
@@ -204,7 +211,7 @@ func (h *handler) createRadixBatchOrJob(ctx context.Context, batchScheduleDescri
 	namespace := h.env.RadixDeploymentNamespace
 	radixComponentName := h.env.RadixComponentName
 	radixDeploymentName := h.env.RadixDeploymentName
-	log.Debugf("create batch for namespace: %s", namespace)
+	log.Infof("Create batch for namespace %s, component %s, deployment %s", namespace, radixComponentName, radixDeploymentName)
 
 	radixDeployment, err := h.kubeUtil.RadixClient().RadixV1().RadixDeployments(namespace).
 		Get(ctx, radixDeploymentName, metav1.GetOptions{})
@@ -234,13 +241,19 @@ func (h *handler) createRadixBatchOrJob(ctx context.Context, batchScheduleDescri
 
 // CreateRadixBatchSingleJob Create a batch single job with parameters
 func (h *handler) CreateRadixBatchSingleJob(ctx context.Context, jobScheduleDescription *common.JobScheduleDescription) (*modelsv2.RadixBatch, error) {
+	log.Info("Create Radix Batch single job")
 	if jobScheduleDescription == nil {
 		return nil, apiErrors.NewInvalidWithReason("JobScheduleDescription", "empty request body")
 	}
-	return h.createRadixBatchOrJob(ctx, common.BatchScheduleDescription{
+	radixBatchJob, err := h.createRadixBatchOrJob(ctx, common.BatchScheduleDescription{
 		JobScheduleDescriptions:        []common.JobScheduleDescription{*jobScheduleDescription},
 		DefaultRadixJobComponentConfig: nil,
 	}, kube.RadixBatchTypeJob)
+	if err != nil {
+		return nil, err
+	}
+	log.Infof("Radix single job %s has been created", radixBatchJob.Name)
+	return radixBatchJob, err
 }
 
 // CopyRadixBatchSingleJob Copy a batch with single job parameters
@@ -485,11 +498,13 @@ func getJobComponentNamePart(jobComponentName string) string {
 
 func (h *handler) createRadixBatch(ctx context.Context, namespace, appName, radixDeploymentName string, radixJobComponent radixv1.RadixDeployJobComponent, batchScheduleDescription common.BatchScheduleDescription, radixBatchType kube.RadixBatchType) (*radixv1.RadixBatch, error) {
 	batchName := generateBatchName(radixJobComponent.GetName())
+	log.Debugf("Create Radix Batch %s", batchName)
 	radixJobComponentName := radixJobComponent.GetName()
 	radixBatchJobs, err := h.buildRadixBatchJobs(ctx, namespace, appName, radixJobComponentName, batchName, batchScheduleDescription, radixJobComponent.Payload)
 	if err != nil {
 		return nil, err
 	}
+	log.Debugf("Built Radix Batch with %d jobs", len(radixBatchJobs))
 	radixBatch := radixv1.RadixBatch{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: batchName,
@@ -507,6 +522,7 @@ func (h *handler) createRadixBatch(ctx context.Context, namespace, appName, radi
 		},
 	}
 	radixBatch.Spec.Jobs = radixBatchJobs
+	log.Debugf("Create Radix Batch in the cluster")
 	createdRadixBatch, err := h.kubeUtil.RadixClient().RadixV1().RadixBatches(namespace).Create(ctx, &radixBatch,
 		metav1.CreateOptions{})
 	if err != nil {
@@ -541,6 +557,7 @@ func (h *handler) copyRadixBatchOrJob(ctx context.Context, sourceRadixBatch *rad
 		},
 	}
 
+	log.Debugf("Create the copied Radix Batch %s with %d jobs in the cluster", radixBatch.GetName(), len(radixBatch.Spec.Jobs))
 	createdRadixBatch, err := h.kubeUtil.RadixClient().RadixV1().RadixBatches(namespace).Create(ctx, &radixBatch, metav1.CreateOptions{})
 	if err != nil {
 		return nil, apiErrors.NewFromError(err)
@@ -558,6 +575,7 @@ func (h *handler) copyBatchJobs(sourceRadixBatch *radixv1.RadixBatch, sourceJobN
 		}
 		job := sourceJob.DeepCopy()
 		job.Name = createJobName()
+		log.Debugf("Copy Radxi Batch Job %s", job.Name)
 		radixBatchJobs = append(radixBatchJobs, *job)
 	}
 	return radixBatchJobs
@@ -566,14 +584,16 @@ func (h *handler) copyBatchJobs(sourceRadixBatch *radixv1.RadixBatch, sourceJobN
 func (h *handler) buildRadixBatchJobs(ctx context.Context, namespace, appName, radixJobComponentName, batchName string, batchScheduleDescription common.BatchScheduleDescription, radixJobComponentPayload *radixv1.RadixJobComponentPayload) ([]radixv1.RadixBatchJob, error) {
 	var radixBatchJobWithDescriptions []radixBatchJobWithDescription
 	var errs []error
-
+	log.Debugf("Build Radix Batch")
 	for _, jobScheduleDescription := range batchScheduleDescription.JobScheduleDescriptions {
 		jobScheduleDescription := jobScheduleDescription
+		log.Debugf("Build Radix Batch Job. JobId: '%s', Payload length: %d", jobScheduleDescription.JobId, len(jobScheduleDescription.Payload))
 		radixBatchJob, err := buildRadixBatchJob(&jobScheduleDescription, batchScheduleDescription.DefaultRadixJobComponentConfig)
 		if err != nil {
 			errs = append(errs, err)
 			continue
 		}
+		log.Debugf("Built  Radix Batch Job %s", radixBatchJob.Name)
 		radixBatchJobWithDescriptions = append(radixBatchJobWithDescriptions, radixBatchJobWithDescription{
 			radixBatchJob:          radixBatchJob,
 			jobScheduleDescription: &jobScheduleDescription,
@@ -598,16 +618,17 @@ func createJobName() string {
 	return strings.ToLower(utils.RandStringSeed(8, defaultSrc))
 }
 
-func (h *handler) createRadixBatchJobPayloadSecrets(ctx context.Context, namespace, appName, radixJobComponentName, batchName string, radixJobWithPayloadEntries []radixBatchJobWithDescription, radixJobComponentHasPayloadPath bool) error {
+func (h *handler) createRadixBatchJobPayloadSecrets(ctx context.Context, namespace, appName, radixJobComponentName, batchName string, radixJobWithDescriptions []radixBatchJobWithDescription, radixJobComponentHasPayloadPath bool) error {
+	log.Debugf("Create Payload secrets for the batch %s", batchName)
 	accumulatedSecretSize := 0
 	var payloadSecrets []*corev1.Secret
 	payloadsSecret := buildPayloadSecret(appName, radixJobComponentName, batchName, 0)
 	payloadSecrets = append(payloadSecrets, payloadsSecret)
 	var errs []error
-	for jobIndex, radixJobWithDescriptions := range radixJobWithPayloadEntries {
+	for jobIndex, radixJobWithDescriptions := range radixJobWithDescriptions {
 		payload := []byte(strings.TrimSpace(radixJobWithDescriptions.jobScheduleDescription.Payload))
 		if len(payload) == 0 {
-			log.Debugf("no payload in the job #%d", jobIndex)
+			log.Infof("No payload in the job #%d", jobIndex)
 			continue
 		}
 		if !radixJobComponentHasPayloadPath {
@@ -615,14 +636,19 @@ func (h *handler) createRadixBatchJobPayloadSecrets(ctx context.Context, namespa
 			continue
 		}
 
+		log.Infof("Payload for the job #%d, JobId: '%s', length: %d", jobIndex, radixJobWithDescriptions.jobScheduleDescription.JobId, len(payload))
 		radixBatchJob := radixJobWithDescriptions.radixBatchJob
 		payloadBase64 := base64.RawStdEncoding.EncodeToString(payload)
 		secretEntrySize := len(payloadBase64) + len(radixBatchJob.Name) + payloadSecretEntryAuxDataSize // preliminary estimate of a payload secret entry
-		if payloadSecretAuxDataSize+accumulatedSecretSize+secretEntrySize > maxPayloadSecretSize {
+		log.Debugf("Prelimenary esptimated payload size: %d", secretEntrySize)
+		newAccumulatedPayloadSecretSize := payloadSecretAuxDataSize + accumulatedSecretSize + secretEntrySize
+		log.Debugf("New evaluated accumulated payload size with aux secret data: %d", newAccumulatedPayloadSecretSize)
+		if newAccumulatedPayloadSecretSize > maxPayloadSecretSize {
 			if len(payloadsSecret.Data) == 0 {
 				// this is the first entry in the secret, and it is too large to be stored to the secret - no reason to create new secret.
 				return fmt.Errorf("payload is too large in the job #%d - its base64 size is %d bytes, but it is expected to be less then %d bytes", jobIndex, secretEntrySize, maxPayloadSecretSize)
 			}
+			log.Debugf("New evaluated accumulated payload size is great then the max size %d - build a new payload secret", maxPayloadSecretSize)
 			payloadsSecret = buildPayloadSecret(appName, radixJobComponentName, batchName, len(payloadSecrets))
 			payloadSecrets = append(payloadSecrets, payloadsSecret)
 			accumulatedSecretSize = 0
@@ -630,7 +656,8 @@ func (h *handler) createRadixBatchJobPayloadSecrets(ctx context.Context, namespa
 
 		payloadsSecret.Data[radixBatchJob.Name] = payload
 		accumulatedSecretSize = accumulatedSecretSize + secretEntrySize
-
+		log.Debugf("New accumulated payload size: %d", newAccumulatedPayloadSecretSize)
+		log.Debugf("Added a reference to the payload secret %s, key %s", payloadsSecret.GetName(), radixBatchJob.Name)
 		radixBatchJob.PayloadSecretRef = &radixv1.PayloadSecretKeySelector{
 			LocalObjectReference: radixv1.LocalObjectReference{Name: payloadsSecret.GetName()},
 			Key:                  radixBatchJob.Name,
@@ -639,14 +666,18 @@ func (h *handler) createRadixBatchJobPayloadSecrets(ctx context.Context, namespa
 	if len(errs) > 0 {
 		return apiErrors.NewFromError(commonErrors.Concat(errs))
 	}
+	log.Debug("Create payload secrets")
 	return h.createSecrets(ctx, namespace, payloadSecrets)
 }
 
 func (h *handler) createSecrets(ctx context.Context, namespace string, secrets []*corev1.Secret) error {
+	log.Debugf("Create %d secrets", len(secrets))
 	for _, secret := range secrets {
 		if secret.Data == nil || len(secret.Data) == 0 {
-			continue // if Data is empty, the secret is not used in any jobs
+			log.Debugf("Do not create a secret %s - Data is empty, the secret is not used in any jobs", secret.GetName())
+			continue
 		}
+		log.Debugf("Create a secret %s in the cluster", secret.GetName())
 		_, err := h.kubeUtil.KubeClient().CoreV1().Secrets(namespace).Create(ctx, secret, metav1.CreateOptions{})
 		if err != nil {
 			return apiErrors.NewFromError(err)
@@ -657,6 +688,7 @@ func (h *handler) createSecrets(ctx context.Context, namespace string, secrets [
 
 func buildPayloadSecret(appName, radixJobComponentName, batchName string, secretIndex int) *corev1.Secret {
 	secretName := fmt.Sprintf("%s-payloads-%d", batchName, secretIndex)
+	log.Debugf("build payload secret %s", secretName)
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: secretName,

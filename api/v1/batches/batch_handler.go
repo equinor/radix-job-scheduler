@@ -2,6 +2,7 @@ package batchesv1
 
 import (
 	"context"
+
 	apiv1 "github.com/equinor/radix-job-scheduler/api/v1"
 	apiv2 "github.com/equinor/radix-job-scheduler/api/v2"
 	"github.com/equinor/radix-job-scheduler/models"
@@ -100,6 +101,7 @@ func (handler *batchHandler) GetBatch(ctx context.Context, batchName string) (*m
 
 // CreateBatch Create a batch with parameters
 func (handler *batchHandler) CreateBatch(ctx context.Context, batchScheduleDescription *common.BatchScheduleDescription) (*modelsv1.BatchStatus, error) {
+	log.Debugf("create batch for namespace: %s", handler.common.Env.RadixDeploymentNamespace)
 	radixBatch, err := handler.common.HandlerApiV2.CreateRadixBatch(ctx, batchScheduleDescription)
 	if err != nil {
 		return nil, err
