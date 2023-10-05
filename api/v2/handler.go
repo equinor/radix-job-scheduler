@@ -180,10 +180,10 @@ func (h *handler) GetRadixBatch(ctx context.Context, batchName string) (*modelsv
 
 // CreateRadixBatch Create a batch with parameters
 func (h *handler) CreateRadixBatch(ctx context.Context, batchScheduleDescription *common.BatchScheduleDescription) (*modelsv2.RadixBatch, error) {
-	log.Infof("Create Radix Batch for %d jobs", len(batchScheduleDescription.JobScheduleDescriptions))
 	if batchScheduleDescription == nil {
 		return nil, apiErrors.NewInvalidWithReason("BatchScheduleDescription", "empty request body")
 	}
+	log.Infof("Create Radix Batch for %d jobs", len(batchScheduleDescription.JobScheduleDescriptions))
 
 	if len(batchScheduleDescription.JobScheduleDescriptions) == 0 {
 		return nil, apiErrors.NewInvalidWithReason("BatchScheduleDescription", "empty job description list ")
