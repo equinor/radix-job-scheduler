@@ -180,7 +180,7 @@ func (h *handler) GetRadixBatch(ctx context.Context, batchName string) (*modelsv
 
 // CreateRadixBatch Create a batch with parameters
 func (h *handler) CreateRadixBatch(ctx context.Context, batchScheduleDescription *common.BatchScheduleDescription) (*modelsv2.RadixBatch, error) {
-	log.Debugf("Create Radix Batch for %d jobs", len(batchScheduleDescription.JobScheduleDescriptions))
+	log.Infof("Create Radix Batch for %d jobs", len(batchScheduleDescription.JobScheduleDescriptions))
 	if batchScheduleDescription == nil {
 		return nil, apiErrors.NewInvalidWithReason("BatchScheduleDescription", "empty request body")
 	}
@@ -189,7 +189,12 @@ func (h *handler) CreateRadixBatch(ctx context.Context, batchScheduleDescription
 		return nil, apiErrors.NewInvalidWithReason("BatchScheduleDescription", "empty job description list ")
 	}
 
-	return h.createRadixBatchOrJob(ctx, *batchScheduleDescription, kube.RadixBatchTypeBatch)
+	radixBatch, err := h.createRadixBatchOrJob(ctx, *batchScheduleDescription, kube.RadixBatchTypeBatch)
+	if err != nil {
+		return nil, err
+	}
+	log.Infof("Radix Batch %s has been created", radixBatch.Name)
+	return radixBatch, nil
 }
 
 // CopyRadixBatch Copy a batch with deployment and optional parameters
@@ -206,7 +211,7 @@ func (h *handler) createRadixBatchOrJob(ctx context.Context, batchScheduleDescri
 	namespace := h.env.RadixDeploymentNamespace
 	radixComponentName := h.env.RadixComponentName
 	radixDeploymentName := h.env.RadixDeploymentName
-	log.Debugf("create batch for namespace %s, component %s, deployment %s", namespace, radixComponentName, radixDeploymentName)
+	log.Infof("Create batch for namespace %s, component %s, deployment %s", namespace, radixComponentName, radixDeploymentName)
 
 	radixDeployment, err := h.kubeUtil.RadixClient().RadixV1().RadixDeployments(namespace).
 		Get(ctx, radixDeploymentName, metav1.GetOptions{})
@@ -236,14 +241,19 @@ func (h *handler) createRadixBatchOrJob(ctx context.Context, batchScheduleDescri
 
 // CreateRadixBatchSingleJob Create a batch single job with parameters
 func (h *handler) CreateRadixBatchSingleJob(ctx context.Context, jobScheduleDescription *common.JobScheduleDescription) (*modelsv2.RadixBatch, error) {
-	log.Debug("Create Radix Batch single job")
+	log.Info("Create Radix Batch single job")
 	if jobScheduleDescription == nil {
 		return nil, apiErrors.NewInvalidWithReason("JobScheduleDescription", "empty request body")
 	}
-	return h.createRadixBatchOrJob(ctx, common.BatchScheduleDescription{
+	radixBatchJob, err := h.createRadixBatchOrJob(ctx, common.BatchScheduleDescription{
 		JobScheduleDescriptions:        []common.JobScheduleDescription{*jobScheduleDescription},
 		DefaultRadixJobComponentConfig: nil,
 	}, kube.RadixBatchTypeJob)
+	if err != nil {
+		return nil, err
+	}
+	log.Infof("Radix single job %s has been created", radixBatchJob.Name)
+	return radixBatchJob, err
 }
 
 // CopyRadixBatchSingleJob Copy a batch with single job parameters
@@ -618,7 +628,7 @@ func (h *handler) createRadixBatchJobPayloadSecrets(ctx context.Context, namespa
 	for jobIndex, radixJobWithDescriptions := range radixJobWithDescriptions {
 		payload := []byte(strings.TrimSpace(radixJobWithDescriptions.jobScheduleDescription.Payload))
 		if len(payload) == 0 {
-			log.Debugf("no payload in the job #%d", jobIndex)
+			log.Infof("No payload in the job #%d", jobIndex)
 			continue
 		}
 		if !radixJobComponentHasPayloadPath {
@@ -626,7 +636,7 @@ func (h *handler) createRadixBatchJobPayloadSecrets(ctx context.Context, namespa
 			continue
 		}
 
-		log.Debugf("Payload for the job #%d, JobId: '%s', Payload length: %d", jobIndex, radixJobWithDescriptions.jobScheduleDescription.JobId, len(payload))
+		log.Infof("Payload for the job #%d, JobId: '%s', length: %d", jobIndex, radixJobWithDescriptions.jobScheduleDescription.JobId, len(payload))
 		radixBatchJob := radixJobWithDescriptions.radixBatchJob
 		payloadBase64 := base64.RawStdEncoding.EncodeToString(payload)
 		secretEntrySize := len(payloadBase64) + len(radixBatchJob.Name) + payloadSecretEntryAuxDataSize // preliminary estimate of a payload secret entry
