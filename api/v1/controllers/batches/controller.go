@@ -121,11 +121,11 @@ func (controller *batchController) CreateBatch(w http.ResponseWriter, r *http.Re
 	}
 
 	batchState, err := controller.handler.CreateBatch(r.Context(), &batchScheduleDescription)
-	log.Infof("Batch %s has been created", batchState.Name)
 	if err != nil {
 		controller.HandleError(w, err)
 		return
 	}
+	log.Infof("Batch %s has been created", batchState.Name)
 	err = controller.handler.MaintainHistoryLimit(r.Context())
 	if err != nil {
 		log.Warnf("failed to maintain batch history: %v", err)
