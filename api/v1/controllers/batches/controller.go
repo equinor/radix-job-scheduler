@@ -107,10 +107,14 @@ func (controller *batchController) GetRoutes() models.Routes {
 //     schema:
 //        "$ref": "#/definitions/Status"
 func (controller *batchController) CreateBatch(w http.ResponseWriter, r *http.Request) {
-	var batchScheduleDescription schedulerModels.BatchScheduleDescription
+	log.Info("Create Batch")
 
+	var batchScheduleDescription schedulerModels.BatchScheduleDescription
+	log.Debugf("Read the request body. Request content length %d", r.ContentLength)
 	if body, _ := io.ReadAll(r.Body); len(body) > 0 {
+		log.Debugf("Read %d bytes", len(body))
 		if err := json.Unmarshal(body, &batchScheduleDescription); err != nil {
+			log.Errorf("failed to unmarshal batchScheduleDescription: %v", err)
 			controller.HandleError(w, apiErrors.NewInvalid("BatchScheduleDescription"))
 			return
 		}
@@ -121,6 +125,7 @@ func (controller *batchController) CreateBatch(w http.ResponseWriter, r *http.Re
 		controller.HandleError(w, err)
 		return
 	}
+	log.Infof("Batch %s has been created", batchState.Name)
 	err = controller.handler.MaintainHistoryLimit(r.Context())
 	if err != nil {
 		log.Warnf("failed to maintain batch history: %v", err)
@@ -145,7 +150,7 @@ func (controller *batchController) CreateBatch(w http.ResponseWriter, r *http.Re
 //     schema:
 //        "$ref": "#/definitions/Status"
 func (controller *batchController) GetBatches(w http.ResponseWriter, r *http.Request) {
-	log.Debug("Get batch list")
+	log.Info("Get batch list")
 	batches, err := controller.handler.GetBatches(r.Context())
 	if err != nil {
 		controller.HandleError(w, err)
@@ -179,7 +184,7 @@ func (controller *batchController) GetBatches(w http.ResponseWriter, r *http.Req
 //        "$ref": "#/definitions/Status"
 func (controller *batchController) GetBatch(w http.ResponseWriter, r *http.Request) {
 	batchName := mux.Vars(r)[batchNameParam]
-	log.Debugf("Get batch %s", batchName)
+	log.Infof("Get batch %s", batchName)
 	batch, err := controller.handler.GetBatch(r.Context(), batchName)
 	if err != nil {
 		controller.HandleError(w, err)
@@ -218,7 +223,7 @@ func (controller *batchController) GetBatch(w http.ResponseWriter, r *http.Reque
 func (controller *batchController) GetBatchJob(w http.ResponseWriter, r *http.Request) {
 	batchName := mux.Vars(r)[batchNameParam]
 	jobName := mux.Vars(r)[jobNameParam]
-	log.Debugf("Get job %s from the batch %s", jobName, batchName)
+	log.Infof("Get job %s from the batch %s", jobName, batchName)
 	job, err := controller.handler.GetBatchJob(r.Context(), batchName, jobName)
 	if err != nil {
 		controller.HandleError(w, err)
@@ -251,13 +256,14 @@ func (controller *batchController) GetBatchJob(w http.ResponseWriter, r *http.Re
 //        "$ref": "#/definitions/Status"
 func (controller *batchController) DeleteBatch(w http.ResponseWriter, r *http.Request) {
 	batchName := mux.Vars(r)[batchNameParam]
-	log.Debugf("Delete batch %s", batchName)
+	log.Infof("Delete batch %s", batchName)
 	err := controller.handler.DeleteBatch(r.Context(), batchName)
 	if err != nil {
 		controller.HandleError(w, err)
 		return
 	}
 
+	log.Infof("Batch %s has been deleted", batchName)
 	status := schedulerModels.Status{
 		Status:  schedulerModels.StatusSuccess,
 		Code:    http.StatusOK,
@@ -290,12 +296,14 @@ func (controller *batchController) DeleteBatch(w http.ResponseWriter, r *http.Re
 //        "$ref": "#/definitions/Status"
 func (controller *batchController) StopBatch(w http.ResponseWriter, r *http.Request) {
 	batchName := mux.Vars(r)[batchNameParam]
+	log.Infof("Stop Batch %s", batchName)
 	err := controller.handler.StopBatch(r.Context(), batchName)
 	if err != nil {
 		controller.HandleError(w, err)
 		return
 	}
 
+	log.Infof("Batch %s has been stopped", batchName)
 	status := schedulerModels.Status{
 		Status:  schedulerModels.StatusSuccess,
 		Code:    http.StatusOK,
@@ -334,12 +342,14 @@ func (controller *batchController) StopBatch(w http.ResponseWriter, r *http.Requ
 func (controller *batchController) StopBatchJob(w http.ResponseWriter, r *http.Request) {
 	batchName := mux.Vars(r)[batchNameParam]
 	jobName := mux.Vars(r)[jobNameParam]
+	log.Infof("Stop the job %s in the batch %s ", jobName, batchName)
 	err := controller.handler.StopBatchJob(r.Context(), batchName, jobName)
 	if err != nil {
 		controller.HandleError(w, err)
 		return
 	}
 
+	log.Infof("Job %s in the batch %s has been stopped", jobName, batchName)
 	status := schedulerModels.Status{
 		Status:  schedulerModels.StatusSuccess,
 		Code:    http.StatusOK,

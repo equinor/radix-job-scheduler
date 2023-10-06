@@ -94,10 +94,13 @@ func (controller *jobController) GetRoutes() models.Routes {
 //     schema:
 //        "$ref": "#/definitions/Status"
 func (controller *jobController) CreateJob(w http.ResponseWriter, r *http.Request) {
+	log.Info("Create Job")
+	log.Debugf("Read the request body. Request content length %d", r.ContentLength)
 	var jobScheduleDescription apiModels.JobScheduleDescription
-
 	if body, _ := io.ReadAll(r.Body); len(body) > 0 {
+		log.Debugf("Read %d bytes", len(body))
 		if err := json.Unmarshal(body, &jobScheduleDescription); err != nil {
+			log.Errorf("failed to unmarshal jobScheduleDescription: %v", err)
 			controller.HandleError(w, apiErrors.NewInvalid("payload"))
 			return
 		}
@@ -108,6 +111,7 @@ func (controller *jobController) CreateJob(w http.ResponseWriter, r *http.Reques
 		controller.HandleError(w, err)
 		return
 	}
+	log.Infof("Job %s has been created", jobState.Name)
 	err = controller.handler.MaintainHistoryLimit(r.Context())
 	if err != nil {
 		log.Warnf("failed to maintain job history: %v", err)
@@ -132,7 +136,7 @@ func (controller *jobController) CreateJob(w http.ResponseWriter, r *http.Reques
 //     schema:
 //        "$ref": "#/definitions/Status"
 func (controller *jobController) GetJobs(w http.ResponseWriter, r *http.Request) {
-	log.Debug("Get job list")
+	log.Info("Get job list")
 	jobs, err := controller.handler.GetJobs(r.Context())
 	if err != nil {
 		controller.HandleError(w, err)
@@ -166,7 +170,7 @@ func (controller *jobController) GetJobs(w http.ResponseWriter, r *http.Request)
 //        "$ref": "#/definitions/Status"
 func (controller *jobController) GetJob(w http.ResponseWriter, r *http.Request) {
 	jobName := mux.Vars(r)[jobNameParam]
-	log.Debugf("Get job %s", jobName)
+	log.Infof("Get job %s", jobName)
 	job, err := controller.handler.GetJob(r.Context(), jobName)
 	if err != nil {
 		controller.HandleError(w, err)
@@ -199,13 +203,14 @@ func (controller *jobController) GetJob(w http.ResponseWriter, r *http.Request) 
 //        "$ref": "#/definitions/Status"
 func (controller *jobController) DeleteJob(w http.ResponseWriter, r *http.Request) {
 	jobName := mux.Vars(r)[jobNameParam]
-	log.Debugf("Delete job %s", jobName)
+	log.Infof("Delete job %s", jobName)
 	err := controller.handler.DeleteJob(r.Context(), jobName)
 	if err != nil {
 		controller.HandleError(w, err)
 		return
 	}
 
+	log.Infof("Job %s has been deleted", jobName)
 	status := apiModels.Status{
 		Status:  apiModels.StatusSuccess,
 		Code:    http.StatusOK,
@@ -238,6 +243,7 @@ func (controller *jobController) DeleteJob(w http.ResponseWriter, r *http.Reques
 //        "$ref": "#/definitions/Status"
 func (controller *jobController) StopJob(w http.ResponseWriter, r *http.Request) {
 	jobName := mux.Vars(r)[jobNameParam]
+	log.Infof("Stop the job %s", jobName)
 
 	err := controller.handler.StopJob(r.Context(), jobName)
 	if err != nil {
@@ -245,6 +251,7 @@ func (controller *jobController) StopJob(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	log.Infof("Job %s has been stopped", jobName)
 	status := apiModels.Status{
 		Status:  apiModels.StatusSuccess,
 		Code:    http.StatusOK,
