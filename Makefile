@@ -36,9 +36,8 @@ docker-build:
 	docker build -t $(DOCKER_REGISTRY)/radix-job-scheduler:$(TAG) -f Dockerfile .
 
 .PHONY: docker-push
-docker-push:
+docker-push: docker-build
 	az acr login --name $(CONTAINER_REPO)
-	make docker-build
 	docker push $(DOCKER_REGISTRY)/radix-job-scheduler:$(TAG)
 
 .PHONY: docker-push-main
@@ -58,6 +57,6 @@ mocks:
 	mockgen -source ./api/v1/batches/batch_handler.go -destination ./api/v1/batches/mock/batch_mock.go -package mock
 	mockgen -source ./models/notifications/notifier.go -destination ./models/notifications/notifier_mock.go -package notifications
 
-.HONY: staticcheck
+.PHONY: staticcheck
 staticcheck:
 	staticcheck `go list ./...` && go vet `go list ./...`
