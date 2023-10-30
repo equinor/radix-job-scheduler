@@ -429,8 +429,8 @@ func isRadixBatchSucceeded(batch *radixv1.RadixBatch) bool {
 }
 
 func isRadixBatchNotSucceeded(batch *radixv1.RadixBatch) bool {
-	return batch.Status.Condition.Type == radixv1.BatchConditionTypeCompleted && !slice.Any(batch.Status.JobStatuses, func(jobStatus radixv1.RadixBatchJobStatus) bool {
-		return isRadixBatchJobSucceeded(jobStatus)
+	return batch.Status.Condition.Type == radixv1.BatchConditionTypeCompleted && slice.Any(batch.Status.JobStatuses, func(jobStatus radixv1.RadixBatchJobStatus) bool {
+		return !isRadixBatchJobSucceeded(jobStatus)
 	})
 }
 
