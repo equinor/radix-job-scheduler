@@ -1,3 +1,6 @@
+![Build status](https://github.com/equinor/radix-job-scheduler/actions/workflows/build-push.yml/badge.svg)  
+
+# Radix Job Scheduler
 The job scheduler server for application jobs
 
 ## Usage
@@ -67,3 +70,10 @@ We follow the [semantic version](https://semver.org/) as recommended by [go](htt
     git tag v1.0.0 
     git push origin v1.0.0
     ```
+## Contribution
+
+Want to contribute? Read our [contributing guidelines](./CONTRIBUTING.md)
+
+## Security
+
+This is how we handle [security issues](./SECURITY.md)
