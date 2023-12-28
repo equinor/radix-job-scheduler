@@ -3,6 +3,7 @@ package apiv2
 import (
 	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"math/rand"
 	"sort"
@@ -11,7 +12,6 @@ import (
 
 	"dario.cat/mergo"
 	"github.com/equinor/radix-common/utils"
-	commonErrors "github.com/equinor/radix-common/utils/errors"
 	mergoutils "github.com/equinor/radix-common/utils/mergo"
 	"github.com/equinor/radix-common/utils/pointers"
 	"github.com/equinor/radix-common/utils/slice"
@@ -24,7 +24,7 @@ import (
 	radixLabels "github.com/equinor/radix-operator/pkg/apis/utils/labels"
 	log "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	kubeerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/util/retry"
 )
@@ -216,7 +216,7 @@ func (h *handler) createRadixBatchOrJob(ctx context.Context, batchScheduleDescri
 	radixDeployment, err := h.kubeUtil.RadixClient().RadixV1().RadixDeployments(namespace).
 		Get(ctx, radixDeploymentName, metav1.GetOptions{})
 	if err != nil {
-		if errors.IsNotFound(err) {
+		if kubeerrors.IsNotFound(err) {
 			return nil, apiErrors.NewNotFound("radix deployment", radixDeploymentName)
 		}
 		return nil, apiErrors.NewFromError(err)
@@ -368,7 +368,7 @@ func (h *handler) MaintainHistoryLimit(ctx context.Context) error {
 	if err != nil {
 		errs = append(errs, err)
 	}
-	return commonErrors.Concat(errs)
+	return errors.Join(errs...)
 }
 
 func (h *handler) getCompletedRadixBatchesSortedByCompletionTimeAsc(ctx context.Context) (*CompletedRadixBatches, error) {
@@ -537,7 +537,7 @@ func (h *handler) copyRadixBatchOrJob(ctx context.Context, sourceRadixBatch *rad
 	radixDeployment, err := h.kubeUtil.RadixClient().RadixV1().RadixDeployments(namespace).
 		Get(ctx, radixDeploymentName, metav1.GetOptions{})
 	if err != nil {
-		if errors.IsNotFound(err) {
+		if kubeerrors.IsNotFound(err) {
 			return nil, apiErrors.NewNotFound("radix deployment", radixDeploymentName)
 		}
 		return nil, apiErrors.NewFromError(err)
@@ -600,7 +600,7 @@ func (h *handler) buildRadixBatchJobs(ctx context.Context, namespace, appName, r
 		})
 	}
 	if len(errs) > 0 {
-		return nil, apiErrors.NewFromError(commonErrors.Concat(errs))
+		return nil, apiErrors.NewFromError(errors.Join(errs...))
 	}
 	radixJobComponentHasPayloadPath := radixJobComponentPayload != nil && len(radixJobComponentPayload.Path) > 0
 	err := h.createRadixBatchJobPayloadSecrets(ctx, namespace, appName, radixJobComponentName, batchName, radixBatchJobWithDescriptions, radixJobComponentHasPayloadPath)
@@ -664,7 +664,7 @@ func (h *handler) createRadixBatchJobPayloadSecrets(ctx context.Context, namespa
 		}
 	}
 	if len(errs) > 0 {
-		return apiErrors.NewFromError(commonErrors.Concat(errs))
+		return apiErrors.NewFromError(errors.Join(errs...))
 	}
 	log.Debug("Create payload secrets")
 	return h.createSecrets(ctx, namespace, payloadSecrets)
