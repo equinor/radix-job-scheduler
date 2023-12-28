@@ -16,7 +16,7 @@ func JSONResponse(w http.ResponseWriter, result interface{}) {
 
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
-	w.Write(body)
+	_, _ = w.Write(body)
 }
 
 func StatusResponse(w http.ResponseWriter, status *models.Status) {
@@ -28,17 +28,17 @@ func StatusResponse(w http.ResponseWriter, status *models.Status) {
 
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(status.Code)
-	w.Write(body)
+	_, _ = w.Write(body)
 }
 
 func WriteResponse(w http.ResponseWriter, statusCode int, response ...string) {
 	w.WriteHeader(statusCode)
 	for _, responseText := range response {
-		w.Write([]byte(responseText))
+		_, _ = w.Write([]byte(responseText))
 	}
 }
 
 func ErrorResponse(w http.ResponseWriter, err error) {
 	w.WriteHeader(http.StatusInternalServerError)
-	w.Write([]byte(err.Error()))
+	_, _ = w.Write([]byte(err.Error()))
 }

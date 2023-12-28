@@ -12,7 +12,6 @@ require (
 	github.com/gorilla/handlers v1.5.1
 	github.com/gorilla/mux v1.8.0
 	github.com/prometheus-operator/prometheus-operator/pkg/client v0.70.0
-	github.com/rakyll/statik v0.1.7
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.8.4
