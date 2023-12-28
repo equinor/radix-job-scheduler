@@ -261,12 +261,12 @@ func Test_webhookNotifier_Notify(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			notifier, err := NewWebhookNotifier(&radixv1.RadixDeployJobComponent{
+			jobComponent := &radixv1.RadixDeployJobComponent{
 				Name:          tt.fields.jobComponentName,
 				Notifications: &radixv1.Notifications{Webhook: pointers.Ptr(tt.fields.webhookURL)},
-			})
+			}
+			notifier, err := NewWebhookNotifier(jobComponent)
 			require.NoError(t, err)
-
 			var receivedRequest *http.Request
 			http.DefaultClient = &http.Client{
 				Transport: &testTransport{
