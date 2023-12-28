@@ -8,6 +8,7 @@ require (
 	dario.cat/mergo v1.0.0
 	github.com/equinor/radix-common v1.7.1
 	github.com/equinor/radix-operator v1.47.2
+	github.com/go-swagger/go-swagger v0.30.5
 	github.com/golang/mock v1.6.0
 	github.com/gorilla/handlers v1.5.1
 	github.com/gorilla/mux v1.8.0
