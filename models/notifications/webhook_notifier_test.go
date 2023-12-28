@@ -3,11 +3,12 @@ package notifications
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/equinor/radix-job-scheduler/models/v1/events"
 	"io"
 	"net/http"
 	"testing"
 	"time"
+
+	"github.com/equinor/radix-job-scheduler/models/v1/events"
 
 	commonUtils "github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-common/utils/pointers"
@@ -16,55 +17,65 @@ import (
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/equinor/radix-operator/pkg/apis/utils/labels"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestNewWebhookNotifier(t *testing.T) {
 	tests := []struct {
 		name            string
-		notifications   *radixv1.Notifications
+		jobComponent    *radixv1.RadixDeployJobComponent
 		expectedEnabled bool
 		expectedWebhook string
 		expectedErr     bool
 	}{
 		{
+			name:            "No job component",
+			jobComponent:    nil,
+			expectedEnabled: false,
+			expectedWebhook: "",
+			expectedErr:     true,
+		},
+		{
 			name:            "No notification",
-			notifications:   nil,
-			expectedEnabled: false, expectedWebhook: "", expectedErr: false,
+			jobComponent:    &radixv1.RadixDeployJobComponent{},
+			expectedEnabled: false,
+			expectedWebhook: "",
+			expectedErr:     false,
 		},
 		{
 			name:            "Empty notification",
-			notifications:   &radixv1.Notifications{},
-			expectedEnabled: false, expectedWebhook: "", expectedErr: false,
+			jobComponent:    &radixv1.RadixDeployJobComponent{Notifications: &radixv1.Notifications{}},
+			expectedEnabled: false,
+			expectedWebhook: "",
+			expectedErr:     false,
 		},
 		{
 			name:            "Empty webhook in the notification",
-			notifications:   &radixv1.Notifications{Webhook: pointers.Ptr("")},
-			expectedEnabled: false, expectedWebhook: "", expectedErr: false,
+			jobComponent:    &radixv1.RadixDeployJobComponent{Notifications: &radixv1.Notifications{Webhook: pointers.Ptr("")}},
+			expectedEnabled: false,
+			expectedWebhook: "",
+			expectedErr:     false,
 		},
 		{
 			name:            "Set webhook in the notification",
-			notifications:   &radixv1.Notifications{Webhook: pointers.Ptr("http://job1:8080")},
-			expectedEnabled: true, expectedWebhook: "http://job1:8080", expectedErr: false,
+			jobComponent:    &radixv1.RadixDeployJobComponent{Notifications: &radixv1.Notifications{Webhook: pointers.Ptr("http://job1:8080")}},
+			expectedEnabled: true,
+			expectedWebhook: "http://job1:8080",
+			expectedErr:     false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotNotifier, err := NewWebhookNotifier(tt.notifications)
-			if err != nil && !tt.expectedErr {
-				t.Errorf("not expected error %v", err)
-				return
-			} else if err == nil && tt.expectedErr {
-				t.Errorf("missing expected error")
-				return
-			}
+			gotNotifier, err := NewWebhookNotifier(tt.jobComponent)
+			assert.Equal(t, err != nil, tt.expectedErr)
 			if err != nil {
 				return
 			}
 			notifier := gotNotifier.(*webhookNotifier)
-			assert.Equal(t, tt.expectedEnabled, notifier.enabled)
-			assert.Equal(t, tt.expectedWebhook, notifier.webhook)
+			assert.Equal(t, tt.expectedEnabled, notifier.Enabled())
+			assert.Equal(t, tt.expectedWebhook, notifier.webhookURL)
 		})
 	}
 }
@@ -83,14 +94,14 @@ func (t *testTransport) RoundTrip(request *http.Request) (*http.Response, error)
 
 func Test_webhookNotifier_Notify(t *testing.T) {
 	type fields struct {
-		enabled                 bool
-		webhook                 string
+		jobComponentName        string
+		webhookURL              string
 		expectedRequest         bool
 		expectedError           bool
 		expectedBatchNameInJobs string
 	}
 	type args struct {
-		newRadixBatch      *radixv1.RadixBatch
+		radixBatch         *radixv1.RadixBatch
 		updatedJobStatuses []radixv1.RadixBatchJobStatus
 		event              events.Event
 	}
@@ -106,27 +117,19 @@ func Test_webhookNotifier_Notify(t *testing.T) {
 		fields fields
 		args   args
 	}{
-		{name: "No request for not enabled notifier",
-			fields: fields{enabled: false, webhook: "http://job1:8080", expectedRequest: false, expectedError: false},
+		{name: "No request for notifier with empty webhook",
+			fields: fields{jobComponentName: "myjob", webhookURL: "", expectedRequest: false, expectedError: false},
 			args: args{
 				event: events.Update,
-				newRadixBatch: &radixv1.RadixBatch{ObjectMeta: metav1.ObjectMeta{Name: "batch1", Labels: labels.ForBatchType(kube.RadixBatchTypeBatch)},
-					Status: radixv1.RadixBatchStatus{Condition: radixv1.RadixBatchCondition{Type: radixv1.BatchConditionTypeWaiting}}},
-				updatedJobStatuses: []radixv1.RadixBatchJobStatus{{Name: "job1"}}},
-		},
-		{name: "No request for enabled notifier with empty webhook",
-			fields: fields{enabled: true, webhook: "", expectedRequest: false, expectedError: false},
-			args: args{
-				event: events.Update,
-				newRadixBatch: &radixv1.RadixBatch{ObjectMeta: metav1.ObjectMeta{Name: "batch1", Labels: labels.ForBatchType(kube.RadixBatchTypeBatch)},
+				radixBatch: &radixv1.RadixBatch{ObjectMeta: metav1.ObjectMeta{Name: "batch1", Labels: labels.ForBatchType(kube.RadixBatchTypeBatch)},
 					Status: radixv1.RadixBatchStatus{Condition: radixv1.RadixBatchCondition{Type: radixv1.BatchConditionTypeWaiting}}},
 				updatedJobStatuses: []radixv1.RadixBatchJobStatus{{Name: "job1"}}},
 		},
 		{name: "Waiting batch, no jobs",
-			fields: fields{enabled: true, webhook: "http://job1:8080", expectedRequest: true, expectedError: false, expectedBatchNameInJobs: "batch1"},
+			fields: fields{jobComponentName: "myjob", webhookURL: "http://job1:8080", expectedRequest: true, expectedError: false, expectedBatchNameInJobs: "batch1"},
 			args: args{
 				event: events.Update,
-				newRadixBatch: &radixv1.RadixBatch{ObjectMeta: metav1.ObjectMeta{Name: "batch1", Labels: labels.ForBatchType(kube.RadixBatchTypeBatch)},
+				radixBatch: &radixv1.RadixBatch{ObjectMeta: metav1.ObjectMeta{Name: "batch1", Labels: labels.ForBatchType(kube.RadixBatchTypeBatch)},
 					Status: radixv1.RadixBatchStatus{
 						Condition: radixv1.RadixBatchCondition{
 							Type:    radixv1.BatchConditionTypeWaiting,
@@ -138,10 +141,10 @@ func Test_webhookNotifier_Notify(t *testing.T) {
 				updatedJobStatuses: []radixv1.RadixBatchJobStatus{}},
 		},
 		{name: "Active batch",
-			fields: fields{enabled: true, webhook: "http://job1:8080", expectedRequest: true, expectedError: false, expectedBatchNameInJobs: "batch1"},
+			fields: fields{jobComponentName: "myjob", webhookURL: "http://job1:8080", expectedRequest: true, expectedError: false, expectedBatchNameInJobs: "batch1"},
 			args: args{
 				event: events.Update,
-				newRadixBatch: &radixv1.RadixBatch{ObjectMeta: metav1.ObjectMeta{Name: "batch1", Labels: labels.ForBatchType(kube.RadixBatchTypeBatch)},
+				radixBatch: &radixv1.RadixBatch{ObjectMeta: metav1.ObjectMeta{Name: "batch1", Labels: labels.ForBatchType(kube.RadixBatchTypeBatch)},
 					Status: radixv1.RadixBatchStatus{
 						Condition: radixv1.RadixBatchCondition{
 							Type:           radixv1.BatchConditionTypeActive,
@@ -155,10 +158,10 @@ func Test_webhookNotifier_Notify(t *testing.T) {
 				updatedJobStatuses: []radixv1.RadixBatchJobStatus{}},
 		},
 		{name: "Completed Batch with multiple jobs",
-			fields: fields{enabled: true, webhook: "http://job1:8080", expectedRequest: true, expectedError: false, expectedBatchNameInJobs: "batch1"},
+			fields: fields{jobComponentName: "myjob", webhookURL: "http://job1:8080", expectedRequest: true, expectedError: false, expectedBatchNameInJobs: "batch1"},
 			args: args{
 				event: events.Update,
-				newRadixBatch: &radixv1.RadixBatch{
+				radixBatch: &radixv1.RadixBatch{
 					ObjectMeta: metav1.ObjectMeta{Name: "batch1", Labels: labels.ForBatchType(kube.RadixBatchTypeBatch)},
 					Spec: radixv1.RadixBatchSpec{
 						Jobs: []radixv1.RadixBatchJob{{Name: "job1"}, {Name: "job2"}, {Name: "job3"}},
@@ -193,10 +196,10 @@ func Test_webhookNotifier_Notify(t *testing.T) {
 				}},
 		},
 		{name: "Completed single job batch",
-			fields: fields{enabled: true, webhook: "http://job1:8080", expectedRequest: true, expectedError: false, expectedBatchNameInJobs: ""},
+			fields: fields{jobComponentName: "myjob", webhookURL: "http://job1:8080", expectedRequest: true, expectedError: false, expectedBatchNameInJobs: ""},
 			args: args{
 				event: events.Update,
-				newRadixBatch: &radixv1.RadixBatch{
+				radixBatch: &radixv1.RadixBatch{
 					ObjectMeta: metav1.ObjectMeta{Name: "batch1", Labels: labels.ForBatchType(kube.RadixBatchTypeJob)},
 					Spec: radixv1.RadixBatchSpec{
 						Jobs: []radixv1.RadixBatchJob{{Name: "job1"}},
@@ -225,10 +228,11 @@ func Test_webhookNotifier_Notify(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			notifier := &webhookNotifier{
-				enabled: tt.fields.enabled,
-				webhook: tt.fields.webhook,
-			}
+			notifier, err := NewWebhookNotifier(&radixv1.RadixDeployJobComponent{
+				Name:          tt.fields.jobComponentName,
+				Notifications: &radixv1.Notifications{Webhook: pointers.Ptr(tt.fields.webhookURL)},
+			})
+			require.NoError(t, err)
 
 			var receivedRequest *http.Request
 			http.DefaultClient = &http.Client{
@@ -240,7 +244,7 @@ func Test_webhookNotifier_Notify(t *testing.T) {
 			}
 
 			errChan := make(chan error)
-			doneChan := notifier.Notify(tt.args.event, tt.args.newRadixBatch, tt.args.updatedJobStatuses, errChan)
+			doneChan := notifier.Notify(tt.args.event, tt.args.radixBatch, tt.args.updatedJobStatuses, errChan)
 
 			var notificationErr error
 			select {
@@ -268,7 +272,7 @@ func Test_webhookNotifier_Notify(t *testing.T) {
 				return
 			}
 			if receivedRequest != nil {
-				assert.Equal(t, tt.fields.webhook, fmt.Sprintf("%s://%s", receivedRequest.URL.Scheme, receivedRequest.Host))
+				assert.Equal(t, tt.fields.webhookURL, fmt.Sprintf("%s://%s", receivedRequest.URL.Scheme, receivedRequest.Host))
 				var batchStatus modelsv1.BatchStatus
 				if body, _ := io.ReadAll(receivedRequest.Body); len(body) > 0 {
 					if err := json.Unmarshal(body, &batchStatus); err != nil {
@@ -276,9 +280,9 @@ func Test_webhookNotifier_Notify(t *testing.T) {
 						return
 					}
 				}
-				assert.Equal(t, tt.args.newRadixBatch.Name, batchStatus.Name, "Not matching batch name")
-				assertTimesEqual(t, tt.args.newRadixBatch.Status.Condition.ActiveTime, batchStatus.Started, "batchStatus.Started")
-				assertTimesEqual(t, tt.args.newRadixBatch.Status.Condition.CompletionTime, batchStatus.Ended, "batchStatus.Ended")
+				assert.Equal(t, tt.args.radixBatch.Name, batchStatus.Name, "Not matching batch name")
+				assertTimesEqual(t, tt.args.radixBatch.Status.Condition.ActiveTime, batchStatus.Started, "batchStatus.Started")
+				assertTimesEqual(t, tt.args.radixBatch.Status.Condition.CompletionTime, batchStatus.Ended, "batchStatus.Ended")
 				if len(tt.args.updatedJobStatuses) != len(batchStatus.JobStatuses) {
 					assert.Fail(t, fmt.Sprintf("Not matching amount of updatedJobStatuses %d and JobStatuses %d", len(tt.args.updatedJobStatuses), len(batchStatus.JobStatuses)))
 					return

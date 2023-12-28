@@ -74,7 +74,7 @@ func runApiServer(kubeUtil *kube.Kube, env *models.Env) {
 }
 
 func getRadixBatchWatcher(kubeUtil *kube.Kube, radixDeployJobComponent *radixv1.RadixDeployJobComponent, env *models.Env) (*notifications.Watcher, error) {
-	notifier, err := notifications.NewWebhookNotifier(radixDeployJobComponent.Notifications)
+	notifier, err := notifications.NewWebhookNotifier(radixDeployJobComponent)
 	if err != nil {
 		return notifications.NullRadixBatchWatcher(), err
 	}
