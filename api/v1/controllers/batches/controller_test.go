@@ -19,6 +19,7 @@ import (
 	"github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func setupTest(handler api.BatchHandler) *test.ControllerTestUtils {
@@ -57,7 +58,8 @@ func TestGetBatches(t *testing.T) {
 		if response != nil {
 			assert.Equal(t, http.StatusOK, response.StatusCode)
 			var returnedBatches []modelsV1.BatchStatus
-			test.GetResponseBody(response, &returnedBatches)
+			err := test.GetResponseBody(response, &returnedBatches)
+			require.NoError(t, err)
 			assert.Len(t, returnedBatches, 1)
 			assert.Equal(t, batchState.JobStatus.Name, returnedBatches[0].Name)
 			assert.Equal(t, batchState.JobStatus.Started, returnedBatches[0].Started)
@@ -86,7 +88,8 @@ func TestGetBatches(t *testing.T) {
 		if response != nil {
 			assert.Equal(t, http.StatusInternalServerError, response.StatusCode)
 			var returnedStatus models.Status
-			test.GetResponseBody(response, &returnedStatus)
+			err := test.GetResponseBody(response, &returnedStatus)
+			require.NoError(t, err)
 			assert.Equal(t, http.StatusInternalServerError, returnedStatus.Code)
 			assert.Equal(t, models.StatusFailure, returnedStatus.Status)
 			assert.Equal(t, models.StatusReasonUnknown, returnedStatus.Reason)
@@ -125,7 +128,8 @@ func TestGetBatch(t *testing.T) {
 		if response != nil {
 			assert.Equal(t, http.StatusOK, response.StatusCode)
 			var returnedBatch modelsV1.BatchStatus
-			test.GetResponseBody(response, &returnedBatch)
+			err := test.GetResponseBody(response, &returnedBatch)
+			require.NoError(t, err)
 			assert.Equal(t, batchState.Name, returnedBatch.Name)
 			assert.Equal(t, batchState.Started, returnedBatch.Started)
 			assert.Equal(t, batchState.Ended, returnedBatch.Ended)
@@ -154,7 +158,8 @@ func TestGetBatch(t *testing.T) {
 		if response != nil {
 			assert.Equal(t, http.StatusNotFound, response.StatusCode)
 			var returnedStatus models.Status
-			test.GetResponseBody(response, &returnedStatus)
+			err := test.GetResponseBody(response, &returnedStatus)
+			require.NoError(t, err)
 			assert.Equal(t, http.StatusNotFound, returnedStatus.Code)
 			assert.Equal(t, models.StatusFailure, returnedStatus.Status)
 			assert.Equal(t, models.StatusReasonNotFound, returnedStatus.Reason)
@@ -182,7 +187,8 @@ func TestGetBatch(t *testing.T) {
 		if response != nil {
 			assert.Equal(t, http.StatusInternalServerError, response.StatusCode)
 			var returnedStatus models.Status
-			test.GetResponseBody(response, &returnedStatus)
+			err := test.GetResponseBody(response, &returnedStatus)
+			require.NoError(t, err)
 			assert.Equal(t, http.StatusInternalServerError, returnedStatus.Code)
 			assert.Equal(t, models.StatusFailure, returnedStatus.Status)
 			assert.Equal(t, models.StatusReasonUnknown, returnedStatus.Reason)
@@ -225,7 +231,8 @@ func TestCreateBatch(t *testing.T) {
 		if response != nil {
 			assert.Equal(t, http.StatusOK, response.StatusCode)
 			var returnedBatch modelsV1.BatchStatus
-			test.GetResponseBody(response, &returnedBatch)
+			err := test.GetResponseBody(response, &returnedBatch)
+			require.NoError(t, err)
 			assert.Equal(t, createdBatch.Name, returnedBatch.Name)
 			assert.Equal(t, createdBatch.Started, returnedBatch.Started)
 			assert.Equal(t, createdBatch.Ended, returnedBatch.Ended)
@@ -289,7 +296,8 @@ func TestCreateBatch(t *testing.T) {
 		if response != nil {
 			assert.Equal(t, http.StatusOK, response.StatusCode)
 			var returnedBatch modelsV1.BatchStatus
-			test.GetResponseBody(response, &returnedBatch)
+			err := test.GetResponseBody(response, &returnedBatch)
+			require.NoError(t, err)
 			assert.Equal(t, createdBatch.Name, returnedBatch.Name)
 			assert.Equal(t, createdBatch.Started, returnedBatch.Started)
 			assert.Equal(t, createdBatch.Ended, returnedBatch.Ended)
@@ -335,7 +343,8 @@ func TestCreateBatch(t *testing.T) {
 		if response != nil {
 			assert.Equal(t, http.StatusOK, response.StatusCode)
 			var returnedBatch modelsV1.BatchStatus
-			test.GetResponseBody(response, &returnedBatch)
+			err := test.GetResponseBody(response, &returnedBatch)
+			require.NoError(t, err)
 			assert.Equal(t, createdBatch.Name, returnedBatch.Name)
 			assert.Equal(t, createdBatch.Started, returnedBatch.Started)
 			assert.Equal(t, createdBatch.Ended, returnedBatch.Ended)
@@ -366,7 +375,8 @@ func TestCreateBatch(t *testing.T) {
 		if response != nil {
 			assert.Equal(t, http.StatusUnprocessableEntity, response.StatusCode)
 			var returnedStatus models.Status
-			test.GetResponseBody(response, &returnedStatus)
+			err := test.GetResponseBody(response, &returnedStatus)
+			require.NoError(t, err)
 			assert.Equal(t, http.StatusUnprocessableEntity, returnedStatus.Code)
 			assert.Equal(t, models.StatusFailure, returnedStatus.Status)
 			assert.Equal(t, models.StatusReasonInvalid, returnedStatus.Reason)
@@ -399,7 +409,8 @@ func TestCreateBatch(t *testing.T) {
 		if response != nil {
 			assert.Equal(t, http.StatusNotFound, response.StatusCode)
 			var returnedStatus models.Status
-			test.GetResponseBody(response, &returnedStatus)
+			err := test.GetResponseBody(response, &returnedStatus)
+			require.NoError(t, err)
 			assert.Equal(t, http.StatusNotFound, returnedStatus.Code)
 			assert.Equal(t, models.StatusFailure, returnedStatus.Status)
 			assert.Equal(t, models.StatusReasonNotFound, returnedStatus.Reason)
@@ -431,7 +442,8 @@ func TestCreateBatch(t *testing.T) {
 		if response != nil {
 			assert.Equal(t, http.StatusInternalServerError, response.StatusCode)
 			var returnedStatus models.Status
-			test.GetResponseBody(response, &returnedStatus)
+			err := test.GetResponseBody(response, &returnedStatus)
+			require.NoError(t, err)
 			assert.Equal(t, http.StatusInternalServerError, returnedStatus.Code)
 			assert.Equal(t, models.StatusFailure, returnedStatus.Status)
 			assert.Equal(t, models.StatusReasonUnknown, returnedStatus.Reason)
@@ -460,7 +472,8 @@ func TestDeleteBatch(t *testing.T) {
 		if response != nil {
 			assert.Equal(t, http.StatusOK, response.StatusCode)
 			var returnedStatus models.Status
-			test.GetResponseBody(response, &returnedStatus)
+			err := test.GetResponseBody(response, &returnedStatus)
+			require.NoError(t, err)
 			assert.Equal(t, http.StatusOK, returnedStatus.Code)
 			assert.Equal(t, models.StatusSuccess, returnedStatus.Status)
 			assert.Empty(t, returnedStatus.Reason)
@@ -487,7 +500,8 @@ func TestDeleteBatch(t *testing.T) {
 		if response != nil {
 			assert.Equal(t, http.StatusNotFound, response.StatusCode)
 			var returnedStatus models.Status
-			test.GetResponseBody(response, &returnedStatus)
+			err := test.GetResponseBody(response, &returnedStatus)
+			require.NoError(t, err)
 			assert.Equal(t, http.StatusNotFound, returnedStatus.Code)
 			assert.Equal(t, models.StatusFailure, returnedStatus.Status)
 			assert.Equal(t, models.StatusReasonNotFound, returnedStatus.Reason)
@@ -515,7 +529,8 @@ func TestDeleteBatch(t *testing.T) {
 		if response != nil {
 			assert.Equal(t, http.StatusInternalServerError, response.StatusCode)
 			var returnedStatus models.Status
-			test.GetResponseBody(response, &returnedStatus)
+			err := test.GetResponseBody(response, &returnedStatus)
+			require.NoError(t, err)
 			assert.Equal(t, http.StatusInternalServerError, returnedStatus.Code)
 			assert.Equal(t, models.StatusFailure, returnedStatus.Status)
 			assert.Equal(t, models.StatusReasonUnknown, returnedStatus.Reason)
@@ -544,7 +559,8 @@ func TestStopBatch(t *testing.T) {
 		if response != nil {
 			assert.Equal(t, http.StatusOK, response.StatusCode)
 			var returnedStatus models.Status
-			test.GetResponseBody(response, &returnedStatus)
+			err := test.GetResponseBody(response, &returnedStatus)
+			require.NoError(t, err)
 			assert.Equal(t, http.StatusOK, returnedStatus.Code)
 			assert.Equal(t, models.StatusSuccess, returnedStatus.Status)
 			assert.Empty(t, returnedStatus.Reason)
@@ -571,7 +587,8 @@ func TestStopBatch(t *testing.T) {
 		if response != nil {
 			assert.Equal(t, http.StatusNotFound, response.StatusCode)
 			var returnedStatus models.Status
-			test.GetResponseBody(response, &returnedStatus)
+			err := test.GetResponseBody(response, &returnedStatus)
+			require.NoError(t, err)
 			assert.Equal(t, http.StatusNotFound, returnedStatus.Code)
 			assert.Equal(t, models.StatusFailure, returnedStatus.Status)
 			assert.Equal(t, models.StatusReasonNotFound, returnedStatus.Reason)
@@ -599,7 +616,8 @@ func TestStopBatch(t *testing.T) {
 		if response != nil {
 			assert.Equal(t, http.StatusInternalServerError, response.StatusCode)
 			var returnedStatus models.Status
-			test.GetResponseBody(response, &returnedStatus)
+			err := test.GetResponseBody(response, &returnedStatus)
+			require.NoError(t, err)
 			assert.Equal(t, http.StatusInternalServerError, returnedStatus.Code)
 			assert.Equal(t, models.StatusFailure, returnedStatus.Status)
 			assert.Equal(t, models.StatusReasonUnknown, returnedStatus.Reason)
@@ -635,9 +653,7 @@ func TestStopBatchJob(t *testing.T) {
 			assert.Equal(t, http.StatusOK, response.StatusCode)
 			var returnedStatus models.Status
 			err := test.GetResponseBody(response, &returnedStatus)
-			if err != nil {
-				panic(err)
-			}
+			require.NoError(t, err)
 			assert.Equal(t, http.StatusOK, returnedStatus.Code)
 			assert.Equal(t, models.StatusSuccess, returnedStatus.Status)
 			assert.Empty(t, returnedStatus.Reason)
@@ -665,7 +681,8 @@ func TestStopBatchJob(t *testing.T) {
 		if response != nil {
 			assert.Equal(t, http.StatusNotFound, response.StatusCode)
 			var returnedStatus models.Status
-			test.GetResponseBody(response, &returnedStatus)
+			err := test.GetResponseBody(response, &returnedStatus)
+			require.NoError(t, err)
 			assert.Equal(t, http.StatusNotFound, returnedStatus.Code)
 			assert.Equal(t, models.StatusFailure, returnedStatus.Status)
 			assert.Equal(t, models.StatusReasonNotFound, returnedStatus.Reason)
@@ -694,7 +711,8 @@ func TestStopBatchJob(t *testing.T) {
 		if response != nil {
 			assert.Equal(t, http.StatusInternalServerError, response.StatusCode)
 			var returnedStatus models.Status
-			test.GetResponseBody(response, &returnedStatus)
+			err := test.GetResponseBody(response, &returnedStatus)
+			require.NoError(t, err)
 			assert.Equal(t, http.StatusInternalServerError, returnedStatus.Code)
 			assert.Equal(t, models.StatusFailure, returnedStatus.Status)
 			assert.Equal(t, models.StatusReasonUnknown, returnedStatus.Reason)
@@ -732,7 +750,8 @@ func TestGetBatchJob(t *testing.T) {
 		if response != nil {
 			assert.Equal(t, http.StatusOK, response.StatusCode)
 			var returnedJob modelsV1.JobStatus
-			test.GetResponseBody(response, &returnedJob)
+			err := test.GetResponseBody(response, &returnedJob)
+			require.NoError(t, err)
 			assert.Equal(t, jobState.Name, returnedJob.Name)
 			assert.Equal(t, jobState.Started, returnedJob.Started)
 			assert.Equal(t, jobState.Ended, returnedJob.Ended)
@@ -761,7 +780,8 @@ func TestGetBatchJob(t *testing.T) {
 		if response != nil {
 			assert.Equal(t, http.StatusNotFound, response.StatusCode)
 			var returnedStatus models.Status
-			test.GetResponseBody(response, &returnedStatus)
+			err := test.GetResponseBody(response, &returnedStatus)
+			require.NoError(t, err)
 			assert.Equal(t, http.StatusNotFound, returnedStatus.Code)
 			assert.Equal(t, models.StatusFailure, returnedStatus.Status)
 			assert.Equal(t, models.StatusReasonNotFound, returnedStatus.Reason)
@@ -789,7 +809,8 @@ func TestGetBatchJob(t *testing.T) {
 		if response != nil {
 			assert.Equal(t, http.StatusInternalServerError, response.StatusCode)
 			var returnedStatus models.Status
-			test.GetResponseBody(response, &returnedStatus)
+			err := test.GetResponseBody(response, &returnedStatus)
+			require.NoError(t, err)
 			assert.Equal(t, http.StatusInternalServerError, returnedStatus.Code)
 			assert.Equal(t, models.StatusFailure, returnedStatus.Status)
 			assert.Equal(t, models.StatusReasonUnknown, returnedStatus.Reason)

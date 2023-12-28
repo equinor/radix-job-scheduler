@@ -60,7 +60,7 @@ func NewRadixBatchWatcher(radixClient radixclient.Interface, namespace string, n
 
 	watcher.logger.Info("Setting up event handlers")
 	errChan := make(chan error)
-	watcher.batchInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+	_, err = watcher.batchInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(cur interface{}) {
 			newRadixBatch := cur.(*radixv1.RadixBatch)
 			if _, ok := existingRadixBatchMap[newRadixBatch.GetName()]; ok {
@@ -101,6 +101,10 @@ func NewRadixBatchWatcher(radixClient radixclient.Interface, namespace string, n
 			delete(existingRadixBatchMap, radixBatch.GetName())
 		},
 	})
+	if err != nil {
+		watcher.logger.Error(err)
+		return nil, err
+	}
 
 	watcher.radixInformerFactory.Start(watcher.Stop)
 
