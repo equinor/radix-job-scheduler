@@ -14,8 +14,8 @@ import (
 )
 
 type webhookNotifier struct {
-	webhookURL string
-	jobName    string
+	webhookURL       string
+	jobComponentName string
 }
 
 func NewWebhookNotifier(jobComponent *radixv1.RadixDeployJobComponent) (Notifier, error) {
@@ -23,7 +23,7 @@ func NewWebhookNotifier(jobComponent *radixv1.RadixDeployJobComponent) (Notifier
 		return nil, errors.New("parameter jobComponent is nil")
 	}
 
-	notifier := webhookNotifier{jobName: jobComponent.Name}
+	notifier := webhookNotifier{jobComponentName: jobComponent.Name}
 	if jobComponent.Notifications != nil && webhookIsNotEmpty(jobComponent.Notifications.Webhook) {
 		notifier.webhookURL = *jobComponent.Notifications.Webhook
 	}
@@ -44,7 +44,7 @@ func (notifier *webhookNotifier) String() string {
 func (notifier *webhookNotifier) Notify(event events.Event, radixBatch *radixv1.RadixBatch, updatedJobStatuses []radixv1.RadixBatchJobStatus, errChan chan error) (done chan struct{}) {
 	done = make(chan struct{})
 	go func() {
-		if !notifier.Enabled() || len(notifier.webhookURL) == 0 || radixBatch.Labels[kube.RadixComponentLabel] != notifier.jobName {
+		if !notifier.Enabled() || len(notifier.webhookURL) == 0 || radixBatch.Labels[kube.RadixComponentLabel] != notifier.jobComponentName {
 			done <- struct{}{}
 			close(done)
 			return
