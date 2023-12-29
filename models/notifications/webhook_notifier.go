@@ -9,7 +9,6 @@ import (
 
 	"github.com/equinor/radix-job-scheduler/models/v1/events"
 
-	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 )
 
@@ -44,7 +43,7 @@ func (notifier *webhookNotifier) String() string {
 func (notifier *webhookNotifier) Notify(event events.Event, radixBatch *radixv1.RadixBatch, updatedJobStatuses []radixv1.RadixBatchJobStatus, errChan chan error) (done chan struct{}) {
 	done = make(chan struct{})
 	go func() {
-		if !notifier.Enabled() || len(notifier.webhookURL) == 0 || radixBatch.Labels[kube.RadixComponentLabel] != notifier.jobComponentName {
+		if !notifier.Enabled() || len(notifier.webhookURL) == 0 || radixBatch.Spec.RadixDeploymentJobRef.Job != notifier.jobComponentName {
 			done <- struct{}{}
 			close(done)
 			return
