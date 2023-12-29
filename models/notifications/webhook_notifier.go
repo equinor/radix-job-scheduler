@@ -3,7 +3,6 @@ package notifications
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 
@@ -17,16 +16,12 @@ type webhookNotifier struct {
 	jobComponentName string
 }
 
-func NewWebhookNotifier(jobComponent *radixv1.RadixDeployJobComponent) (Notifier, error) {
-	if jobComponent == nil {
-		return nil, errors.New("parameter jobComponent is nil")
-	}
-
+func NewWebhookNotifier(jobComponent *radixv1.RadixDeployJobComponent) Notifier {
 	notifier := webhookNotifier{jobComponentName: jobComponent.Name}
 	if jobComponent.Notifications != nil && webhookIsNotEmpty(jobComponent.Notifications.Webhook) {
 		notifier.webhookURL = *jobComponent.Notifications.Webhook
 	}
-	return &notifier, nil
+	return &notifier
 }
 
 func (notifier *webhookNotifier) Enabled() bool {

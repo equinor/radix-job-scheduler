@@ -17,7 +17,6 @@ import (
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/equinor/radix-operator/pkg/apis/utils/labels"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -27,52 +26,36 @@ func TestNewWebhookNotifier(t *testing.T) {
 		jobComponent    *radixv1.RadixDeployJobComponent
 		expectedEnabled bool
 		expectedWebhook string
-		expectedErr     bool
 	}{
-		{
-			name:            "No job component",
-			jobComponent:    nil,
-			expectedEnabled: false,
-			expectedWebhook: "",
-			expectedErr:     true,
-		},
 		{
 			name:            "No notification",
 			jobComponent:    &radixv1.RadixDeployJobComponent{},
 			expectedEnabled: false,
 			expectedWebhook: "",
-			expectedErr:     false,
 		},
 		{
 			name:            "Empty notification",
 			jobComponent:    &radixv1.RadixDeployJobComponent{Notifications: &radixv1.Notifications{}},
 			expectedEnabled: false,
 			expectedWebhook: "",
-			expectedErr:     false,
 		},
 		{
 			name:            "Empty webhook in the notification",
 			jobComponent:    &radixv1.RadixDeployJobComponent{Notifications: &radixv1.Notifications{Webhook: pointers.Ptr("")}},
 			expectedEnabled: false,
 			expectedWebhook: "",
-			expectedErr:     false,
 		},
 		{
 			name:            "Set webhook in the notification",
 			jobComponent:    &radixv1.RadixDeployJobComponent{Notifications: &radixv1.Notifications{Webhook: pointers.Ptr("http://job1:8080")}},
 			expectedEnabled: true,
 			expectedWebhook: "http://job1:8080",
-			expectedErr:     false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotNotifier, err := NewWebhookNotifier(tt.jobComponent)
-			assert.Equal(t, err != nil, tt.expectedErr)
-			if err != nil {
-				return
-			}
+			gotNotifier := NewWebhookNotifier(tt.jobComponent)
 			notifier := gotNotifier.(*webhookNotifier)
 			assert.Equal(t, tt.expectedEnabled, notifier.Enabled())
 			assert.Equal(t, tt.expectedWebhook, notifier.webhookURL)
@@ -273,8 +256,7 @@ func Test_webhookNotifier_Notify(t *testing.T) {
 				Name:          tt.fields.jobComponentName,
 				Notifications: &radixv1.Notifications{Webhook: pointers.Ptr(tt.fields.webhookURL)},
 			}
-			notifier, err := NewWebhookNotifier(jobComponent)
-			require.NoError(t, err)
+			notifier := NewWebhookNotifier(jobComponent)
 			var receivedRequest *http.Request
 			http.DefaultClient = &http.Client{
 				Transport: &testTransport{
