@@ -12,6 +12,7 @@ import (
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -298,7 +299,8 @@ func TestMergeJobDescriptionWithDefaultJobDescription(t *testing.T) {
 	}
 	for _, ts := range scenarios {
 		t.Run(ts.name, func(t *testing.T) {
-			applyDefaultJobDescriptionProperties(ts.jobScheduleDescription, ts.defaultRadixJobComponentConfig)
+			err := applyDefaultJobDescriptionProperties(ts.jobScheduleDescription, ts.defaultRadixJobComponentConfig)
+			require.NoError(t, err)
 			assert.EqualValues(t, *ts.expectedRadixJobComponentConfig, ts.jobScheduleDescription.RadixJobComponentConfig)
 		})
 	}

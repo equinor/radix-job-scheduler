@@ -24,12 +24,10 @@ echo:
 # This make command is only needed for local testing now
 # we also do make swagger inside Dockerfile
 .PHONY: swagger
-swagger:
-	rm -f ./swaggerui_src/swagger.json ./swaggerui/statik.go
-	swagger generate spec -o ./swagger.json --scan-models -x github.com/equinor/radix-job-scheduler/models/v2
-	mv swagger.json ./swaggerui_src/swagger.json
-	swagger validate ./swaggerui_src/swagger.json && \
-	statik -src=./swaggerui_src/ -p swaggerui
+swagger: SHELL:=/bin/bash
+swagger: bootstrap
+	swagger generate spec -o ./swaggerui/html/swagger.json --scan-models --exclude-deps
+	swagger validate ./swaggerui/html/swagger.json
 
 .PHONY: docker-build
 docker-build:
@@ -50,13 +48,28 @@ docker-push-main:
 test:
 	go test -cover `go list ./...`
 
+lint: bootstrap
+	golangci-lint run --timeout=30m --max-same-issues=0
+
 .PHONY: mocks
-mocks:
+mocks: bootstrap
 	mockgen -source ./api/v2/handler.go -destination ./api/v2/mock/handler_mock.go -package mock
 	mockgen -source ./api/v1/jobs/job_handler.go -destination ./api/v1/jobs/mock/job_mock.go -package mock
 	mockgen -source ./api/v1/batches/batch_handler.go -destination ./api/v1/batches/mock/batch_mock.go -package mock
 	mockgen -source ./models/notifications/notifier.go -destination ./models/notifications/notifier_mock.go -package notifications
 
-.PHONY: staticcheck
-staticcheck:
-	staticcheck `go list ./...` && go vet `go list ./...`
+
+HAS_SWAGGER       := $(shell command -v swagger;)
+HAS_GOLANGCI_LINT := $(shell command -v golangci-lint;)
+HAS_MOCKGEN       := $(shell command -v mockgen;)
+
+bootstrap:
+ifndef HAS_SWAGGER
+	go install github.com/go-swagger/go-swagger/cmd/swagger@v0.30.5
+endif
+ifndef HAS_GOLANGCI_LINT
+	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.55.2
+endif
+ifndef HAS_MOCKGEN
+	go install github.com/golang/mock/mockgen@v1.6.0
+endif
