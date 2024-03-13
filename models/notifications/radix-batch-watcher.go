@@ -24,17 +24,11 @@ const (
 	resyncPeriod = 0
 )
 
-var watcherLogger zerolog.Logger
-
-func init() {
-	watcherLogger = log.Logger.With().Str("radixJobScheduler", "radix-batch-watcher").Logger()
-}
-
 type Watcher struct {
 	radixInformerFactory radixinformers.SharedInformerFactory
 	batchInformer        v1.RadixBatchInformer
 	Stop                 chan struct{}
-	logger               *zerolog.Logger
+	logger               zerolog.Logger
 }
 
 // NullRadixBatchWatcher The void watcher
@@ -49,7 +43,7 @@ func NewRadixBatchWatcher(radixClient radixclient.Interface, namespace string, n
 	watcher := Watcher{
 		Stop:                 make(chan struct{}),
 		radixInformerFactory: radixinformers.NewSharedInformerFactoryWithOptions(radixClient, resyncPeriod, radixinformers.WithNamespace(namespace)),
-		logger:               &watcherLogger,
+		logger:               log.Logger.With().Str("radixJobScheduler", "radix-batch-watcher").Logger(),
 	}
 
 	existingRadixBatchMap, err := getRadixBatchMap(radixClient, namespace)
