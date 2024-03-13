@@ -13,8 +13,9 @@ import (
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 	radixinformers "github.com/equinor/radix-operator/pkg/client/informers/externalversions"
-	"github.com/equinor/radix-operator/pkg/client/informers/externalversions/radix/v1"
-	log "github.com/sirupsen/logrus"
+	v1 "github.com/equinor/radix-operator/pkg/client/informers/externalversions/radix/v1"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
 )
@@ -23,17 +24,17 @@ const (
 	resyncPeriod = 0
 )
 
-var watcherLogger *log.Entry
+var watcherLogger zerolog.Logger
 
 func init() {
-	watcherLogger = log.WithFields(log.Fields{"radixJobScheduler": "radix-batch-watcher"})
+	watcherLogger = log.Logger.With().Str("radixJobScheduler", "radix-batch-watcher").Logger()
 }
 
 type Watcher struct {
 	radixInformerFactory radixinformers.SharedInformerFactory
 	batchInformer        v1.RadixBatchInformer
 	Stop                 chan struct{}
-	logger               *log.Entry
+	logger               *zerolog.Logger
 }
 
 // NullRadixBatchWatcher The void watcher
@@ -48,7 +49,7 @@ func NewRadixBatchWatcher(radixClient radixclient.Interface, namespace string, n
 	watcher := Watcher{
 		Stop:                 make(chan struct{}),
 		radixInformerFactory: radixinformers.NewSharedInformerFactoryWithOptions(radixClient, resyncPeriod, radixinformers.WithNamespace(namespace)),
-		logger:               watcherLogger,
+		logger:               &watcherLogger,
 	}
 
 	existingRadixBatchMap, err := getRadixBatchMap(radixClient, namespace)
@@ -58,16 +59,16 @@ func NewRadixBatchWatcher(radixClient radixclient.Interface, namespace string, n
 
 	watcher.batchInformer = watcher.radixInformerFactory.Radix().V1().RadixBatches()
 
-	watcher.logger.Info("Setting up event handlers")
+	watcher.logger.Info().Msg("Setting up event handlers")
 	errChan := make(chan error)
 	_, err = watcher.batchInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(cur interface{}) {
 			newRadixBatch := cur.(*radixv1.RadixBatch)
 			if _, ok := existingRadixBatchMap[newRadixBatch.GetName()]; ok {
-				watcher.logger.Debugf("skip existing RadixBatch object %s", newRadixBatch.GetName())
+				watcher.logger.Debug().Msgf("skip existing RadixBatch object %s", newRadixBatch.GetName())
 				return
 			}
-			watcher.logger.Debugf("RadixBatch object was added %s", newRadixBatch.GetName())
+			watcher.logger.Debug().Msgf("RadixBatch object was added %s", newRadixBatch.GetName())
 			jobStatuses := newRadixBatch.Status.JobStatuses
 			if len(jobStatuses) == 0 {
 				jobStatuses = make([]radixv1.RadixBatchJobStatus, 0)
@@ -79,20 +80,20 @@ func NewRadixBatchWatcher(radixClient radixclient.Interface, namespace string, n
 			newRadixBatch := cur.(*radixv1.RadixBatch)
 			updatedJobStatuses := getUpdatedJobStatuses(oldRadixBatch, newRadixBatch)
 			if len(updatedJobStatuses) == 0 && equalBatchStatuses(&oldRadixBatch.Status, &newRadixBatch.Status) {
-				watcher.logger.Debugf("RadixBatch status and job statuses have no changes in the batch %s. Do nothing", newRadixBatch.GetName())
+				watcher.logger.Debug().Msgf("RadixBatch status and job statuses have no changes in the batch %s. Do nothing", newRadixBatch.GetName())
 				return
 			}
-			watcher.logger.Debugf("RadixBatch object was changed %s", newRadixBatch.GetName())
+			watcher.logger.Debug().Msgf("RadixBatch object was changed %s", newRadixBatch.GetName())
 			notifier.Notify(events.Update, newRadixBatch, updatedJobStatuses, errChan)
 		},
 		DeleteFunc: func(obj interface{}) {
 			radixBatch, _ := obj.(*radixv1.RadixBatch)
 			key, err := cache.MetaNamespaceKeyFunc(radixBatch)
 			if err != nil {
-				watcher.logger.Errorf("fail on received event deleted RadixBatch object %s: %v", key, err)
+				watcher.logger.Error().Err(err).Msgf("fail on received event deleted RadixBatch object %s", key)
 				return
 			}
-			watcher.logger.Debugf("RadixBatch object was deleted %s", radixBatch.GetName())
+			watcher.logger.Debug().Msgf("RadixBatch object was deleted %s", radixBatch.GetName())
 			jobStatuses := radixBatch.Status.JobStatuses
 			if len(jobStatuses) == 0 {
 				jobStatuses = make([]radixv1.RadixBatchJobStatus, 0)
@@ -102,7 +103,7 @@ func NewRadixBatchWatcher(radixClient radixclient.Interface, namespace string, n
 		},
 	})
 	if err != nil {
-		watcher.logger.Error(err)
+		watcher.logger.Error().Err(err).Msg("Failed to setup job informer")
 		return nil, err
 	}
 
@@ -112,7 +113,7 @@ func NewRadixBatchWatcher(radixClient radixclient.Interface, namespace string, n
 		for {
 			select {
 			case err := <-errChan:
-				watcher.logger.Error(err)
+				watcher.logger.Error().Err(err).Msg("Notification failed")
 			case <-watcher.Stop:
 				return
 			}

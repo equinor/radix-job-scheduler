@@ -8,7 +8,6 @@ import (
 
 	"github.com/equinor/radix-operator/pkg/apis/defaults"
 	"github.com/equinor/radix-operator/pkg/apis/utils"
-	log "github.com/sirupsen/logrus"
 )
 
 // Env instance variables
@@ -19,24 +18,20 @@ type Env struct {
 	RadixDeploymentNamespace                     string
 	RadixJobSchedulersPerEnvironmentHistoryLimit int
 	RadixPort                                    string
+	LogLevel                                     string
 }
 
 // NewEnv Constructor
 func NewEnv() *Env {
-	switch os.Getenv("LOG_LEVEL") {
-	case "DEBUG":
-		log.SetLevel(log.DebugLevel)
-	default:
-		log.SetLevel(log.InfoLevel)
-	}
 	var (
-		useSwagger                                   = envVarIsTrueOrYes(os.Getenv("USE_SWAGGER"))
+		useSwagger, _                                = strconv.ParseBool(os.Getenv("USE_SWAGGER"))
 		radixAppName                                 = strings.TrimSpace(os.Getenv(defaults.RadixAppEnvironmentVariable))
 		radixEnv                                     = strings.TrimSpace(os.Getenv(defaults.EnvironmentnameEnvironmentVariable))
 		radixComponentName                           = strings.TrimSpace(os.Getenv(defaults.RadixComponentEnvironmentVariable))
 		radixDeployment                              = strings.TrimSpace(os.Getenv(defaults.RadixDeploymentEnvironmentVariable))
 		radixJobSchedulersPerEnvironmentHistoryLimit = strings.TrimSpace(os.Getenv("RADIX_JOB_SCHEDULERS_PER_ENVIRONMENT_HISTORY_LIMIT"))
 		radixPorts                                   = strings.TrimSpace(os.Getenv(defaults.RadixPortsEnvironmentVariable))
+		logLevel                                     = os.Getenv("LOG_LEVEL")
 	)
 	env := Env{
 		RadixComponentName:       radixComponentName,
@@ -44,6 +39,7 @@ func NewEnv() *Env {
 		RadixDeploymentNamespace: utils.GetEnvironmentNamespace(radixAppName, radixEnv),
 		UseSwagger:               useSwagger,
 		RadixJobSchedulersPerEnvironmentHistoryLimit: 10,
+		LogLevel: logLevel,
 	}
 	setPort(radixPorts, &env)
 	setHistoryLimit(radixJobSchedulersPerEnvironmentHistoryLimit, &env)
@@ -67,8 +63,4 @@ func setPort(radixPorts string, env *Env) {
 		return
 	}
 	panic(fmt.Errorf("RADIX_PORTS not set"))
-}
-
-func envVarIsTrueOrYes(envVar string) bool {
-	return strings.EqualFold(envVar, "true") || strings.EqualFold(envVar, "yes")
 }

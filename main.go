@@ -3,11 +3,14 @@ package main
 import (
 	"context"
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
+	"github.com/equinor/radix-job-scheduler/api"
 	batchApi "github.com/equinor/radix-job-scheduler/api/v1/batches"
 	batchControllers "github.com/equinor/radix-job-scheduler/api/v1/controllers/batches"
 	jobControllers "github.com/equinor/radix-job-scheduler/api/v1/controllers/jobs"
@@ -20,64 +23,72 @@ import (
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/equinor/radix-operator/pkg/apis/utils"
-	"github.com/gorilla/handlers"
-	log "github.com/sirupsen/logrus"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/pflag"
 )
 
 func main() {
 	env := models.NewEnv()
+	initLogger(env)
+
 	kubeUtil := getKubeUtil()
 
 	radixDeployJobComponent, err := radix.GetRadixDeployJobComponentByName(context.Background(), kubeUtil.RadixClient(), env.RadixDeploymentNamespace, env.RadixDeploymentName, env.RadixComponentName)
 	if err != nil {
-		log.Fatalln(err)
-		return
+		log.Fatal().Err(err).Msg("failed to get job specification")
 	}
 
 	radixBatchWatcher, err := getRadixBatchWatcher(kubeUtil, radixDeployJobComponent, env)
 	if err != nil {
-		log.Fatalln(err)
-		return
+		log.Fatal().Err(err).Msg("failed to inititialize job watcher")
 	}
 	defer close(radixBatchWatcher.Stop)
 
 	runApiServer(kubeUtil, env)
 }
 
+func initLogger(env *models.Env) {
+	logLevel, err := zerolog.ParseLevel(env.LogLevel)
+	if err != nil {
+		logLevel = zerolog.InfoLevel
+	}
+	zerolog.SetGlobalLevel(logLevel)
+	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.TimeOnly})
+	zerolog.DefaultContextLogger = &log.Logger
+}
+
 func runApiServer(kubeUtil *kube.Kube, env *models.Env) {
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
 	fs := initializeFlagSet()
 	var (
 		port = fs.StringP("port", "p", env.RadixPort, "Port where API will be served")
 	)
-	log.Debugf("Port: %s\n", *port)
 	parseFlagsFromArgs(fs)
 
-	errsChan := make(chan error)
 	go func() {
-		log.Infof("Radix job scheduler API is serving on port %s", *port)
-		err := http.ListenAndServe(fmt.Sprintf(":%s", *port), handlers.CombinedLoggingHandler(os.Stdout, router.NewServer(env, getControllers(kubeUtil, env)...)))
-		errsChan <- err
+		log.Info().Msgf("Radix job API is serving on port %s", *port)
+		srv := &http.Server{
+			Addr:        fmt.Sprintf(":%s", *port),
+			Handler:     router.NewServer(env, getControllers(kubeUtil, env)...),
+			BaseContext: func(_ net.Listener) context.Context { return ctx },
+		}
+		if err := srv.ListenAndServe(); err != nil {
+			log.Fatal().Err(err).Msg("Radix job API server stopped")
+		}
+
 	}()
 
-	sigTerm := make(chan os.Signal, 1)
-	signal.Notify(sigTerm, syscall.SIGTERM)
-	signal.Notify(sigTerm, syscall.SIGINT)
-
-	select {
-	case <-sigTerm:
-	case err := <-errsChan:
-		if err != nil {
-			log.Fatalf("Radix job scheduler API server crashed: %v", err)
-		}
-	}
+	<-ctx.Done()
 }
 
 func getRadixBatchWatcher(kubeUtil *kube.Kube, radixDeployJobComponent *radixv1.RadixDeployJobComponent, env *models.Env) (*notifications.Watcher, error) {
 	notifier := notifications.NewWebhookNotifier(radixDeployJobComponent)
-	log.Infof("Created notifier: %s", notifier.String())
+	log.Info().Msgf("Created notifier: %s", notifier.String())
 	if !notifier.Enabled() {
-		log.Infoln("Notifiers are not enabled, RadixBatch event and changes watcher is skipped.")
+		log.Info().Msg("Notifiers are not enabled, RadixBatch event and changes watcher is skipped.")
 		return notifications.NullRadixBatchWatcher(), nil
 	}
 
@@ -85,13 +96,13 @@ func getRadixBatchWatcher(kubeUtil *kube.Kube, radixDeployJobComponent *radixv1.
 }
 
 func getKubeUtil() *kube.Kube {
-	kubeClient, radixClient, _, secretProviderClient := utils.GetKubernetesClient()
+	kubeClient, radixClient, _, secretProviderClient, _ := utils.GetKubernetesClient()
 	kubeUtil, _ := kube.New(kubeClient, radixClient, secretProviderClient)
 	return kubeUtil
 }
 
-func getControllers(kubeUtil *kube.Kube, env *models.Env) []models.Controller {
-	return []models.Controller{
+func getControllers(kubeUtil *kube.Kube, env *models.Env) []api.Controller {
+	return []api.Controller{
 		jobControllers.New(jobApi.New(kubeUtil, env)),
 		batchControllers.New(batchApi.New(kubeUtil, env)),
 	}
@@ -116,7 +127,7 @@ func parseFlagsFromArgs(fs *pflag.FlagSet) {
 	case err == pflag.ErrHelp:
 		os.Exit(0)
 	case err != nil:
-		fmt.Fprintf(os.Stderr, "Error: %s\n\n", err.Error())
+		log.Error().Err(err).Msg("Failed to parse flags")
 		fs.Usage()
 		os.Exit(2)
 	}
