@@ -43,7 +43,7 @@ func NewRadixBatchWatcher(radixClient radixclient.Interface, namespace string, n
 	watcher := Watcher{
 		Stop:                 make(chan struct{}),
 		radixInformerFactory: radixinformers.NewSharedInformerFactoryWithOptions(radixClient, resyncPeriod, radixinformers.WithNamespace(namespace)),
-		logger:               log.Logger.With().Str("radixJobScheduler", "radix-batch-watcher").Logger(),
+		logger:               log.Logger.With().Str("pkg", "radix-batch-watcher").Logger(),
 	}
 
 	existingRadixBatchMap, err := getRadixBatchMap(radixClient, namespace)
