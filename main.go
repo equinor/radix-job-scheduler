@@ -49,10 +49,16 @@ func main() {
 }
 
 func initLogger(env *models.Env) {
-	logLevel, err := zerolog.ParseLevel(env.LogLevel)
+	logLevelStr := env.LogLevel
+	if len(logLevelStr) == 0 {
+		logLevelStr = zerolog.LevelInfoValue
+	}
+
+	logLevel, err := zerolog.ParseLevel(logLevelStr)
 	if err != nil {
 		logLevel = zerolog.InfoLevel
 	}
+
 	zerolog.SetGlobalLevel(logLevel)
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.TimeOnly})
 	zerolog.DefaultContextLogger = &log.Logger
