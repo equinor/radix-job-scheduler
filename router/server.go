@@ -20,6 +20,7 @@ func NewServer(env *models.Env, controllers ...api.Controller) http.Handler {
 	gin.SetMode(gin.ReleaseMode)
 	engine := gin.New()
 	engine.RemoveExtraSlash = true
+	engine.Use(commongin.SetZerologLogger(commongin.ZerologLoggerWithRequestId))
 	engine.Use(commongin.ZerologRequestLogger(), gin.Recovery())
 
 	if env.UseSwagger {
