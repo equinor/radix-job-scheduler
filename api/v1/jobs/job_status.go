@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/equinor/radix-common/utils"
+	"github.com/equinor/radix-job-scheduler/api/v1/jobs/internal/status"
 	"github.com/equinor/radix-job-scheduler/models/common"
 	modelsv1 "github.com/equinor/radix-job-scheduler/models/v1"
 	defaultsv1 "github.com/equinor/radix-job-scheduler/models/v1/defaults"
@@ -29,7 +30,7 @@ func GetJobStatusFromJob(ctx context.Context, kubeClient kubernetes.Interface, j
 		Started: utils.FormatTime(job.Status.StartTime),
 		Ended:   getJobEndTimestamp(job),
 	}
-	status := common.GetStatusFromJobStatus(job.Status)
+	status := status.GetStatusFromJob(job)
 
 	jobStatus.Status = status.String()
 	jobStatus.JobId = job.ObjectMeta.Labels[defaultsv1.RadixJobIdLabel]   // Not empty, if JobId exists
