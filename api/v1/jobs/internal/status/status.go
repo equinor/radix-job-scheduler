@@ -27,7 +27,7 @@ func GetStatusFromJob(job *v1.Job) common.ProgressStatus {
 }
 
 func getJobBackoffLimit(job *v1.Job) int32 {
-	if job.Spec.BackoffLimit == nil {
+	if job.Spec.BackoffLimit != nil {
 		return *job.Spec.BackoffLimit
 	}
 	return 0
