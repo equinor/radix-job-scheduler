@@ -15,11 +15,11 @@ func GetStatusFromJob(job *v1.Job) common.ProgressStatus {
 			return common.Running
 		}
 		return common.Active
-	case jobStatus.Failed == backoffLimit:
+	case jobStatus.Failed == backoffLimit+1:
 		return common.Failed
 	case jobStatus.Succeeded > 0:
 		return common.Succeeded
-	case jobStatus.Active == 0 && jobStatus.Failed+jobStatus.Succeeded < backoffLimit:
+	case jobStatus.Active == 0 && jobStatus.Failed+jobStatus.Succeeded < backoffLimit+1:
 		return common.Waiting
 	}
 	var status common.ProgressStatus
