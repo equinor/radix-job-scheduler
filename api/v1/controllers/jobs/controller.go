@@ -6,14 +6,13 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/equinor/radix-job-scheduler/api"
 	"github.com/equinor/radix-job-scheduler/api/controllers"
 	apiErrors "github.com/equinor/radix-job-scheduler/api/errors"
 	jobApi "github.com/equinor/radix-job-scheduler/api/v1/jobs"
-	"github.com/equinor/radix-job-scheduler/models"
 	apiModels "github.com/equinor/radix-job-scheduler/models/common"
-	"github.com/equinor/radix-job-scheduler/utils"
-	"github.com/gorilla/mux"
-	log "github.com/sirupsen/logrus"
+	"github.com/gin-gonic/gin"
+	"github.com/rs/zerolog/log"
 )
 
 const jobNameParam = "jobName"
@@ -24,39 +23,39 @@ type jobController struct {
 }
 
 // New create a new job controller
-func New(handler jobApi.JobHandler) models.Controller {
+func New(handler jobApi.JobHandler) api.Controller {
 	return &jobController{
 		handler: handler,
 	}
 }
 
 // GetRoutes List the supported routes of this controller
-func (controller *jobController) GetRoutes() models.Routes {
-	routes := models.Routes{
-		models.Route{
-			Path:        "/jobs",
-			Method:      http.MethodPost,
-			HandlerFunc: controller.CreateJob,
+func (controller *jobController) GetRoutes() []api.Route {
+	routes := []api.Route{
+		{
+			Path:    "/jobs",
+			Method:  http.MethodPost,
+			Handler: controller.CreateJob,
 		},
-		models.Route{
-			Path:        "/jobs",
-			Method:      http.MethodGet,
-			HandlerFunc: controller.GetJobs,
+		{
+			Path:    "/jobs",
+			Method:  http.MethodGet,
+			Handler: controller.GetJobs,
 		},
-		models.Route{
-			Path:        fmt.Sprintf("/jobs/{%s}", jobNameParam),
-			Method:      http.MethodGet,
-			HandlerFunc: controller.GetJob,
+		{
+			Path:    fmt.Sprintf("/jobs/:%s", jobNameParam),
+			Method:  http.MethodGet,
+			Handler: controller.GetJob,
 		},
-		models.Route{
-			Path:        fmt.Sprintf("/jobs/{%s}", jobNameParam),
-			Method:      http.MethodDelete,
-			HandlerFunc: controller.DeleteJob,
+		{
+			Path:    fmt.Sprintf("/jobs/:%s", jobNameParam),
+			Method:  http.MethodDelete,
+			Handler: controller.DeleteJob,
 		},
-		models.Route{
-			Path:        fmt.Sprintf("/jobs/{%s}/stop", jobNameParam),
-			Method:      http.MethodPost,
-			HandlerFunc: controller.StopJob,
+		{
+			Path:    fmt.Sprintf("/jobs/:%s/stop", jobNameParam),
+			Method:  http.MethodPost,
+			Handler: controller.StopJob,
 		},
 	}
 	return routes
@@ -93,31 +92,35 @@ func (controller *jobController) GetRoutes() models.Routes {
 //     description: "Internal server error"
 //     schema:
 //        "$ref": "#/definitions/Status"
-func (controller *jobController) CreateJob(w http.ResponseWriter, r *http.Request) {
-	log.Info("Create Job")
-	log.Debugf("Read the request body. Request content length %d", r.ContentLength)
+func (controller *jobController) CreateJob(c *gin.Context) {
+	logger := log.Ctx(c.Request.Context())
+	logger.Info().Msg("Create Job")
+	logger.Debug().Msgf("Read the request body. Request content length %d", c.Request.ContentLength)
+
 	var jobScheduleDescription apiModels.JobScheduleDescription
-	if body, _ := io.ReadAll(r.Body); len(body) > 0 {
-		log.Debugf("Read %d bytes", len(body))
+	if body, _ := io.ReadAll(c.Request.Body); len(body) > 0 {
+		logger.Debug().Msgf("Read %d bytes", len(body))
+
 		if err := json.Unmarshal(body, &jobScheduleDescription); err != nil {
-			log.Errorf("failed to unmarshal jobScheduleDescription: %v", err)
-			controller.HandleError(w, apiErrors.NewInvalid("payload"))
+			_ = c.Error(err)
+			controller.HandleError(c, apiErrors.NewInvalid("payload"))
 			return
 		}
 	}
 
-	jobState, err := controller.handler.CreateJob(r.Context(), &jobScheduleDescription)
+	jobState, err := controller.handler.CreateJob(c.Request.Context(), &jobScheduleDescription)
 	if err != nil {
-		controller.HandleError(w, err)
+		controller.HandleError(c, err)
 		return
 	}
-	log.Infof("Job %s has been created", jobState.Name)
-	err = controller.handler.MaintainHistoryLimit(r.Context())
+
+	logger.Info().Msgf("Job %s has been created", jobState.Name)
+	err = controller.handler.MaintainHistoryLimit(c.Request.Context())
 	if err != nil {
-		log.Warnf("failed to maintain job history: %v", err)
+		logger.Warn().Err(err).Msg("failed to maintain job history")
 	}
 
-	utils.JSONResponse(w, &jobState)
+	c.JSON(http.StatusOK, jobState)
 }
 
 // swagger:operation GET /jobs/ Job getJobs
@@ -135,15 +138,16 @@ func (controller *jobController) CreateJob(w http.ResponseWriter, r *http.Reques
 //     description: "Internal server error"
 //     schema:
 //        "$ref": "#/definitions/Status"
-func (controller *jobController) GetJobs(w http.ResponseWriter, r *http.Request) {
-	log.Info("Get job list")
-	jobs, err := controller.handler.GetJobs(r.Context())
+func (controller *jobController) GetJobs(c *gin.Context) {
+	logger := log.Ctx(c.Request.Context())
+	logger.Info().Msg("Get job list")
+	jobs, err := controller.handler.GetJobs(c.Request.Context())
 	if err != nil {
-		controller.HandleError(w, err)
+		controller.HandleError(c, err)
 		return
 	}
-	log.Debugf("Found %d jobs", len(jobs))
-	utils.JSONResponse(w, jobs)
+	logger.Debug().Msgf("Found %d jobs", len(jobs))
+	c.JSON(http.StatusOK, jobs)
 }
 
 // swagger:operation GET /jobs/{jobName} Job getJob
@@ -168,15 +172,16 @@ func (controller *jobController) GetJobs(w http.ResponseWriter, r *http.Request)
 //     description: "Internal server error"
 //     schema:
 //        "$ref": "#/definitions/Status"
-func (controller *jobController) GetJob(w http.ResponseWriter, r *http.Request) {
-	jobName := mux.Vars(r)[jobNameParam]
-	log.Infof("Get job %s", jobName)
-	job, err := controller.handler.GetJob(r.Context(), jobName)
+func (controller *jobController) GetJob(c *gin.Context) {
+	jobName := c.Param(jobNameParam)
+	logger := log.Ctx(c.Request.Context())
+	logger.Info().Msgf("Get job %s", jobName)
+	job, err := controller.handler.GetJob(c.Request.Context(), jobName)
 	if err != nil {
-		controller.HandleError(w, err)
+		controller.HandleError(c, err)
 		return
 	}
-	utils.JSONResponse(w, job)
+	c.JSON(http.StatusOK, job)
 }
 
 // swagger:operation DELETE /jobs/{jobName} Job deleteJob
@@ -201,22 +206,23 @@ func (controller *jobController) GetJob(w http.ResponseWriter, r *http.Request) 
 //     description: "Internal server error"
 //     schema:
 //        "$ref": "#/definitions/Status"
-func (controller *jobController) DeleteJob(w http.ResponseWriter, r *http.Request) {
-	jobName := mux.Vars(r)[jobNameParam]
-	log.Infof("Delete job %s", jobName)
-	err := controller.handler.DeleteJob(r.Context(), jobName)
+func (controller *jobController) DeleteJob(c *gin.Context) {
+	jobName := c.Param(jobNameParam)
+	logger := log.Ctx(c.Request.Context())
+	logger.Info().Msgf("Delete job %s", jobName)
+	err := controller.handler.DeleteJob(c.Request.Context(), jobName)
 	if err != nil {
-		controller.HandleError(w, err)
+		controller.HandleError(c, err)
 		return
 	}
 
-	log.Infof("Job %s has been deleted", jobName)
+	logger.Info().Msgf("Job %s has been deleted", jobName)
 	status := apiModels.Status{
 		Status:  apiModels.StatusSuccess,
 		Code:    http.StatusOK,
 		Message: fmt.Sprintf("job %s successfully deleted", jobName),
 	}
-	utils.StatusResponse(w, &status)
+	c.JSON(http.StatusOK, &status)
 }
 
 // swagger:operation POST /jobs/{jobName}/stop Job stopJob
@@ -241,21 +247,22 @@ func (controller *jobController) DeleteJob(w http.ResponseWriter, r *http.Reques
 //     description: "Internal server error"
 //     schema:
 //        "$ref": "#/definitions/Status"
-func (controller *jobController) StopJob(w http.ResponseWriter, r *http.Request) {
-	jobName := mux.Vars(r)[jobNameParam]
-	log.Infof("Stop the job %s", jobName)
+func (controller *jobController) StopJob(c *gin.Context) {
+	jobName := c.Param(jobNameParam)
+	logger := log.Ctx(c.Request.Context())
+	logger.Info().Msgf("Stop the job %s", jobName)
 
-	err := controller.handler.StopJob(r.Context(), jobName)
+	err := controller.handler.StopJob(c.Request.Context(), jobName)
 	if err != nil {
-		controller.HandleError(w, err)
+		controller.HandleError(c, err)
 		return
 	}
 
-	log.Infof("Job %s has been stopped", jobName)
+	logger.Info().Msgf("Job %s has been stopped", jobName)
 	status := apiModels.Status{
 		Status:  apiModels.StatusSuccess,
 		Code:    http.StatusOK,
 		Message: fmt.Sprintf("job %s was successfully stopped", jobName),
 	}
-	utils.StatusResponse(w, &status)
+	c.JSON(http.StatusOK, &status)
 }
