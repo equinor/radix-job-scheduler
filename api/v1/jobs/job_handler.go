@@ -12,7 +12,7 @@ import (
 	modelsv1 "github.com/equinor/radix-job-scheduler/models/v1"
 	modelsv2 "github.com/equinor/radix-job-scheduler/models/v2"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
-	log "github.com/sirupsen/logrus"
+	"github.com/rs/zerolog/log"
 	"k8s.io/apimachinery/pkg/api/errors"
 )
 
@@ -50,7 +50,8 @@ func New(kube *kube.Kube, env *models.Env) JobHandler {
 
 // GetJobs Get status of all jobs
 func (handler *jobHandler) GetJobs(ctx context.Context) ([]modelsv1.JobStatus, error) {
-	log.Debugf("Get Jobs for namespace: %s", handler.common.Env.RadixDeploymentNamespace)
+	logger := log.Ctx(ctx)
+	logger.Debug().Msgf("Get Jobs for namespace: %s", handler.common.Env.RadixDeploymentNamespace)
 
 	singleJobRadixBatches, err := handler.common.HandlerApiV2.GetRadixBatchSingleJobs(ctx)
 	if err != nil {
@@ -77,13 +78,14 @@ func (handler *jobHandler) GetJobs(ctx context.Context) ([]modelsv1.JobStatus, e
 		apiv1.SetBatchJobEventMessageToBatchJobStatus(&jobStatuses[i], batchJobPodsMap, eventMessageForPods)
 	}
 
-	log.Debugf("Found %v jobs for namespace %s", len(jobStatuses), handler.common.Env.RadixDeploymentNamespace)
+	logger.Debug().Msgf("Found %v jobs for namespace %s", len(jobStatuses), handler.common.Env.RadixDeploymentNamespace)
 	return jobStatuses, nil
 }
 
 // GetJob Get status of a job
 func (handler *jobHandler) GetJob(ctx context.Context, jobName string) (*modelsv1.JobStatus, error) {
-	log.Debugf("get job %s for namespace: %s", jobName, handler.common.Env.RadixDeploymentNamespace)
+	logger := log.Ctx(ctx)
+	logger.Debug().Msgf("get job %s for namespace: %s", jobName, handler.common.Env.RadixDeploymentNamespace)
 	if batchName, _, ok := apiv1.ParseBatchAndJobNameFromScheduledJobName(jobName); ok {
 		jobStatus, err := apiv1.GetBatchJob(ctx, handler.common.HandlerApiV2, batchName, jobName)
 		if err != nil {
@@ -102,7 +104,8 @@ func (handler *jobHandler) GetJob(ctx context.Context, jobName string) (*modelsv
 
 // CreateJob Create a job with parameters
 func (handler *jobHandler) CreateJob(ctx context.Context, jobScheduleDescription *common.JobScheduleDescription) (*modelsv1.JobStatus, error) {
-	log.Debugf("Create job for namespace: %s", handler.common.Env.RadixDeploymentNamespace)
+	logger := log.Ctx(ctx)
+	logger.Debug().Msgf("Create job for namespace: %s", handler.common.Env.RadixDeploymentNamespace)
 	radixBatch, err := handler.common.HandlerApiV2.CreateRadixBatchSingleJob(ctx, jobScheduleDescription)
 	if err != nil {
 		return nil, err
@@ -112,7 +115,8 @@ func (handler *jobHandler) CreateJob(ctx context.Context, jobScheduleDescription
 
 // CopyJob Copy a job with  deployment and optional parameters
 func (handler *jobHandler) CopyJob(ctx context.Context, jobName string, deploymentName string) (*modelsv1.JobStatus, error) {
-	log.Debugf("stop the job %s for namespace: %s", jobName, handler.common.Env.RadixDeploymentNamespace)
+	logger := log.Ctx(ctx)
+	logger.Debug().Msgf("stop the job %s for namespace: %s", jobName, handler.common.Env.RadixDeploymentNamespace)
 	radixBatch, err := apiv1.CopyJob(ctx, handler.common.HandlerApiV2, jobName, deploymentName)
 	if err != nil {
 		return nil, err
@@ -122,7 +126,8 @@ func (handler *jobHandler) CopyJob(ctx context.Context, jobName string, deployme
 
 // DeleteJob Delete a job
 func (handler *jobHandler) DeleteJob(ctx context.Context, jobName string) error {
-	log.Debugf("delete job %s for namespace: %s", jobName, handler.common.Env.RadixDeploymentNamespace)
+	logger := log.Ctx(ctx)
+	logger.Debug().Msgf("delete job %s for namespace: %s", jobName, handler.common.Env.RadixDeploymentNamespace)
 	batchName, _, ok := apiv1.ParseBatchAndJobNameFromScheduledJobName(jobName)
 	if !ok {
 		return apiErrors.NewInvalidWithReason(jobName, "is not a valid job name")
@@ -161,7 +166,8 @@ func jobExistInBatch(radixBatch *modelsv2.RadixBatch, jobName string) bool {
 
 // StopJob Stop a job
 func (handler *jobHandler) StopJob(ctx context.Context, jobName string) error {
-	log.Debugf("stop the job %s for namespace: %s", jobName, handler.common.Env.RadixDeploymentNamespace)
+	logger := log.Ctx(ctx)
+	logger.Debug().Msgf("stop the job %s for namespace: %s", jobName, handler.common.Env.RadixDeploymentNamespace)
 	return apiv1.StopJob(ctx, handler.common.HandlerApiV2, jobName)
 }
 

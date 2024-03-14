@@ -1,4 +1,4 @@
-FROM golang:1.21-alpine3.18 as builder
+FROM golang:1.21-alpine3.19 as builder
 ENV GO111MODULE=on
 
 RUN addgroup -S -g 1000 job-scheduler
@@ -25,6 +25,5 @@ COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=builder /etc/passwd /etc/passwd
 COPY --from=builder /usr/local/bin/radix-job-scheduler /usr/local/bin/radix-job-scheduler
 
-EXPOSE 8080
 USER 1000
 ENTRYPOINT ["/usr/local/bin/radix-job-scheduler"]
