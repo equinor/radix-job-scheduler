@@ -60,7 +60,7 @@ func initLogger(env *models.Env) {
 	}
 
 	zerolog.SetGlobalLevel(logLevel)
-	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.TimeOnly})
+	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.RFC3339})
 	zerolog.DefaultContextLogger = &log.Logger
 }
 
