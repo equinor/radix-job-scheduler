@@ -7,7 +7,7 @@ toolchain go1.21.0
 require (
 	dario.cat/mergo v1.0.0
 	github.com/equinor/radix-common v1.9.2
-	github.com/equinor/radix-operator v1.50.2
+	github.com/equinor/radix-operator v1.50.7
 	github.com/gin-gonic/gin v1.9.1
 	github.com/go-swagger/go-swagger v0.30.5
 	github.com/golang/mock v1.6.0
@@ -67,7 +67,6 @@ require (
 	github.com/prometheus/common v0.45.0 // indirect
 	github.com/prometheus/procfs v0.12.0 // indirect
 	github.com/rs/xid v1.5.0 // indirect
-	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.2.11 // indirect
 	golang.org/x/arch v0.3.0 // indirect
