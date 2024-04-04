@@ -49,4 +49,10 @@ type JobStatus struct {
 	// required: false
 	// example: "Error occurred"
 	Message string `json:"message,omitempty"`
+
+	// Updated timestamp when the status was updated
+	//
+	// required: false
+	// example: 2006-01-02T15:04:05Z
+	Updated string `json:"updated,omitempty"`
 }

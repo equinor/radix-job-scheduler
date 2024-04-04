@@ -170,6 +170,7 @@ func getRadixBatchEventFromRadixBatch(event events.Event, radixBatch *radixv1.Ra
 		Ended:   endedTime,
 		Status:  apimodelsv2.GetRadixBatchStatus(radixBatch).String(),
 		Message: radixBatch.Status.Condition.Message,
+		Updated: utils.FormatTime(pointers.Ptr(metav1.Now())),
 	}
 	jobStatuses := getRadixBatchJobStatusesFromRadixBatch(radixBatch, radixBatchJobStatuses, jobStatusBatchName)
 	return events.BatchEvent{
@@ -200,6 +201,7 @@ func getRadixBatchJobStatusesFromRadixBatch(radixBatch *radixv1.RadixBatch, radi
 			Ended:     utils.FormatTime(radixBatchJobStatus.EndTime),
 			Status:    apimodelsv2.GetRadixBatchJobStatusFromPhase(radixBatchJob, radixBatchJobStatus.Phase).String(),
 			Message:   radixBatchJobStatus.Message,
+			Updated:   utils.FormatTime(pointers.Ptr(metav1.Now())),
 		}
 		jobStatuses = append(jobStatuses, jobStatus)
 	}

@@ -574,6 +574,12 @@
           ],
           "x-go-name": "Status",
           "example": "Waiting"
+        },
+        "updated": {
+          "description": "Updated timestamp when the status was updated",
+          "type": "string",
+          "x-go-name": "Updated",
+          "example": "2006-01-02T15:04:05Z"
         }
       },
       "x-go-package": "github.com/equinor/radix-job-scheduler/models/v1/events"
@@ -677,6 +683,12 @@
           ],
           "x-go-name": "Status",
           "example": "Waiting"
+        },
+        "updated": {
+          "description": "Updated timestamp when the status was updated",
+          "type": "string",
+          "x-go-name": "Updated",
+          "example": "2006-01-02T15:04:05Z"
         }
       },
       "x-go-package": "github.com/equinor/radix-job-scheduler/models/v1"
@@ -793,6 +805,12 @@
           ],
           "x-go-name": "Status",
           "example": "Waiting"
+        },
+        "updated": {
+          "description": "Updated timestamp when the status was updated",
+          "type": "string",
+          "x-go-name": "Updated",
+          "example": "2006-01-02T15:04:05Z"
         }
       },
       "x-go-package": "github.com/equinor/radix-job-scheduler/models/v1"
