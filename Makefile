@@ -34,9 +34,12 @@ docker-build:
 	docker build -t $(DOCKER_REGISTRY)/radix-job-scheduler:$(TAG) -f Dockerfile .
 
 .PHONY: docker-push
-docker-push: docker-build
+docker-push:
 	az acr login --name $(CONTAINER_REPO)
 	docker push $(DOCKER_REGISTRY)/radix-job-scheduler:$(TAG)
+
+.PHONY: deploy
+deploy: docker-build docker-push
 
 .PHONY: docker-push-main
 docker-push-main:
