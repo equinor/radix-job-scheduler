@@ -8,6 +8,7 @@ import (
 	"github.com/equinor/radix-job-scheduler/models"
 	"github.com/equinor/radix-job-scheduler/models/common"
 	modelsv1 "github.com/equinor/radix-job-scheduler/models/v1"
+	modelsv2 "github.com/equinor/radix-job-scheduler/models/v2"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	"github.com/rs/zerolog/log"
 	corev1 "k8s.io/api/core/v1"
@@ -70,7 +71,7 @@ func (handler *batchHandler) GetBatches(ctx context.Context) ([]modelsv1.BatchSt
 		return nil, err
 	}
 	for _, radixBatch := range radixBatches {
-		radixBatchStatus := GetBatchStatusFromRadixBatch(&radixBatch)
+		radixBatchStatus := getBatchStatusFromRadixBatch(&radixBatch)
 		setBatchJobEventMessages(radixBatchStatus, batchJobPodsMap, eventMessageForPods)
 		radixBatchStatuses = append(radixBatchStatuses, *radixBatchStatus)
 	}
@@ -91,7 +92,7 @@ func (handler *batchHandler) GetBatch(ctx context.Context, batchName string) (*m
 	if err != nil {
 		return nil, err
 	}
-	radixBatchStatus := GetBatchStatusFromRadixBatch(radixBatch)
+	radixBatchStatus := getBatchStatusFromRadixBatch(radixBatch)
 	labelSelectorForRadixBatchesPods := apiv1.GetLabelSelectorForRadixBatchesPods(handler.common.Env.RadixComponentName, batchName)
 	eventMessageForPods, batchJobPodsMap, err := handler.common.GetRadixBatchJobMessagesAndPodMaps(ctx, labelSelectorForRadixBatchesPods)
 	if err != nil {
@@ -109,7 +110,7 @@ func (handler *batchHandler) CreateBatch(ctx context.Context, batchScheduleDescr
 	if err != nil {
 		return nil, err
 	}
-	return GetBatchStatusFromRadixBatch(radixBatch), nil
+	return getBatchStatusFromRadixBatch(radixBatch), nil
 }
 
 // CopyBatch Copy a batch with  deployment and optional parameters
@@ -118,7 +119,7 @@ func (handler *batchHandler) CopyBatch(ctx context.Context, batchName string, de
 	if err != nil {
 		return nil, err
 	}
-	return GetBatchStatusFromRadixBatch(radixBatch), nil
+	return getBatchStatusFromRadixBatch(radixBatch), nil
 }
 
 // DeleteBatch Delete a batch
@@ -154,5 +155,20 @@ func (handler *batchHandler) MaintainHistoryLimit(ctx context.Context) error {
 func setBatchJobEventMessages(radixBatchStatus *modelsv1.BatchStatus, batchJobPodsMap map[string]corev1.Pod, eventMessageForPods map[string]string) {
 	for i := 0; i < len(radixBatchStatus.JobStatuses); i++ {
 		apiv1.SetBatchJobEventMessageToBatchJobStatus(&radixBatchStatus.JobStatuses[i], batchJobPodsMap, eventMessageForPods)
+	}
+}
+
+func getBatchStatusFromRadixBatch(radixBatch *modelsv2.RadixBatch) *modelsv1.BatchStatus {
+	return &modelsv1.BatchStatus{
+		JobStatus: modelsv1.JobStatus{
+			Name:    radixBatch.Name,
+			Created: radixBatch.CreationTime,
+			Started: radixBatch.Started,
+			Ended:   radixBatch.Ended,
+			Status:  radixBatch.Status,
+			Message: radixBatch.Message,
+		},
+		JobStatuses: apiv1.GetJobStatusFromRadixBatchJobsStatuses(*radixBatch),
+		BatchType:   radixBatch.BatchType,
 	}
 }
