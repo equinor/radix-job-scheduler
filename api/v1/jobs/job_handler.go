@@ -110,7 +110,7 @@ func (handler *jobHandler) CreateJob(ctx context.Context, jobScheduleDescription
 	if err != nil {
 		return nil, err
 	}
-	return GetSingleJobStatusFromRadixBatchJob(radixBatch)
+	return getSingleJobStatusFromRadixBatchJob(radixBatch)
 }
 
 // CopyJob Copy a job with  deployment and optional parameters
@@ -121,7 +121,7 @@ func (handler *jobHandler) CopyJob(ctx context.Context, jobName string, deployme
 	if err != nil {
 		return nil, err
 	}
-	return GetSingleJobStatusFromRadixBatchJob(radixBatch)
+	return getSingleJobStatusFromRadixBatchJob(radixBatch)
 }
 
 // DeleteJob Delete a job
@@ -174,4 +174,22 @@ func (handler *jobHandler) StopJob(ctx context.Context, jobName string) error {
 // MaintainHistoryLimit Delete outdated jobs
 func (handler *jobHandler) MaintainHistoryLimit(ctx context.Context) error {
 	return handler.common.HandlerApiV2.MaintainHistoryLimit(ctx)
+}
+
+func getSingleJobStatusFromRadixBatchJob(radixBatch *modelsv2.RadixBatch) (*modelsv1.JobStatus, error) {
+	if len(radixBatch.JobStatuses) != 1 {
+		return nil, fmt.Errorf("batch should have only one job")
+	}
+	radixBatchJobStatus := radixBatch.JobStatuses[0]
+	jobStatus := modelsv1.JobStatus{
+		JobId:       radixBatchJobStatus.JobId,
+		Name:        radixBatchJobStatus.Name,
+		Created:     radixBatchJobStatus.CreationTime,
+		Started:     radixBatchJobStatus.Started,
+		Ended:       radixBatchJobStatus.Ended,
+		Status:      radixBatchJobStatus.Status,
+		Message:     radixBatchJobStatus.Message,
+		PodStatuses: apiv1.GetPodStatus(radixBatchJobStatus.PodStatuses),
+	}
+	return &jobStatus, nil
 }

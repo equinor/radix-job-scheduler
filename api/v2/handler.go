@@ -19,6 +19,7 @@ import (
 	"github.com/equinor/radix-job-scheduler/models"
 	"github.com/equinor/radix-job-scheduler/models/common"
 	modelsv2 "github.com/equinor/radix-job-scheduler/models/v2"
+	"github.com/equinor/radix-job-scheduler/utils/radix/jobs"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	radixLabels "github.com/equinor/radix-operator/pkg/apis/utils/labels"
@@ -135,7 +136,7 @@ func getRadixBatchModelFromRadixBatch(radixBatch *radixv1.RadixBatch) modelsv2.R
 		CreationTime: utils.FormatTime(pointers.Ptr(radixBatch.GetCreationTimestamp())),
 		Started:      utils.FormatTime(radixBatch.Status.Condition.ActiveTime),
 		Ended:        utils.FormatTime(radixBatch.Status.Condition.CompletionTime),
-		Status:       GetRadixBatchStatus(radixBatch).String(),
+		Status:       jobs.GetRadixBatchStatus(radixBatch).String(),
 		Message:      radixBatch.Status.Condition.Message,
 		JobStatuses:  getRadixBatchJobStatusesFromRadixBatch(radixBatch, radixBatch.Status.JobStatuses),
 	}
@@ -145,6 +146,7 @@ func getRadixBatchJobStatusesFromRadixBatch(radixBatch *radixv1.RadixBatch, radi
 	radixBatchJobsStatuses := getRadixBatchJobsStatusesMap(radixBatchJobStatuses)
 	jobStatuses := make([]modelsv2.RadixBatchJobStatus, 0, len(radixBatch.Spec.Jobs))
 	for _, radixBatchJob := range radixBatch.Spec.Jobs {
+		stopJob := radixBatchJob.Stop != nil && *radixBatchJob.Stop
 		jobName := fmt.Sprintf("%s-%s", radixBatch.Name, radixBatchJob.Name) // composed name in models are always consist of a batchName and original jobName
 		radixBatchJobStatus := modelsv2.RadixBatchJobStatus{
 			Name:  jobName,
@@ -154,8 +156,10 @@ func getRadixBatchJobStatusesFromRadixBatch(radixBatch *radixv1.RadixBatch, radi
 			radixBatchJobStatus.CreationTime = utils.FormatTime(jobStatus.CreationTime)
 			radixBatchJobStatus.Started = utils.FormatTime(jobStatus.StartTime)
 			radixBatchJobStatus.Ended = utils.FormatTime(jobStatus.EndTime)
-			radixBatchJobStatus.Status = GetRadixBatchJobStatusFromPhase(radixBatchJob, jobStatus.Phase).String()
+			radixBatchJobStatus.Status = jobs.GetScheduledJobStatus(jobStatus, stopJob).String()
 			radixBatchJobStatus.Message = jobStatus.Message
+			radixBatchJobStatus.PodStatuses = getPodStatusByRadixBatchJobPodStatus(jobStatus.RadixBatchJobPodStatuses)
+
 		}
 		jobStatuses = append(jobStatuses, radixBatchJobStatus)
 	}
@@ -824,4 +828,24 @@ func applyDefaultJobDescriptionProperties(jobScheduleDescription *common.JobSche
 		return nil
 	}
 	return mergo.Merge(&jobScheduleDescription.RadixJobComponentConfig, defaultRadixJobComponentConfig, mergo.WithTransformers(authTransformer))
+}
+
+func getPodStatusByRadixBatchJobPodStatus(podStatuses []radixv1.RadixBatchJobPodStatus) []modelsv2.RadixBatchJobPodStatus {
+	return slice.Map(podStatuses, func(status radixv1.RadixBatchJobPodStatus) modelsv2.RadixBatchJobPodStatus {
+		return modelsv2.RadixBatchJobPodStatus{
+			Name:             status.Name,
+			Created:          utils.FormatTime(status.CreationTime),
+			StartTime:        utils.FormatTime(status.StartTime),
+			EndTime:          utils.FormatTime(status.EndTime),
+			ContainerStarted: utils.FormatTime(status.StartTime),
+			Status:           modelsv2.ReplicaStatus{Status: jobs.GetReplicaStatusByJobPodStatusPhase(status.Phase)},
+			StatusMessage:    status.Message,
+			RestartCount:     status.RestartCount,
+			Image:            status.Image,
+			ImageId:          status.ImageID,
+			PodIndex:         status.PodIndex,
+			ExitCode:         status.ExitCode,
+			Reason:           status.Reason,
+		}
+	})
 }
