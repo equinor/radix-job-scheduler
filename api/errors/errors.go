@@ -46,6 +46,17 @@ func (e *StatusError) Status() *common.Status {
 	return &e.ErrStatus
 }
 
+func NewBadRequest(message string) *StatusError {
+	return &StatusError{
+		common.Status{
+			Status:  common.StatusFailure,
+			Reason:  common.StatusReasonBadRequest,
+			Code:    http.StatusBadRequest,
+			Message: message,
+		},
+	}
+}
+
 func NewNotFound(kind, name string) *StatusError {
 	return &StatusError{
 		common.Status{

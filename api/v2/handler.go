@@ -299,7 +299,7 @@ func (h *handler) StopRadixBatch(ctx context.Context, batchName string) error {
 		return apiErrors.NewFromError(err)
 	}
 	if radixBatch.Status.Condition.Type == radixv1.BatchConditionTypeCompleted {
-		return apiErrors.NewFromError(fmt.Errorf("cannot stop completed batch %s", batchName))
+		return apiErrors.NewBadRequest(fmt.Sprintf("cannot stop completed batch %s", batchName))
 	}
 
 	newRadixBatch := radixBatch.DeepCopy()
@@ -324,7 +324,7 @@ func (h *handler) StopRadixBatchJob(ctx context.Context, batchName string, jobNa
 		return err
 	}
 	if radixBatch.Status.Condition.Type == radixv1.BatchConditionTypeCompleted {
-		return apiErrors.NewFromError(fmt.Errorf("cannot stop the job %s in the completed batch %s", jobName, batchName))
+		return apiErrors.NewBadRequest(fmt.Sprintf("cannot stop the job %s in the completed batch %s", jobName, batchName))
 	}
 
 	newRadixBatch := radixBatch.DeepCopy()
@@ -335,7 +335,7 @@ func (h *handler) StopRadixBatchJob(ctx context.Context, batchName string, jobNa
 		}
 		if jobStatus, ok := radixBatchJobsStatusMap[radixBatchJob.Name]; ok &&
 			(isRadixBatchJobSucceeded(jobStatus) || isRadixBatchJobFailed(jobStatus)) {
-			return apiErrors.NewFromError(fmt.Errorf("cannot stop the job %s with the status %s in the batch %s", jobName, string(jobStatus.Phase), batchName))
+			return apiErrors.NewBadRequest(fmt.Sprintf("cannot stop the job %s with the status %s in the batch %s", jobName, string(jobStatus.Phase), batchName))
 		}
 		newRadixBatch.Spec.Jobs[jobIndex].Stop = pointers.Ptr(true)
 		return h.updateRadixBatch(ctx, newRadixBatch)
@@ -351,7 +351,7 @@ func (h *handler) updateRadixBatch(ctx context.Context, radixBatch *radixv1.Radi
 		return err
 	})
 	if err != nil {
-		return apiErrors.NewFromError(fmt.Errorf("failed to patch RadixBatch object: %v", err))
+		return apiErrors.NewFromError(fmt.Errorf("failed to patch RadixBatch object: %w", err))
 	}
 	logger.Debug().Msgf("Patched RadixBatch: %s in namespace %s", radixBatch.GetName(), namespace)
 	return nil
