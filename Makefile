@@ -72,7 +72,6 @@ HAS_SWAGGER       := $(shell command -v swagger;)
 HAS_GOLANGCI_LINT := $(shell command -v golangci-lint;)
 HAS_MOCKGEN       := $(shell command -v mockgen;)
 
-
 bootstrap:
 ifndef HAS_SWAGGER
 	go install github.com/go-swagger/go-swagger/cmd/swagger@v0.31.0
