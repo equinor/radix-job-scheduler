@@ -290,6 +290,10 @@ func (controller *batchController) DeleteBatch(c *gin.Context) {
 //     description: "Successful stop batch"
 //     schema:
 //        "$ref": "#/definitions/Status"
+//   "400":
+//     description: "Bad request"
+//     schema:
+//        "$ref": "#/definitions/Status"
 //   "404":
 //     description: "Not found"
 //     schema:
@@ -334,6 +338,10 @@ func (controller *batchController) StopBatch(c *gin.Context) {
 // responses:
 //   "200":
 //     description: "Successful stop batch job"
+//     schema:
+//        "$ref": "#/definitions/Status"
+//   "400":
+//     description: "Bad request"
 //     schema:
 //        "$ref": "#/definitions/Status"
 //   "404":

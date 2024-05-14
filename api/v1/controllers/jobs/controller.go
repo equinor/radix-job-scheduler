@@ -239,6 +239,10 @@ func (controller *jobController) DeleteJob(c *gin.Context) {
 //     description: "Successful delete job"
 //     schema:
 //        "$ref": "#/definitions/Status"
+//   "400":
+//     description: "Bad request"
+//     schema:
+//        "$ref": "#/definitions/Status"
 //   "404":
 //     description: "Not found"
 //     schema:

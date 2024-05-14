@@ -8,6 +8,9 @@ const (
 	// StatusReasonUnknown means the server has declined to indicate a specific reason.
 	// Status code 500.
 	StatusReasonUnknown StatusReason = "InternalError"
+	// StatusReasonBadRequest means that the operation could not be fulfilled.
+	// Status code 400
+	StatusReasonBadRequest StatusReason = "BadRequest"
 	// StatusReasonNotFound means one or more resources required for this operation
 	// could not be found.
 	// Status code 404
