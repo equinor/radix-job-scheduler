@@ -247,6 +247,12 @@
               "$ref": "#/definitions/Status"
             }
           },
+          "400": {
+            "description": "Bad request",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          },
           "404": {
             "description": "Not found",
             "schema": {
@@ -281,6 +287,12 @@
         "responses": {
           "200": {
             "description": "Successful stop batch",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          },
+          "400": {
+            "description": "Bad request",
             "schema": {
               "$ref": "#/definitions/Status"
             }
@@ -475,6 +487,12 @@
               "$ref": "#/definitions/Status"
             }
           },
+          "400": {
+            "description": "Bad request",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          },
           "404": {
             "description": "Not found",
             "schema": {
@@ -553,6 +571,14 @@
           "type": "string",
           "x-go-name": "Name",
           "example": "calculator"
+        },
+        "podStatuses": {
+          "description": "PodStatuses for each pod of the job",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/PodStatus"
+          },
+          "x-go-name": "PodStatuses"
         },
         "started": {
           "description": "Started timestamp",
@@ -662,6 +688,14 @@
           "type": "string",
           "x-go-name": "Name",
           "example": "calculator"
+        },
+        "podStatuses": {
+          "description": "PodStatuses for each pod of the job",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/PodStatus"
+          },
+          "x-go-name": "PodStatuses"
         },
         "started": {
           "description": "Started timestamp",
@@ -785,6 +819,14 @@
           "x-go-name": "Name",
           "example": "calculator"
         },
+        "podStatuses": {
+          "description": "PodStatuses for each pod of the job",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/PodStatus"
+          },
+          "x-go-name": "PodStatuses"
+        },
         "started": {
           "description": "Started timestamp",
           "type": "string",
@@ -811,6 +853,89 @@
           "type": "string",
           "x-go-name": "Updated",
           "example": "2006-01-02T15:04:05Z"
+        }
+      },
+      "x-go-package": "github.com/equinor/radix-job-scheduler/models/v1"
+    },
+    "PodStatus": {
+      "type": "object",
+      "title": "PodStatus contains details for the current status of the job's pods.",
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "containerStarted": {
+          "description": "Container started timestamp",
+          "type": "string",
+          "x-go-name": "ContainerStarted",
+          "example": "2006-01-02T15:04:05Z"
+        },
+        "created": {
+          "description": "Created timestamp",
+          "type": "string",
+          "x-go-name": "Created",
+          "example": "2006-01-02T15:04:05Z"
+        },
+        "endTime": {
+          "description": "The time at which the batch job's pod finishedAt.",
+          "type": "string",
+          "x-go-name": "EndTime",
+          "example": "2006-01-02T15:04:05Z"
+        },
+        "exitCode": {
+          "description": "Exit status from the last termination of the container",
+          "type": "integer",
+          "format": "int32",
+          "x-go-name": "ExitCode"
+        },
+        "image": {
+          "description": "The image the container is running.",
+          "type": "string",
+          "x-go-name": "Image",
+          "example": "radixdev.azurecr.io/app-server:cdgkg"
+        },
+        "imageId": {
+          "description": "ImageID of the container's image.",
+          "type": "string",
+          "x-go-name": "ImageId",
+          "example": "radixdev.azurecr.io/app-server@sha256:d40cda01916ef63da3607c03785efabc56eb2fc2e0dab0726b1a843e9ded093f"
+        },
+        "name": {
+          "description": "Pod name",
+          "type": "string",
+          "x-go-name": "Name",
+          "example": "server-78fc8857c4-hm76l"
+        },
+        "podIndex": {
+          "description": "The index of the pod in the re-starts",
+          "type": "integer",
+          "format": "int64",
+          "x-go-name": "PodIndex"
+        },
+        "reason": {
+          "description": "A brief CamelCase message indicating details about why the job is in this phase",
+          "type": "string",
+          "x-go-name": "Reason"
+        },
+        "replicaStatus": {
+          "$ref": "#/definitions/ReplicaStatus"
+        },
+        "restartCount": {
+          "description": "RestartCount count of restarts of a component container inside a pod",
+          "type": "integer",
+          "format": "int32",
+          "x-go-name": "RestartCount"
+        },
+        "startTime": {
+          "description": "The time at which the batch job's pod startedAt",
+          "type": "string",
+          "x-go-name": "StartTime",
+          "example": "2006-01-02T15:04:05Z"
+        },
+        "statusMessage": {
+          "description": "StatusMessage provides message describing the status of a component container inside a pod",
+          "type": "string",
+          "x-go-name": "StatusMessage"
         }
       },
       "x-go-package": "github.com/equinor/radix-job-scheduler/models/v1"
@@ -884,6 +1009,89 @@
       },
       "x-go-package": "github.com/equinor/radix-job-scheduler/models/v2"
     },
+    "RadixBatchJobPodStatus": {
+      "type": "object",
+      "title": "RadixBatchJobPodStatus contains details for the current status of the job's pods.",
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "containerStarted": {
+          "description": "Container started timestamp",
+          "type": "string",
+          "x-go-name": "ContainerStarted",
+          "example": "2006-01-02T15:04:05Z"
+        },
+        "created": {
+          "description": "Created timestamp",
+          "type": "string",
+          "x-go-name": "Created",
+          "example": "2006-01-02T15:04:05Z"
+        },
+        "endTime": {
+          "description": "The time at which the batch job's pod finishedAt.",
+          "type": "string",
+          "x-go-name": "EndTime",
+          "example": "2006-01-02T15:04:05Z"
+        },
+        "exitCode": {
+          "description": "Exit status from the last termination of the container",
+          "type": "integer",
+          "format": "int32",
+          "x-go-name": "ExitCode"
+        },
+        "image": {
+          "description": "The image the container is running.",
+          "type": "string",
+          "x-go-name": "Image",
+          "example": "radixdev.azurecr.io/app-server:cdgkg"
+        },
+        "imageId": {
+          "description": "ImageID of the container's image.",
+          "type": "string",
+          "x-go-name": "ImageId",
+          "example": "radixdev.azurecr.io/app-server@sha256:d40cda01916ef63da3607c03785efabc56eb2fc2e0dab0726b1a843e9ded093f"
+        },
+        "name": {
+          "description": "Pod name",
+          "type": "string",
+          "x-go-name": "Name",
+          "example": "server-78fc8857c4-hm76l"
+        },
+        "podIndex": {
+          "description": "The index of the pod in the re-starts",
+          "type": "integer",
+          "format": "int64",
+          "x-go-name": "PodIndex"
+        },
+        "reason": {
+          "description": "A brief CamelCase message indicating details about why the job is in this phase",
+          "type": "string",
+          "x-go-name": "Reason"
+        },
+        "replicaStatus": {
+          "$ref": "#/definitions/ReplicaStatus"
+        },
+        "restartCount": {
+          "description": "RestartCount count of restarts of a component container inside a pod",
+          "type": "integer",
+          "format": "int32",
+          "x-go-name": "RestartCount"
+        },
+        "startTime": {
+          "description": "The time at which the batch job's pod startedAt",
+          "type": "string",
+          "x-go-name": "StartTime",
+          "example": "2006-01-02T15:04:05Z"
+        },
+        "statusMessage": {
+          "description": "StatusMessage provides message describing the status of a component container inside a pod",
+          "type": "string",
+          "x-go-name": "StatusMessage"
+        }
+      },
+      "x-go-package": "github.com/equinor/radix-job-scheduler/models/v2"
+    },
     "RadixBatchJobStatus": {
       "description": "RadixBatchJobStatus holds general information about batch job status",
       "type": "object",
@@ -919,6 +1127,14 @@
           "description": "Name of the Radix batch job",
           "type": "string",
           "x-go-name": "Name"
+        },
+        "podStatuses": {
+          "description": "PodStatuses for each pod of the job",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/RadixBatchJobPodStatus"
+          },
+          "x-go-name": "PodStatuses"
         },
         "started": {
           "description": "Started timestamp",
@@ -975,6 +1191,31 @@
         }
       },
       "x-go-package": "github.com/equinor/radix-job-scheduler/models/common"
+    },
+    "ReplicaStatus": {
+      "description": "ReplicaStatus describes the status of a component container inside a pod",
+      "type": "object",
+      "required": [
+        "status"
+      ],
+      "properties": {
+        "status": {
+          "description": "Status of the container\nPending = Container in Waiting state and the reason is ContainerCreating\nFailed = Container is failed\nFailing = Container is failed\nRunning = Container in Running state\nSucceeded = Container in Succeeded state\nTerminated = Container in Terminated state",
+          "type": "string",
+          "enum": [
+            "Pending",
+            "Succeeded",
+            "Failing",
+            "Failed",
+            "Running",
+            "Terminated",
+            "Starting"
+          ],
+          "x-go-name": "Status",
+          "example": "Running"
+        }
+      },
+      "x-go-package": "github.com/equinor/radix-job-scheduler/models/v1"
     },
     "Status": {
       "description": "Status is a return value for calls that don't return other objects or when a request returns an error",
