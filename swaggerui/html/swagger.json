@@ -1215,7 +1215,7 @@
           "example": "Running"
         }
       },
-      "x-go-package": "github.com/equinor/radix-job-scheduler/models/v2"
+      "x-go-package": "github.com/equinor/radix-job-scheduler/models/v1"
     },
     "Status": {
       "description": "Status is a return value for calls that don't return other objects or when a request returns an error",
