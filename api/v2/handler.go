@@ -785,7 +785,7 @@ func (h *handler) GarbageCollectPayloadSecrets(ctx context.Context) error {
 	logger := log.Ctx(ctx)
 	logger.Debug().Msgf("Garbage collecting payload secrets")
 	payloadSecretRefNames, _ := h.getJobComponentPayloadSecretRefNames(ctx)
-	payloadSecrets, err := h.kubeUtil.ListSecretsWithSelector(h.env.RadixDeploymentNamespace, radixLabels.GetRadixBatchDescendantsSelector(h.env.RadixComponentName).String())
+	payloadSecrets, err := h.kubeUtil.ListSecretsWithSelector(ctx, h.env.RadixDeploymentNamespace, radixLabels.GetRadixBatchDescendantsSelector(h.env.RadixComponentName).String())
 	if err != nil {
 		return apiErrors.NewFromError(err)
 	}
@@ -797,7 +797,7 @@ func (h *handler) GarbageCollectPayloadSecrets(ctx context.Context) error {
 				logger.Debug().Msgf("skipping deletion of an orphaned payload secret %s, created within 24 hours", payloadSecret.GetName())
 				continue
 			}
-			err := h.DeleteSecret(payloadSecret)
+			err := h.DeleteSecret(ctx, payloadSecret)
 			if err != nil {
 				logger.Error().Err(err).Msgf("failed deleting of an orphaned payload secret %s", payloadSecret.GetName())
 			}

@@ -26,6 +26,7 @@ import (
 	radixLabels "github.com/equinor/radix-operator/pkg/apis/utils/labels"
 	"github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 	radixclientfake "github.com/equinor/radix-operator/pkg/client/clientset/versioned/fake"
+	kedafake "github.com/kedacore/keda/v2/pkg/generated/clientset/versioned/fake"
 	prometheusclient "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned"
 	prometheusfake "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned/fake"
 	corev1 "k8s.io/api/core/v1"
@@ -199,20 +200,22 @@ func SetupTest(appName, appEnvironment, appComponent, appDeployment string, hist
 	_ = os.Setenv(defaults.OperatorEnvLimitDefaultMemoryEnvironmentVariable, "500M")
 	kubeclient := fake.NewSimpleClientset()
 	radixclient := radixclientfake.NewSimpleClientset()
+	kedaclient := kedafake.NewSimpleClientset()
 	prometheusClient := prometheusfake.NewSimpleClientset()
-	kubeUtil, _ := kube.New(kubeclient, radixclient, secretstoragefake.NewSimpleClientset())
+	secretStoreClient := secretstoragefake.NewSimpleClientset()
+	kubeUtil, _ := kube.New(kubeclient, radixclient, kedaclient, secretStoreClient)
 	return radixclient, kubeclient, prometheusClient, kubeUtil
 }
 
 func (params *TestParams) ApplyRd(kubeUtil *kube.Kube) *v1.RadixDeployment {
-	envVarsConfigMap, envVarsMetadataConfigMap, _ := kubeUtil.GetOrCreateEnvVarsConfigMapAndMetadataMap(params.Namespace, params.AppName, params.JobComponentName)
+	envVarsConfigMap, envVarsMetadataConfigMap, _ := kubeUtil.GetOrCreateEnvVarsConfigMapAndMetadataMap(context.Background(), params.Namespace, params.AppName, params.JobComponentName)
 	envVarsConfigMap.Data = params.EnvVarsConfigMapData
 	metadataMap := make(map[string]kube.EnvVarMetadata)
 	for name, value := range params.EnvVarsMetadataConfigMapData {
 		metadataMap[name] = kube.EnvVarMetadata{RadixConfigValue: value}
 	}
 	_ = kube.SetEnvVarsMetadataMapToConfigMap(envVarsMetadataConfigMap, metadataMap)
-	_ = kubeUtil.UpdateConfigMap(params.Namespace, envVarsConfigMap, envVarsMetadataConfigMap)
+	_ = kubeUtil.UpdateConfigMap(context.Background(), params.Namespace, envVarsConfigMap, envVarsMetadataConfigMap)
 
 	rd := utils.ARadixDeployment().
 		WithDeploymentName(params.DeploymentName).
