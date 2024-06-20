@@ -29,7 +29,7 @@ func Test_createJob(t *testing.T) {
 		common: &apiv1.Handler{
 			Kube:         kubeUtil,
 			Env:          env,
-			HandlerApiV2: apiv2.New(kubeUtil, env),
+			HandlerApiV2: apiv2.New(kubeUtil, env, nil),
 		},
 	}
 
@@ -78,7 +78,7 @@ func TestNewHandler(t *testing.T) {
 	radixClient, kubeClient, _, kubeUtil := test.SetupTest("app", "qa", "compute", "app-deploy-1", 1)
 	env := modelsEnv.NewEnv()
 
-	h := New(kubeUtil, env)
+	h := New(kubeUtil, env, nil)
 	assert.IsType(t, &jobHandler{}, h)
 	actualHandler := h.(*jobHandler)
 
@@ -98,7 +98,7 @@ func TestGetJobs(t *testing.T) {
 	test.AddRadixBatch(radixClient, "testbatch4-job4", appComponent, "other-type", appNamespace)
 	test.AddRadixBatch(radixClient, "testbatch5-job5", appComponent, kube.RadixBatchTypeJob, "app-other")
 
-	handler := New(kubeUtil, modelsEnv.NewEnv())
+	handler := New(kubeUtil, modelsEnv.NewEnv(), nil)
 	jobs, err := handler.GetJobs(context.TODO())
 	assert.Nil(t, err)
 	assert.Len(t, jobs, 2)
@@ -122,7 +122,7 @@ func TestGetJob(t *testing.T) {
 		test.AddRadixBatch(radixClient, "testbatch1-job1", appComponent, kube.RadixBatchTypeJob, appNamespace)
 		test.AddRadixBatch(radixClient, "testbatch2-job1", appComponent, kube.RadixBatchTypeJob, appNamespace)
 
-		handler := New(kubeUtil, modelsEnv.NewEnv())
+		handler := New(kubeUtil, modelsEnv.NewEnv(), nil)
 		job1, err := handler.GetJob(context.TODO(), "testbatch1-job1")
 		assert.Nil(t, err)
 		assert.Equal(t, "testbatch1-job1", job1.Name)
@@ -139,7 +139,7 @@ func TestGetJob(t *testing.T) {
 		radixClient, _, _, kubeUtil := test.SetupTest(appName, appEnvironment, appComponent, appDeployment, 1)
 		test.AddRadixBatch(radixClient, jobName, appComponent, kube.RadixBatchTypeJob, "app-other")
 
-		handler := New(kubeUtil, modelsEnv.NewEnv())
+		handler := New(kubeUtil, modelsEnv.NewEnv(), nil)
 		job, err := handler.GetJob(context.TODO(), jobName)
 		assert.NotNil(t, err)
 		assert.Equal(t, models.StatusReasonNotFound, apiErrors.ReasonForError(err))
@@ -173,7 +173,7 @@ func TestCreateJob(t *testing.T) {
 		if err != nil {
 			panic(err)
 		}
-		handler := New(kubeUtil, modelsEnv.NewEnv())
+		handler := New(kubeUtil, modelsEnv.NewEnv(), nil)
 		jobStatus, err := handler.CreateJob(context.TODO(), &models.JobScheduleDescription{})
 		assert.Nil(t, err)
 		assert.NotNil(t, jobStatus)
@@ -214,7 +214,7 @@ func TestCreateJob(t *testing.T) {
 			panic(err)
 		}
 		env := modelsEnv.NewEnv()
-		handler := New(kubeUtil, env)
+		handler := New(kubeUtil, env, nil)
 		jobStatus, err := handler.CreateJob(context.TODO(), &models.JobScheduleDescription{Payload: payloadString})
 		assert.Nil(t, err)
 		assert.NotNil(t, jobStatus)
@@ -263,7 +263,7 @@ func TestCreateJob(t *testing.T) {
 			panic(err)
 		}
 		env := modelsEnv.NewEnv()
-		handler := New(kubeUtil, env)
+		handler := New(kubeUtil, env, nil)
 		_, err = handler.CreateJob(context.TODO(), &models.JobScheduleDescription{Payload: payloadString})
 		assert.NotNil(t, err)
 		assert.Equal(t, models.StatusReasonUnknown, apiErrors.ReasonForError(err))
@@ -293,7 +293,7 @@ func TestCreateJob(t *testing.T) {
 			panic(err)
 		}
 		env := modelsEnv.NewEnv()
-		handler := New(kubeUtil, env)
+		handler := New(kubeUtil, env, nil)
 
 		jobRequestConfig := models.JobScheduleDescription{
 			RadixJobComponentConfig: models.RadixJobComponentConfig{
@@ -353,7 +353,7 @@ func TestCreateJob(t *testing.T) {
 			panic(err)
 		}
 		env := modelsEnv.NewEnv()
-		handler := New(kubeUtil, env)
+		handler := New(kubeUtil, env, nil)
 		jobStatus, err := handler.CreateJob(context.TODO(), &models.JobScheduleDescription{})
 		assert.Nil(t, err)
 		assert.NotNil(t, jobStatus)
@@ -390,7 +390,7 @@ func TestCreateJob(t *testing.T) {
 		if err != nil {
 			panic(err)
 		}
-		handler := New(kubeUtil, modelsEnv.NewEnv())
+		handler := New(kubeUtil, modelsEnv.NewEnv(), nil)
 		jobStatus, err := handler.CreateJob(context.TODO(), &models.JobScheduleDescription{})
 		assert.Nil(t, jobStatus)
 		assert.NotNil(t, err)
@@ -420,7 +420,7 @@ func TestCreateJob(t *testing.T) {
 		if err != nil {
 			panic(err)
 		}
-		handler := New(kubeUtil, modelsEnv.NewEnv())
+		handler := New(kubeUtil, modelsEnv.NewEnv(), nil)
 		jobStatus, err := handler.CreateJob(context.TODO(), &models.JobScheduleDescription{})
 		assert.Nil(t, jobStatus)
 		assert.NotNil(t, err)
@@ -452,7 +452,7 @@ func TestCreateJob(t *testing.T) {
 		if err != nil {
 			panic(err)
 		}
-		handler := New(kubeUtil, modelsEnv.NewEnv())
+		handler := New(kubeUtil, modelsEnv.NewEnv(), nil)
 		jobStatus, err := handler.CreateJob(context.TODO(), &models.JobScheduleDescription{
 			RadixJobComponentConfig: models.RadixJobComponentConfig{
 				Node: &v1.RadixNode{
@@ -492,7 +492,7 @@ func TestDeleteJob(t *testing.T) {
 		test.CreateSecretForTest(appName, "secret4", "test-batch4-job1", "other-job-component", envNamespace, kubeClient)
 		test.CreateSecretForTest(appName, "secret5", "test-batch5-job1", appJobComponent, "other-ns", kubeClient)
 
-		handler := New(kubeUtil, modelsEnv.NewEnv())
+		handler := New(kubeUtil, modelsEnv.NewEnv(), nil)
 		err := handler.DeleteJob(context.TODO(), "test-batch1-job1")
 		assert.Nil(t, err)
 		radixBatchList, _ := radixClient.RadixV1().RadixBatches("").List(context.TODO(), metav1.ListOptions{})
@@ -512,7 +512,7 @@ func TestDeleteJob(t *testing.T) {
 		radixClient, _, _, kubeUtil := test.SetupTest(appName, appEnvironment, appJobComponent, appDeployment, 1)
 		test.AddRadixBatch(radixClient, "test-batch-anotherjob", appJobComponent, kube.RadixBatchTypeJob, envNamespace)
 
-		handler := New(kubeUtil, modelsEnv.NewEnv())
+		handler := New(kubeUtil, modelsEnv.NewEnv(), nil)
 		err := handler.DeleteJob(context.TODO(), jobName)
 		assert.NotNil(t, err)
 		assert.Equal(t, models.StatusReasonNotFound, apiErrors.ReasonForError(err))
@@ -525,7 +525,7 @@ func TestDeleteJob(t *testing.T) {
 		radixClient, _, _, kubeUtil := test.SetupTest(appName, appEnvironment, appJobComponent, appDeployment, 1)
 		test.AddRadixBatch(radixClient, "test-batch-anotherjob", "anotherjob-component", kube.RadixBatchTypeJob, envNamespace)
 
-		handler := New(kubeUtil, modelsEnv.NewEnv())
+		handler := New(kubeUtil, modelsEnv.NewEnv(), nil)
 		err := handler.DeleteJob(context.TODO(), jobName)
 		assert.NotNil(t, err)
 		assert.Equal(t, models.StatusReasonNotFound, apiErrors.ReasonForError(err))
@@ -538,7 +538,7 @@ func TestDeleteJob(t *testing.T) {
 		radixClient, _, _, kubeUtil := test.SetupTest(appName, appEnvironment, appJobComponent, appDeployment, 1)
 		test.AddRadixBatch(radixClient, "test-batch-anotherjob", appJobComponent, kube.RadixBatchTypeBatch, envNamespace)
 
-		handler := New(kubeUtil, modelsEnv.NewEnv())
+		handler := New(kubeUtil, modelsEnv.NewEnv(), nil)
 		err := handler.DeleteJob(context.TODO(), jobName)
 		assert.NotNil(t, err)
 		assert.Equal(t, models.StatusReasonInvalid, apiErrors.ReasonForError(err))
@@ -550,7 +550,7 @@ func TestDeleteJob(t *testing.T) {
 		radixClient, _, _, kubeUtil := test.SetupTest(appName, appEnvironment, appJobComponent, appDeployment, 1)
 		test.AddRadixBatch(radixClient, jobName, appJobComponent, kube.RadixBatchTypeJob, "another-ns")
 
-		handler := New(kubeUtil, modelsEnv.NewEnv())
+		handler := New(kubeUtil, modelsEnv.NewEnv(), nil)
 		err := handler.DeleteJob(context.TODO(), jobName)
 		assert.NotNil(t, err)
 		assert.Equal(t, models.StatusReasonNotFound, apiErrors.ReasonForError(err))
@@ -570,7 +570,7 @@ func TestStopJob(t *testing.T) {
 		test.CreateSecretForTest(appName, "secret4", "test-batch4-job1", "other-job-component", envNamespace, kubeClient)
 		test.CreateSecretForTest(appName, "secret5", "test-batch5-job1", appJobComponent, "other-ns", kubeClient)
 
-		handler := New(kubeUtil, modelsEnv.NewEnv())
+		handler := New(kubeUtil, modelsEnv.NewEnv(), nil)
 		err := handler.StopJob(context.TODO(), "test-batch1-job1")
 		assert.Nil(t, err)
 		radixBatchList, _ := radixClient.RadixV1().RadixBatches("").List(context.TODO(), metav1.ListOptions{})
@@ -601,7 +601,7 @@ func TestStopJob(t *testing.T) {
 		radixClient, _, _, kubeUtil := test.SetupTest(appName, appEnvironment, appJobComponent, appDeployment, 1)
 		test.AddRadixBatch(radixClient, "test-batch-anotherjob", appJobComponent, kube.RadixBatchTypeJob, envNamespace)
 
-		handler := New(kubeUtil, modelsEnv.NewEnv())
+		handler := New(kubeUtil, modelsEnv.NewEnv(), nil)
 		err := handler.StopJob(context.TODO(), jobName)
 		assert.NotNil(t, err)
 		assert.Equal(t, models.StatusReasonNotFound, apiErrors.ReasonForError(err))
@@ -614,7 +614,7 @@ func TestStopJob(t *testing.T) {
 		radixClient, _, _, kubeUtil := test.SetupTest(appName, appEnvironment, appJobComponent, appDeployment, 1)
 		test.AddRadixBatch(radixClient, "test-batch-anotherjob", "anotherjob-component", kube.RadixBatchTypeJob, envNamespace)
 
-		handler := New(kubeUtil, modelsEnv.NewEnv())
+		handler := New(kubeUtil, modelsEnv.NewEnv(), nil)
 		err := handler.StopJob(context.TODO(), jobName)
 		assert.NotNil(t, err)
 		assert.Equal(t, models.StatusReasonNotFound, apiErrors.ReasonForError(err))
@@ -627,7 +627,7 @@ func TestStopJob(t *testing.T) {
 		radixClient, _, _, kubeUtil := test.SetupTest(appName, appEnvironment, appJobComponent, appDeployment, 1)
 		test.AddRadixBatch(radixClient, "test-batch-anotherjob", appJobComponent, kube.RadixBatchTypeBatch, envNamespace)
 
-		handler := New(kubeUtil, modelsEnv.NewEnv())
+		handler := New(kubeUtil, modelsEnv.NewEnv(), nil)
 		err := handler.StopJob(context.TODO(), jobName)
 		assert.NotNil(t, err)
 		assert.Equal(t, models.StatusReasonNotFound, apiErrors.ReasonForError(err))
@@ -639,7 +639,7 @@ func TestStopJob(t *testing.T) {
 		radixClient, _, _, kubeUtil := test.SetupTest(appName, appEnvironment, appJobComponent, appDeployment, 1)
 		test.AddRadixBatch(radixClient, jobName, appJobComponent, kube.RadixBatchTypeJob, "another-ns")
 
-		handler := New(kubeUtil, modelsEnv.NewEnv())
+		handler := New(kubeUtil, modelsEnv.NewEnv(), nil)
 		err := handler.StopJob(context.TODO(), jobName)
 		assert.NotNil(t, err)
 		assert.Equal(t, models.StatusReasonNotFound, apiErrors.ReasonForError(err))

@@ -12,6 +12,7 @@ import (
 	modelsv1 "github.com/equinor/radix-job-scheduler/models/v1"
 	modelsv2 "github.com/equinor/radix-job-scheduler/models/v2"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
+	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/rs/zerolog/log"
 	"k8s.io/apimachinery/pkg/api/errors"
 )
@@ -38,12 +39,13 @@ type JobHandler interface {
 }
 
 // New Constructor for job handler
-func New(kube *kube.Kube, env *models.Env) JobHandler {
+func New(kube *kube.Kube, env *models.Env, radixDeployJobComponent *radixv1.RadixDeployJobComponent) JobHandler {
 	return &jobHandler{
 		common: &apiv1.Handler{
-			Kube:         kube,
-			Env:          env,
-			HandlerApiV2: apiv2.New(kube, env),
+			Kube:                    kube,
+			Env:                     env,
+			HandlerApiV2:            apiv2.New(kube, env, nil),
+			RadixDeployJobComponent: radixDeployJobComponent,
 		},
 	}
 }
