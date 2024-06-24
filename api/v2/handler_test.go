@@ -11,6 +11,7 @@ import (
 	modelsv2 "github.com/equinor/radix-job-scheduler/models/v2"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
+	"github.com/equinor/radix-operator/pkg/apis/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -80,12 +81,15 @@ func Test_createBatch(t *testing.T) {
 	}
 
 	for _, ts := range scenarios {
-		_, _, _, kubeUtil := test.SetupTest("app", "qa", "compute", "app-deploy-1", 1)
+		appJobComponent := "compute"
+		radixDeployJobComponent := utils.NewDeployJobComponentBuilder().WithName(appJobComponent).BuildJobComponent()
+		_, _, _, kubeUtil := test.SetupTest("app", "qa", appJobComponent, "app-deploy-1", 1)
 		env := models.NewEnv()
 
 		h := &handler{
-			kubeUtil: kubeUtil,
-			env:      env,
+			kubeUtil:                kubeUtil,
+			env:                     env,
+			radixDeployJobComponent: &radixDeployJobComponent,
 		}
 		t.Run(ts.name, func(t *testing.T) {
 			// t.Parallel()

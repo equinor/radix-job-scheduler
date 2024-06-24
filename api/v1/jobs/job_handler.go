@@ -44,7 +44,7 @@ func New(kube *kube.Kube, env *models.Env, radixDeployJobComponent *radixv1.Radi
 		common: &apiv1.Handler{
 			Kube:                    kube,
 			Env:                     env,
-			HandlerApiV2:            apiv2.New(kube, env, nil),
+			HandlerApiV2:            apiv2.New(kube, env, radixDeployJobComponent),
 			RadixDeployJobComponent: radixDeployJobComponent,
 		},
 	}

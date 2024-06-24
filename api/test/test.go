@@ -244,18 +244,22 @@ type TestParams struct {
 	RadixConfigEnvVarsMap        map[string]string
 	EnvVarsConfigMapData         map[string]string
 	EnvVarsMetadataConfigMapData map[string]string
+	RadixDeployComponent         utils.DeployComponentBuilder
+	RadixDeployJobComponent      utils.DeployJobComponentBuilder
 }
 
 func GetTestParams() *TestParams {
+	appName, appEnvironment, appJobComponent, appDeployment := "app", "qa", "compute", "app-deploy-1"
 	params := TestParams{
-		AppName:                      "app",
-		Environment:                  "qa",
+		AppName:                      appName,
+		Environment:                  appEnvironment,
 		JobComponentName:             "compute",
-		DeploymentName:               "app-deploy-1",
+		DeploymentName:               appDeployment,
 		JobName:                      "some-job",
 		RadixConfigEnvVarsMap:        make(map[string]string),
 		EnvVarsConfigMapData:         make(map[string]string),
 		EnvVarsMetadataConfigMapData: make(map[string]string),
+		RadixDeployJobComponent:      utils.NewDeployJobComponentBuilder().WithName(appJobComponent),
 	}
 	params.Namespace = utils.GetEnvironmentNamespace(params.AppName, params.Environment)
 	return &params
