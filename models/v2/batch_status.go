@@ -50,6 +50,11 @@ type RadixBatch struct {
 	// required: true
 	// example: "job"
 	BatchType string `json:"batchType"`
+
+	// DeploymentName of this batch
+	//
+	// required: false
+	DeploymentName string
 }
 
 // RadixBatchJobStatus holds general information about batch job status

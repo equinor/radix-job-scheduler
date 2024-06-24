@@ -61,6 +61,10 @@ type JobStatus struct {
 	// PodStatuses for each pod of the job
 	// required: false
 	PodStatuses []PodStatus `json:"podStatuses,omitempty"`
+
+	// DeploymentName for this batch
+	// required: false
+	DeploymentName string
 }
 
 // PodStatus contains details for the current status of the job's pods.

@@ -133,14 +133,15 @@ func (h *handler) getRadixBatchStatus(ctx context.Context, radixBatchType kube.R
 
 func (h *handler) getRadixBatchModelFromRadixBatch(radixBatch *radixv1.RadixBatch) modelsv2.RadixBatch {
 	return modelsv2.RadixBatch{
-		Name:         radixBatch.GetName(),
-		BatchType:    radixBatch.Labels[kube.RadixBatchTypeLabel],
-		CreationTime: utils.FormatTime(pointers.Ptr(radixBatch.GetCreationTimestamp())),
-		Started:      utils.FormatTime(radixBatch.Status.Condition.ActiveTime),
-		Ended:        utils.FormatTime(radixBatch.Status.Condition.CompletionTime),
-		Status:       jobs.GetRadixBatchStatus(radixBatch, h.radixDeployJobComponent),
-		Message:      radixBatch.Status.Condition.Message,
-		JobStatuses:  getRadixBatchJobStatusesFromRadixBatch(radixBatch, radixBatch.Status.JobStatuses),
+		Name:           radixBatch.GetName(),
+		BatchType:      radixBatch.Labels[kube.RadixBatchTypeLabel],
+		CreationTime:   utils.FormatTime(pointers.Ptr(radixBatch.GetCreationTimestamp())),
+		Started:        utils.FormatTime(radixBatch.Status.Condition.ActiveTime),
+		Ended:          utils.FormatTime(radixBatch.Status.Condition.CompletionTime),
+		Status:         jobs.GetRadixBatchStatus(radixBatch, h.radixDeployJobComponent),
+		Message:        radixBatch.Status.Condition.Message,
+		JobStatuses:    getRadixBatchJobStatusesFromRadixBatch(radixBatch, radixBatch.Status.JobStatuses),
+		DeploymentName: radixBatch.Spec.RadixDeploymentJobRef.Name,
 	}
 }
 

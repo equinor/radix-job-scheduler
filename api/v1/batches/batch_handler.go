@@ -165,12 +165,13 @@ func setBatchJobEventMessages(radixBatchStatus *modelsv1.BatchStatus, batchJobPo
 func (handler *batchHandler) getBatchStatusFromRadixBatch(radixBatch *modelsv2.RadixBatch) *modelsv1.BatchStatus {
 	return &modelsv1.BatchStatus{
 		JobStatus: modelsv1.JobStatus{
-			Name:    radixBatch.Name,
-			Created: radixBatch.CreationTime,
-			Started: radixBatch.Started,
-			Ended:   radixBatch.Ended,
-			Status:  handler.getBatchStatus(radixBatch),
-			Message: radixBatch.Message,
+			Name:           radixBatch.Name,
+			Created:        radixBatch.CreationTime,
+			Started:        radixBatch.Started,
+			Ended:          radixBatch.Ended,
+			Status:         handler.getBatchStatus(radixBatch),
+			Message:        radixBatch.Message,
+			DeploymentName: radixBatch.DeploymentName,
 		},
 		JobStatuses: apiv1.GetJobStatusFromRadixBatchJobsStatuses(*radixBatch),
 		BatchType:   radixBatch.BatchType,
