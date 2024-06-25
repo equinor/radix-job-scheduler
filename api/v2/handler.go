@@ -566,14 +566,6 @@ func (h *handler) copyRadixBatchOrJob(ctx context.Context, sourceRadixBatch *rad
 	logger := log.Ctx(ctx)
 	namespace := h.env.RadixDeploymentNamespace
 	logger.Debug().Msgf("copy batch %s for namespace: %s", sourceRadixBatch.GetName(), namespace)
-	radixDeployment, err := h.kubeUtil.RadixClient().RadixV1().RadixDeployments(namespace).
-		Get(ctx, radixDeploymentName, metav1.GetOptions{})
-	if err != nil {
-		if kubeerrors.IsNotFound(err) {
-			return nil, apiErrors.NewNotFound("radix deployment", radixDeploymentName)
-		}
-		return nil, apiErrors.NewFromError(err)
-	}
 	radixComponentName := h.env.RadixComponentName
 	radixBatch := radixv1.RadixBatch{
 		ObjectMeta: metav1.ObjectMeta{
@@ -595,7 +587,7 @@ func (h *handler) copyRadixBatchOrJob(ctx context.Context, sourceRadixBatch *rad
 		return nil, apiErrors.NewFromError(err)
 	}
 
-	logger.Debug().Msgf("copied batch %s from the batch %s for component %s, environment %s, in namespace: %s", radixBatch.GetName(), sourceRadixBatch.GetName(), radixComponentName, radixDeployment.Spec.Environment, namespace)
+	logger.Debug().Msgf("copied batch %s from the batch %s for component %s, ein namespace: %s", radixBatch.GetName(), sourceRadixBatch.GetName(), radixComponentName, namespace)
 	return pointers.Ptr(h.getRadixBatchModelFromRadixBatch(createdRadixBatch)), nil
 }
 
