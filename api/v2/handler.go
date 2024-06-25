@@ -161,6 +161,8 @@ func getRadixBatchJobStatusesFromRadixBatch(radixBatch *radixv1.RadixBatch, radi
 			radixBatchJobStatus.Ended = utils.FormatTime(jobStatus.EndTime)
 			radixBatchJobStatus.Status = jobs.GetScheduledJobStatus(jobStatus, stopJob)
 			radixBatchJobStatus.Message = jobStatus.Message
+			radixBatchJobStatus.Failed = jobStatus.Failed
+			radixBatchJobStatus.Restart = jobStatus.Restart
 			radixBatchJobStatus.PodStatuses = getPodStatusByRadixBatchJobPodStatus(jobStatus.RadixBatchJobPodStatuses)
 
 		}

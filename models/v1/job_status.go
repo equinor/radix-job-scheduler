@@ -58,6 +58,14 @@ type JobStatus struct {
 	// example: 2006-01-02T15:04:05Z
 	Updated string `json:"updated,omitempty"`
 
+	// The number of times the container for the job has failed.
+	// +optional
+	Failed int32 `json:"failed,omitempty"`
+
+	// Timestamp of the job restart, if applied.
+	// +optional
+	Restart string `json:"restart,omitempty"`
+
 	// PodStatuses for each pod of the job
 	// required: false
 	PodStatuses []PodStatus `json:"podStatuses,omitempty"`

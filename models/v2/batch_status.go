@@ -100,6 +100,14 @@ type RadixBatchJobStatus struct {
 	// example: "Error occurred"
 	Message string `json:"message,omitempty"`
 
+	// The number of times the container for the job has failed.
+	// +optional
+	Failed int32 `json:"failed,omitempty"`
+
+	// Timestamp of the job restart, if applied.
+	// +optional
+	Restart string `json:"restart,omitempty"`
+
 	// PodStatuses for each pod of the job
 	// required: false
 	PodStatuses []RadixBatchJobPodStatus `json:"podStatuses,omitempty"`

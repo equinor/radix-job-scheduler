@@ -24,6 +24,8 @@ func GetJobStatusFromRadixBatchJobsStatus(batchName string, jobStatus modelsv2.R
 		Ended:       jobStatus.Ended,
 		Status:      jobStatus.Status,
 		Message:     jobStatus.Message,
+		Failed:      jobStatus.Failed,
+		Restart:     jobStatus.Restart,
 		PodStatuses: GetPodStatus(jobStatus.PodStatuses),
 	}
 }

@@ -191,6 +191,8 @@ func getSingleJobStatusFromRadixBatchJob(radixBatch *modelsv2.RadixBatch) (*mode
 		Ended:       radixBatchJobStatus.Ended,
 		Status:      radixBatchJobStatus.Status,
 		Message:     radixBatchJobStatus.Message,
+		Failed:      radixBatchJobStatus.Failed,
+		Restart:     radixBatchJobStatus.Restart,
 		PodStatuses: apiv1.GetPodStatus(radixBatchJobStatus.PodStatuses),
 	}
 	return &jobStatus, nil
