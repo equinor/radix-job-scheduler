@@ -36,7 +36,7 @@ func GetScheduledJobStatus(jobStatus radixv1.RadixBatchJobStatus, stopJob bool) 
 
 // GetRadixBatchStatus Gets the batch status
 func GetRadixBatchStatus(radixBatch *radixv1.RadixBatch, radixDeployJobComponent *radixv1.RadixDeployJobComponent) (status radixv1.RadixBatchJobApiStatus) {
-	isSingleJob := len(radixBatch.Spec.Jobs) == 1 && radixBatch.Labels[kube.RadixJobTypeLabel] == kube.RadixJobTypeJobSchedule
+	isSingleJob := radixBatch.Labels[kube.RadixBatchTypeLabel] == string(kube.RadixBatchTypeJob) && len(radixBatch.Spec.Jobs) == 1
 	if isSingleJob {
 		return radixv1.RadixBatchJobApiStatus(radixBatch.Status.JobStatuses[0].Phase)
 	}
