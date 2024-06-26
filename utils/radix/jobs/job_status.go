@@ -80,6 +80,9 @@ func GetStatusFromStatusRules(radixBatchJobPhases []radixv1.RadixBatchJobPhase, 
 			}
 		}
 	}
+	if len(defaultBatchStatus) == 0 {
+		return radixv1.RadixBatchJobApiStatusWaiting
+	}
 	return defaultBatchStatus
 }
 
