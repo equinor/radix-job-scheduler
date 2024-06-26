@@ -43,33 +43,13 @@ func GetRadixBatchStatus(radixBatch *radixv1.RadixBatch, radixDeployJobComponent
 		}
 		return radixv1.RadixBatchJobApiStatus(radixBatch.Status.JobStatuses[0].Phase)
 	}
-	return GetStatusFromStatusRules(getBatchJobStatusPhases(radixBatch), radixDeployJobComponent.BatchStatusRules, getDefaultBatchStatus(radixBatch))
+	return GetStatusFromStatusRules(getBatchJobStatusPhases(radixBatch), radixDeployJobComponent.BatchStatusRules, radixv1.RadixBatchJobApiStatus(radixBatch.Status.Condition.Type))
 }
 
 func getBatchJobStatusPhases(radixBatch *radixv1.RadixBatch) []radixv1.RadixBatchJobPhase {
 	return slice.Reduce(radixBatch.Status.JobStatuses, make([]radixv1.RadixBatchJobPhase, 0),
 		func(acc []radixv1.RadixBatchJobPhase, jobStatus radixv1.RadixBatchJobStatus) []radixv1.RadixBatchJobPhase { return append(acc, jobStatus.Phase) },
 	)
-}
-
-func getDefaultBatchStatus(radixBatch *radixv1.RadixBatch) radixv1.RadixBatchJobApiStatus {
-	switch {
-	case radixBatch.Status.Condition.Type == radixv1.BatchConditionTypeActive:
-		if slice.Any(radixBatch.Status.JobStatuses, func(jobStatus radixv1.RadixBatchJobStatus) bool {
-			return jobStatus.Phase == radixv1.BatchJobPhaseRunning
-		}) {
-			return radixv1.RadixBatchJobApiStatusRunning
-		}
-		return radixv1.RadixBatchJobApiStatusActive
-	case radixBatch.Status.Condition.Type == radixv1.BatchConditionTypeCompleted:
-		if len(radixBatch.Status.JobStatuses) > 0 && slice.All(radixBatch.Status.JobStatuses, func(jobStatus radixv1.RadixBatchJobStatus) bool {
-			return jobStatus.Phase == radixv1.BatchJobPhaseFailed
-		}) {
-			return radixv1.RadixBatchJobApiStatusFailed
-		}
-		return radixv1.RadixBatchJobApiStatusCompleted
-	}
-	return radixv1.RadixBatchJobApiStatusWaiting
 }
 
 // GetReplicaStatusByJobPodStatusPhase Get replica status by RadixBatchJobPodPhase
