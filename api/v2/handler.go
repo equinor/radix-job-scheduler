@@ -836,7 +836,7 @@ func getPodStatusByRadixBatchJobPodStatus(podStatuses []radixv1.RadixBatchJobPod
 			StartTime:        utils.FormatTime(status.StartTime),
 			EndTime:          utils.FormatTime(status.EndTime),
 			ContainerStarted: utils.FormatTime(status.StartTime),
-			Status:           modelsv2.ReplicaStatus{Status: jobs.GetReplicaStatusByJobPodStatusPhase(status.Phase)},
+			Status:           modelsv2.ReplicaStatus{Status: string(status.Phase)},
 			StatusMessage:    status.Message,
 			RestartCount:     status.RestartCount,
 			Image:            status.Image,

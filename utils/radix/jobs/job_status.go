@@ -52,19 +52,6 @@ func getBatchJobStatusPhases(radixBatch *radixv1.RadixBatch) []radixv1.RadixBatc
 	)
 }
 
-// GetReplicaStatusByJobPodStatusPhase Get replica status by RadixBatchJobPodPhase
-func GetReplicaStatusByJobPodStatusPhase(phase radixv1.RadixBatchJobPodPhase) string {
-	switch phase {
-	case radixv1.PodFailed:
-		return "Failed"
-	case radixv1.PodSucceeded:
-		return "Succeeded"
-	case radixv1.PodRunning:
-		return "Running"
-	}
-	return "Pending"
-}
-
 // GetStatusFromStatusRules Gets BatchStatus by rules
 func GetStatusFromStatusRules(radixBatchJobPhases []radixv1.RadixBatchJobPhase, rules []radixv1.BatchStatusRule, defaultBatchStatus radixv1.RadixBatchJobApiStatus) radixv1.RadixBatchJobApiStatus {
 	for _, rule := range rules {
