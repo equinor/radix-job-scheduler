@@ -16,10 +16,11 @@ import (
 	"github.com/equinor/radix-common/utils/pointers"
 	"github.com/equinor/radix-common/utils/slice"
 	apiErrors "github.com/equinor/radix-job-scheduler/api/errors"
+	"github.com/equinor/radix-job-scheduler/internal"
 	"github.com/equinor/radix-job-scheduler/models"
 	"github.com/equinor/radix-job-scheduler/models/common"
 	modelsv2 "github.com/equinor/radix-job-scheduler/models/v2"
-	"github.com/equinor/radix-job-scheduler/utils/radix/jobs"
+	"github.com/equinor/radix-job-scheduler/pkg/batch"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	radixLabels "github.com/equinor/radix-operator/pkg/apis/utils/labels"
@@ -132,53 +133,8 @@ func (h *handler) getRadixBatchStatus(ctx context.Context, radixBatchType kube.R
 }
 
 func (h *handler) getRadixBatchModelFromRadixBatch(radixBatch *radixv1.RadixBatch) modelsv2.RadixBatch {
-	return modelsv2.RadixBatch{
-		Name:           radixBatch.GetName(),
-		BatchType:      radixBatch.Labels[kube.RadixBatchTypeLabel],
-		CreationTime:   utils.FormatTime(pointers.Ptr(radixBatch.GetCreationTimestamp())),
-		Started:        utils.FormatTime(radixBatch.Status.Condition.ActiveTime),
-		Ended:          utils.FormatTime(radixBatch.Status.Condition.CompletionTime),
-		Status:         jobs.GetRadixBatchStatus(radixBatch, h.radixDeployJobComponent),
-		Message:        radixBatch.Status.Condition.Message,
-		JobStatuses:    getRadixBatchJobStatusesFromRadixBatch(radixBatch, radixBatch.Status.JobStatuses),
-		DeploymentName: radixBatch.Spec.RadixDeploymentJobRef.Name,
-	}
-}
-
-func getRadixBatchJobStatusesFromRadixBatch(radixBatch *radixv1.RadixBatch, radixBatchJobStatuses []radixv1.RadixBatchJobStatus) []modelsv2.RadixBatchJobStatus {
-	radixBatchJobsStatuses := getRadixBatchJobsStatusesMap(radixBatchJobStatuses)
-	jobStatuses := make([]modelsv2.RadixBatchJobStatus, 0, len(radixBatch.Spec.Jobs))
-	for _, radixBatchJob := range radixBatch.Spec.Jobs {
-		stopJob := radixBatchJob.Stop != nil && *radixBatchJob.Stop
-		jobName := fmt.Sprintf("%s-%s", radixBatch.Name, radixBatchJob.Name) // composed name in models are always consist of a batchName and original jobName
-		radixBatchJobStatus := modelsv2.RadixBatchJobStatus{
-			Name:  jobName,
-			JobId: radixBatchJob.JobId,
-		}
-		if jobStatus, ok := radixBatchJobsStatuses[radixBatchJob.Name]; ok {
-			radixBatchJobStatus.CreationTime = utils.FormatTime(jobStatus.CreationTime)
-			radixBatchJobStatus.Started = utils.FormatTime(jobStatus.StartTime)
-			radixBatchJobStatus.Ended = utils.FormatTime(jobStatus.EndTime)
-			radixBatchJobStatus.Status = jobs.GetScheduledJobStatus(jobStatus, stopJob)
-			radixBatchJobStatus.Message = jobStatus.Message
-			radixBatchJobStatus.Failed = jobStatus.Failed
-			radixBatchJobStatus.Restart = jobStatus.Restart
-			radixBatchJobStatus.PodStatuses = getPodStatusByRadixBatchJobPodStatus(jobStatus.RadixBatchJobPodStatuses)
-		} else {
-			radixBatchJobStatus.Status = jobs.GetScheduledJobStatus(radixv1.RadixBatchJobStatus{Phase: radixv1.RadixBatchJobApiStatusWaiting}, stopJob)
-		}
-		jobStatuses = append(jobStatuses, radixBatchJobStatus)
-	}
-	return jobStatuses
-}
-
-func getRadixBatchJobsStatusesMap(radixBatchJobStatuses []radixv1.RadixBatchJobStatus) map[string]radixv1.RadixBatchJobStatus {
-	radixBatchJobsStatuses := make(map[string]radixv1.RadixBatchJobStatus)
-	for _, jobStatus := range radixBatchJobStatuses {
-		jobStatus := jobStatus
-		radixBatchJobsStatuses[jobStatus.Name] = jobStatus
-	}
-	return radixBatchJobsStatuses
+	radixDeployJobComponent := h.radixDeployJobComponent
+	return batch.GetRadixBatch(radixBatch, radixDeployJobComponent)
 }
 
 // GetRadixBatch Get status of a batch
@@ -309,7 +265,7 @@ func (h *handler) StopRadixBatch(ctx context.Context, batchName string) error {
 	}
 
 	newRadixBatch := radixBatch.DeepCopy()
-	radixBatchJobsStatusMap := getRadixBatchJobsStatusesMap(newRadixBatch.Status.JobStatuses)
+	radixBatchJobsStatusMap := internal.GetRadixBatchJobsStatusesMap(newRadixBatch.Status.JobStatuses)
 	for jobIndex, radixBatchJob := range newRadixBatch.Spec.Jobs {
 		if jobStatus, ok := radixBatchJobsStatusMap[radixBatchJob.Name]; ok &&
 			(isRadixBatchJobSucceeded(jobStatus) || isRadixBatchJobFailed(jobStatus)) {
@@ -334,7 +290,7 @@ func (h *handler) StopRadixBatchJob(ctx context.Context, batchName string, jobNa
 	}
 
 	newRadixBatch := radixBatch.DeepCopy()
-	radixBatchJobsStatusMap := getRadixBatchJobsStatusesMap(newRadixBatch.Status.JobStatuses)
+	radixBatchJobsStatusMap := internal.GetRadixBatchJobsStatusesMap(newRadixBatch.Status.JobStatuses)
 	for jobIndex, radixBatchJob := range newRadixBatch.Spec.Jobs {
 		if !strings.EqualFold(radixBatchJob.Name, jobName) {
 			continue
@@ -484,9 +440,9 @@ func (h *handler) maintainHistoryLimitForBatches(ctx context.Context, radixBatch
 	logger.Debug().Msgf("history batches to delete: %v", numToDelete)
 
 	for i := 0; i < numToDelete; i++ {
-		batch := radixBatchesSortedByCompletionTimeAsc[i]
-		logger.Debug().Msgf("deleting batch %s", batch.Name)
-		if err := h.DeleteRadixBatch(ctx, batch.Name); err != nil {
+		radixBatch := radixBatchesSortedByCompletionTimeAsc[i]
+		logger.Debug().Msgf("deleting batch %s", radixBatch.Name)
+		if err := h.DeleteRadixBatch(ctx, radixBatch.Name); err != nil {
 			return err
 		}
 	}
@@ -826,24 +782,4 @@ func applyDefaultJobDescriptionProperties(jobScheduleDescription *common.JobSche
 		return nil
 	}
 	return mergo.Merge(&jobScheduleDescription.RadixJobComponentConfig, defaultRadixJobComponentConfig, mergo.WithTransformers(authTransformer))
-}
-
-func getPodStatusByRadixBatchJobPodStatus(podStatuses []radixv1.RadixBatchJobPodStatus) []modelsv2.RadixBatchJobPodStatus {
-	return slice.Map(podStatuses, func(status radixv1.RadixBatchJobPodStatus) modelsv2.RadixBatchJobPodStatus {
-		return modelsv2.RadixBatchJobPodStatus{
-			Name:             status.Name,
-			Created:          utils.FormatTime(status.CreationTime),
-			StartTime:        utils.FormatTime(status.StartTime),
-			EndTime:          utils.FormatTime(status.EndTime),
-			ContainerStarted: utils.FormatTime(status.StartTime),
-			Status:           modelsv2.ReplicaStatus{Status: string(status.Phase)},
-			StatusMessage:    status.Message,
-			RestartCount:     status.RestartCount,
-			Image:            status.Image,
-			ImageId:          status.ImageID,
-			PodIndex:         status.PodIndex,
-			ExitCode:         status.ExitCode,
-			Reason:           status.Reason,
-		}
-	})
 }
