@@ -190,5 +190,5 @@ func (handler *batchHandler) getBatchStatus(radixBatch *modelsv2.RadixBatch) rad
 	jobStatusPhases := slice.Reduce(radixBatch.JobStatuses, make([]radixv1.RadixBatchJobPhase, 0), func(acc []radixv1.RadixBatchJobPhase, jobStatus modelsv2.RadixBatchJobStatus) []radixv1.RadixBatchJobPhase {
 		return append(acc, radixv1.RadixBatchJobPhase(jobStatus.Status))
 	})
-	return jobs.GetStatusFromStatusRules(jobStatusPhases, handler.common.RadixDeployJobComponent.BatchStatusRules, radixBatch.Status)
+	return jobs.GetStatusFromStatusRules(jobStatusPhases, handler.common.RadixDeployJobComponent, radixBatch.Status)
 }

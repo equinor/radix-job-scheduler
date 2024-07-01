@@ -43,7 +43,7 @@ func GetRadixBatchStatus(radixBatch *radixv1.RadixBatch, radixDeployJobComponent
 		}
 		return radixv1.RadixBatchJobApiStatus(radixBatch.Status.JobStatuses[0].Phase)
 	}
-	return GetStatusFromStatusRules(getBatchJobStatusPhases(radixBatch), radixDeployJobComponent.BatchStatusRules, radixv1.RadixBatchJobApiStatus(radixBatch.Status.Condition.Type))
+	return GetStatusFromStatusRules(getBatchJobStatusPhases(radixBatch), radixDeployJobComponent, radixv1.RadixBatchJobApiStatus(radixBatch.Status.Condition.Type))
 }
 
 func getBatchJobStatusPhases(radixBatch *radixv1.RadixBatch) []radixv1.RadixBatchJobPhase {
@@ -53,17 +53,19 @@ func getBatchJobStatusPhases(radixBatch *radixv1.RadixBatch) []radixv1.RadixBatc
 }
 
 // GetStatusFromStatusRules Gets BatchStatus by rules
-func GetStatusFromStatusRules(radixBatchJobPhases []radixv1.RadixBatchJobPhase, rules []radixv1.BatchStatusRule, defaultBatchStatus radixv1.RadixBatchJobApiStatus) radixv1.RadixBatchJobApiStatus {
-	for _, rule := range rules {
-		evaluateJobStatusByRule := func(jobStatusPhase radixv1.RadixBatchJobPhase) bool { return evaluateCondition(jobStatusPhase, rule) }
-		switch rule.Condition {
-		case radixv1.ConditionAny:
-			if slice.Any(radixBatchJobPhases, evaluateJobStatusByRule) {
-				return rule.BatchStatus
-			}
-		case radixv1.ConditionAll:
-			if slice.All(radixBatchJobPhases, evaluateJobStatusByRule) {
-				return rule.BatchStatus
+func GetStatusFromStatusRules(radixBatchJobPhases []radixv1.RadixBatchJobPhase, radixDeployJobComponent *radixv1.RadixDeployJobComponent, defaultBatchStatus radixv1.RadixBatchJobApiStatus) radixv1.RadixBatchJobApiStatus {
+	if radixDeployJobComponent != nil {
+		for _, rule := range radixDeployJobComponent.BatchStatusRules {
+			evaluateJobStatusByRule := func(jobStatusPhase radixv1.RadixBatchJobPhase) bool { return evaluateCondition(jobStatusPhase, rule) }
+			switch rule.Condition {
+			case radixv1.ConditionAny:
+				if slice.Any(radixBatchJobPhases, evaluateJobStatusByRule) {
+					return rule.BatchStatus
+				}
+			case radixv1.ConditionAll:
+				if slice.All(radixBatchJobPhases, evaluateJobStatusByRule) {
+					return rule.BatchStatus
+				}
 			}
 		}
 	}
