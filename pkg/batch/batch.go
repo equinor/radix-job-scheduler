@@ -88,10 +88,14 @@ func GetRadixBatchStatuses(radixBatches []*radixv1.RadixBatch, radixDeployJobCom
 }
 
 // CopyRadixBatchOrJob Copy the Radix batch or job
-func CopyRadixBatchOrJob(ctx context.Context, radixClient versioned.Interface, sourceRadixBatch *radixv1.RadixBatch, sourceJobName string, namespace string, radixDeployJobComponent *radixv1.RadixDeployJobComponent, radixDeploymentName string) (*modelsv2.RadixBatch, error) {
+func CopyRadixBatchOrJob(ctx context.Context, radixClient versioned.Interface, namespace string, sourceBatchName string, sourceJobName string, radixDeployJobComponent *radixv1.RadixDeployJobComponent, radixDeploymentName string) (*modelsv2.RadixBatch, error) {
+	sourceRadixBatch, err := internal.GetRadixBatch(ctx, radixClient, namespace, sourceBatchName)
+	if err != nil {
+		return nil, err
+	}
 	radixComponentName := radixDeployJobComponent.GetName()
 	logger := log.Ctx(ctx)
-	logger.Debug().Msgf("copy batch %s for namespace: %s", sourceRadixBatch.GetName(), namespace)
+	logger.Debug().Msgf("copy batch %s for namespace: %s", sourceBatchName, namespace)
 	radixBatch := radixv1.RadixBatch{
 		ObjectMeta: v1.ObjectMeta{
 			Name:   internal.GenerateBatchName(radixComponentName),
@@ -112,7 +116,7 @@ func CopyRadixBatchOrJob(ctx context.Context, radixClient versioned.Interface, s
 		return nil, errors.NewFromError(err)
 	}
 
-	logger.Debug().Msgf("copied batch %s from the batch %s for component %s, ein namespace: %s", radixBatch.GetName(), sourceRadixBatch.GetName(), radixComponentName, namespace)
+	logger.Debug().Msgf("copied batch %s from the batch %s for component %s, ein namespace: %s", radixBatch.GetName(), sourceBatchName, radixComponentName, namespace)
 	return pointers.Ptr(GetRadixBatchStatus(createdRadixBatch, radixDeployJobComponent)), nil
 }
 

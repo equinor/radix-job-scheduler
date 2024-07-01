@@ -67,3 +67,12 @@ func getJobComponentNamePart(jobComponentName string) string {
 func CreateJobName() string {
 	return strings.ToLower(utils.RandStringSeed(8, defaultSrc))
 }
+
+// GetRadixBatch Get Radix batch
+func GetRadixBatch(ctx context.Context, radixClient radixclient.Interface, namespace, batchName string) (*radixv1.RadixBatch, error) {
+	radixBatch, err := radixClient.RadixV1().RadixBatches(namespace).Get(ctx, batchName, metav1.GetOptions{})
+	if err != nil {
+		return nil, errors.NewFromError(err)
+	}
+	return radixBatch, nil
+}
