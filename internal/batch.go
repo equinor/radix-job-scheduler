@@ -88,3 +88,23 @@ func ParseBatchAndJobNameFromScheduledJobName(scheduleJobName string) (batchName
 	ok = true
 	return
 }
+
+func IsRadixBatchSucceeded(batch *radixv1.RadixBatch) bool {
+	return batch.Status.Condition.Type == radixv1.BatchConditionTypeCompleted && slice.All(batch.Status.JobStatuses, func(jobStatus radixv1.RadixBatchJobStatus) bool {
+		return IsRadixBatchJobSucceeded(jobStatus)
+	})
+}
+
+func IsRadixBatchJobSucceeded(jobStatus radixv1.RadixBatchJobStatus) bool {
+	return jobStatus.Phase == radixv1.BatchJobPhaseSucceeded || jobStatus.Phase == radixv1.BatchJobPhaseStopped
+}
+
+func IsRadixBatchJobFailed(jobStatus radixv1.RadixBatchJobStatus) bool {
+	return jobStatus.Phase == radixv1.BatchJobPhaseFailed
+}
+
+func IsRadixBatchNotSucceeded(batch *radixv1.RadixBatch) bool {
+	return batch.Status.Condition.Type == radixv1.BatchConditionTypeCompleted && slice.Any(batch.Status.JobStatuses, func(jobStatus radixv1.RadixBatchJobStatus) bool {
+		return !IsRadixBatchJobSucceeded(jobStatus)
+	})
+}

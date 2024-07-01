@@ -3,6 +3,7 @@ package batch
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-common/utils/pointers"
@@ -16,6 +17,7 @@ import (
 	"github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 	"github.com/rs/zerolog/log"
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/util/retry"
 )
 
 // GetRadixBatchStatus Get radix batch
@@ -141,4 +143,59 @@ func copyBatchJobs(ctx context.Context, sourceRadixBatch *radixv1.RadixBatch, so
 		radixBatchJobs = append(radixBatchJobs, *job)
 	}
 	return radixBatchJobs
+}
+
+func StopRadixBatch(ctx context.Context, radixClient versioned.Interface, namespace string, radixBatch *radixv1.RadixBatch) error {
+	logger := log.Ctx(ctx)
+	logger.Debug().Msgf("stop batch %s for namespace: %s", radixBatch.GetName(), namespace)
+	if radixBatch.Status.Condition.Type == radixv1.BatchConditionTypeCompleted {
+		return errors.NewBadRequest(fmt.Sprintf("cannot stop completed batch %s", radixBatch.GetName()))
+	}
+
+	newRadixBatch := radixBatch.DeepCopy()
+	radixBatchJobsStatusMap := internal.GetRadixBatchJobsStatusesMap(newRadixBatch.Status.JobStatuses)
+	for jobIndex, radixBatchJob := range newRadixBatch.Spec.Jobs {
+		if jobStatus, ok := radixBatchJobsStatusMap[radixBatchJob.Name]; ok &&
+			(internal.IsRadixBatchJobSucceeded(jobStatus) || internal.IsRadixBatchJobFailed(jobStatus)) {
+			continue
+		}
+		newRadixBatch.Spec.Jobs[jobIndex].Stop = pointers.Ptr(true)
+	}
+	return updateRadixBatch(ctx, radixClient, namespace, newRadixBatch)
+}
+
+func StopRadixBatchJob(ctx context.Context, radixClient versioned.Interface, namespace string, radixBatch *radixv1.RadixBatch, jobName string) error {
+	logger := log.Ctx(ctx)
+	logger.Debug().Msgf("stop a job %s in the batch %s for namespace: %s", jobName, radixBatch.GetName(), namespace)
+	if radixBatch.Status.Condition.Type == radixv1.BatchConditionTypeCompleted {
+		return errors.NewBadRequest(fmt.Sprintf("cannot stop the job %s in the completed batch %s", jobName, radixBatch.GetName()))
+	}
+
+	newRadixBatch := radixBatch.DeepCopy()
+	radixBatchJobsStatusMap := internal.GetRadixBatchJobsStatusesMap(newRadixBatch.Status.JobStatuses)
+	for jobIndex, radixBatchJob := range newRadixBatch.Spec.Jobs {
+		if !strings.EqualFold(radixBatchJob.Name, jobName) {
+			continue
+		}
+		if jobStatus, ok := radixBatchJobsStatusMap[radixBatchJob.Name]; ok &&
+			(internal.IsRadixBatchJobSucceeded(jobStatus) || internal.IsRadixBatchJobFailed(jobStatus)) {
+			return errors.NewBadRequest(fmt.Sprintf("cannot stop the job %s with the status %s in the batch %s", jobName, string(jobStatus.Phase), radixBatch.GetName()))
+		}
+		newRadixBatch.Spec.Jobs[jobIndex].Stop = pointers.Ptr(true)
+		return updateRadixBatch(ctx, radixClient, namespace, newRadixBatch)
+	}
+	return errors.NewNotFound("batch job", jobName)
+}
+
+func updateRadixBatch(ctx context.Context, radixClient versioned.Interface, namespace string, radixBatch *radixv1.RadixBatch) error {
+	logger := log.Ctx(ctx)
+	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		_, err := radixClient.RadixV1().RadixBatches(namespace).Update(ctx, radixBatch, v1.UpdateOptions{})
+		return err
+	})
+	if err != nil {
+		return errors.NewFromError(fmt.Errorf("failed to patch RadixBatch object: %w", err))
+	}
+	logger.Debug().Msgf("Patched RadixBatch: %s in namespace %s", radixBatch.GetName(), namespace)
+	return nil
 }

@@ -26,7 +26,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	kubeerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/util/retry"
 )
 
 const (
@@ -219,70 +218,24 @@ func (h *handler) DeleteRadixBatch(ctx context.Context, batchName string) error 
 
 // StopRadixBatch Stop a batch
 func (h *handler) StopRadixBatch(ctx context.Context, batchName string) error {
-	logger := log.Ctx(ctx)
 	namespace := h.env.RadixDeploymentNamespace
-	logger.Debug().Msgf("stop batch %s for namespace: %s", batchName, namespace)
-	radixBatch, err := h.kubeUtil.RadixClient().RadixV1().RadixBatches(namespace).Get(ctx, batchName, metav1.GetOptions{})
+	radixClient := h.kubeUtil.RadixClient()
+	radixBatch, err := radixClient.RadixV1().RadixBatches(namespace).Get(ctx, batchName, v1.GetOptions{})
 	if err != nil {
-		return apiErrors.NewFromError(err)
+		return errors.NewFromError(err)
 	}
-	if radixBatch.Status.Condition.Type == radixv1.BatchConditionTypeCompleted {
-		return apiErrors.NewBadRequest(fmt.Sprintf("cannot stop completed batch %s", batchName))
-	}
-
-	newRadixBatch := radixBatch.DeepCopy()
-	radixBatchJobsStatusMap := internal.GetRadixBatchJobsStatusesMap(newRadixBatch.Status.JobStatuses)
-	for jobIndex, radixBatchJob := range newRadixBatch.Spec.Jobs {
-		if jobStatus, ok := radixBatchJobsStatusMap[radixBatchJob.Name]; ok &&
-			(isRadixBatchJobSucceeded(jobStatus) || isRadixBatchJobFailed(jobStatus)) {
-			continue
-		}
-		newRadixBatch.Spec.Jobs[jobIndex].Stop = pointers.Ptr(true)
-	}
-	return h.updateRadixBatch(ctx, newRadixBatch)
+	return batch.StopRadixBatch(ctx, radixClient, namespace, radixBatch)
 }
 
 // StopRadixBatchJob Stop a batch job
 func (h *handler) StopRadixBatchJob(ctx context.Context, batchName string, jobName string) error {
-	logger := log.Ctx(ctx)
 	namespace := h.env.RadixDeploymentNamespace
-	logger.Debug().Msgf("stop a job %s in the batch %s for namespace: %s", jobName, batchName, namespace)
-	radixBatch, err := h.kubeUtil.RadixClient().RadixV1().RadixBatches(namespace).Get(ctx, batchName, metav1.GetOptions{})
+	radixClient := h.kubeUtil.RadixClient()
+	radixBatch, err := radixClient.RadixV1().RadixBatches(namespace).Get(ctx, batchName, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
-	if radixBatch.Status.Condition.Type == radixv1.BatchConditionTypeCompleted {
-		return apiErrors.NewBadRequest(fmt.Sprintf("cannot stop the job %s in the completed batch %s", jobName, batchName))
-	}
-
-	newRadixBatch := radixBatch.DeepCopy()
-	radixBatchJobsStatusMap := internal.GetRadixBatchJobsStatusesMap(newRadixBatch.Status.JobStatuses)
-	for jobIndex, radixBatchJob := range newRadixBatch.Spec.Jobs {
-		if !strings.EqualFold(radixBatchJob.Name, jobName) {
-			continue
-		}
-		if jobStatus, ok := radixBatchJobsStatusMap[radixBatchJob.Name]; ok &&
-			(isRadixBatchJobSucceeded(jobStatus) || isRadixBatchJobFailed(jobStatus)) {
-			return apiErrors.NewBadRequest(fmt.Sprintf("cannot stop the job %s with the status %s in the batch %s", jobName, string(jobStatus.Phase), batchName))
-		}
-		newRadixBatch.Spec.Jobs[jobIndex].Stop = pointers.Ptr(true)
-		return h.updateRadixBatch(ctx, newRadixBatch)
-	}
-	return apiErrors.NewNotFound("batch job", jobName)
-}
-
-func (h *handler) updateRadixBatch(ctx context.Context, radixBatch *radixv1.RadixBatch) error {
-	logger := log.Ctx(ctx)
-	namespace := h.env.RadixDeploymentNamespace
-	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		_, err := h.kubeUtil.RadixClient().RadixV1().RadixBatches(namespace).Update(ctx, radixBatch, metav1.UpdateOptions{})
-		return err
-	})
-	if err != nil {
-		return apiErrors.NewFromError(fmt.Errorf("failed to patch RadixBatch object: %w", err))
-	}
-	logger.Debug().Msgf("Patched RadixBatch: %s in namespace %s", radixBatch.GetName(), namespace)
-	return nil
+	return batch.StopRadixBatchJob(ctx, radixClient, namespace, radixBatch, jobName)
 }
 
 // MaintainHistoryLimit Delete outdated batches
@@ -337,13 +290,13 @@ func (h *handler) getCompletedRadixBatchesSortedByCompletionTimeAsc(ctx context.
 
 func (h *handler) getNotSucceededRadixBatches(radixBatches []*radixv1.RadixBatch, completedBefore time.Time) []*modelsv2.RadixBatch {
 	return internal.GetRadixBatchModelsFromRadixBatches(slice.FindAll(radixBatches, func(radixBatch *radixv1.RadixBatch) bool {
-		return radixBatchHasType(radixBatch, kube.RadixBatchTypeBatch) && isRadixBatchNotSucceeded(radixBatch) && radixBatchIsCompletedBefore(completedBefore, radixBatch)
+		return radixBatchHasType(radixBatch, kube.RadixBatchTypeBatch) && internal.IsRadixBatchNotSucceeded(radixBatch) && radixBatchIsCompletedBefore(completedBefore, radixBatch)
 	}), h.radixDeployJobComponent)
 }
 
 func (h *handler) getSucceededRadixBatches(radixBatches []*radixv1.RadixBatch, completedBefore time.Time) []*modelsv2.RadixBatch {
 	radixBatches = slice.FindAll(radixBatches, func(radixBatch *radixv1.RadixBatch) bool {
-		return radixBatchHasType(radixBatch, kube.RadixBatchTypeBatch) && isRadixBatchSucceeded(radixBatch) && radixBatchIsCompletedBefore(completedBefore, radixBatch)
+		return radixBatchHasType(radixBatch, kube.RadixBatchTypeBatch) && internal.IsRadixBatchSucceeded(radixBatch) && radixBatchIsCompletedBefore(completedBefore, radixBatch)
 	})
 	return internal.GetRadixBatchModelsFromRadixBatches(radixBatches, h.radixDeployJobComponent)
 }
@@ -354,38 +307,18 @@ func radixBatchIsCompletedBefore(completedBefore time.Time, radixBatch *radixv1.
 
 func (h *handler) getNotSucceededSingleJobs(radixBatches []*radixv1.RadixBatch, completedBefore time.Time) []*modelsv2.RadixBatch {
 	return internal.GetRadixBatchModelsFromRadixBatches(slice.FindAll(radixBatches, func(radixBatch *radixv1.RadixBatch) bool {
-		return radixBatchHasType(radixBatch, kube.RadixBatchTypeJob) && isRadixBatchNotSucceeded(radixBatch) && radixBatchIsCompletedBefore(completedBefore, radixBatch)
+		return radixBatchHasType(radixBatch, kube.RadixBatchTypeJob) && internal.IsRadixBatchNotSucceeded(radixBatch) && radixBatchIsCompletedBefore(completedBefore, radixBatch)
 	}), h.radixDeployJobComponent)
 }
 
 func (h *handler) getSucceededSingleJobs(radixBatches []*radixv1.RadixBatch, completedBefore time.Time) []*modelsv2.RadixBatch {
 	return internal.GetRadixBatchModelsFromRadixBatches(slice.FindAll(radixBatches, func(radixBatch *radixv1.RadixBatch) bool {
-		return radixBatchHasType(radixBatch, kube.RadixBatchTypeJob) && isRadixBatchSucceeded(radixBatch) && radixBatchIsCompletedBefore(completedBefore, radixBatch)
+		return radixBatchHasType(radixBatch, kube.RadixBatchTypeJob) && internal.IsRadixBatchSucceeded(radixBatch) && radixBatchIsCompletedBefore(completedBefore, radixBatch)
 	}), h.radixDeployJobComponent)
 }
 
 func radixBatchHasType(radixBatch *radixv1.RadixBatch, radixBatchType kube.RadixBatchType) bool {
 	return radixBatch.GetLabels()[kube.RadixBatchTypeLabel] == string(radixBatchType)
-}
-
-func isRadixBatchSucceeded(batch *radixv1.RadixBatch) bool {
-	return batch.Status.Condition.Type == radixv1.BatchConditionTypeCompleted && slice.All(batch.Status.JobStatuses, func(jobStatus radixv1.RadixBatchJobStatus) bool {
-		return isRadixBatchJobSucceeded(jobStatus)
-	})
-}
-
-func isRadixBatchNotSucceeded(batch *radixv1.RadixBatch) bool {
-	return batch.Status.Condition.Type == radixv1.BatchConditionTypeCompleted && slice.Any(batch.Status.JobStatuses, func(jobStatus radixv1.RadixBatchJobStatus) bool {
-		return !isRadixBatchJobSucceeded(jobStatus)
-	})
-}
-
-func isRadixBatchJobSucceeded(jobStatus radixv1.RadixBatchJobStatus) bool {
-	return jobStatus.Phase == radixv1.BatchJobPhaseSucceeded || jobStatus.Phase == radixv1.BatchJobPhaseStopped
-}
-
-func isRadixBatchJobFailed(jobStatus radixv1.RadixBatchJobStatus) bool {
-	return jobStatus.Phase == radixv1.BatchJobPhaseFailed
 }
 
 func (h *handler) maintainHistoryLimitForBatches(ctx context.Context, radixBatchesSortedByCompletionTimeAsc []*modelsv2.RadixBatch, historyLimit int) error {
