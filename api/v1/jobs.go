@@ -8,6 +8,7 @@ import (
 	"github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-common/utils/slice"
 	apiv2 "github.com/equinor/radix-job-scheduler/api/v2"
+	"github.com/equinor/radix-job-scheduler/internal"
 	modelsv1 "github.com/equinor/radix-job-scheduler/models/v1"
 	modelsv2 "github.com/equinor/radix-job-scheduler/models/v2"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
@@ -30,18 +31,6 @@ func GetJobStatusFromRadixBatchJobsStatus(batchName string, jobStatus modelsv2.R
 	}
 }
 
-// ParseBatchAndJobNameFromScheduledJobName Decompose V2 batch name and jobs name from V1 job-name
-func ParseBatchAndJobNameFromScheduledJobName(scheduleJobName string) (batchName, batchJobName string, ok bool) {
-	scheduleJobNameParts := strings.Split(scheduleJobName, "-")
-	if len(scheduleJobNameParts) < 2 {
-		return
-	}
-	batchName = strings.Join(scheduleJobNameParts[:len(scheduleJobNameParts)-1], "-")
-	batchJobName = scheduleJobNameParts[len(scheduleJobNameParts)-1]
-	ok = true
-	return
-}
-
 // GetJobStatusFromRadixBatchJobsStatuses Get JobStatuses from RadixBatch job statuses V2
 func GetJobStatusFromRadixBatchJobsStatuses(radixBatches ...modelsv2.RadixBatch) []modelsv1.JobStatus {
 	jobStatuses := make([]modelsv1.JobStatus, 0, len(radixBatches))
@@ -56,15 +45,12 @@ func GetJobStatusFromRadixBatchJobsStatuses(radixBatches ...modelsv2.RadixBatch)
 
 // CopyJob Copy a job
 func CopyJob(ctx context.Context, handlerApiV2 apiv2.Handler, jobName, deploymentName string) (*modelsv2.RadixBatch, error) {
-	if batchName, jobName, ok := ParseBatchAndJobNameFromScheduledJobName(jobName); ok {
-		return handlerApiV2.CopyRadixBatchSingleJob(ctx, batchName, jobName, deploymentName)
-	}
-	return nil, fmt.Errorf("copy of this job is not supported")
+	return handlerApiV2.CopyRadixBatchSingleJob(ctx, jobName, deploymentName)
 }
 
 // StopJob Stop a job
 func StopJob(ctx context.Context, handlerApiV2 apiv2.Handler, jobName string) error {
-	if batchName, jobName, ok := ParseBatchAndJobNameFromScheduledJobName(jobName); ok {
+	if batchName, jobName, ok := internal.ParseBatchAndJobNameFromScheduledJobName(jobName); ok {
 		return handlerApiV2.StopRadixBatchJob(ctx, batchName, jobName)
 	}
 	return fmt.Errorf("stop of this job is not supported")

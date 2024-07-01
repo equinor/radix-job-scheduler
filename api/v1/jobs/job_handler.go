@@ -7,6 +7,7 @@ import (
 	apiErrors "github.com/equinor/radix-job-scheduler/api/errors"
 	apiv1 "github.com/equinor/radix-job-scheduler/api/v1"
 	apiv2 "github.com/equinor/radix-job-scheduler/api/v2"
+	"github.com/equinor/radix-job-scheduler/internal"
 	"github.com/equinor/radix-job-scheduler/models"
 	"github.com/equinor/radix-job-scheduler/models/common"
 	modelsv1 "github.com/equinor/radix-job-scheduler/models/v1"
@@ -88,7 +89,7 @@ func (handler *jobHandler) GetJobs(ctx context.Context) ([]modelsv1.JobStatus, e
 func (handler *jobHandler) GetJob(ctx context.Context, jobName string) (*modelsv1.JobStatus, error) {
 	logger := log.Ctx(ctx)
 	logger.Debug().Msgf("get job %s for namespace: %s", jobName, handler.common.Env.RadixDeploymentNamespace)
-	if batchName, _, ok := apiv1.ParseBatchAndJobNameFromScheduledJobName(jobName); ok {
+	if batchName, _, ok := internal.ParseBatchAndJobNameFromScheduledJobName(jobName); ok {
 		jobStatus, err := apiv1.GetBatchJob(ctx, handler.common.HandlerApiV2, batchName, jobName)
 		if err != nil {
 			return nil, err
@@ -130,7 +131,7 @@ func (handler *jobHandler) CopyJob(ctx context.Context, jobName string, deployme
 func (handler *jobHandler) DeleteJob(ctx context.Context, jobName string) error {
 	logger := log.Ctx(ctx)
 	logger.Debug().Msgf("delete job %s for namespace: %s", jobName, handler.common.Env.RadixDeploymentNamespace)
-	batchName, _, ok := apiv1.ParseBatchAndJobNameFromScheduledJobName(jobName)
+	batchName, _, ok := internal.ParseBatchAndJobNameFromScheduledJobName(jobName)
 	if !ok {
 		return apiErrors.NewInvalidWithReason(jobName, "is not a valid job name")
 	}

@@ -76,3 +76,15 @@ func GetRadixBatch(ctx context.Context, radixClient radixclient.Interface, names
 	}
 	return radixBatch, nil
 }
+
+// ParseBatchAndJobNameFromScheduledJobName Decompose V2 batch name and jobs name from V1 job-name
+func ParseBatchAndJobNameFromScheduledJobName(scheduleJobName string) (batchName, batchJobName string, ok bool) {
+	scheduleJobNameParts := strings.Split(scheduleJobName, "-")
+	if len(scheduleJobNameParts) < 2 {
+		return
+	}
+	batchName = strings.Join(scheduleJobNameParts[:len(scheduleJobNameParts)-1], "-")
+	batchJobName = scheduleJobNameParts[len(scheduleJobNameParts)-1]
+	ok = true
+	return
+}

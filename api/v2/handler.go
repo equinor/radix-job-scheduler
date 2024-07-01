@@ -62,7 +62,7 @@ type Handler interface {
 	// CreateRadixBatchSingleJob Create a batch with single job parameters
 	CreateRadixBatchSingleJob(ctx context.Context, jobScheduleDescription *common.JobScheduleDescription) (*modelsv2.RadixBatch, error)
 	// CopyRadixBatchSingleJob Copy a batch with single job parameters
-	CopyRadixBatchSingleJob(ctx context.Context, batchName, jobName, deploymentName string) (*modelsv2.RadixBatch, error)
+	CopyRadixBatchSingleJob(ctx context.Context, jobName, deploymentName string) (*modelsv2.RadixBatch, error)
 	// MaintainHistoryLimit Delete outdated batches
 	MaintainHistoryLimit(ctx context.Context) error
 	// GarbageCollectPayloadSecrets Delete orphaned payload secrets
@@ -201,8 +201,8 @@ func (h *handler) CreateRadixBatchSingleJob(ctx context.Context, jobScheduleDesc
 }
 
 // CopyRadixBatchSingleJob Copy a batch with single job parameters
-func (h *handler) CopyRadixBatchSingleJob(ctx context.Context, batchName, jobName, deploymentName string) (*modelsv2.RadixBatch, error) {
-	return batch.CopyRadixBatchOrJob(ctx, h.kubeUtil.RadixClient(), h.env.RadixDeploymentNamespace, batchName, jobName, h.radixDeployJobComponent, deploymentName)
+func (h *handler) CopyRadixBatchSingleJob(ctx context.Context, jobName, deploymentName string) (*modelsv2.RadixBatch, error) {
+	return batch.CopyRadixBatchOrJob(ctx, h.kubeUtil.RadixClient(), h.env.RadixDeploymentNamespace, "", jobName, h.radixDeployJobComponent, deploymentName)
 }
 
 // DeleteRadixBatch Delete a batch

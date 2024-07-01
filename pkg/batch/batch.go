@@ -89,6 +89,14 @@ func GetRadixBatchStatuses(radixBatches []*radixv1.RadixBatch, radixDeployJobCom
 
 // CopyRadixBatchOrJob Copy the Radix batch or job
 func CopyRadixBatchOrJob(ctx context.Context, radixClient versioned.Interface, namespace string, sourceBatchName string, sourceJobName string, radixDeployJobComponent *radixv1.RadixDeployJobComponent, radixDeploymentName string) (*modelsv2.RadixBatch, error) {
+	if len(sourceBatchName) == 0 {
+		if batchName, jobName, ok := internal.ParseBatchAndJobNameFromScheduledJobName(sourceJobName); ok {
+			sourceBatchName = batchName
+			sourceJobName = jobName
+		} else {
+			return nil, fmt.Errorf("copy of this job is not supported")
+		}
+	}
 	sourceRadixBatch, err := internal.GetRadixBatch(ctx, radixClient, namespace, sourceBatchName)
 	if err != nil {
 		return nil, err

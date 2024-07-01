@@ -52,7 +52,7 @@ func (mr *MockHandlerMockRecorder) CopyRadixBatch(ctx, batchName, deploymentName
 }
 
 // CopyRadixBatchSingleJob mocks base method.
-func (m *MockHandler) CopyRadixBatchSingleJob(ctx context.Context, batchName, jobName, deploymentName string) (*v2.RadixBatch, error) {
+func (m *MockHandler) CopyRadixBatchSingleJob(ctx context.Context, jobName, deploymentName string) (*v2.RadixBatch, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CopyRadixBatchSingleJob", ctx, batchName, jobName, deploymentName)
 	ret0, _ := ret[0].(*v2.RadixBatch)
