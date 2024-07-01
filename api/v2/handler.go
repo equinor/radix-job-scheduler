@@ -104,14 +104,14 @@ type radixBatchJobWithDescription struct {
 func (h *handler) GetRadixBatches(ctx context.Context) ([]modelsv2.RadixBatch, error) {
 	logger := log.Ctx(ctx)
 	logger.Debug().Msgf("Get batches for the namespace: %s", h.env.RadixDeploymentNamespace)
-	return batch.GetRadixBatchStatuses(ctx, h.kubeUtil.RadixClient(), kube.RadixBatchTypeBatch, h.env.RadixDeploymentNamespace, h.radixDeployJobComponent)
+	return h.getRadixBatchStatuses(ctx, kube.RadixBatchTypeBatch)
 }
 
 // GetRadixBatchSingleJobs Get statuses of all single jobs
 func (h *handler) GetRadixBatchSingleJobs(ctx context.Context) ([]modelsv2.RadixBatch, error) {
 	logger := log.Ctx(ctx)
 	logger.Debug().Msgf("Get sigle jobs for the namespace: %s", h.env.RadixDeploymentNamespace)
-	return batch.GetRadixBatchStatuses(ctx, h.kubeUtil.RadixClient(), kube.RadixBatchTypeJob, h.env.RadixDeploymentNamespace, h.radixDeployJobComponent)
+	return h.getRadixBatchStatuses(ctx, kube.RadixBatchTypeJob)
 }
 
 // GetRadixBatch Get status of a batch
@@ -733,4 +733,20 @@ func applyDefaultJobDescriptionProperties(jobScheduleDescription *common.JobSche
 		return nil
 	}
 	return mergo.Merge(&jobScheduleDescription.RadixJobComponentConfig, defaultRadixJobComponentConfig, mergo.WithTransformers(authTransformer))
+}
+
+// getRadixBatchStatuses Get Radix batch statuses
+func (h *handler) getRadixBatchStatuses(ctx context.Context, radixBatchType kube.RadixBatchType) ([]modelsv2.RadixBatch, error) {
+	logger := log.Ctx(ctx)
+	namespace := h.env.RadixDeploymentNamespace
+	radixBatches, err := internal.GetRadixBatches(ctx, namespace, h.kubeUtil.RadixClient(),
+		radixLabels.ForComponentName(h.radixDeployJobComponent.GetName()),
+		radixLabels.ForBatchType(radixBatchType),
+	)
+	if err != nil {
+		return nil, err
+	}
+	logger.Debug().Msgf("Found %v batches for namespace %s", len(radixBatches), namespace)
+	radixBatchStatuses := batch.GetRadixBatchStatuses(radixBatches, h.radixDeployJobComponent)
+	return radixBatchStatuses, nil
 }

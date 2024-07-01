@@ -1,7 +1,6 @@
 package batch
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/equinor/radix-common/utils"
@@ -12,9 +11,6 @@ import (
 	"github.com/equinor/radix-job-scheduler/utils/radix/jobs"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
-	radixLabels "github.com/equinor/radix-operator/pkg/apis/utils/labels"
-	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
-	"github.com/rs/zerolog/log"
 )
 
 // GetRadixBatchStatus Get radix batch
@@ -79,23 +75,8 @@ func getPodStatusByRadixBatchJobPodStatus(podStatuses []radixv1.RadixBatchJobPod
 	})
 }
 
-// GetRadixBatchStatuses Get Radix batch statuses
-func GetRadixBatchStatuses(ctx context.Context, radixClient radixclient.Interface, radixBatchType kube.RadixBatchType, namespace string, radixDeployJobComponent *radixv1.RadixDeployJobComponent) ([]modelsv2.RadixBatch, error) {
-	logger := log.Ctx(ctx)
-	radixBatches, err := internal.GetRadixBatches(ctx, namespace, radixClient,
-		radixLabels.ForComponentName(radixDeployJobComponent.GetName()),
-		radixLabels.ForBatchType(radixBatchType),
-	)
-	if err != nil {
-		return nil, err
-	}
-	logger.Debug().Msgf("Found %v batches for namespace %s", len(radixBatches), namespace)
-	radixBatchStatuses := ConvertToRadixBatchStatuses(radixBatches, radixDeployJobComponent)
-	return radixBatchStatuses, nil
-}
-
-// ConvertToRadixBatchStatuses Convert to radix batch statuses
-func ConvertToRadixBatchStatuses(radixBatches []*radixv1.RadixBatch, radixDeployJobComponent *radixv1.RadixDeployJobComponent) []modelsv2.RadixBatch {
+// GetRadixBatchStatuses Convert to radix batch statuses
+func GetRadixBatchStatuses(radixBatches []*radixv1.RadixBatch, radixDeployJobComponent *radixv1.RadixDeployJobComponent) []modelsv2.RadixBatch {
 	return slice.Reduce(radixBatches, make([]modelsv2.RadixBatch, 0, len(radixBatches)), func(acc []modelsv2.RadixBatch, radixBatch *radixv1.RadixBatch) []modelsv2.RadixBatch {
 		return append(acc, GetRadixBatchStatus(radixBatch, radixDeployJobComponent))
 	})
