@@ -1,16 +1,21 @@
 package batch
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-common/utils/pointers"
 	"github.com/equinor/radix-common/utils/slice"
+	"github.com/equinor/radix-job-scheduler/api/errors"
 	"github.com/equinor/radix-job-scheduler/internal"
 	modelsv2 "github.com/equinor/radix-job-scheduler/models/v2"
 	"github.com/equinor/radix-job-scheduler/utils/radix/jobs"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
+	"github.com/equinor/radix-operator/pkg/client/clientset/versioned"
+	"github.com/rs/zerolog/log"
+	"k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // GetRadixBatchStatus Get radix batch
@@ -80,4 +85,48 @@ func GetRadixBatchStatuses(radixBatches []*radixv1.RadixBatch, radixDeployJobCom
 	return slice.Reduce(radixBatches, make([]modelsv2.RadixBatch, 0, len(radixBatches)), func(acc []modelsv2.RadixBatch, radixBatch *radixv1.RadixBatch) []modelsv2.RadixBatch {
 		return append(acc, GetRadixBatchStatus(radixBatch, radixDeployJobComponent))
 	})
+}
+
+// CopyRadixBatchOrJob Copy the Radix batch or job
+func CopyRadixBatchOrJob(ctx context.Context, radixClient versioned.Interface, sourceRadixBatch *radixv1.RadixBatch, sourceJobName string, namespace string, radixDeployJobComponent *radixv1.RadixDeployJobComponent, radixDeploymentName string) (*modelsv2.RadixBatch, error) {
+	radixComponentName := radixDeployJobComponent.GetName()
+	logger := log.Ctx(ctx)
+	logger.Debug().Msgf("copy batch %s for namespace: %s", sourceRadixBatch.GetName(), namespace)
+	radixBatch := radixv1.RadixBatch{
+		ObjectMeta: v1.ObjectMeta{
+			Name:   internal.GenerateBatchName(radixComponentName),
+			Labels: sourceRadixBatch.GetLabels(),
+		},
+		Spec: radixv1.RadixBatchSpec{
+			RadixDeploymentJobRef: radixv1.RadixDeploymentJobComponentSelector{
+				LocalObjectReference: radixv1.LocalObjectReference{Name: radixDeploymentName},
+				Job:                  radixComponentName,
+			},
+			Jobs: copyBatchJobs(ctx, sourceRadixBatch, sourceJobName),
+		},
+	}
+
+	logger.Debug().Msgf("Create the copied Radix Batch %s with %d jobs in the cluster", radixBatch.GetName(), len(radixBatch.Spec.Jobs))
+	createdRadixBatch, err := radixClient.RadixV1().RadixBatches(namespace).Create(ctx, &radixBatch, v1.CreateOptions{})
+	if err != nil {
+		return nil, errors.NewFromError(err)
+	}
+
+	logger.Debug().Msgf("copied batch %s from the batch %s for component %s, ein namespace: %s", radixBatch.GetName(), sourceRadixBatch.GetName(), radixComponentName, namespace)
+	return pointers.Ptr(GetRadixBatchStatus(createdRadixBatch, radixDeployJobComponent)), nil
+}
+
+func copyBatchJobs(ctx context.Context, sourceRadixBatch *radixv1.RadixBatch, sourceJobName string) []radixv1.RadixBatchJob {
+	logger := log.Ctx(ctx)
+	radixBatchJobs := make([]radixv1.RadixBatchJob, 0, len(sourceRadixBatch.Spec.Jobs))
+	for _, sourceJob := range sourceRadixBatch.Spec.Jobs {
+		if sourceJobName != "" && sourceJob.Name != sourceJobName {
+			continue
+		}
+		job := sourceJob.DeepCopy()
+		job.Name = internal.CreateJobName()
+		logger.Debug().Msgf("Copy Radxi Batch Job %s", job.Name)
+		radixBatchJobs = append(radixBatchJobs, *job)
+	}
+	return radixBatchJobs
 }

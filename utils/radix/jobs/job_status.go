@@ -53,9 +53,9 @@ func getBatchJobStatusPhases(radixBatch *radixv1.RadixBatch) []radixv1.RadixBatc
 }
 
 // GetStatusFromStatusRules Gets BatchStatus by rules
-func GetStatusFromStatusRules(radixBatchJobPhases []radixv1.RadixBatchJobPhase, radixDeployJobComponent *radixv1.RadixDeployJobComponent, defaultBatchStatus radixv1.RadixBatchJobApiStatus) radixv1.RadixBatchJobApiStatus {
-	if radixDeployJobComponent != nil {
-		for _, rule := range radixDeployJobComponent.BatchStatusRules {
+func GetStatusFromStatusRules(radixBatchJobPhases []radixv1.RadixBatchJobPhase, activeRadixDeployJobComponent *radixv1.RadixDeployJobComponent, defaultBatchStatus radixv1.RadixBatchJobApiStatus) radixv1.RadixBatchJobApiStatus {
+	if activeRadixDeployJobComponent != nil {
+		for _, rule := range activeRadixDeployJobComponent.BatchStatusRules {
 			evaluateJobStatusByRule := func(jobStatusPhase radixv1.RadixBatchJobPhase) bool { return evaluateCondition(jobStatusPhase, rule) }
 			switch rule.Condition {
 			case radixv1.ConditionAny:
