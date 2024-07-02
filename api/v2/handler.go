@@ -240,6 +240,9 @@ func (h *handler) DeleteRadixBatchJob(ctx context.Context, jobName string) error
 	if err != nil {
 		return err
 	}
+	if radixBatch.Labels[kube.RadixBatchTypeLabel] != string(kube.RadixBatchTypeJob) {
+		return errors.New("not a single job")
+	}
 	return batch.DeleteRadixBatch(ctx, h.kubeUtil.RadixClient(), radixBatch)
 }
 
