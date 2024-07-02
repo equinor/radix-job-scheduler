@@ -130,25 +130,11 @@ func CopyRadixBatchOrJob(ctx context.Context, radixClient versioned.Interface, n
 	return pointers.Ptr(GetRadixBatchStatus(createdRadixBatch, radixDeployJobComponent)), nil
 }
 
-func copyBatchJobs(ctx context.Context, sourceRadixBatch *radixv1.RadixBatch, sourceJobName string) []radixv1.RadixBatchJob {
-	logger := log.Ctx(ctx)
-	radixBatchJobs := make([]radixv1.RadixBatchJob, 0, len(sourceRadixBatch.Spec.Jobs))
-	for _, sourceJob := range sourceRadixBatch.Spec.Jobs {
-		if sourceJobName != "" && sourceJob.Name != sourceJobName {
-			continue
-		}
-		job := sourceJob.DeepCopy()
-		job.Name = internal.CreateJobName()
-		logger.Debug().Msgf("Copy Radxi Batch Job %s", job.Name)
-		radixBatchJobs = append(radixBatchJobs, *job)
-	}
-	return radixBatchJobs
-}
-
+// StopRadixBatch
 func StopRadixBatch(ctx context.Context, radixClient versioned.Interface, namespace string, radixBatch *radixv1.RadixBatch) error {
 	logger := log.Ctx(ctx)
 	logger.Debug().Msgf("stop batch %s for namespace: %s", radixBatch.GetName(), namespace)
-	if radixBatch.Status.Condition.Type == radixv1.BatchConditionTypeCompleted {
+	if !isBatchStoppable(radixBatch.Status.Condition) {
 		return errors.NewBadRequest(fmt.Sprintf("cannot stop completed batch %s", radixBatch.GetName()))
 	}
 
@@ -164,10 +150,12 @@ func StopRadixBatch(ctx context.Context, radixClient versioned.Interface, namesp
 	return updateRadixBatch(ctx, radixClient, namespace, newRadixBatch)
 }
 
+// StopRadixBatchJob Stop a job
 func StopRadixBatchJob(ctx context.Context, radixClient versioned.Interface, namespace string, radixBatch *radixv1.RadixBatch, jobName string) error {
 	logger := log.Ctx(ctx)
+
 	logger.Debug().Msgf("stop a job %s in the batch %s for namespace: %s", jobName, radixBatch.GetName(), namespace)
-	if radixBatch.Status.Condition.Type == radixv1.BatchConditionTypeCompleted {
+	if !isBatchStoppable(radixBatch.Status.Condition) {
 		return errors.NewBadRequest(fmt.Sprintf("cannot stop the job %s in the completed batch %s", jobName, radixBatch.GetName()))
 	}
 
@@ -185,6 +173,28 @@ func StopRadixBatchJob(ctx context.Context, radixClient versioned.Interface, nam
 		return updateRadixBatch(ctx, radixClient, namespace, newRadixBatch)
 	}
 	return errors.NewNotFound("batch job", jobName)
+}
+
+func copyBatchJobs(ctx context.Context, sourceRadixBatch *radixv1.RadixBatch, sourceJobName string) []radixv1.RadixBatchJob {
+	logger := log.Ctx(ctx)
+	radixBatchJobs := make([]radixv1.RadixBatchJob, 0, len(sourceRadixBatch.Spec.Jobs))
+	for _, sourceJob := range sourceRadixBatch.Spec.Jobs {
+		if sourceJobName != "" && sourceJob.Name != sourceJobName {
+			continue
+		}
+		job := sourceJob.DeepCopy()
+		job.Name = internal.CreateJobName()
+		logger.Debug().Msgf("Copy Radxi Batch Job %s", job.Name)
+		radixBatchJobs = append(radixBatchJobs, *job)
+	}
+	return radixBatchJobs
+}
+
+// check if batch can be stopped
+func isBatchStoppable(condition radixv1.RadixBatchCondition) bool {
+	return condition.Type == "" ||
+		condition.Type == radixv1.BatchConditionTypeActive ||
+		condition.Type == radixv1.BatchConditionTypeWaiting
 }
 
 func updateRadixBatch(ctx context.Context, radixClient versioned.Interface, namespace string, radixBatch *radixv1.RadixBatch) error {
