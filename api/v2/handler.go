@@ -221,9 +221,7 @@ func (h *handler) CopyRadixBatchJob(ctx context.Context, sourceJobName, deployme
 
 // DeleteRadixBatch Delete a batch
 func (h *handler) DeleteRadixBatch(ctx context.Context, batchName string) error {
-	namespace := h.env.RadixDeploymentNamespace
-	radixClient := h.kubeUtil.RadixClient()
-	return batch.DeleteRadixBatch(ctx, radixClient, batchName, namespace)
+	return batch.DeleteRadixBatch(ctx, h.kubeUtil.RadixClient(), h.env.RadixDeploymentNamespace, batchName)
 }
 
 // StopRadixBatch Stop a batch
