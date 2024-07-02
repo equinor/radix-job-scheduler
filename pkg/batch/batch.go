@@ -94,7 +94,7 @@ func GetRadixBatchStatuses(radixBatches []*radixv1.RadixBatch, radixDeployJobCom
 func CopyRadixBatchOrJob(ctx context.Context, radixClient versioned.Interface, sourceRadixBatch *radixv1.RadixBatch, sourceJobName string, radixDeployJobComponent *radixv1.RadixDeployJobComponent, radixDeploymentName string) (*modelsv2.RadixBatch, error) {
 	radixComponentName := radixDeployJobComponent.GetName()
 	logger := log.Ctx(ctx)
-	logger.Info().Msgf("copy batch %s", sourceRadixBatch)
+	logger.Info().Msgf("copy a jobs %s of the batch %s", sourceJobName, sourceRadixBatch.GetName())
 	radixBatch := radixv1.RadixBatch{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   internal.GenerateBatchName(radixComponentName),
@@ -115,7 +115,7 @@ func CopyRadixBatchOrJob(ctx context.Context, radixClient versioned.Interface, s
 		return nil, errors.NewFromError(err)
 	}
 
-	logger.Debug().Msgf("copied batch %s from the batch %s for component %s", radixBatch.GetName(), sourceRadixBatch, radixComponentName)
+	logger.Debug().Msgf("copied the batch %s for the component %s", radixBatch.GetName(), radixComponentName)
 	return pointers.Ptr(GetRadixBatchStatus(createdRadixBatch, radixDeployJobComponent)), nil
 }
 

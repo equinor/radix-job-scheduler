@@ -72,6 +72,8 @@ type Handler interface {
 	DeleteRadixBatchJob(ctx context.Context, jobName string) error
 	// StopRadixBatch Stop a batch
 	StopRadixBatch(ctx context.Context, batchName string) error
+	// StopRadixBatchJob Stop a batch job
+	StopRadixBatchJob(ctx context.Context, batchName, jobName string) error
 	// RestartRadixBatch Restart a batch
 	RestartRadixBatch(ctx context.Context, batchName string) error
 	// RestartRadixBatchJob Restart a batch job
@@ -328,7 +330,7 @@ func (h *handler) getCompletedRadixBatchesSortedByCompletionTimeAsc(ctx context.
 }
 
 func (h *handler) getNotSucceededRadixBatches(radixBatches []*radixv1.RadixBatch, completedBefore time.Time) []*modelsv2.RadixBatch {
-	return internal.GetRadixBatchModelsFromRadixBatches(slice.FindAll(radixBatches, func(radixBatch *radixv1.RadixBatch) bool {
+	return convertToRadixBatchStatuses(slice.FindAll(radixBatches, func(radixBatch *radixv1.RadixBatch) bool {
 		return radixBatchHasType(radixBatch, kube.RadixBatchTypeBatch) && internal.IsRadixBatchNotSucceeded(radixBatch) && radixBatchIsCompletedBefore(completedBefore, radixBatch)
 	}), h.radixDeployJobComponent)
 }
@@ -337,7 +339,7 @@ func (h *handler) getSucceededRadixBatches(radixBatches []*radixv1.RadixBatch, c
 	radixBatches = slice.FindAll(radixBatches, func(radixBatch *radixv1.RadixBatch) bool {
 		return radixBatchHasType(radixBatch, kube.RadixBatchTypeBatch) && internal.IsRadixBatchSucceeded(radixBatch) && radixBatchIsCompletedBefore(completedBefore, radixBatch)
 	})
-	return internal.GetRadixBatchModelsFromRadixBatches(radixBatches, h.radixDeployJobComponent)
+	return convertToRadixBatchStatuses(radixBatches, h.radixDeployJobComponent)
 }
 
 func radixBatchIsCompletedBefore(completedBefore time.Time, radixBatch *radixv1.RadixBatch) bool {
@@ -345,13 +347,13 @@ func radixBatchIsCompletedBefore(completedBefore time.Time, radixBatch *radixv1.
 }
 
 func (h *handler) getNotSucceededSingleJobs(radixBatches []*radixv1.RadixBatch, completedBefore time.Time) []*modelsv2.RadixBatch {
-	return internal.GetRadixBatchModelsFromRadixBatches(slice.FindAll(radixBatches, func(radixBatch *radixv1.RadixBatch) bool {
+	return convertToRadixBatchStatuses(slice.FindAll(radixBatches, func(radixBatch *radixv1.RadixBatch) bool {
 		return radixBatchHasType(radixBatch, kube.RadixBatchTypeJob) && internal.IsRadixBatchNotSucceeded(radixBatch) && radixBatchIsCompletedBefore(completedBefore, radixBatch)
 	}), h.radixDeployJobComponent)
 }
 
 func (h *handler) getSucceededSingleJobs(radixBatches []*radixv1.RadixBatch, completedBefore time.Time) []*modelsv2.RadixBatch {
-	return internal.GetRadixBatchModelsFromRadixBatches(slice.FindAll(radixBatches, func(radixBatch *radixv1.RadixBatch) bool {
+	return convertToRadixBatchStatuses(slice.FindAll(radixBatches, func(radixBatch *radixv1.RadixBatch) bool {
 		return radixBatchHasType(radixBatch, kube.RadixBatchTypeJob) && internal.IsRadixBatchSucceeded(radixBatch) && radixBatchIsCompletedBefore(completedBefore, radixBatch)
 	}), h.radixDeployJobComponent)
 }
@@ -620,14 +622,6 @@ func (h *handler) getJobComponentPayloadSecretRefNames(ctx context.Context) (map
 	return payloadSecretRefNames, nil
 }
 
-func applyDefaultJobDescriptionProperties(jobScheduleDescription *common.JobScheduleDescription, defaultRadixJobComponentConfig *common.RadixJobComponentConfig) error {
-	if jobScheduleDescription == nil || defaultRadixJobComponentConfig == nil {
-		return nil
-	}
-	return mergo.Merge(&jobScheduleDescription.RadixJobComponentConfig, defaultRadixJobComponentConfig, mergo.WithTransformers(authTransformer))
-}
-
-// getRadixBatchStatuses Get Radix batch statuses
 func (h *handler) getRadixBatchStatuses(ctx context.Context, radixBatchType kube.RadixBatchType) ([]modelsv2.RadixBatch, error) {
 	logger := log.Ctx(ctx)
 	radixBatches, err := internal.GetRadixBatches(ctx, h.env.RadixDeploymentNamespace, h.kubeUtil.RadixClient(),
@@ -640,4 +634,19 @@ func (h *handler) getRadixBatchStatuses(ctx context.Context, radixBatchType kube
 	logger.Debug().Msgf("Found %v batches", len(radixBatches))
 	radixBatchStatuses := batch.GetRadixBatchStatuses(radixBatches, h.radixDeployJobComponent)
 	return radixBatchStatuses, nil
+}
+
+func applyDefaultJobDescriptionProperties(jobScheduleDescription *common.JobScheduleDescription, defaultRadixJobComponentConfig *common.RadixJobComponentConfig) error {
+	if jobScheduleDescription == nil || defaultRadixJobComponentConfig == nil {
+		return nil
+	}
+	return mergo.Merge(&jobScheduleDescription.RadixJobComponentConfig, defaultRadixJobComponentConfig, mergo.WithTransformers(authTransformer))
+}
+
+func convertToRadixBatchStatuses(radixBatches []*radixv1.RadixBatch, radixDeployJobComponent *radixv1.RadixDeployJobComponent) []*modelsv2.RadixBatch {
+	batches := make([]*modelsv2.RadixBatch, 0, len(radixBatches))
+	for _, radixBatch := range radixBatches {
+		batches = append(batches, pointers.Ptr(batch.GetRadixBatchStatus(radixBatch, radixDeployJobComponent)))
+	}
+	return batches
 }

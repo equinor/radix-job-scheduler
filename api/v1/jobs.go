@@ -50,8 +50,8 @@ func CopyJob(ctx context.Context, handlerApiV2 apiv2.Handler, jobName, deploymen
 
 // StopJob Stop a job
 func StopJob(ctx context.Context, handlerApiV2 apiv2.Handler, jobName string) error {
-	if batchName, jobName, ok := internal.ParseBatchAndJobNameFromScheduledJobName(jobName); ok {
-		return handlerApiV2.StopRadixBatchJob(ctx, batchName, jobName)
+	if batchName, batchJobName, ok := internal.ParseBatchAndJobNameFromScheduledJobName(jobName); ok {
+		return handlerApiV2.StopRadixBatchJob(ctx, batchName, batchJobName)
 	}
 	return fmt.Errorf("stop of this job is not supported")
 }

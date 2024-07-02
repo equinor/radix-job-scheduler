@@ -8,11 +8,8 @@ import (
 	"time"
 
 	"github.com/equinor/radix-common/utils"
-	"github.com/equinor/radix-common/utils/pointers"
 	"github.com/equinor/radix-common/utils/slice"
 	"github.com/equinor/radix-job-scheduler/api/errors"
-	modelsv2 "github.com/equinor/radix-job-scheduler/models/v2"
-	"github.com/equinor/radix-job-scheduler/pkg/batch"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	radixLabels "github.com/equinor/radix-operator/pkg/apis/utils/labels"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
@@ -38,15 +35,6 @@ func GetRadixBatches(ctx context.Context, namespace string, radixClient radixcli
 	}
 
 	return slice.PointersOf(radixBatchList.Items).([]*radixv1.RadixBatch), nil
-}
-
-// GetRadixBatchModelsFromRadixBatches Get Radix batch statuses from Radix batches
-func GetRadixBatchModelsFromRadixBatches(radixBatches []*radixv1.RadixBatch, radixDeployJobComponent *radixv1.RadixDeployJobComponent) []*modelsv2.RadixBatch {
-	batches := make([]*modelsv2.RadixBatch, 0, len(radixBatches))
-	for _, radixBatch := range radixBatches {
-		batches = append(batches, pointers.Ptr(batch.GetRadixBatchStatus(radixBatch, radixDeployJobComponent)))
-	}
-	return batches
 }
 
 // GenerateBatchName Generate batch name
