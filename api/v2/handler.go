@@ -113,7 +113,7 @@ func (h *handler) GetRadixBatchSingleJobs(ctx context.Context) ([]modelsv2.Radix
 // GetRadixBatch Get status of a batch
 func (h *handler) GetRadixBatch(ctx context.Context, batchName string) (*modelsv2.RadixBatch, error) {
 	logger := log.Ctx(ctx)
-	logger.Debug().Msgf("get batch status for the batch %s for namespace: %s", batchName, h.env.RadixDeploymentNamespace)
+	logger.Debug().Msgf("get batch status for the batch %s", batchName)
 	radixBatch, err := internal.GetRadixBatch(ctx, h.kubeUtil.RadixClient(), h.env.RadixDeploymentNamespace, batchName)
 	if err != nil {
 		return nil, err
@@ -218,24 +218,22 @@ func (h *handler) DeleteRadixBatch(ctx context.Context, batchName string) error 
 
 // StopRadixBatch Stop a batch
 func (h *handler) StopRadixBatch(ctx context.Context, batchName string) error {
-	namespace := h.env.RadixDeploymentNamespace
 	radixClient := h.kubeUtil.RadixClient()
-	radixBatch, err := radixClient.RadixV1().RadixBatches(namespace).Get(ctx, batchName, metav1.GetOptions{})
+	radixBatch, err := radixClient.RadixV1().RadixBatches(h.env.RadixDeploymentNamespace).Get(ctx, batchName, metav1.GetOptions{})
 	if err != nil {
 		return apiErrors.NewFromError(err)
 	}
-	return batch.StopRadixBatch(ctx, radixClient, namespace, radixBatch)
+	return batch.StopRadixBatch(ctx, radixClient, radixBatch)
 }
 
 // StopRadixBatchJob Stop a batch job
 func (h *handler) StopRadixBatchJob(ctx context.Context, batchName string, jobName string) error {
-	namespace := h.env.RadixDeploymentNamespace
 	radixClient := h.kubeUtil.RadixClient()
-	radixBatch, err := radixClient.RadixV1().RadixBatches(namespace).Get(ctx, batchName, metav1.GetOptions{})
+	radixBatch, err := radixClient.RadixV1().RadixBatches(h.env.RadixDeploymentNamespace).Get(ctx, batchName, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
-	return batch.StopRadixBatchJob(ctx, radixClient, namespace, radixBatch, jobName)
+	return batch.StopRadixBatchJob(ctx, radixClient, radixBatch, jobName)
 }
 
 // MaintainHistoryLimit Delete outdated batches
@@ -591,15 +589,14 @@ func applyDefaultJobDescriptionProperties(jobScheduleDescription *common.JobSche
 // getRadixBatchStatuses Get Radix batch statuses
 func (h *handler) getRadixBatchStatuses(ctx context.Context, radixBatchType kube.RadixBatchType) ([]modelsv2.RadixBatch, error) {
 	logger := log.Ctx(ctx)
-	namespace := h.env.RadixDeploymentNamespace
-	radixBatches, err := internal.GetRadixBatches(ctx, namespace, h.kubeUtil.RadixClient(),
+	radixBatches, err := internal.GetRadixBatches(ctx, h.env.RadixDeploymentNamespace, h.kubeUtil.RadixClient(),
 		radixLabels.ForComponentName(h.radixDeployJobComponent.GetName()),
 		radixLabels.ForBatchType(radixBatchType),
 	)
 	if err != nil {
 		return nil, err
 	}
-	logger.Debug().Msgf("Found %v batches for namespace %s", len(radixBatches), namespace)
+	logger.Debug().Msgf("Found %v batches", len(radixBatches))
 	radixBatchStatuses := batch.GetRadixBatchStatuses(radixBatches, h.radixDeployJobComponent)
 	return radixBatchStatuses, nil
 }
