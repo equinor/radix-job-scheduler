@@ -192,6 +192,9 @@ func RestartRadixBatchJob(ctx context.Context, radixClient versioned.Interface, 
 func DeleteRadixBatch(ctx context.Context, radixClient versioned.Interface, radixBatch *radixv1.RadixBatch) error {
 	logger := log.Ctx(ctx)
 	logger.Debug().Msgf("delete batch %s", radixBatch.GetName())
+	if radixBatch.Labels[kube.RadixBatchTypeLabel] != string(kube.RadixBatchTypeJob) {
+		return errors.NewInvalid("not a single job")
+	}
 	if err := radixClient.RadixV1().RadixBatches(radixBatch.GetNamespace()).Delete(ctx, radixBatch.GetName(), metav1.DeleteOptions{PropagationPolicy: pointers.Ptr(metav1.DeletePropagationBackground)}); err != nil {
 		return errors.NewFromError(err)
 	}
