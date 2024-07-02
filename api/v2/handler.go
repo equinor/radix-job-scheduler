@@ -220,9 +220,9 @@ func (h *handler) DeleteRadixBatch(ctx context.Context, batchName string) error 
 func (h *handler) StopRadixBatch(ctx context.Context, batchName string) error {
 	namespace := h.env.RadixDeploymentNamespace
 	radixClient := h.kubeUtil.RadixClient()
-	radixBatch, err := radixClient.RadixV1().RadixBatches(namespace).Get(ctx, batchName, v1.GetOptions{})
+	radixBatch, err := radixClient.RadixV1().RadixBatches(namespace).Get(ctx, batchName, metav1.GetOptions{})
 	if err != nil {
-		return errors.NewFromError(err)
+		return apiErrors.NewFromError(err)
 	}
 	return batch.StopRadixBatch(ctx, radixClient, namespace, radixBatch)
 }
