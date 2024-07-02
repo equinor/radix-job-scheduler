@@ -188,6 +188,16 @@ func RestartRadixBatchJob(ctx context.Context, radixClient versioned.Interface, 
 	return err
 }
 
+// DeleteRadixBatch Delete a batch
+func DeleteRadixBatch(ctx context.Context, radixClient versioned.Interface, batchName string, namespace string) error {
+	logger := log.Ctx(ctx)
+	logger.Debug().Msgf("delete batch %s", batchName)
+	if err := radixClient.RadixV1().RadixBatches(namespace).Delete(ctx, batchName, metav1.DeleteOptions{PropagationPolicy: pointers.Ptr(metav1.DeletePropagationBackground)}); err != nil {
+		return errors.NewFromError(err)
+	}
+	return nil
+}
+
 func copyBatchJobs(ctx context.Context, sourceRadixBatch *radixv1.RadixBatch, sourceJobName string) []radixv1.RadixBatchJob {
 	logger := log.Ctx(ctx)
 	radixBatchJobs := make([]radixv1.RadixBatchJob, 0, len(sourceRadixBatch.Spec.Jobs))
