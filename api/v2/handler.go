@@ -60,8 +60,8 @@ type Handler interface {
 	CopyRadixBatch(ctx context.Context, batchName, deploymentName string) (*modelsv2.RadixBatch, error)
 	// CreateRadixBatchSingleJob Create a batch with single job parameters
 	CreateRadixBatchSingleJob(ctx context.Context, jobScheduleDescription *common.JobScheduleDescription) (*modelsv2.RadixBatch, error)
-	// CopyRadixBatchSingleJob Copy a batch with single job parameters
-	CopyRadixBatchSingleJob(ctx context.Context, jobName, deploymentName string) (*modelsv2.RadixBatch, error)
+	// CopyRadixBatchJob Copy a batch job parameter
+	CopyRadixBatchJob(ctx context.Context, jobName, deploymentName string) (*modelsv2.RadixBatch, error)
 	// MaintainHistoryLimit Delete outdated batches
 	MaintainHistoryLimit(ctx context.Context) error
 	// GarbageCollectPayloadSecrets Delete orphaned payload secrets
@@ -146,10 +146,14 @@ func (h *handler) CreateRadixBatch(ctx context.Context, batchScheduleDescription
 }
 
 // CopyRadixBatch Copy a batch with deployment and optional parameters
-func (h *handler) CopyRadixBatch(ctx context.Context, batchName, deploymentName string) (*modelsv2.RadixBatch, error) {
+func (h *handler) CopyRadixBatch(ctx context.Context, sourceBatchName, deploymentName string) (*modelsv2.RadixBatch, error) {
 	logger := log.Ctx(ctx)
-	logger.Debug().Msgf("Copy Radix Batch %s for the deployment %s", batchName, deploymentName)
-	return batch.CopyRadixBatchOrJob(ctx, h.kubeUtil.RadixClient(), h.env.RadixDeploymentNamespace, batchName, "", h.radixDeployJobComponent, deploymentName)
+	logger.Debug().Msgf("Copy Radix Batch %s for the deployment %s", sourceBatchName, deploymentName)
+	sourceRadixBatch, err := internal.GetRadixBatch(ctx, h.kubeUtil.RadixClient(), h.env.RadixDeploymentNamespace, sourceBatchName)
+	if err != nil {
+		return nil, err
+	}
+	return batch.CopyRadixBatchOrJob(ctx, h.kubeUtil.RadixClient(), sourceRadixBatch, "", h.radixDeployJobComponent, deploymentName)
 }
 
 func (h *handler) createRadixBatchOrJob(ctx context.Context, batchScheduleDescription common.BatchScheduleDescription, radixBatchType kube.RadixBatchType) (*modelsv2.RadixBatch, error) {
@@ -202,9 +206,17 @@ func (h *handler) CreateRadixBatchSingleJob(ctx context.Context, jobScheduleDesc
 	return radixBatchJob, err
 }
 
-// CopyRadixBatchSingleJob Copy a batch with single job parameters
-func (h *handler) CopyRadixBatchSingleJob(ctx context.Context, jobName, deploymentName string) (*modelsv2.RadixBatch, error) {
-	return batch.CopyRadixBatchOrJob(ctx, h.kubeUtil.RadixClient(), h.env.RadixDeploymentNamespace, "", jobName, h.radixDeployJobComponent, deploymentName)
+// CopyRadixBatchJob Copy a batch job
+func (h *handler) CopyRadixBatchJob(ctx context.Context, sourceJobName, deploymentName string) (*modelsv2.RadixBatch, error) {
+	batchName, jobName, ok := internal.ParseBatchAndJobNameFromScheduledJobName(sourceJobName)
+	if !ok {
+		return nil, fmt.Errorf("copy of this job is not supported or invalid job name")
+	}
+	sourceRadixBatch, err := internal.GetRadixBatch(ctx, h.kubeUtil.RadixClient(), h.env.RadixDeploymentNamespace, batchName)
+	if err != nil {
+		return nil, err
+	}
+	return batch.CopyRadixBatchOrJob(ctx, h.kubeUtil.RadixClient(), sourceRadixBatch, jobName, h.radixDeployJobComponent, deploymentName)
 }
 
 // DeleteRadixBatch Delete a batch

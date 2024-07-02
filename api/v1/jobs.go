@@ -45,7 +45,7 @@ func GetJobStatusFromRadixBatchJobsStatuses(radixBatches ...modelsv2.RadixBatch)
 
 // CopyJob Copy a job
 func CopyJob(ctx context.Context, handlerApiV2 apiv2.Handler, jobName, deploymentName string) (*modelsv2.RadixBatch, error) {
-	return handlerApiV2.CopyRadixBatchSingleJob(ctx, jobName, deploymentName)
+	return handlerApiV2.CopyRadixBatchJob(ctx, jobName, deploymentName)
 }
 
 // StopJob Stop a job
