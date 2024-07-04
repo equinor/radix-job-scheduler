@@ -7,7 +7,7 @@ toolchain go1.22.1
 require (
 	dario.cat/mergo v1.0.0
 	github.com/equinor/radix-common v1.9.2
-	github.com/equinor/radix-operator v1.56.3-0.20240703121208-725f9c41bb49
+	github.com/equinor/radix-operator v1.57.1-0.20240703144523-97122f72d06c
 	github.com/gin-gonic/gin v1.9.1
 	github.com/go-swagger/go-swagger v0.31.0
 	github.com/golang/mock v1.6.0
