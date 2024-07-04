@@ -29,20 +29,11 @@ type RadixBatch struct {
 	Ended string `json:"ended,omitempty"`
 
 	// Status of the job
-	// - Running = Job is running
-	// - Succeeded = Job has succeeded
-	// - Failed = Job has failed
-	// - Waiting = Job is waiting
-	// - Stopping = Job is stopping
-	// - Stopped = Job has been stopped
-	// - DeadlineExceeded = Job has exceeded its deadline
-	// - Active = Job is active
-	// - Completed = Job is completed
 	//
 	// required: false
 	// Enum: Running,Succeeded,Failed,Waiting,Stopping,Stopped,DeadlineExceeded,Active,Completed
 	// example: Waiting
-	Status string `json:"status,omitempty"`
+	Status radixv1.RadixBatchJobApiStatus `json:"status,omitempty"`
 
 	// JobStatuses of the Radix batch jobs
 	// required: false
