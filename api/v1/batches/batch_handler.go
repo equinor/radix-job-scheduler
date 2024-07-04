@@ -169,7 +169,7 @@ func (handler *batchHandler) getBatchStatusFromRadixBatch(radixBatch *modelsv2.R
 			Created:        radixBatch.CreationTime,
 			Started:        radixBatch.Started,
 			Ended:          radixBatch.Ended,
-			Status:         handler.getBatchStatus(radixBatch),
+			Status:         string(handler.getBatchStatus(radixBatch)),
 			Message:        radixBatch.Message,
 			DeploymentName: radixBatch.DeploymentName,
 		},

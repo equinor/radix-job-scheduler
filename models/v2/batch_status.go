@@ -5,7 +5,6 @@ import (
 )
 
 // RadixBatch holds general information about batch status
-// swagger:model RadixBatch
 type RadixBatch struct {
 	// Name of the Radix batch
 	// required: true
@@ -58,7 +57,6 @@ type RadixBatch struct {
 }
 
 // RadixBatchJobStatus holds general information about batch job status
-// swagger:model RadixBatchJobStatus
 type RadixBatchJobStatus struct {
 	// Name of the Radix batch job
 	// required: true
@@ -114,7 +112,6 @@ type RadixBatchJobStatus struct {
 }
 
 // RadixBatchJobPodStatus contains details for the current status of the job's pods.
-// swagger:model RadixBatchJobPodStatus
 type RadixBatchJobPodStatus struct {
 	// Pod name
 	//
@@ -184,7 +181,6 @@ type RadixBatchJobPodStatus struct {
 }
 
 // ReplicaStatus describes the status of a component container inside a pod
-// swagger:model ReplicaStatus
 type ReplicaStatus struct {
 	// Status of the container
 	// - Pending = Container in Waiting state and the reason is ContainerCreating

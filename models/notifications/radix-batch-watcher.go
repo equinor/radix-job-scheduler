@@ -169,7 +169,7 @@ func (notifier *webhookNotifier) getRadixBatchEventFromRadixBatch(event events.E
 		Created: utils.FormatTime(pointers.Ptr(radixBatch.GetCreationTimestamp())),
 		Started: startedTime,
 		Ended:   endedTime,
-		Status:  jobs.GetRadixBatchStatus(radixBatch, notifier.radixDeployJobComponent),
+		Status:  string(jobs.GetRadixBatchStatus(radixBatch, notifier.radixDeployJobComponent)),
 		Message: radixBatch.Status.Condition.Message,
 		Updated: utils.FormatTime(pointers.Ptr(metav1.Now())),
 	}
@@ -201,7 +201,7 @@ func getRadixBatchJobStatusesFromRadixBatch(radixBatch *radixv1.RadixBatch, radi
 			Created:     utils.FormatTime(radixBatchJobStatus.CreationTime),
 			Started:     utils.FormatTime(radixBatchJobStatus.StartTime),
 			Ended:       utils.FormatTime(radixBatchJobStatus.EndTime),
-			Status:      jobs.GetScheduledJobStatus(radixBatchJobStatus, stopJob),
+			Status:      string(jobs.GetScheduledJobStatus(radixBatchJobStatus, stopJob)),
 			Failed:      radixBatchJobStatus.Failed,
 			Restart:     radixBatchJobStatus.Restart,
 			Message:     radixBatchJobStatus.Message,

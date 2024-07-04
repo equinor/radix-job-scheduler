@@ -1,7 +1,5 @@
 package v1
 
-import radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
-
 // JobStatus holds general information about job status
 // swagger:model JobStatus
 type JobStatus struct {
@@ -40,11 +38,20 @@ type JobStatus struct {
 	Ended string `json:"ended,omitempty"`
 
 	// Status of the job
+	// - Running = Job is running
+	// - Succeeded = Job has succeeded
+	// - Failed = Job has failed
+	// - Waiting = Job is waiting
+	// - Stopping = Job is stopping
+	// - Stopped = Job has been stopped
+	// - DeadlineExceeded = Job has exceeded its deadline
+	// - Active = Job is active
+	// - Completed = Job is completed
 	//
 	// required: false
-	// Enum: Waiting,Running,Succeeded,Stopping,Stopped,Failed,DeadlineExceeded,Completed
+	// Enum: Running,Succeeded,Failed,Waiting,Stopping,Stopped,DeadlineExceeded,Active,Completed
 	// example: Waiting
-	Status radixv1.RadixBatchJobApiStatus `json:"status,omitempty"`
+	Status string `json:"status,omitempty"`
 
 	// Message, if any, of the job
 	//

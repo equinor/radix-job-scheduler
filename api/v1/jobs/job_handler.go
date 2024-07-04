@@ -190,7 +190,7 @@ func getSingleJobStatusFromRadixBatchJob(radixBatch *modelsv2.RadixBatch) (*mode
 		Created:     radixBatchJobStatus.CreationTime,
 		Started:     radixBatchJobStatus.Started,
 		Ended:       radixBatchJobStatus.Ended,
-		Status:      radixBatchJobStatus.Status,
+		Status:      string(radixBatchJobStatus.Status),
 		Message:     radixBatchJobStatus.Message,
 		Failed:      radixBatchJobStatus.Failed,
 		Restart:     radixBatchJobStatus.Restart,
