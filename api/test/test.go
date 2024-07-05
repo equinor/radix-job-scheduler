@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"os"
 	"strings"
 	"time"
 
@@ -19,21 +18,14 @@ import (
 	"github.com/equinor/radix-job-scheduler/models"
 	modelsv1 "github.com/equinor/radix-job-scheduler/models/v1"
 	"github.com/equinor/radix-job-scheduler/router"
-	"github.com/equinor/radix-operator/pkg/apis/defaults"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/equinor/radix-operator/pkg/apis/utils"
 	radixLabels "github.com/equinor/radix-operator/pkg/apis/utils/labels"
-	"github.com/equinor/radix-operator/pkg/client/clientset/versioned"
-	radixclientfake "github.com/equinor/radix-operator/pkg/client/clientset/versioned/fake"
-	kedafake "github.com/kedacore/keda/v2/pkg/generated/clientset/versioned/fake"
-	prometheusclient "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned"
-	prometheusfake "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned/fake"
+	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/kubernetes/fake"
-	secretstoragefake "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned/fake"
 )
 
 type ControllerTestUtils struct {
@@ -95,7 +87,7 @@ func buildURLFromServer(server *httptest.Server, path string) string {
 	return serverUrl.String()
 }
 
-func AddRadixBatch(radixClient versioned.Interface, jobName, componentName string, batchJobType kube.RadixBatchType, namespace string) *v1.RadixBatch {
+func AddRadixBatch(radixClient radixclient.Interface, jobName, componentName string, batchJobType kube.RadixBatchType, namespace string) *v1.RadixBatch {
 	labels := make(map[string]string)
 
 	if len(strings.TrimSpace(componentName)) > 0 {
@@ -186,25 +178,6 @@ func GetRadixBatchByNameForTest(radixBatches []v1.RadixBatch, jobName string) *v
 		}
 	}
 	return nil
-}
-
-func SetupTest(appName, appEnvironment, appComponent, appDeployment string, historyLimit int) (versioned.Interface,
-	kubernetes.Interface, prometheusclient.Interface, *kube.Kube) {
-	_ = os.Setenv("RADIX_APP", appName)
-	_ = os.Setenv("RADIX_ENVIRONMENT", appEnvironment)
-	_ = os.Setenv("RADIX_COMPONENT", appComponent)
-	_ = os.Setenv("RADIX_DEPLOYMENT", appDeployment)
-	_ = os.Setenv("RADIX_JOB_SCHEDULERS_PER_ENVIRONMENT_HISTORY_LIMIT", fmt.Sprint(historyLimit))
-	_ = os.Setenv(defaults.OperatorRollingUpdateMaxUnavailable, "25%")
-	_ = os.Setenv(defaults.OperatorRollingUpdateMaxSurge, "25%")
-	_ = os.Setenv(defaults.OperatorEnvLimitDefaultMemoryEnvironmentVariable, "500M")
-	kubeclient := fake.NewSimpleClientset()
-	radixclient := radixclientfake.NewSimpleClientset()
-	kedaclient := kedafake.NewSimpleClientset()
-	prometheusClient := prometheusfake.NewSimpleClientset()
-	secretStoreClient := secretstoragefake.NewSimpleClientset()
-	kubeUtil, _ := kube.New(kubeclient, radixclient, kedaclient, secretStoreClient)
-	return radixclient, kubeclient, prometheusClient, kubeUtil
 }
 
 func (params *TestParams) ApplyRd(kubeUtil *kube.Kube) *v1.RadixDeployment {

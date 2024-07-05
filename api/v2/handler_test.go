@@ -6,6 +6,7 @@ import (
 
 	"github.com/equinor/radix-common/utils/pointers"
 	"github.com/equinor/radix-job-scheduler/api/test"
+	testUtil "github.com/equinor/radix-job-scheduler/internal/test"
 	"github.com/equinor/radix-job-scheduler/models"
 	"github.com/equinor/radix-job-scheduler/models/common"
 	modelsv2 "github.com/equinor/radix-job-scheduler/models/v2"
@@ -83,7 +84,7 @@ func Test_createBatch(t *testing.T) {
 	for _, ts := range scenarios {
 		appJobComponent := "compute"
 		radixDeployJobComponent := utils.NewDeployJobComponentBuilder().WithName(appJobComponent).BuildJobComponent()
-		_, _, _, kubeUtil := test.SetupTest("app", "qa", appJobComponent, "app-deploy-1", 1)
+		_, _, _, kubeUtil := testUtil.SetupTest("app", "qa", appJobComponent, "app-deploy-1", 1)
 		env := models.NewEnv()
 
 		h := &handler{
