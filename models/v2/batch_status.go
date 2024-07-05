@@ -30,7 +30,7 @@ type RadixBatch struct {
 	// Status of the job
 	//
 	// required: false
-	// Enum: Running,Succeeded,Failed,Waiting,Stopping,Stopped,DeadlineExceeded,Active,Completed
+	// Enum: Running,Succeeded,Failed,Waiting,Stopping,Stopped,Active,Completed
 	// example: Waiting
 	Status radixv1.RadixBatchJobApiStatus `json:"status,omitempty"`
 
@@ -88,7 +88,7 @@ type RadixBatchJobStatus struct {
 	// Status of the job
 	//
 	// required: false
-	// Enum: Waiting,Running,Succeeded,Stopping,Stopped,Failed,DeadlineExceeded,Completed
+	// Enum: Waiting,Running,Succeeded,Stopping,Stopped,Failed,Completed
 	// example: Waiting
 	Status radixv1.RadixBatchJobApiStatus `json:"status,omitempty"`
 
