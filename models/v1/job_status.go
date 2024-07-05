@@ -44,12 +44,11 @@ type JobStatus struct {
 	// - Waiting = Job is waiting
 	// - Stopping = Job is stopping
 	// - Stopped = Job has been stopped
-	// - DeadlineExceeded = Job has exceeded its deadline
 	// - Active = Job is active
 	// - Completed = Job is completed
 	//
 	// required: false
-	// Enum: Running,Succeeded,Failed,Waiting,Stopping,Stopped,DeadlineExceeded,Active,Completed
+	// Enum: Running,Succeeded,Failed,Waiting,Stopping,Stopped,Active,Completed
 	// example: Waiting
 	Status string `json:"status,omitempty"`
 
