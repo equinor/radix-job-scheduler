@@ -4,8 +4,10 @@ import (
 	"context"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/equinor/radix-common/utils/numbers"
+	"github.com/equinor/radix-common/utils/slice"
 	testUtil "github.com/equinor/radix-job-scheduler/internal/test"
 	modelsv2 "github.com/equinor/radix-job-scheduler/models/v2"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
@@ -23,7 +25,6 @@ type testProps struct {
 	appName               string
 	envName               string
 	radixJobComponentName string
-	radixDeploymentName   string
 }
 
 func TestCopyRadixBatchOrJob(t *testing.T) {
@@ -31,18 +32,23 @@ func TestCopyRadixBatchOrJob(t *testing.T) {
 		appName:               "any-app",
 		envName:               "any-env",
 		radixJobComponentName: "any-job",
-		radixDeploymentName:   "any-deployment",
 	}
 	const (
-		batchName1 = "batch1"
-		jobName1   = "job1"
-		jobName2   = "job2"
+		batchName1           = "batch1"
+		jobName1             = "job1"
+		jobName2             = "job2"
+		radixDeploymentName1 = "any-deployment1"
+		radixDeploymentName2 = "any-deployment2"
+	)
+	var (
+		now       = time.Now()
+		yesterday = now.Add(time.Hour * -20)
 	)
 	type args struct {
-		sourceRadixBatch              *radixv1.RadixBatch
-		sourceJobName                 string
-		batchRadixDeployJobComponent  *operatorUtils.DeployJobComponentBuilder
-		activeRadixDeployJobComponent *operatorUtils.DeployJobComponentBuilder
+		sourceRadixBatch  *radixv1.RadixBatch
+		sourceJobName     string
+		batchRadixDeploy  operatorUtils.DeploymentBuilder
+		activeRadixDeploy *operatorUtils.DeploymentBuilder
 	}
 	tests := []struct {
 		name    string
@@ -51,40 +57,56 @@ func TestCopyRadixBatchOrJob(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "",
+			name: "Copy batch with no rules",
 			args: args{
-				sourceRadixBatch:             createRadixBatch(props, batchName1, kube.RadixBatchTypeBatch, []string{jobName1, jobName2}, nil),
-				sourceJobName:                "",
-				batchRadixDeployJobComponent: createRadixDeployJobComponent(props),
+				sourceRadixBatch: createRadixBatch(props, batchName1, kube.RadixBatchTypeBatch, radixDeploymentName1, []string{jobName1, jobName2}, nil),
+				batchRadixDeploy: createRadixDeployJobComponent(radixDeploymentName1, props),
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			radixClient, _, _, _ := testUtil.SetupTest(props.appName, props.envName, props.radixJobComponentName, props.radixDeploymentName, 1)
-			radixClient.RadixV1().RadixDeployments(utils.GetEnvironmentNamespace(props.appName, props.envName)).
-				Create(context.Background(), utils.ARadixDeployment().WithComponent().BuildRD(), metav1.CreateOptions{})
-			require.NoError(t)
-			createdRadixBatchStatus, err := CopyRadixBatchOrJob(context.Background(), radixClient, tt.args.sourceRadixBatch, tt.args.sourceJobName, tt.args.batchRadixDeployJobComponent, props.radixDeploymentName)
+			radixClient, _, _, _ := testUtil.SetupTest(props.appName, props.envName, props.radixJobComponentName, radixDeploymentName1, 1)
+			tt.args.batchRadixDeploy.WithActiveFrom(yesterday)
+			var activeRadixDeployment *radixv1.RadixDeployment
+			if tt.args.activeRadixDeploy != nil {
+				tt.args.batchRadixDeploy.WithActiveTo(now)
+				tt.args.batchRadixDeploy.WithCondition(radixv1.DeploymentInactive)
+				activeRadixDeployment = (*tt.args.activeRadixDeploy).WithActiveFrom(now).WithCondition(radixv1.DeploymentActive).BuildRD()
+				_, err := radixClient.RadixV1().RadixDeployments(utils.GetEnvironmentNamespace(props.appName, props.envName)).
+					Create(context.Background(), activeRadixDeployment, metav1.CreateOptions{})
+				require.NoError(t, err)
+			} else {
+				tt.args.batchRadixDeploy.WithCondition(radixv1.DeploymentActive)
+			}
+			batchRadixDeploy, err := radixClient.RadixV1().RadixDeployments(utils.GetEnvironmentNamespace(props.appName, props.envName)).
+				Create(context.Background(), tt.args.batchRadixDeploy.BuildRD(), metav1.CreateOptions{})
+			require.NoError(t, err)
+			if activeRadixDeployment == nil {
+				activeRadixDeployment = batchRadixDeploy
+			}
+			radixDeployJobComponent, ok := slice.FindFirst(activeRadixDeployment.Spec.Jobs, func(component radixv1.RadixDeployJobComponent) bool {
+				return component.Name == props.radixJobComponentName
+			})
+			require.True(t, ok)
+
+			createdRadixBatchStatus, err := CopyRadixBatchOrJob(context.Background(), radixClient, tt.args.sourceRadixBatch, tt.args.sourceJobName, &radixDeployJobComponent, radixDeploymentName1)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("CopyRadixBatchOrJob() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			assert.NotNil(t, createdRadixBatchStatus, "Status is nil")
-			// if !reflect.DeepEqual(got, tt.want) {
-			// 	t.Errorf("CopyRadixBatchOrJob() got = %v, want %v", got, tt.want)
-			// }
 		})
 	}
 }
 
-func createRadixDeployJobComponent(props testProps, rules ...radixv1.BatchStatusRule) *operatorUtils.DeployJobComponentBuilder {
-	return &aRadixDeploymentWithComponentModifier(props, func(builder operatorUtils.DeployJobComponentBuilder) operatorUtils.DeployJobComponentBuilder {
+func createRadixDeployJobComponent(radixDeploymentName string, props testProps, rules ...radixv1.BatchStatusRule) operatorUtils.DeploymentBuilder {
+	return aRadixDeploymentWithComponentModifier(props, radixDeploymentName, func(builder operatorUtils.DeployJobComponentBuilder) operatorUtils.DeployJobComponentBuilder {
 		return builder.WithBatchStatusRules(rules...)
 	})
 }
 
-func createRadixBatch(props testProps, batchName string, radixBatchType kube.RadixBatchType, jobNames []string, jobStatuses map[string]radixv1.RadixBatchJobPhase) *radixv1.RadixBatch {
+func createRadixBatch(props testProps, batchName string, radixBatchType kube.RadixBatchType, radixDeploymentName string, jobNames []string, jobStatuses map[string]radixv1.RadixBatchJobPhase) *radixv1.RadixBatch {
 	radixBatch := radixv1.RadixBatch{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: batchName,
@@ -96,7 +118,7 @@ func createRadixBatch(props testProps, batchName string, radixBatchType kube.Rad
 		},
 		Spec: radixv1.RadixBatchSpec{
 			RadixDeploymentJobRef: radixv1.RadixDeploymentJobComponentSelector{
-				LocalObjectReference: radixv1.LocalObjectReference{Name: props.radixDeploymentName},
+				LocalObjectReference: radixv1.LocalObjectReference{Name: radixDeploymentName},
 				Job:                  props.radixJobComponentName,
 			},
 		},
@@ -398,9 +420,10 @@ func Test_updateRadixBatch(t *testing.T) {
 	}
 }
 
-func aRadixDeploymentWithComponentModifier(props testProps, m func(builder operatorUtils.DeployJobComponentBuilder) operatorUtils.DeployJobComponentBuilder) operatorUtils.DeploymentBuilder {
+func aRadixDeploymentWithComponentModifier(props testProps, radixDeploymentName string, m func(builder operatorUtils.DeployJobComponentBuilder) operatorUtils.DeployJobComponentBuilder) operatorUtils.DeploymentBuilder {
 	builder := operatorUtils.NewDeploymentBuilder().
 		WithAppName(props.appName).
+		WithDeploymentName(radixDeploymentName).
 		WithImageTag("imagetag").
 		WithEnvironment(props.envName).
 		WithJobComponent(m(operatorUtils.NewDeployJobComponentBuilder().
@@ -410,6 +433,6 @@ func aRadixDeploymentWithComponentModifier(props testProps, m func(builder opera
 	return builder
 }
 
-func aRadixDeployment(props testProps) operatorUtils.DeploymentBuilder {
-	return aRadixDeploymentWithComponentModifier(props, func(builder operatorUtils.DeployJobComponentBuilder) operatorUtils.DeployJobComponentBuilder { return builder })
+func aRadixDeployment(props testProps, radixDeploymentName string) operatorUtils.DeploymentBuilder {
+	return aRadixDeploymentWithComponentModifier(props, radixDeploymentName, func(builder operatorUtils.DeployJobComponentBuilder) operatorUtils.DeployJobComponentBuilder { return builder })
 }
