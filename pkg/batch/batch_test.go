@@ -302,10 +302,6 @@ func aRadixDeploymentWithComponentModifier(props testProps, radixDeploymentName 
 	return builder
 }
 
-func aRadixDeployment(props testProps, radixDeploymentName string) operatorUtils.DeploymentBuilder {
-	return aRadixDeploymentWithComponentModifier(props, radixDeploymentName, func(builder operatorUtils.DeployJobComponentBuilder) operatorUtils.DeployJobComponentBuilder { return builder })
-}
-
 func createBatchStatusRule(batchStatus radixv1.RadixBatchJobApiStatus, condition radixv1.Condition, operator radixv1.Operator, jobPhases ...radixv1.RadixBatchJobPhase) radixv1.BatchStatusRule {
 	return radixv1.BatchStatusRule{Condition: condition, BatchStatus: batchStatus, Operator: operator, JobStatuses: jobPhases}
 }
