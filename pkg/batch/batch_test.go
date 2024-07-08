@@ -22,11 +22,9 @@ import (
 )
 
 type testProps struct {
-	appName                 string
-	envName                 string
-	radixJobComponentName   string
-	batchName               string
-	radixDeploymentBuilders map[string]operatorUtils.DeploymentBuilder
+	appName               string
+	envName               string
+	radixJobComponentName string
 }
 
 type jobStatusPhase map[string]radixv1.RadixBatchJobPhase
