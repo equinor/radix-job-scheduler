@@ -569,6 +569,53 @@ func TestRestartRadixBatch(t *testing.T) {
 	}
 }
 
+func TestRestartRadixBatchJob(t *testing.T) {
+	type deletionTestArgs struct {
+		name                   string
+		existingRadixBatch     *radixv1.RadixBatch
+		radixBatchToRestart    *radixv1.RadixBatch
+		expectedError          error
+		radixBatchJobToRestart string
+	}
+	radixBatch1 := createRadixBatch(batchName1, props, kube.RadixBatchTypeBatch, radixDeploymentName1, []string{jobName1, jobName2}, radixv1.BatchConditionTypeWaiting, nil)
+	radixBatch2 := createRadixBatch(batchName2, props, kube.RadixBatchTypeBatch, radixDeploymentName1, []string{jobName1, jobName2}, radixv1.BatchConditionTypeWaiting, nil)
+	tests := []deletionTestArgs{
+		{
+			name:                   "Radix batch exists",
+			existingRadixBatch:     radixBatch1,
+			radixBatchToRestart:    radixBatch1,
+			radixBatchJobToRestart: jobName1,
+		},
+		{
+			name:                   "Radix batch does not exist",
+			existingRadixBatch:     radixBatch1,
+			radixBatchToRestart:    radixBatch2,
+			radixBatchJobToRestart: jobName1,
+			expectedError:          errors.New("radixbatches batch2 not found"),
+		},
+		{
+			name:                   "Radix batch job does not exists",
+			existingRadixBatch:     radixBatch1,
+			radixBatchToRestart:    radixBatch1,
+			radixBatchJobToRestart: jobName4,
+			expectedError:          errors.New("job job4 not found"),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			radixClient, _, _, _ := testUtil.SetupTest(props.appName, props.envName, props.radixJobComponentName, radixDeploymentName1, 1)
+			_, err := radixClient.RadixV1().RadixBatches(utils.GetEnvironmentNamespace(props.appName, props.envName)).Create(context.Background(), tt.existingRadixBatch, metav1.CreateOptions{})
+			require.NoError(t, err)
+			err = RestartRadixBatchJob(context.Background(), radixClient, tt.radixBatchToRestart, tt.radixBatchJobToRestart)
+			if tt.expectedError != nil {
+				assert.EqualError(t, err, tt.expectedError.Error())
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
 func aRadixDeploymentWithComponentModifier(props testProps, radixDeploymentName string, m func(builder operatorUtils.DeployJobComponentBuilder) operatorUtils.DeployJobComponentBuilder) operatorUtils.DeploymentBuilder {
 	builder := operatorUtils.NewDeploymentBuilder().
 		WithAppName(props.appName).
