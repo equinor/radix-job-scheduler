@@ -616,6 +616,114 @@ func TestRestartRadixBatchJob(t *testing.T) {
 	}
 }
 
+func TestStopRadixBatch(t *testing.T) {
+	type deletionTestArgs struct {
+		name               string
+		existingRadixBatch *radixv1.RadixBatch
+		radixBatchToStop   *radixv1.RadixBatch
+		expectedError      error
+	}
+	radixBatch1 := createRadixBatch(batchName1, props, kube.RadixBatchTypeBatch, radixDeploymentName1, []string{jobName1, jobName2}, radixv1.BatchConditionTypeWaiting, nil)
+	radixBatch2 := createRadixBatch(batchName2, props, kube.RadixBatchTypeBatch, radixDeploymentName1, []string{jobName1, jobName2}, radixv1.BatchConditionTypeWaiting, nil)
+	tests := []deletionTestArgs{
+		{
+			name:               "Radix batch exists",
+			existingRadixBatch: radixBatch1,
+			radixBatchToStop:   radixBatch1,
+		},
+		{
+			name:               "Radix batch does not exist",
+			existingRadixBatch: radixBatch1,
+			radixBatchToStop:   radixBatch2,
+			expectedError:      errors.New("failed to patch RadixBatch object: radixbatches.radix.equinor.com \"batch2\" not found"),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			radixClient, _, _, _ := testUtil.SetupTest(props.appName, props.envName, props.radixJobComponentName, radixDeploymentName1, 1)
+			_, err := radixClient.RadixV1().RadixBatches(utils.GetEnvironmentNamespace(props.appName, props.envName)).Create(context.Background(), tt.existingRadixBatch, metav1.CreateOptions{})
+			require.NoError(t, err)
+			err = StopRadixBatch(context.Background(), radixClient, tt.radixBatchToStop)
+			if tt.expectedError != nil {
+				assert.EqualError(t, err, tt.expectedError.Error())
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestStopRadixBatchJob(t *testing.T) {
+	type deletionTestArgs struct {
+		name                string
+		existingRadixBatch  *radixv1.RadixBatch
+		radixBatchToStop    *radixv1.RadixBatch
+		expectedError       error
+		radixBatchJobToStop string
+	}
+	radixBatch1 := createRadixBatch(batchName1, props, kube.RadixBatchTypeBatch, radixDeploymentName1, []string{jobName1, jobName2}, radixv1.BatchConditionTypeWaiting, map[string]radixv1.RadixBatchJobPhase{jobName1: radixv1.BatchJobPhaseWaiting, jobName2: radixv1.BatchJobPhaseRunning})
+	radixBatch2 := createRadixBatch(batchName2, props, kube.RadixBatchTypeBatch, radixDeploymentName1, []string{jobName1, jobName2}, radixv1.BatchConditionTypeWaiting, nil)
+	radixBatch3 := createRadixBatch(batchName2, props, kube.RadixBatchTypeBatch, radixDeploymentName1, []string{jobName1, jobName2}, radixv1.BatchConditionTypeWaiting, map[string]radixv1.RadixBatchJobPhase{jobName1: radixv1.BatchJobPhaseStopped, jobName2: radixv1.BatchJobPhaseRunning})
+	radixBatch4 := createRadixBatch(batchName2, props, kube.RadixBatchTypeBatch, radixDeploymentName1, []string{jobName1, jobName2}, radixv1.BatchConditionTypeWaiting, map[string]radixv1.RadixBatchJobPhase{jobName1: radixv1.BatchJobPhaseSucceeded, jobName2: radixv1.BatchJobPhaseRunning})
+	radixBatch5 := createRadixBatch(batchName2, props, kube.RadixBatchTypeBatch, radixDeploymentName1, []string{jobName1, jobName2}, radixv1.BatchConditionTypeWaiting, map[string]radixv1.RadixBatchJobPhase{jobName1: radixv1.BatchJobPhaseFailed, jobName2: radixv1.BatchJobPhaseRunning})
+	tests := []deletionTestArgs{
+		{
+			name:                "Radix batch exists",
+			existingRadixBatch:  radixBatch1,
+			radixBatchToStop:    radixBatch1,
+			radixBatchJobToStop: jobName1,
+		},
+		{
+			name:                "Radix batch does not exist",
+			existingRadixBatch:  radixBatch1,
+			radixBatchToStop:    radixBatch2,
+			radixBatchJobToStop: jobName1,
+			expectedError:       errors.New("failed to patch RadixBatch object: radixbatches.radix.equinor.com \"batch2\" not found"),
+		},
+		{
+			name:                "Radix batch job does not exists",
+			existingRadixBatch:  radixBatch1,
+			radixBatchToStop:    radixBatch1,
+			radixBatchJobToStop: jobName4,
+			expectedError:       errors.New("batch job job4 not found"),
+		},
+		{
+			name:                "Radix batch job has stopped status",
+			existingRadixBatch:  radixBatch3,
+			radixBatchToStop:    radixBatch3,
+			radixBatchJobToStop: jobName1,
+			expectedError:       errors.New("cannot stop the job job1 with the status Stopped in the batch batch2"),
+		},
+		{
+			name:                "Radix batch job has succeeded status",
+			existingRadixBatch:  radixBatch4,
+			radixBatchToStop:    radixBatch4,
+			radixBatchJobToStop: jobName1,
+			expectedError:       errors.New("cannot stop the job job1 with the status Succeeded in the batch batch2"),
+		},
+		{
+			name:                "Radix batch job has failed status",
+			existingRadixBatch:  radixBatch5,
+			radixBatchToStop:    radixBatch5,
+			radixBatchJobToStop: jobName1,
+			expectedError:       errors.New("cannot stop the job job1 with the status Failed in the batch batch2"),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			radixClient, _, _, _ := testUtil.SetupTest(props.appName, props.envName, props.radixJobComponentName, radixDeploymentName1, 1)
+			_, err := radixClient.RadixV1().RadixBatches(utils.GetEnvironmentNamespace(props.appName, props.envName)).Create(context.Background(), tt.existingRadixBatch, metav1.CreateOptions{})
+			require.NoError(t, err)
+			err = StopRadixBatchJob(context.Background(), radixClient, tt.radixBatchToStop, tt.radixBatchJobToStop)
+			if tt.expectedError != nil {
+				assert.EqualError(t, err, tt.expectedError.Error())
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
 func aRadixDeploymentWithComponentModifier(props testProps, radixDeploymentName string, m func(builder operatorUtils.DeployJobComponentBuilder) operatorUtils.DeployJobComponentBuilder) operatorUtils.DeploymentBuilder {
 	builder := operatorUtils.NewDeploymentBuilder().
 		WithAppName(props.appName).
