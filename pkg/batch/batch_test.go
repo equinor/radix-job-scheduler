@@ -39,6 +39,7 @@ type testArgs struct {
 const (
 	batchName1           = "batch1"
 	batchName2           = "batch2"
+	batchName3           = "batch3"
 	jobName1             = "job1"
 	jobName2             = "job2"
 	jobName3             = "job3"
@@ -308,48 +309,98 @@ func TestGetRadixBatchStatuses(t *testing.T) {
 					createRadixBatch(batchName2, props, kube.RadixBatchTypeBatch, radixDeploymentName1, []string{jobName1, jobName2},
 						radixv1.BatchConditionTypeWaiting, nil),
 				},
-				batchRadixDeploymentBuilders: map[string]operatorUtils.DeploymentBuilder{radixDeploymentName1: getOrCreateRadixDeployJobComponent(radixDeploymentName1, props)},
+				batchRadixDeploymentBuilders: map[string]operatorUtils.DeploymentBuilder{radixDeploymentName1: createRadixDeployJobComponent(radixDeploymentName1, props)},
 				activeRadixDeploymentName:    radixDeploymentName1,
 				expectedBatchStatuses: map[string]radixv1.RadixBatchJobApiStatus{
 					batchName1: radixv1.RadixBatchJobApiStatusWaiting,
 					batchName2: radixv1.RadixBatchJobApiStatusWaiting},
 			},
 		},
-		// {
-		// 	name: "only deployment has no rules, job statuses waiting, active",
-		// 	args: []testArgs{
-		// 		{
-		// 			radixBatch: createRadixBatch(batchName1, props, kube.RadixBatchTypeBatch, radixDeploymentName1, []string{jobName1, jobName2},
-		// 				radixv1.BatchConditionTypeActive, jobStatusPhase{jobName1: radixv1.BatchJobPhaseWaiting, jobName2: radixv1.BatchJobPhaseActive}),
-		// 			batchRadixDeploy:    getOrCreateRadixDeployJobComponent(radixDeploymentName1, props),
-		// 			expectedBatchStatus: radixv1.RadixBatchJobApiStatusActive,
-		// 		},
-		// 	},
-		// },
-		// {
-		// 	name: "only deployment has no rules, job statuses failed, succeeded",
-		// 	args: []testArgs{
-		// 		{
-		// 			radixBatch: createRadixBatch(batchName1, props, kube.RadixBatchTypeBatch, radixDeploymentName1, []string{jobName1, jobName2},
-		// 				radixv1.BatchConditionTypeActive, jobStatusPhase{jobName1: radixv1.BatchJobPhaseFailed, jobName2: radixv1.BatchJobPhaseSucceeded}),
-		// 			batchRadixDeploy:    getOrCreateRadixDeployJobComponent(radixDeploymentName1, props),
-		// 			expectedBatchStatus: radixv1.RadixBatchJobApiStatusActive,
-		// 		},
-		// 	},
-		// },
-		// {
-		// 	name: "only deployment, with only rule does not match, job statuses failed, succeeded",
-		// 	args: []testArgs{
-		// 		{
-		// 			radixBatch: createRadixBatch(batchName1, props, kube.RadixBatchTypeBatch, radixDeploymentName1, []string{jobName1, jobName2},
-		// 				radixv1.BatchConditionTypeActive, jobStatusPhase{jobName1: radixv1.BatchJobPhaseWaiting, jobName2: radixv1.BatchJobPhaseSucceeded}),
-		// 			batchRadixDeploy: getOrCreateRadixDeployJobComponent(radixDeploymentName1, props,
-		// 				createBatchStatusRule(radixv1.RadixBatchJobApiStatusFailed, radixv1.ConditionAny, radixv1.OperatorIn, radixv1.BatchJobPhaseFailed)),
-		// 			expectedBatchStatus: radixv1.RadixBatchJobApiStatusActive,
-		// 		},
-		// 	},
-		// },
-		// {
+		{
+			name: "only deployment has no rules, batch status is default",
+			batchesArgs: multiBatchArgs{
+				radixBatches: []*radixv1.RadixBatch{
+					createRadixBatch(batchName1, props, kube.RadixBatchTypeBatch, radixDeploymentName1, []string{jobName1, jobName2},
+						radixv1.BatchConditionTypeWaiting, jobStatusPhase{jobName1: radixv1.BatchJobPhaseWaiting, jobName2: radixv1.BatchJobPhaseActive}),
+					createRadixBatch(batchName2, props, kube.RadixBatchTypeBatch, radixDeploymentName1, []string{jobName1, jobName2},
+						radixv1.BatchConditionTypeActive, jobStatusPhase{jobName1: radixv1.BatchJobPhaseSucceeded, jobName2: radixv1.BatchJobPhaseRunning}),
+					createRadixBatch(batchName3, props, kube.RadixBatchTypeBatch, radixDeploymentName1, []string{jobName1, jobName2},
+						radixv1.BatchConditionTypeCompleted, jobStatusPhase{jobName1: radixv1.BatchJobPhaseSucceeded, jobName2: radixv1.BatchJobPhaseFailed}),
+				},
+				batchRadixDeploymentBuilders: map[string]operatorUtils.DeploymentBuilder{radixDeploymentName1: createRadixDeployJobComponent(radixDeploymentName1, props)},
+				activeRadixDeploymentName:    radixDeploymentName1,
+				expectedBatchStatuses: map[string]radixv1.RadixBatchJobApiStatus{
+					batchName1: radixv1.RadixBatchJobApiStatusWaiting,
+					batchName2: radixv1.RadixBatchJobApiStatusActive,
+					batchName3: radixv1.RadixBatchJobApiStatusCompleted,
+				},
+			},
+		},
+		{
+			name: "only deployment, with only rule does not match, batch status is default",
+			batchesArgs: multiBatchArgs{
+				radixBatches: []*radixv1.RadixBatch{
+					createRadixBatch(batchName1, props, kube.RadixBatchTypeBatch, radixDeploymentName1, []string{jobName1, jobName2},
+						radixv1.BatchConditionTypeWaiting, jobStatusPhase{jobName1: radixv1.BatchJobPhaseWaiting, jobName2: radixv1.BatchJobPhaseWaiting}),
+					createRadixBatch(batchName2, props, kube.RadixBatchTypeBatch, radixDeploymentName1, []string{jobName1, jobName2},
+						radixv1.BatchConditionTypeActive, jobStatusPhase{jobName1: radixv1.BatchJobPhaseSucceeded, jobName2: radixv1.BatchJobPhaseRunning}),
+					createRadixBatch(batchName3, props, kube.RadixBatchTypeBatch, radixDeploymentName1, []string{jobName1, jobName2},
+						radixv1.BatchConditionTypeCompleted, jobStatusPhase{jobName1: radixv1.BatchJobPhaseSucceeded, jobName2: radixv1.BatchJobPhaseFailed}),
+				},
+				batchRadixDeploymentBuilders: map[string]operatorUtils.DeploymentBuilder{radixDeploymentName1: createRadixDeployJobComponent(radixDeploymentName1, props,
+					createBatchStatusRule(radixv1.RadixBatchJobApiStatusFailed, radixv1.ConditionAny, radixv1.OperatorIn, radixv1.BatchJobPhaseFailed))},
+				activeRadixDeploymentName: radixDeploymentName1,
+				expectedBatchStatuses: map[string]radixv1.RadixBatchJobApiStatus{
+					batchName1: radixv1.RadixBatchJobApiStatusWaiting,
+					batchName2: radixv1.RadixBatchJobApiStatusActive,
+					batchName3: radixv1.RadixBatchJobApiStatusCompleted,
+				},
+			},
+		},
+		{
+			name: "only deployment, with only rule and it matches on two batches, third batch status is default",
+			batchesArgs: multiBatchArgs{
+				radixBatches: []*radixv1.RadixBatch{
+					createRadixBatch(batchName1, props, kube.RadixBatchTypeBatch, radixDeploymentName1, []string{jobName1, jobName2},
+						radixv1.BatchConditionTypeActive, jobStatusPhase{jobName1: radixv1.BatchJobPhaseWaiting, jobName2: radixv1.BatchJobPhaseRunning, jobName3: radixv1.BatchJobPhaseSucceeded}),
+					createRadixBatch(batchName2, props, kube.RadixBatchTypeBatch, radixDeploymentName1, []string{jobName1, jobName2},
+						radixv1.BatchConditionTypeActive, jobStatusPhase{jobName1: radixv1.BatchJobPhaseStopped, jobName2: radixv1.BatchJobPhaseRunning}),
+					createRadixBatch(batchName3, props, kube.RadixBatchTypeBatch, radixDeploymentName1, []string{jobName1, jobName2},
+						radixv1.BatchConditionTypeActive, jobStatusPhase{jobName1: radixv1.BatchJobPhaseSucceeded, jobName2: radixv1.BatchJobPhaseFailed}),
+				},
+				batchRadixDeploymentBuilders: map[string]operatorUtils.DeploymentBuilder{radixDeploymentName1: createRadixDeployJobComponent(radixDeploymentName1, props,
+					createBatchStatusRule(radixv1.RadixBatchJobApiStatusRunning, radixv1.ConditionAny, radixv1.OperatorIn, radixv1.BatchJobPhaseRunning))},
+				activeRadixDeploymentName: radixDeploymentName1,
+				expectedBatchStatuses: map[string]radixv1.RadixBatchJobApiStatus{
+					batchName1: radixv1.RadixBatchJobApiStatusRunning,
+					batchName2: radixv1.RadixBatchJobApiStatusRunning,
+					batchName3: radixv1.RadixBatchJobApiStatusCompleted,
+				},
+			},
+		},
+		{
+			name: "only deployment, multiple rules, first matching rule applied on two batches, third batch status is default",
+			batchesArgs: multiBatchArgs{
+				radixBatches: []*radixv1.RadixBatch{
+					createRadixBatch(batchName1, props, kube.RadixBatchTypeBatch, radixDeploymentName1, []string{jobName1, jobName2},
+						radixv1.BatchConditionTypeActive, jobStatusPhase{jobName1: radixv1.BatchJobPhaseStopped, jobName2: radixv1.BatchJobPhaseRunning, jobName3: radixv1.BatchJobPhaseSucceeded}),
+					createRadixBatch(batchName2, props, kube.RadixBatchTypeBatch, radixDeploymentName1, []string{jobName1, jobName2},
+						radixv1.BatchConditionTypeActive, jobStatusPhase{jobName1: radixv1.BatchJobPhaseStopped, jobName2: radixv1.BatchJobPhaseWaiting, jobName3: radixv1.BatchJobPhaseFailed}),
+					createRadixBatch(batchName3, props, kube.RadixBatchTypeBatch, radixDeploymentName1, []string{jobName1, jobName2},
+						radixv1.BatchConditionTypeCompleted, jobStatusPhase{jobName1: radixv1.BatchJobPhaseSucceeded, jobName2: radixv1.BatchJobPhaseFailed}),
+				},
+				batchRadixDeploymentBuilders: map[string]operatorUtils.DeploymentBuilder{radixDeploymentName1: createRadixDeployJobComponent(radixDeploymentName1, props,
+					createBatchStatusRule(radixv1.RadixBatchJobApiStatusRunning, radixv1.ConditionAny, radixv1.OperatorIn, radixv1.BatchJobPhaseRunning),
+					createBatchStatusRule(radixv1.RadixBatchJobApiStatusStopped, radixv1.ConditionAny, radixv1.OperatorIn, radixv1.BatchJobPhaseStopped),
+				)},
+				activeRadixDeploymentName: radixDeploymentName1,
+				expectedBatchStatuses: map[string]radixv1.RadixBatchJobApiStatus{
+					batchName1: radixv1.RadixBatchJobApiStatusRunning,
+					batchName2: radixv1.RadixBatchJobApiStatusStopped,
+					batchName3: radixv1.RadixBatchJobApiStatusCompleted,
+				},
+			},
+		},
 		// 	name: "only deployment, second rule matches",
 		// 	args: []testArgs{
 		// 		{
@@ -487,20 +538,6 @@ func aRadixDeploymentWithComponentModifier(props testProps, radixDeploymentName 
 
 func createBatchStatusRule(batchStatus radixv1.RadixBatchJobApiStatus, condition radixv1.Condition, operator radixv1.Operator, jobPhases ...radixv1.RadixBatchJobPhase) radixv1.BatchStatusRule {
 	return radixv1.BatchStatusRule{Condition: condition, BatchStatus: batchStatus, Operator: operator, JobStatuses: jobPhases}
-}
-
-func getOrCreateRadixDeployJobComponent(radixDeploymentName string, props testProps, rules ...radixv1.BatchStatusRule) operatorUtils.DeploymentBuilder {
-	if props.radixDeploymentBuilders == nil {
-		props.radixDeploymentBuilders = make(map[string]operatorUtils.DeploymentBuilder)
-	}
-	if builder, ok := props.radixDeploymentBuilders[radixDeploymentName]; ok {
-		return builder
-	}
-	builder := aRadixDeploymentWithComponentModifier(props, radixDeploymentName, func(builder operatorUtils.DeployJobComponentBuilder) operatorUtils.DeployJobComponentBuilder {
-		return builder.WithBatchStatusRules(rules...)
-	})
-	props.radixDeploymentBuilders[radixDeploymentName] = builder
-	return builder
 }
 
 func createRadixDeployJobComponent(radixDeploymentName string, props testProps, rules ...radixv1.BatchStatusRule) operatorUtils.DeploymentBuilder {
