@@ -171,8 +171,10 @@ func RestartRadixBatch(ctx context.Context, radixClient versioned.Interface, rad
 	for jobIdx := 0; jobIdx < len(radixBatch.Spec.Jobs); jobIdx++ {
 		setRestartJobTimeout(radixBatch, jobIdx, restartTimestamp)
 	}
-	_, err := radixClient.RadixV1().RadixBatches(radixBatch.GetNamespace()).Update(ctx, radixBatch, metav1.UpdateOptions{})
-	return err
+	if _, err := radixClient.RadixV1().RadixBatches(radixBatch.GetNamespace()).Update(ctx, radixBatch, metav1.UpdateOptions{}); err != nil {
+		return errors.NewFromError(err)
+	}
+	return nil
 }
 
 // RestartRadixBatchJob Restart a job
@@ -184,8 +186,10 @@ func RestartRadixBatchJob(ctx context.Context, radixClient versioned.Interface, 
 		return fmt.Errorf("job %s not found", jobName)
 	}
 	setRestartJobTimeout(radixBatch, jobIdx, utils.FormatTimestamp(time.Now()))
-	_, err := radixClient.RadixV1().RadixBatches(radixBatch.GetNamespace()).Update(ctx, radixBatch, metav1.UpdateOptions{})
-	return err
+	if _, err := radixClient.RadixV1().RadixBatches(radixBatch.GetNamespace()).Update(ctx, radixBatch, metav1.UpdateOptions{}); err != nil {
+		return errors.NewFromError(err)
+	}
+	return nil
 }
 
 // DeleteRadixBatch Delete a batch
