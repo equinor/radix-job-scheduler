@@ -159,7 +159,7 @@ func getRadixBatchMap(radixClient radixclient.Interface, namespace string) (map[
 	return radixBatchMap, nil
 }
 
-func getRadixBatchEventFromRadixBatch(event events.Event, radixBatch *radixv1.RadixBatch, radixBatchJobStatuses []radixv1.RadixBatchJobStatus) events.BatchEvent {
+func (notifier *webhookNotifier) getRadixBatchEventFromRadixBatch(event events.Event, radixBatch *radixv1.RadixBatch, radixBatchJobStatuses []radixv1.RadixBatchJobStatus) events.BatchEvent {
 	batchType := radixBatch.Labels[kube.RadixBatchTypeLabel]
 	jobStatusBatchName := utils.TernaryString(batchType == string(kube.RadixBatchTypeJob), "", radixBatch.GetName())
 	startedTime := utils.FormatTime(radixBatch.Status.Condition.ActiveTime)
@@ -169,7 +169,7 @@ func getRadixBatchEventFromRadixBatch(event events.Event, radixBatch *radixv1.Ra
 		Created: utils.FormatTime(pointers.Ptr(radixBatch.GetCreationTimestamp())),
 		Started: startedTime,
 		Ended:   endedTime,
-		Status:  jobs.GetRadixBatchStatus(radixBatch).String(),
+		Status:  string(jobs.GetRadixBatchStatus(radixBatch, notifier.radixDeployJobComponent)),
 		Message: radixBatch.Status.Condition.Message,
 		Updated: utils.FormatTime(pointers.Ptr(metav1.Now())),
 	}
@@ -201,7 +201,9 @@ func getRadixBatchJobStatusesFromRadixBatch(radixBatch *radixv1.RadixBatch, radi
 			Created:     utils.FormatTime(radixBatchJobStatus.CreationTime),
 			Started:     utils.FormatTime(radixBatchJobStatus.StartTime),
 			Ended:       utils.FormatTime(radixBatchJobStatus.EndTime),
-			Status:      jobs.GetScheduledJobStatus(radixBatchJobStatus, stopJob).String(),
+			Status:      string(jobs.GetScheduledJobStatus(radixBatchJobStatus, stopJob)),
+			Failed:      radixBatchJobStatus.Failed,
+			Restart:     radixBatchJobStatus.Restart,
 			Message:     radixBatchJobStatus.Message,
 			Updated:     utils.FormatTime(pointers.Ptr(metav1.Now())),
 			PodStatuses: getPodStatusByRadixBatchJobPodStatus(radixBatchJobStatus.RadixBatchJobPodStatuses),
@@ -227,7 +229,7 @@ func getPodStatusByRadixBatchJobPodStatus(podStatuses []radixv1.RadixBatchJobPod
 			StartTime:        utils.FormatTime(status.StartTime),
 			EndTime:          utils.FormatTime(status.EndTime),
 			ContainerStarted: utils.FormatTime(status.StartTime),
-			Status:           modelsv1.ReplicaStatus{Status: jobs.GetReplicaStatusByJobPodStatusPhase(status.Phase)},
+			Status:           modelsv1.ReplicaStatus{Status: string(status.Phase)},
 			StatusMessage:    status.Message,
 			RestartCount:     status.RestartCount,
 			Image:            status.Image,

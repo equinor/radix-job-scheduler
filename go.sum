@@ -21,8 +21,8 @@ github.com/emicklei/go-restful/v3 v3.11.2 h1:1onLa9DcsMYO9P+CXaL0dStDqQ2EHHXLiz+
 github.com/emicklei/go-restful/v3 v3.11.2/go.mod h1:6n3XBCmQQb25CM2LCACGz8ukIrRry+4bhvbpWn3mrbc=
 github.com/equinor/radix-common v1.9.2 h1:pOYN/mSAoPe6KO/Nvudfd5DUETbLv4nLTLzFPr62ADw=
 github.com/equinor/radix-common v1.9.2/go.mod h1:ekn86U68NT4ccSdt3GT+ukpiclzfuhr96a7zBJKv/jw=
-github.com/equinor/radix-operator v1.55.2 h1:VENKV3iK63ymHF5lO0UodePvULIywnHgh8sQ5/VEBmo=
-github.com/equinor/radix-operator v1.55.2/go.mod h1:0KwN3ZEACZWhHrJZIuSxVYVeHhFgUBaRoeDyGiAljRs=
+github.com/equinor/radix-operator v1.57.1 h1:5nhKdF13MZ9oooxr5+n3OOXMUrr7g1U9GGSeKysfcq0=
+github.com/equinor/radix-operator v1.57.1/go.mod h1:zCdAiP/wxyvlUO4qGoJuLW3O+ZSt9kTyHMnjmsR3fCU=
 github.com/evanphx/json-patch v5.8.1+incompatible h1:2toJaoe7/rNa1zpeQx0UnVEjqk6z2ecyA20V/zg8vTU=
 github.com/evanphx/json-patch v5.8.1+incompatible/go.mod h1:50XU6AFN0ol/bzJsmQLiYLvXMP4fmwYFNcr97nuDLSk=
 github.com/evanphx/json-patch/v5 v5.9.0 h1:kcBlZQbplgElYIlo/n1hJbls2z/1awpXxpRi0/FOJfg=

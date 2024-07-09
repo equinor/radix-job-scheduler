@@ -47,7 +47,7 @@ func main() {
 	}
 	defer close(radixBatchWatcher.Stop)
 
-	runApiServer(ctx, kubeUtil, env)
+	runApiServer(ctx, kubeUtil, env, radixDeployJobComponent)
 }
 
 func initLogger(env *models.Env) {
@@ -66,7 +66,7 @@ func initLogger(env *models.Env) {
 	zerolog.DefaultContextLogger = &log.Logger
 }
 
-func runApiServer(ctx context.Context, kubeUtil *kube.Kube, env *models.Env) {
+func runApiServer(ctx context.Context, kubeUtil *kube.Kube, env *models.Env, radixDeployJobComponent *radixv1.RadixDeployJobComponent) {
 	ctx, stop := signal.NotifyContext(ctx, syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
@@ -76,7 +76,7 @@ func runApiServer(ctx context.Context, kubeUtil *kube.Kube, env *models.Env) {
 
 	srv := &http.Server{
 		Addr:        fmt.Sprintf(":%s", *port),
-		Handler:     router.NewServer(env, getControllers(kubeUtil, env)...),
+		Handler:     router.NewServer(env, getControllers(kubeUtil, env, radixDeployJobComponent)...),
 		BaseContext: func(_ net.Listener) context.Context { return ctx },
 	}
 
@@ -112,10 +112,10 @@ func getKubeUtil(ctx context.Context) *kube.Kube {
 	return kubeUtil
 }
 
-func getControllers(kubeUtil *kube.Kube, env *models.Env) []api.Controller {
+func getControllers(kubeUtil *kube.Kube, env *models.Env, radixDeployJobComponent *radixv1.RadixDeployJobComponent) []api.Controller {
 	return []api.Controller{
-		jobControllers.New(jobApi.New(kubeUtil, env)),
-		batchControllers.New(batchApi.New(kubeUtil, env)),
+		jobControllers.New(jobApi.New(kubeUtil, env, radixDeployJobComponent)),
+		batchControllers.New(batchApi.New(kubeUtil, env, radixDeployJobComponent)),
 	}
 }
 
