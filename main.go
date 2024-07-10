@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -29,12 +30,13 @@ import (
 )
 
 func main() {
+	ctx := context.Background()
 	env := models.NewEnv()
 	initLogger(env)
 
-	kubeUtil := getKubeUtil()
+	kubeUtil := getKubeUtil(ctx)
 
-	radixDeployJobComponent, err := radix.GetRadixDeployJobComponentByName(context.Background(), kubeUtil.RadixClient(), env.RadixDeploymentNamespace, env.RadixDeploymentName, env.RadixComponentName)
+	radixDeployJobComponent, err := radix.GetRadixDeployJobComponentByName(ctx, kubeUtil.RadixClient(), env.RadixDeploymentNamespace, env.RadixDeploymentName, env.RadixComponentName)
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed to get job specification")
 	}
@@ -45,7 +47,7 @@ func main() {
 	}
 	defer close(radixBatchWatcher.Stop)
 
-	runApiServer(kubeUtil, env)
+	runApiServer(ctx, kubeUtil, env, radixDeployJobComponent)
 }
 
 func initLogger(env *models.Env) {
@@ -64,30 +66,33 @@ func initLogger(env *models.Env) {
 	zerolog.DefaultContextLogger = &log.Logger
 }
 
-func runApiServer(kubeUtil *kube.Kube, env *models.Env) {
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+func runApiServer(ctx context.Context, kubeUtil *kube.Kube, env *models.Env, radixDeployJobComponent *radixv1.RadixDeployJobComponent) {
+	ctx, stop := signal.NotifyContext(ctx, syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
 	fs := initializeFlagSet()
-	var (
-		port = fs.StringP("port", "p", env.RadixPort, "Port where API will be served")
-	)
+	port := fs.StringP("port", "p", env.RadixPort, "Port where API will be served")
 	parseFlagsFromArgs(fs)
+
+	srv := &http.Server{
+		Addr:        fmt.Sprintf(":%s", *port),
+		Handler:     router.NewServer(env, getControllers(kubeUtil, env, radixDeployJobComponent)...),
+		BaseContext: func(_ net.Listener) context.Context { return ctx },
+	}
 
 	go func() {
 		log.Info().Msgf("Radix job API is serving on port %s", *port)
-		srv := &http.Server{
-			Addr:        fmt.Sprintf(":%s", *port),
-			Handler:     router.NewServer(env, getControllers(kubeUtil, env)...),
-			BaseContext: func(_ net.Listener) context.Context { return ctx },
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			log.Fatal().Err(err).Msg("Radix job API server failed to start")
 		}
-		if err := srv.ListenAndServe(); err != nil {
-			log.Fatal().Err(err).Msg("Radix job API server stopped")
-		}
-
+		log.Info().Msg("Radix job API server stopped")
 	}()
 
 	<-ctx.Done()
+	err := srv.Shutdown(context.Background())
+	if err != nil {
+		log.Fatal().Err(err).Msg("Radix job API failed to stop")
+	}
 }
 
 func getRadixBatchWatcher(kubeUtil *kube.Kube, radixDeployJobComponent *radixv1.RadixDeployJobComponent, env *models.Env) (*notifications.Watcher, error) {
@@ -101,16 +106,16 @@ func getRadixBatchWatcher(kubeUtil *kube.Kube, radixDeployJobComponent *radixv1.
 	return notifications.NewRadixBatchWatcher(kubeUtil.RadixClient(), env.RadixDeploymentNamespace, notifier)
 }
 
-func getKubeUtil() *kube.Kube {
-	kubeClient, radixClient, _, secretProviderClient, _ := utils.GetKubernetesClient()
-	kubeUtil, _ := kube.New(kubeClient, radixClient, secretProviderClient)
+func getKubeUtil(ctx context.Context) *kube.Kube {
+	kubeClient, radixClient, kedaClient, _, secretProviderClient, _ := utils.GetKubernetesClient(ctx)
+	kubeUtil, _ := kube.New(kubeClient, radixClient, kedaClient, secretProviderClient)
 	return kubeUtil
 }
 
-func getControllers(kubeUtil *kube.Kube, env *models.Env) []api.Controller {
+func getControllers(kubeUtil *kube.Kube, env *models.Env, radixDeployJobComponent *radixv1.RadixDeployJobComponent) []api.Controller {
 	return []api.Controller{
-		jobControllers.New(jobApi.New(kubeUtil, env)),
-		batchControllers.New(batchApi.New(kubeUtil, env)),
+		jobControllers.New(jobApi.New(kubeUtil, env, radixDeployJobComponent)),
+		batchControllers.New(batchApi.New(kubeUtil, env, radixDeployJobComponent)),
 	}
 }
 

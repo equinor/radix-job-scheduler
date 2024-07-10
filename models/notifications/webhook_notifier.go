@@ -12,14 +12,18 @@ import (
 )
 
 type webhookNotifier struct {
-	webhookURL       string
-	jobComponentName string
+	webhookURL              string
+	jobComponentName        string
+	radixDeployJobComponent *radixv1.RadixDeployJobComponent
 }
 
-func NewWebhookNotifier(jobComponent *radixv1.RadixDeployJobComponent) Notifier {
-	notifier := webhookNotifier{jobComponentName: jobComponent.Name}
-	if jobComponent.Notifications != nil && webhookIsNotEmpty(jobComponent.Notifications.Webhook) {
-		notifier.webhookURL = *jobComponent.Notifications.Webhook
+func NewWebhookNotifier(radixDeployJobComponent *radixv1.RadixDeployJobComponent) Notifier {
+	notifier := webhookNotifier{
+		jobComponentName:        radixDeployJobComponent.Name,
+		radixDeployJobComponent: radixDeployJobComponent,
+	}
+	if radixDeployJobComponent.Notifications != nil && webhookIsNotEmpty(radixDeployJobComponent.Notifications.Webhook) {
+		notifier.webhookURL = *radixDeployJobComponent.Notifications.Webhook
 	}
 	return &notifier
 }
@@ -44,7 +48,7 @@ func (notifier *webhookNotifier) Notify(event events.Event, radixBatch *radixv1.
 			return
 		}
 		// RadixBatch status and only changed job statuses
-		batchStatus := getRadixBatchEventFromRadixBatch(event, radixBatch, updatedJobStatuses)
+		batchStatus := notifier.getRadixBatchEventFromRadixBatch(event, radixBatch, updatedJobStatuses)
 		statusesJson, err := json.Marshal(batchStatus)
 		if err != nil {
 			errChan <- fmt.Errorf("failed serialize updated JobStatuses %v", err)

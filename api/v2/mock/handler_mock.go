@@ -51,19 +51,19 @@ func (mr *MockHandlerMockRecorder) CopyRadixBatch(ctx, batchName, deploymentName
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CopyRadixBatch", reflect.TypeOf((*MockHandler)(nil).CopyRadixBatch), ctx, batchName, deploymentName)
 }
 
-// CopyRadixBatchSingleJob mocks base method.
-func (m *MockHandler) CopyRadixBatchSingleJob(ctx context.Context, batchName, jobName, deploymentName string) (*v2.RadixBatch, error) {
+// CopyRadixBatchJob mocks base method.
+func (m *MockHandler) CopyRadixBatchJob(ctx context.Context, jobName, deploymentName string) (*v2.RadixBatch, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CopyRadixBatchSingleJob", ctx, batchName, jobName, deploymentName)
+	ret := m.ctrl.Call(m, "CopyRadixBatchJob", ctx, jobName, deploymentName)
 	ret0, _ := ret[0].(*v2.RadixBatch)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// CopyRadixBatchSingleJob indicates an expected call of CopyRadixBatchSingleJob.
-func (mr *MockHandlerMockRecorder) CopyRadixBatchSingleJob(ctx, batchName, jobName, deploymentName interface{}) *gomock.Call {
+// CopyRadixBatchJob indicates an expected call of CopyRadixBatchJob.
+func (mr *MockHandlerMockRecorder) CopyRadixBatchJob(ctx, jobName, deploymentName interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CopyRadixBatchSingleJob", reflect.TypeOf((*MockHandler)(nil).CopyRadixBatchSingleJob), ctx, batchName, jobName, deploymentName)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CopyRadixBatchJob", reflect.TypeOf((*MockHandler)(nil).CopyRadixBatchJob), ctx, jobName, deploymentName)
 }
 
 // CreateRadixBatch mocks base method.
@@ -108,6 +108,20 @@ func (m *MockHandler) DeleteRadixBatch(ctx context.Context, batchName string) er
 func (mr *MockHandlerMockRecorder) DeleteRadixBatch(ctx, batchName interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteRadixBatch", reflect.TypeOf((*MockHandler)(nil).DeleteRadixBatch), ctx, batchName)
+}
+
+// DeleteRadixBatchJob mocks base method.
+func (m *MockHandler) DeleteRadixBatchJob(ctx context.Context, jobName string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteRadixBatchJob", ctx, jobName)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteRadixBatchJob indicates an expected call of DeleteRadixBatchJob.
+func (mr *MockHandlerMockRecorder) DeleteRadixBatchJob(ctx, jobName interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteRadixBatchJob", reflect.TypeOf((*MockHandler)(nil).DeleteRadixBatchJob), ctx, jobName)
 }
 
 // GarbageCollectPayloadSecrets mocks base method.
@@ -181,6 +195,34 @@ func (m *MockHandler) MaintainHistoryLimit(ctx context.Context) error {
 func (mr *MockHandlerMockRecorder) MaintainHistoryLimit(ctx interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MaintainHistoryLimit", reflect.TypeOf((*MockHandler)(nil).MaintainHistoryLimit), ctx)
+}
+
+// RestartRadixBatch mocks base method.
+func (m *MockHandler) RestartRadixBatch(ctx context.Context, batchName string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RestartRadixBatch", ctx, batchName)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// RestartRadixBatch indicates an expected call of RestartRadixBatch.
+func (mr *MockHandlerMockRecorder) RestartRadixBatch(ctx, batchName interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RestartRadixBatch", reflect.TypeOf((*MockHandler)(nil).RestartRadixBatch), ctx, batchName)
+}
+
+// RestartRadixBatchJob mocks base method.
+func (m *MockHandler) RestartRadixBatchJob(ctx context.Context, batchName, jobName string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RestartRadixBatchJob", ctx, batchName, jobName)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// RestartRadixBatchJob indicates an expected call of RestartRadixBatchJob.
+func (mr *MockHandlerMockRecorder) RestartRadixBatchJob(ctx, batchName, jobName interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RestartRadixBatchJob", reflect.TypeOf((*MockHandler)(nil).RestartRadixBatchJob), ctx, batchName, jobName)
 }
 
 // StopRadixBatch mocks base method.

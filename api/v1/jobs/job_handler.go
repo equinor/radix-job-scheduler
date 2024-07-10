@@ -7,11 +7,13 @@ import (
 	apiErrors "github.com/equinor/radix-job-scheduler/api/errors"
 	apiv1 "github.com/equinor/radix-job-scheduler/api/v1"
 	apiv2 "github.com/equinor/radix-job-scheduler/api/v2"
+	"github.com/equinor/radix-job-scheduler/internal"
 	"github.com/equinor/radix-job-scheduler/models"
 	"github.com/equinor/radix-job-scheduler/models/common"
 	modelsv1 "github.com/equinor/radix-job-scheduler/models/v1"
 	modelsv2 "github.com/equinor/radix-job-scheduler/models/v2"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
+	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/rs/zerolog/log"
 	"k8s.io/apimachinery/pkg/api/errors"
 )
@@ -38,12 +40,13 @@ type JobHandler interface {
 }
 
 // New Constructor for job handler
-func New(kube *kube.Kube, env *models.Env) JobHandler {
+func New(kube *kube.Kube, env *models.Env, radixDeployJobComponent *radixv1.RadixDeployJobComponent) JobHandler {
 	return &jobHandler{
 		common: &apiv1.Handler{
-			Kube:         kube,
-			Env:          env,
-			HandlerApiV2: apiv2.New(kube, env),
+			Kube:                    kube,
+			Env:                     env,
+			HandlerApiV2:            apiv2.New(kube, env, radixDeployJobComponent),
+			RadixDeployJobComponent: radixDeployJobComponent,
 		},
 	}
 }
@@ -86,7 +89,7 @@ func (handler *jobHandler) GetJobs(ctx context.Context) ([]modelsv1.JobStatus, e
 func (handler *jobHandler) GetJob(ctx context.Context, jobName string) (*modelsv1.JobStatus, error) {
 	logger := log.Ctx(ctx)
 	logger.Debug().Msgf("get job %s for namespace: %s", jobName, handler.common.Env.RadixDeploymentNamespace)
-	if batchName, _, ok := apiv1.ParseBatchAndJobNameFromScheduledJobName(jobName); ok {
+	if batchName, _, ok := internal.ParseBatchAndJobNameFromScheduledJobName(jobName); ok {
 		jobStatus, err := apiv1.GetBatchJob(ctx, handler.common.HandlerApiV2, batchName, jobName)
 		if err != nil {
 			return nil, err
@@ -128,7 +131,7 @@ func (handler *jobHandler) CopyJob(ctx context.Context, jobName string, deployme
 func (handler *jobHandler) DeleteJob(ctx context.Context, jobName string) error {
 	logger := log.Ctx(ctx)
 	logger.Debug().Msgf("delete job %s for namespace: %s", jobName, handler.common.Env.RadixDeploymentNamespace)
-	batchName, _, ok := apiv1.ParseBatchAndJobNameFromScheduledJobName(jobName)
+	batchName, _, ok := internal.ParseBatchAndJobNameFromScheduledJobName(jobName)
 	if !ok {
 		return apiErrors.NewInvalidWithReason(jobName, "is not a valid job name")
 	}
@@ -187,8 +190,10 @@ func getSingleJobStatusFromRadixBatchJob(radixBatch *modelsv2.RadixBatch) (*mode
 		Created:     radixBatchJobStatus.CreationTime,
 		Started:     radixBatchJobStatus.Started,
 		Ended:       radixBatchJobStatus.Ended,
-		Status:      radixBatchJobStatus.Status,
+		Status:      string(radixBatchJobStatus.Status),
 		Message:     radixBatchJobStatus.Message,
+		Failed:      radixBatchJobStatus.Failed,
+		Restart:     radixBatchJobStatus.Restart,
 		PodStatuses: apiv1.GetPodStatus(radixBatchJobStatus.PodStatuses),
 	}
 	return &jobStatus, nil
