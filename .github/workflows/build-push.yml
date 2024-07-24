@@ -13,10 +13,10 @@ permissions:
 jobs:
   build-deploy:
     runs-on: ubuntu-20.04
-    architecture: [ arm64 ]
     strategy:
       fail-fast: false
       matrix:
+        arch: [ arm64 ]
         target:
         - name: "dev"
           ref: "refs/heads/main"
