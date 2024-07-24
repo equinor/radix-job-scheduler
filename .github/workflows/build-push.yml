@@ -154,10 +154,10 @@ jobs:
         platforms: |
           linux/amd64
           linux/arm64
-        tags: "${{ steps.build-image-name.outputs.image-name }}:${{ steps.build-tag.outputs.tag }}"
+        tags: "${{ steps.build-image-name.outputs.image-name }}:${{ steps.build-tags.outputs.tag }}"
         labels: ${{ steps.meta.outputs.labels }}
-#        cache-from: "type=registry,ref=${{ steps.build-image-name.outputs.image-name }}:${{ steps.build-tags.outputs.cache-tag }}"
-#        cache-to: "type=registry,ref=${{ steps.build-image-name.outputs.image-name }}:${{ steps.build-tags.outputs.cache-tag }},mode=max"
+        cache-from: "type=registry,ref=${{ steps.build-image-name.outputs.image-name }}:${{ steps.build-tags.outputs.cache-tag }}"
+        cache-to: "type=registry,ref=${{ steps.build-image-name.outputs.image-name }}:${{ steps.build-tags.outputs.cache-tag }},mode=max"
 
     - name: Revoke GitHub IP on ACR
       if: ${{ matrix.target.ref == github.ref && steps.update_firewall.outcome == 'success' && !cancelled()}} # Always run this step even if previous step failed
