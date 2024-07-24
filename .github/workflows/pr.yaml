@@ -3,9 +3,6 @@ on:
   pull_request:
     branches:
     - main
-  push:
-    branches:
-    - update-refs
 jobs:
   build:
     name: pull-request-check
