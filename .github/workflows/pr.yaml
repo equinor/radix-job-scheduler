@@ -9,7 +9,7 @@ on:
 jobs:
   build:
     name: pull-request-check
-    runs-on: [ARM64, Linux]
+    runs-on: [arm64, ubuntu-latest]
     steps:
     - uses: actions/checkout@v4
     - name: Set up Docker Buildx

@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   build-deploy:
-    runs-on: [ARM64, Linux]
+    runs-on: [arm64, ubuntu-latest]
     strategy:
       fail-fast: false
       matrix:
