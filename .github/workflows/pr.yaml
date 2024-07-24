@@ -3,6 +3,9 @@ on:
   pull_request:
     branches:
     - main
+  push:
+    branches:
+    - update-refs
 jobs:
   build:
     name: pull-request-check
@@ -75,6 +78,7 @@ jobs:
         continue-on-error: true
         run: breaking_changes=$(swagger diff --break <(git show main:swaggerui/html/swagger.json) swaggerui/html/swagger.json) >> $GITHUB_OUTPUT
       - name: Add comment
+        #        if: failure() && steps.breaking.outcome == 'failure'
         uses: actions/github-script@v7
         with:
           script: console.log('${{ steps.breaking.outputs.breaking_changes }}');
