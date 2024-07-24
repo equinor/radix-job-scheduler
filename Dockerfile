@@ -1,29 +1,23 @@
-FROM golang:1.22-alpine3.19 as builder
-ENV GO111MODULE=on
+FROM docker.io/golang:1.22-alpine3.20 AS builder
 
-RUN addgroup -S -g 1000 job-scheduler
-RUN adduser -S -u 1000 -G job-scheduler job-scheduler
+ENV CGO_ENABLED=0 \
+    GOOS=linux
 
-RUN apk update && apk upgrade && \
-    apk add bash jq alpine-sdk sed gawk git ca-certificates curl && \
-    apk add --no-cache gcc musl-dev
+WORKDIR /src
 
-WORKDIR /go/src/github.com/equinor/radix-job-scheduler/
-
-# get dependencies
+# Install project dependencies
 COPY go.mod go.sum ./
 RUN go mod download
 
-# copy api code
+# Copy project code
 COPY . .
 
-# Build radix api go project
-RUN CGO_ENABLED=0 GOOS=linux go build -ldflags "-s -w" -a -installsuffix cgo -o /usr/local/bin/radix-job-scheduler
+RUN go build -ldflags="-s -w" -o /build/radix-job-scheduler
 
-FROM scratch
-COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
-COPY --from=builder /etc/passwd /etc/passwd
-COPY --from=builder /usr/local/bin/radix-job-scheduler /usr/local/bin/radix-job-scheduler
+# Final stage, ref https://github.com/GoogleContainerTools/distroless/blob/main/base/README.md for distroless
+FROM gcr.io/distroless/static
+WORKDIR /app
+COPY --from=builder /build/radix-job-scheduler .
 
 USER 1000
-ENTRYPOINT ["/usr/local/bin/radix-job-scheduler"]
+ENTRYPOINT ["/app/radix-job-scheduler"]
