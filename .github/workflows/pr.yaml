@@ -24,6 +24,9 @@ jobs:
   test:
     name: Unit Test
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        arch: [arm64]
     steps:
     - uses: actions/checkout@v4
     - uses: actions/setup-go@v5
@@ -37,6 +40,9 @@ jobs:
   lint:
     name: Lint
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        arch: [arm64]
     steps:
     - uses: actions/checkout@v4
       with:
@@ -52,6 +58,9 @@ jobs:
   verify-code-generation:
     name: Verify Code Generation
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        arch: [arm64]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -64,6 +73,9 @@ jobs:
   report-swagger-changes:
     name: Report Changes In Swagger Spec
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        arch: [arm64]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
