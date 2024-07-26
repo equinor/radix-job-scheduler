@@ -77,7 +77,7 @@ ifndef HAS_SWAGGER
 	go install github.com/go-swagger/go-swagger/cmd/swagger@v0.31.0
 endif
 ifndef HAS_GOLANGCI_LINT
-	go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.55.2
+	go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.59.1
 endif
 ifndef HAS_MOCKGEN
 	go install github.com/golang/mock/mockgen@v1.6.0
