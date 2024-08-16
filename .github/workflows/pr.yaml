@@ -7,9 +7,6 @@ jobs:
   build:
     name: pull-request-check
     runs-on: ubuntu-20.04
-    strategy:
-      matrix:
-        arch: [arm64]
     steps:
     - uses: actions/checkout@v4
     - name: Set up Docker Buildx
@@ -19,14 +16,13 @@ jobs:
       with:
         context: .
         push: false
-        platforms: linux/arm64
+        platforms: |
+          linux/amd64
+          linux/arm64
 
   test:
     name: Unit Test
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        arch: [arm64]
     steps:
     - uses: actions/checkout@v4
     - uses: actions/setup-go@v5
@@ -40,9 +36,6 @@ jobs:
   lint:
     name: Lint
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        arch: [arm64]
     steps:
     - uses: actions/checkout@v4
       with:
@@ -58,9 +51,6 @@ jobs:
   verify-code-generation:
     name: Verify Code Generation
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        arch: [arm64]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -73,9 +63,6 @@ jobs:
   report-swagger-changes:
     name: Report Changes In Swagger Spec
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        arch: [arm64]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5

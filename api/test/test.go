@@ -188,7 +188,10 @@ func (params *TestParams) ApplyRd(kubeUtil *kube.Kube) *v1.RadixDeployment {
 		metadataMap[name] = kube.EnvVarMetadata{RadixConfigValue: value}
 	}
 	_ = kube.SetEnvVarsMetadataMapToConfigMap(envVarsMetadataConfigMap, metadataMap)
-	_ = kubeUtil.UpdateConfigMap(context.Background(), params.Namespace, envVarsConfigMap, envVarsMetadataConfigMap)
+
+	for _, cm := range []*corev1.ConfigMap{envVarsConfigMap, envVarsMetadataConfigMap} {
+		_, _ = kubeUtil.KubeClient().CoreV1().ConfigMaps(params.Namespace).Update(context.Background(), cm, metav1.UpdateOptions{})
+	}
 
 	rd := utils.ARadixDeployment().
 		WithDeploymentName(params.DeploymentName).
