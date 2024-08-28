@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"time"
 
 	"dario.cat/mergo"
 	mergoutils "github.com/equinor/radix-common/utils/mergo"
@@ -43,7 +42,7 @@ type handler struct {
 	kubeUtil                *kube.Kube
 	env                     *models.Env
 	radixDeployJobComponent *radixv1.RadixDeployJobComponent
-	jobHistory              History
+	jobHistory              batch.History
 }
 
 type Handler interface {
@@ -61,8 +60,6 @@ type Handler interface {
 	CreateRadixBatchSingleJob(ctx context.Context, jobScheduleDescription *common.JobScheduleDescription) (*modelsv2.RadixBatch, error)
 	// CopyRadixBatchJob Copy a batch job parameter
 	CopyRadixBatchJob(ctx context.Context, jobName, deploymentName string) (*modelsv2.RadixBatch, error)
-	// CleanupJobHistory Delete outdated batches
-	CleanupJobHistory(ctx context.Context)
 	// DeleteRadixBatchJob Delete a single job
 	DeleteRadixBatchJob(ctx context.Context, jobName string) error
 	// StopRadixBatch Stop a batch
@@ -89,7 +86,7 @@ func New(kubeUtil *kube.Kube, env *models.Env, radixDeployJobComponent *radixv1.
 		kubeUtil:                kubeUtil,
 		env:                     env,
 		radixDeployJobComponent: radixDeployJobComponent,
-		jobHistory:              NewHistory(kubeUtil, env, radixDeployJobComponent),
+		jobHistory:              batch.NewHistory(kubeUtil, env, radixDeployJobComponent),
 	}
 }
 
@@ -267,17 +264,6 @@ func (h *handler) RestartRadixBatchJob(ctx context.Context, batchName, jobName s
 		return err
 	}
 	return batch.RestartRadixBatchJob(ctx, h.kubeUtil.RadixClient(), radixBatch, jobName)
-}
-
-// CleanupJobHistory Delete outdated batches
-func (h *handler) CleanupJobHistory(ctx context.Context) {
-	ctxWithTimeout, cancel := context.WithTimeout(ctx, time.Minute*5)
-	go func() {
-		defer cancel()
-		if err := h.jobHistory.Cleanup(ctxWithTimeout); err != nil {
-			log.Ctx(ctx).Error().Err(err).Msg("Failed to cleanup job history")
-		}
-	}()
 }
 
 func (h *handler) createRadixBatch(ctx context.Context, namespace, appName, radixDeploymentName string, radixJobComponent radixv1.RadixDeployJobComponent, batchScheduleDescription common.BatchScheduleDescription, radixBatchType kube.RadixBatchType) (*radixv1.RadixBatch, error) {
@@ -474,12 +460,4 @@ func applyDefaultJobDescriptionProperties(jobScheduleDescription *common.JobSche
 		return nil
 	}
 	return mergo.Merge(&jobScheduleDescription.RadixJobComponentConfig, defaultRadixJobComponentConfig, mergo.WithTransformers(authTransformer))
-}
-
-func convertToRadixBatchStatuses(radixBatches []*radixv1.RadixBatch, radixDeployJobComponent *radixv1.RadixDeployJobComponent) []*modelsv2.RadixBatch {
-	batches := make([]*modelsv2.RadixBatch, 0, len(radixBatches))
-	for _, radixBatch := range radixBatches {
-		batches = append(batches, pointers.Ptr(batch.GetRadixBatchStatus(radixBatch, radixDeployJobComponent)))
-	}
-	return batches
 }

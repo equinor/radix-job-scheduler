@@ -1,4 +1,4 @@
-package apiv2
+package batch
 
 import (
 	"context"
@@ -9,10 +9,10 @@ import (
 
 	"github.com/equinor/radix-common/utils/pointers"
 	"github.com/equinor/radix-common/utils/slice"
+	"github.com/equinor/radix-job-scheduler/api/v2"
 	"github.com/equinor/radix-job-scheduler/internal"
 	"github.com/equinor/radix-job-scheduler/models"
 	modelsv2 "github.com/equinor/radix-job-scheduler/models/v2"
-	"github.com/equinor/radix-job-scheduler/pkg/batch"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	radixLabels "github.com/equinor/radix-operator/pkg/apis/utils/labels"
@@ -77,13 +77,13 @@ func (h *history) Cleanup(ctx context.Context) error {
 	return errors.Join(errs...)
 }
 
-func (h *history) getCompletedRadixBatchesSortedByCompletionTimeAsc(ctx context.Context, completedBefore time.Time) (*CompletedRadixBatches, error) {
+func (h *history) getCompletedRadixBatchesSortedByCompletionTimeAsc(ctx context.Context, completedBefore time.Time) (*apiv2.CompletedRadixBatches, error) {
 	radixBatches, err := internal.GetRadixBatches(ctx, h.env.RadixDeploymentNamespace, h.kubeUtil.RadixClient(), radixLabels.ForComponentName(h.env.RadixComponentName))
 	if err != nil {
 		return nil, err
 	}
 	radixBatches = sortRJSchByCompletionTimeAsc(radixBatches)
-	return &CompletedRadixBatches{
+	return &apiv2.CompletedRadixBatches{
 		SucceededRadixBatches:    h.getSucceededRadixBatches(radixBatches, completedBefore),
 		NotSucceededRadixBatches: h.getNotSucceededRadixBatches(radixBatches, completedBefore),
 		SucceededSingleJobs:      h.getSucceededSingleJobs(radixBatches, completedBefore),
@@ -136,7 +136,7 @@ func (h *history) cleanupRadixBatchHistory(ctx context.Context, radixBatchesSort
 	for i := 0; i < numToDelete; i++ {
 		radixBatch := radixBatchesSortedByCompletionTimeAsc[i]
 		logger.Debug().Msgf("deleting batch %s", radixBatch.Name)
-		if err := batch.DeleteRadixBatchByName(ctx, h.kubeUtil.RadixClient(), h.env.RadixDeploymentNamespace, radixBatch.Name); err != nil {
+		if err := DeleteRadixBatchByName(ctx, h.kubeUtil.RadixClient(), h.env.RadixDeploymentNamespace, radixBatch.Name); err != nil {
 			return err
 		}
 	}
@@ -164,4 +164,12 @@ func getCompletionTimeFrom(radixBatch *radixv1.RadixBatch) *metav1.Time {
 		return pointers.Ptr(radixBatch.GetCreationTimestamp())
 	}
 	return radixBatch.Status.Condition.CompletionTime
+}
+
+func convertToRadixBatchStatuses(radixBatches []*radixv1.RadixBatch, radixDeployJobComponent *radixv1.RadixDeployJobComponent) []*modelsv2.RadixBatch {
+	batches := make([]*modelsv2.RadixBatch, 0, len(radixBatches))
+	for _, radixBatch := range radixBatches {
+		batches = append(batches, pointers.Ptr(GetRadixBatchStatus(radixBatch, radixDeployJobComponent)))
+	}
+	return batches
 }

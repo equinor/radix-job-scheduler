@@ -34,8 +34,6 @@ type BatchHandler interface {
 	CreateBatch(ctx context.Context, batchScheduleDescription *common.BatchScheduleDescription) (*modelsv1.BatchStatus, error)
 	// CopyBatch creates a copy of an existing batch with deploymentName as value for radixDeploymentJobRef.name
 	CopyBatch(ctx context.Context, batchName string, deploymentName string) (*modelsv1.BatchStatus, error)
-	// CleanupJobHistory Delete outdated batches
-	CleanupJobHistory(ctx context.Context)
 	// DeleteBatch Delete a batch
 	DeleteBatch(ctx context.Context, batchName string) error
 	// StopBatch Stop a batch
@@ -151,11 +149,6 @@ func (handler *batchHandler) StopBatchJob(ctx context.Context, batchName string,
 	logger := log.Ctx(ctx)
 	logger.Debug().Msgf("delete the job %s in the batch %s for namespace: %s", jobName, batchName, handler.common.Env.RadixDeploymentNamespace)
 	return apiv1.StopJob(ctx, handler.common.HandlerApiV2, jobName)
-}
-
-// CleanupJobHistory Delete outdated batches
-func (handler *batchHandler) CleanupJobHistory(ctx context.Context) {
-	handler.common.HandlerApiV2.CleanupJobHistory(ctx)
 }
 
 func setBatchJobEventMessages(radixBatchStatus *modelsv1.BatchStatus, batchJobPodsMap map[string]corev1.Pod, eventMessageForPods map[string]string) {

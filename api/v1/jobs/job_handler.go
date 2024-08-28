@@ -32,8 +32,6 @@ type JobHandler interface {
 	CreateJob(ctx context.Context, jobScheduleDescription *common.JobScheduleDescription) (*modelsv1.JobStatus, error)
 	// CopyJob creates a copy of an existing job with deploymentName as value for radixDeploymentJobRef.name
 	CopyJob(ctx context.Context, jobName string, deploymentName string) (*modelsv1.JobStatus, error)
-	// CleanupJobHistory Delete outdated jobs
-	CleanupJobHistory(ctx context.Context)
 	// DeleteJob Delete a job
 	DeleteJob(ctx context.Context, jobName string) error
 	// StopJob Stop a job
@@ -173,11 +171,6 @@ func (handler *jobHandler) StopJob(ctx context.Context, jobName string) error {
 	logger := log.Ctx(ctx)
 	logger.Debug().Msgf("stop the job %s for namespace: %s", jobName, handler.common.Env.RadixDeploymentNamespace)
 	return apiv1.StopJob(ctx, handler.common.HandlerApiV2, jobName)
-}
-
-// CleanupJobHistory Delete outdated jobs
-func (handler *jobHandler) CleanupJobHistory(ctx context.Context) {
-	handler.common.HandlerApiV2.CleanupJobHistory(ctx)
 }
 
 func getSingleJobStatusFromRadixBatchJob(radixBatch *modelsv2.RadixBatch) (*modelsv1.JobStatus, error) {

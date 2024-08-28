@@ -210,10 +210,6 @@ func TestCreateJob(t *testing.T) {
 			CreateJob(test.RequestContextMatcher{}, &jobScheduleDescription).
 			Return(&createdJob, nil).
 			Times(1)
-		jobHandler.
-			EXPECT().
-			CleanupJobHistory(test.RequestContextMatcher{}).
-			Times(1)
 		controllerTestUtils := setupTest(jobHandler)
 		responseChannel := controllerTestUtils.ExecuteRequestWithBody(ctx, http.MethodPost, "/api/v1/jobs", nil)
 		response := <-responseChannel
@@ -268,10 +264,6 @@ func TestCreateJob(t *testing.T) {
 			CreateJob(test.RequestContextMatcher{}, &jobScheduleDescription).
 			Return(&createdJob, nil).
 			Times(1)
-		jobHandler.
-			EXPECT().
-			CleanupJobHistory(test.RequestContextMatcher{}).
-			Times(1)
 		controllerTestUtils := setupTest(jobHandler)
 		responseChannel := controllerTestUtils.ExecuteRequestWithBody(ctx, http.MethodPost, "/api/v1/jobs", jobScheduleDescription)
 		response := <-responseChannel
@@ -310,10 +302,6 @@ func TestCreateJob(t *testing.T) {
 			CreateJob(test.RequestContextMatcher{}, &jobScheduleDescription).
 			Return(&createdJob, nil).
 			Times(1)
-		jobHandler.
-			EXPECT().
-			CleanupJobHistory(test.RequestContextMatcher{}).
-			Times(1)
 		controllerTestUtils := setupTest(jobHandler)
 		responseChannel := controllerTestUtils.ExecuteRequestWithBody(ctx, http.MethodPost, "/api/v1/jobs", jobScheduleDescription)
 		response := <-responseChannel
@@ -342,10 +330,6 @@ func TestCreateJob(t *testing.T) {
 		jobHandler.
 			EXPECT().
 			CreateJob(test.RequestContextMatcher{}, gomock.Any()).
-			Times(0)
-		jobHandler.
-			EXPECT().
-			CleanupJobHistory(test.RequestContextMatcher{}).
 			Times(0)
 		controllerTestUtils := setupTest(jobHandler)
 		responseChannel := controllerTestUtils.ExecuteRequestWithBody(ctx, http.MethodPost, "/api/v1/jobs", struct{ Payload interface{} }{Payload: struct{}{}})
@@ -377,10 +361,6 @@ func TestCreateJob(t *testing.T) {
 			CreateJob(test.RequestContextMatcher{}, &jobScheduleDescription).
 			Return(nil, apiErrors.NewNotFound(anyKind, anyName)).
 			Times(1)
-		jobHandler.
-			EXPECT().
-			CleanupJobHistory(test.RequestContextMatcher{}).
-			Times(0)
 		controllerTestUtils := setupTest(jobHandler)
 		responseChannel := controllerTestUtils.ExecuteRequest(ctx, http.MethodPost, "/api/v1/jobs")
 		response := <-responseChannel
@@ -410,10 +390,6 @@ func TestCreateJob(t *testing.T) {
 			CreateJob(test.RequestContextMatcher{}, &jobScheduleDescription).
 			Return(nil, errors.New("any error")).
 			Times(1)
-		jobHandler.
-			EXPECT().
-			CleanupJobHistory(test.RequestContextMatcher{}).
-			Times(0)
 		controllerTestUtils := setupTest(jobHandler)
 		responseChannel := controllerTestUtils.ExecuteRequest(ctx, http.MethodPost, "/api/v1/jobs")
 		response := <-responseChannel

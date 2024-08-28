@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/equinor/radix-job-scheduler/internal"
 	"github.com/equinor/radix-job-scheduler/models/v1/events"
 
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
@@ -42,13 +43,13 @@ func (notifier *webhookNotifier) String() string {
 func (notifier *webhookNotifier) Notify(event events.Event, radixBatch *radixv1.RadixBatch, updatedJobStatuses []radixv1.RadixBatchJobStatus, errChan chan error) (done chan struct{}) {
 	done = make(chan struct{})
 	go func() {
+		defer close(done)
 		if !notifier.Enabled() || len(notifier.webhookURL) == 0 || radixBatch.Spec.RadixDeploymentJobRef.Job != notifier.jobComponentName {
 			done <- struct{}{}
-			close(done)
 			return
 		}
 		// RadixBatch status and only changed job statuses
-		batchStatus := notifier.getRadixBatchEventFromRadixBatch(event, radixBatch, updatedJobStatuses)
+		batchStatus := internal.GetRadixBatchEventFromRadixBatch(event, radixBatch, updatedJobStatuses, notifier.radixDeployJobComponent)
 		statusesJson, err := json.Marshal(batchStatus)
 		if err != nil {
 			errChan <- fmt.Errorf("failed serialize updated JobStatuses %v", err)
@@ -61,7 +62,6 @@ func (notifier *webhookNotifier) Notify(event events.Event, radixBatch *radixv1.
 			return
 		}
 		done <- struct{}{}
-		close(done)
 	}()
 	return done
 }

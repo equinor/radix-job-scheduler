@@ -1,14 +1,17 @@
-package notifications
+package internal
 
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-common/utils/pointers"
 	"github.com/equinor/radix-common/utils/slice"
+	"github.com/equinor/radix-job-scheduler/models/notifications"
 	modelsv1 "github.com/equinor/radix-job-scheduler/models/v1"
 	"github.com/equinor/radix-job-scheduler/models/v1/events"
+	"github.com/equinor/radix-job-scheduler/pkg/batch"
 	"github.com/equinor/radix-job-scheduler/utils/radix/jobs"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
@@ -30,21 +33,16 @@ type Watcher struct {
 	batchInformer        v1.RadixBatchInformer
 	Stop                 chan struct{}
 	logger               zerolog.Logger
-}
-
-// NullRadixBatchWatcher The void watcher
-func NullRadixBatchWatcher() *Watcher {
-	return &Watcher{
-		Stop: make(chan struct{}),
-	}
+	jobHistory           batch.History
 }
 
 // NewRadixBatchWatcher New RadixBatch watcher, notifying on adding and changing of RadixBatches and their jobs
-func NewRadixBatchWatcher(radixClient radixclient.Interface, namespace string, notifier Notifier) (*Watcher, error) {
+func NewRadixBatchWatcher(ctx context.Context, radixClient radixclient.Interface, namespace string, jobHistory batch.History, notifier notifications.Notifier) (*Watcher, error) {
 	watcher := Watcher{
 		Stop:                 make(chan struct{}),
 		radixInformerFactory: radixinformers.NewSharedInformerFactoryWithOptions(radixClient, resyncPeriod, radixinformers.WithNamespace(namespace)),
 		logger:               log.Logger.With().Str("pkg", "radix-batch-watcher").Logger(),
+		jobHistory:           jobHistory,
 	}
 
 	existingRadixBatchMap, err := getRadixBatchMap(radixClient, namespace)
@@ -58,24 +56,25 @@ func NewRadixBatchWatcher(radixClient radixclient.Interface, namespace string, n
 	errChan := make(chan error)
 	_, err = watcher.batchInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(cur interface{}) {
-			newRadixBatch, converted := cur.(*radixv1.RadixBatch)
+			radixBatch, converted := cur.(*radixv1.RadixBatch)
 			if !converted {
 				log.Error().Msg("Failed to cast RadixBatch object")
 				return
 			}
-			if newRadixBatch.Status.Condition.Type != "" {
+			if radixBatch.Status.Condition.Type != "" {
 				return // skip existing batch added to the cache
 			}
-			if _, ok := existingRadixBatchMap[newRadixBatch.GetName()]; ok {
-				watcher.logger.Debug().Msgf("skip existing RadixBatch object %s", newRadixBatch.GetName())
+			if _, ok := existingRadixBatchMap[radixBatch.GetName()]; ok {
+				watcher.logger.Debug().Msgf("skip existing RadixBatch object %s", radixBatch.GetName())
 				return
 			}
-			watcher.logger.Debug().Msgf("RadixBatch object was added %s", newRadixBatch.GetName())
-			jobStatuses := newRadixBatch.Status.JobStatuses
+			watcher.logger.Debug().Msgf("RadixBatch object was added %s", radixBatch.GetName())
+			jobStatuses := radixBatch.Status.JobStatuses
 			if len(jobStatuses) == 0 {
 				jobStatuses = make([]radixv1.RadixBatchJobStatus, 0)
 			}
-			notifier.Notify(events.Create, newRadixBatch, jobStatuses, errChan)
+			notifier.Notify(events.Create, radixBatch, jobStatuses, errChan)
+			watcher.cleanupJobHistory(ctx)
 		},
 		UpdateFunc: func(old, cur interface{}) {
 			oldRadixBatch := old.(*radixv1.RadixBatch)
@@ -110,6 +109,9 @@ func NewRadixBatchWatcher(radixClient radixclient.Interface, namespace string, n
 	}
 
 	watcher.radixInformerFactory.Start(watcher.Stop)
+	log.Info().Msg("Waiting for Radix objects caches to sync")
+	watcher.radixInformerFactory.WaitForCacheSync(ctx.Done())
+	log.Info().Msg("Completed syncing informer caches")
 
 	go func() {
 		for {
@@ -122,6 +124,16 @@ func NewRadixBatchWatcher(radixClient radixclient.Interface, namespace string, n
 		}
 	}()
 	return &watcher, nil
+}
+
+func (w *Watcher) cleanupJobHistory(ctx context.Context) {
+	ctxWithTimeout, cancel := context.WithTimeout(ctx, time.Minute*5)
+	go func() {
+		defer cancel()
+		if err := w.jobHistory.Cleanup(ctxWithTimeout); err != nil {
+			log.Ctx(ctx).Error().Err(err).Msg("Failed to cleanup job history")
+		}
+	}()
 }
 
 func getUpdatedJobStatuses(oldRadixBatch *radixv1.RadixBatch, newRadixBatch *radixv1.RadixBatch) []radixv1.RadixBatchJobStatus {
@@ -166,7 +178,8 @@ func getRadixBatchMap(radixClient radixclient.Interface, namespace string) (map[
 	return radixBatchMap, nil
 }
 
-func (notifier *webhookNotifier) getRadixBatchEventFromRadixBatch(event events.Event, radixBatch *radixv1.RadixBatch, radixBatchJobStatuses []radixv1.RadixBatchJobStatus) events.BatchEvent {
+// GetRadixBatchEventFromRadixBatch Get enevts from RadixBatch
+func GetRadixBatchEventFromRadixBatch(event events.Event, radixBatch *radixv1.RadixBatch, radixBatchJobStatuses []radixv1.RadixBatchJobStatus, radixDeployJobComponent *radixv1.RadixDeployJobComponent) events.BatchEvent {
 	batchType := radixBatch.Labels[kube.RadixBatchTypeLabel]
 	jobStatusBatchName := utils.TernaryString(batchType == string(kube.RadixBatchTypeJob), "", radixBatch.GetName())
 	startedTime := utils.FormatTime(radixBatch.Status.Condition.ActiveTime)
@@ -176,7 +189,7 @@ func (notifier *webhookNotifier) getRadixBatchEventFromRadixBatch(event events.E
 		Created: utils.FormatTime(pointers.Ptr(radixBatch.GetCreationTimestamp())),
 		Started: startedTime,
 		Ended:   endedTime,
-		Status:  string(jobs.GetRadixBatchStatus(radixBatch, notifier.radixDeployJobComponent)),
+		Status:  string(jobs.GetRadixBatchStatus(radixBatch, radixDeployJobComponent)),
 		Message: radixBatch.Status.Condition.Message,
 		Updated: utils.FormatTime(pointers.Ptr(metav1.Now())),
 	}
