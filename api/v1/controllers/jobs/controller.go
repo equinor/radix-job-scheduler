@@ -116,8 +116,6 @@ func (controller *jobController) CreateJob(c *gin.Context) {
 
 	logger.Info().Msgf("Job %s has been created", jobState.Name)
 
-	controller.handler.CleanupJobHistory(c.Request.Context())
-
 	c.JSON(http.StatusOK, jobState)
 }
 

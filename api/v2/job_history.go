@@ -52,22 +52,22 @@ func (h *history) Cleanup(ctx context.Context) error {
 		return err
 	}
 
-	logger.Debug().Msg("maintain history limit for succeeded batches")
+	logger.Debug().Msg("cleanup RadixBatch history for succeeded batches")
 	var errs []error
 	historyLimit := h.env.RadixJobSchedulersPerEnvironmentHistoryLimit
-	if err := h.maintainHistoryLimitForBatches(ctx, completedRadixBatches.SucceededRadixBatches, historyLimit); err != nil {
+	if err := h.cleanupRadixBatchHistory(ctx, completedRadixBatches.SucceededRadixBatches, historyLimit); err != nil {
 		errs = append(errs, err)
 	}
-	logger.Debug().Msg("maintain history limit for not succeeded batches")
-	if err := h.maintainHistoryLimitForBatches(ctx, completedRadixBatches.NotSucceededRadixBatches, historyLimit); err != nil {
+	logger.Debug().Msg("cleanup RadixBatch history for not succeeded batches")
+	if err := h.cleanupRadixBatchHistory(ctx, completedRadixBatches.NotSucceededRadixBatches, historyLimit); err != nil {
 		errs = append(errs, err)
 	}
-	logger.Debug().Msg("maintain history limit for succeeded single jobs")
-	if err := h.maintainHistoryLimitForBatches(ctx, completedRadixBatches.SucceededSingleJobs, historyLimit); err != nil {
+	logger.Debug().Msg("cleanup RadixBatch history for succeeded single jobs")
+	if err := h.cleanupRadixBatchHistory(ctx, completedRadixBatches.SucceededSingleJobs, historyLimit); err != nil {
 		errs = append(errs, err)
 	}
-	logger.Debug().Msg("maintain history limit for not succeeded single jobs")
-	if err := h.maintainHistoryLimitForBatches(ctx, completedRadixBatches.NotSucceededSingleJobs, historyLimit); err != nil {
+	logger.Debug().Msg("cleanup RadixBatch history for not succeeded single jobs")
+	if err := h.cleanupRadixBatchHistory(ctx, completedRadixBatches.NotSucceededSingleJobs, historyLimit); err != nil {
 		errs = append(errs, err)
 	}
 	logger.Debug().Msg("delete orphaned payload secrets")
@@ -124,7 +124,7 @@ func radixBatchHasType(radixBatch *radixv1.RadixBatch, radixBatchType kube.Radix
 	return radixBatch.GetLabels()[kube.RadixBatchTypeLabel] == string(radixBatchType)
 }
 
-func (h *history) maintainHistoryLimitForBatches(ctx context.Context, radixBatchesSortedByCompletionTimeAsc []*modelsv2.RadixBatch, historyLimit int) error {
+func (h *history) cleanupRadixBatchHistory(ctx context.Context, radixBatchesSortedByCompletionTimeAsc []*modelsv2.RadixBatch, historyLimit int) error {
 	logger := log.Ctx(ctx)
 	numToDelete := len(radixBatchesSortedByCompletionTimeAsc) - historyLimit
 	if numToDelete <= 0 {

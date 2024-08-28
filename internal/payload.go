@@ -4,11 +4,11 @@ import (
 	"context"
 	"time"
 
-	"github.com/equinor/radix-job-scheduler/api/errors"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	"github.com/equinor/radix-operator/pkg/apis/utils/labels"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 	"github.com/rs/zerolog/log"
+	"k8s.io/apimachinery/pkg/api/errors"
 )
 
 // GetJobComponentPayloadSecretRefNames Get the payload secret ref names for the job components
@@ -34,11 +34,11 @@ func GarbageCollectPayloadSecrets(ctx context.Context, kubeUtil *kube.Kube, name
 	logger.Debug().Msgf("Garbage collecting payload secrets")
 	payloadSecretRefNames, err := GetJobComponentPayloadSecretRefNames(ctx, kubeUtil.RadixClient(), namespace, radixComponentName)
 	if err != nil {
-		return errors.NewFromError(err)
+		return err
 	}
 	payloadSecrets, err := kubeUtil.ListSecretsWithSelector(ctx, namespace, labels.GetRadixBatchDescendantsSelector(radixComponentName).String())
 	if err != nil {
-		return errors.NewFromError(err)
+		return err
 	}
 	logger.Debug().Msgf("%d payload secrets, %d secret reference unique names", len(payloadSecrets), len(payloadSecretRefNames))
 	yesterday := time.Now().Add(time.Hour * -24)
@@ -48,7 +48,7 @@ func GarbageCollectPayloadSecrets(ctx context.Context, kubeUtil *kube.Kube, name
 				logger.Debug().Msgf("skipping deletion of an orphaned payload secret %s, created within 24 hours", payloadSecret.GetName())
 				continue
 			}
-			if err := kubeUtil.DeleteSecret(ctx, payloadSecret.GetNamespace(), payloadSecret.GetName()); err != nil {
+			if err := kubeUtil.DeleteSecret(ctx, payloadSecret.GetNamespace(), payloadSecret.GetName()); err != nil && !errors.IsNotFound(err) {
 				logger.Error().Err(err).Msgf("failed deleting of an orphaned payload secret %s", payloadSecret.GetName())
 			} else {
 				logger.Debug().Msgf("deleted an orphaned payload secret %s", payloadSecret.GetName())

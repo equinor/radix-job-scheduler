@@ -127,8 +127,6 @@ func (controller *batchController) CreateBatch(c *gin.Context) {
 	}
 	logger.Info().Msgf("Batch %s has been created", batchState.Name)
 
-	controller.handler.CleanupJobHistory(c.Request.Context())
-
 	c.JSON(http.StatusOK, batchState)
 }
 

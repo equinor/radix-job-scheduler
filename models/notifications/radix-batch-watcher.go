@@ -58,7 +58,14 @@ func NewRadixBatchWatcher(radixClient radixclient.Interface, namespace string, n
 	errChan := make(chan error)
 	_, err = watcher.batchInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(cur interface{}) {
-			newRadixBatch := cur.(*radixv1.RadixBatch)
+			newRadixBatch, converted := cur.(*radixv1.RadixBatch)
+			if !converted {
+				log.Error().Msg("Failed to cast RadixBatch object")
+				return
+			}
+			if newRadixBatch.Status.Condition.Type != "" {
+				return // skip existing batch added to the cache
+			}
 			if _, ok := existingRadixBatchMap[newRadixBatch.GetName()]; ok {
 				watcher.logger.Debug().Msgf("skip existing RadixBatch object %s", newRadixBatch.GetName())
 				return

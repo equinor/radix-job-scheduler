@@ -24,10 +24,14 @@ import (
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/equinor/radix-operator/pkg/apis/utils"
+	radixinformers "github.com/equinor/radix-operator/pkg/client/informers/externalversions"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/pflag"
+	"k8s.io/client-go/tools/cache"
 )
+
+const informerResyncPeriod = 0
 
 func main() {
 	ctx := context.Background()
@@ -76,7 +80,7 @@ func runApiServer(ctx context.Context, kubeUtil *kube.Kube, env *models.Env, rad
 
 	srv := &http.Server{
 		Addr:        fmt.Sprintf(":%s", *port),
-		Handler:     router.NewServer(env, getControllers(kubeUtil, env, radixDeployJobComponent)...),
+		Handler:     router.NewServer(env, getControllers(ctx, kubeUtil, env, radixDeployJobComponent)...),
 		BaseContext: func(_ net.Listener) context.Context { return ctx },
 	}
 
@@ -112,11 +116,48 @@ func getKubeUtil(ctx context.Context) *kube.Kube {
 	return kubeUtil
 }
 
-func getControllers(kubeUtil *kube.Kube, env *models.Env, radixDeployJobComponent *radixv1.RadixDeployJobComponent) []api.Controller {
+func getControllers(ctx context.Context, kubeUtil *kube.Kube, env *models.Env, radixDeployJobComponent *radixv1.RadixDeployJobComponent) []api.Controller {
+	jobHandler := jobApi.New(kubeUtil, env, radixDeployJobComponent)
+	batchHandler := batchApi.New(kubeUtil, env, radixDeployJobComponent)
+	setupEventHandlers(ctx, kubeUtil, batchHandler, jobHandler)
 	return []api.Controller{
-		jobControllers.New(jobApi.New(kubeUtil, env, radixDeployJobComponent)),
-		batchControllers.New(batchApi.New(kubeUtil, env, radixDeployJobComponent)),
+		jobControllers.New(jobHandler),
+		batchControllers.New(batchHandler),
 	}
+}
+
+func setupEventHandlers(ctx context.Context, kubeUtil *kube.Kube, batchHandler batchApi.BatchHandler, jobHandler jobApi.JobHandler) {
+	log.Info().Msg("Setting up event handlers")
+	batchInformerFactory := radixinformers.NewSharedInformerFactory(kubeUtil.RadixClient(), informerResyncPeriod)
+	batchInformer := batchInformerFactory.Radix().V1().RadixBatches().Informer()
+	if _, err := batchInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: func(cur interface{}) {
+			if !batchInformer.HasSynced() {
+				return
+			}
+			radixBatch, converted := cur.(*radixv1.RadixBatch)
+			if !converted {
+				log.Error().Msg("Failed to cast RadixBatch object")
+				return
+			}
+			if radixBatch.Status.Condition.Type != "" {
+				return // skip existing batch added to the cache
+			}
+			log.Debug().Msgf("RadixBatch object added: %s", radixBatch.GetName())
+			if radixBatch.GetLabels()[kube.RadixBatchTypeLabel] == string(kube.RadixBatchTypeBatch) {
+				batchHandler.CleanupJobHistory(ctx)
+			} else {
+				jobHandler.CleanupJobHistory(ctx)
+			}
+		},
+	}); err != nil {
+		panic(err)
+	}
+
+	batchInformerFactory.Start(ctx.Done())
+	log.Info().Msg("Waiting for Radix objects caches to sync")
+	batchInformerFactory.WaitForCacheSync(ctx.Done())
+	log.Info().Msg("Completed syncing informer caches")
 }
 
 func initializeFlagSet() *pflag.FlagSet {
