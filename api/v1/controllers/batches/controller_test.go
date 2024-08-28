@@ -305,7 +305,7 @@ func TestCreateBatch(t *testing.T) {
 		}
 	})
 
-	t.Run("valid payload body - error from MaintainHistoryLimit should not fail request", func(t *testing.T) {
+	t.Run("valid payload body - error from CleanupJobHistory should not fail request", func(t *testing.T) {
 		t.Parallel()
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()

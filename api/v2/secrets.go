@@ -18,15 +18,6 @@ func (h *handler) GetSecretsForRadixBatch(ctx context.Context, batchName string)
 	return selector, nil
 }
 
-// DeleteSecret Delete the service
-func (h *handler) DeleteSecret(ctx context.Context, secret *corev1.Secret) error {
-	err := h.kubeUtil.DeleteSecret(ctx, secret.Namespace, secret.Name)
-	if err != nil {
-		return apiErrors.NewFromError(err)
-	}
-	return nil
-}
-
 func getLabelSelectorForRadixBatchSecret(batchName string) string {
 	return kubeLabels.SelectorFromSet(labels.ForBatchName(batchName)).String()
 }

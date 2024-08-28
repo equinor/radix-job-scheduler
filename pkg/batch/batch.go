@@ -36,6 +36,15 @@ func GetRadixBatchStatus(radixBatch *radixv1.RadixBatch, radixDeployJobComponent
 	}
 }
 
+// DeleteRadixBatchByName Delete a batch by name
+func DeleteRadixBatchByName(ctx context.Context, radixClient versioned.Interface, namespace, batchName string) error {
+	radixBatch, err := internal.GetRadixBatch(ctx, radixClient, namespace, batchName)
+	if err != nil {
+		return err
+	}
+	return DeleteRadixBatch(ctx, radixClient, radixBatch)
+}
+
 func getRadixBatchJobStatusesFromRadixBatch(radixBatch *radixv1.RadixBatch, radixBatchJobStatuses []radixv1.RadixBatchJobStatus) []modelsv2.RadixBatchJobStatus {
 	radixBatchJobsStatuses := internal.GetRadixBatchJobsStatusesMap(radixBatchJobStatuses)
 	jobStatuses := make([]modelsv2.RadixBatchJobStatus, 0, len(radixBatch.Spec.Jobs))

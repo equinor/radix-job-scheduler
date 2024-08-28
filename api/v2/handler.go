@@ -5,14 +5,12 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"sort"
 	"strings"
 	"time"
 
 	"dario.cat/mergo"
 	mergoutils "github.com/equinor/radix-common/utils/mergo"
 	"github.com/equinor/radix-common/utils/pointers"
-	"github.com/equinor/radix-common/utils/slice"
 	apiErrors "github.com/equinor/radix-job-scheduler/api/errors"
 	"github.com/equinor/radix-job-scheduler/internal"
 	"github.com/equinor/radix-job-scheduler/models"
@@ -45,6 +43,7 @@ type handler struct {
 	kubeUtil                *kube.Kube
 	env                     *models.Env
 	radixDeployJobComponent *radixv1.RadixDeployJobComponent
+	jobHistory              History
 }
 
 type Handler interface {
@@ -62,12 +61,8 @@ type Handler interface {
 	CreateRadixBatchSingleJob(ctx context.Context, jobScheduleDescription *common.JobScheduleDescription) (*modelsv2.RadixBatch, error)
 	// CopyRadixBatchJob Copy a batch job parameter
 	CopyRadixBatchJob(ctx context.Context, jobName, deploymentName string) (*modelsv2.RadixBatch, error)
-	// MaintainHistoryLimit Delete outdated batches
-	MaintainHistoryLimit(ctx context.Context) error
-	// GarbageCollectPayloadSecrets Delete orphaned payload secrets
-	GarbageCollectPayloadSecrets(ctx context.Context) error
-	// DeleteRadixBatch Delete a batch
-	DeleteRadixBatch(ctx context.Context, batchName string) error
+	// CleanupJobHistory Delete outdated batches
+	CleanupJobHistory(ctx context.Context)
 	// DeleteRadixBatchJob Delete a single job
 	DeleteRadixBatchJob(ctx context.Context, jobName string) error
 	// StopRadixBatch Stop a batch
@@ -89,11 +84,12 @@ type CompletedRadixBatches struct {
 }
 
 // New Constructor of the batch handler
-func New(kube *kube.Kube, env *models.Env, radixDeployJobComponent *radixv1.RadixDeployJobComponent) Handler {
+func New(kubeUtil *kube.Kube, env *models.Env, radixDeployJobComponent *radixv1.RadixDeployJobComponent) Handler {
 	return &handler{
-		kubeUtil:                kube,
+		kubeUtil:                kubeUtil,
 		env:                     env,
 		radixDeployJobComponent: radixDeployJobComponent,
+		jobHistory:              NewHistory(kubeUtil, env, radixDeployJobComponent),
 	}
 }
 
@@ -221,15 +217,6 @@ func (h *handler) CopyRadixBatchJob(ctx context.Context, sourceJobName, deployme
 	return batch.CopyRadixBatchOrJob(ctx, h.kubeUtil.RadixClient(), sourceRadixBatch, jobName, h.radixDeployJobComponent, deploymentName)
 }
 
-// DeleteRadixBatch Delete a batch
-func (h *handler) DeleteRadixBatch(ctx context.Context, batchName string) error {
-	radixBatch, err := internal.GetRadixBatch(ctx, h.kubeUtil.RadixClient(), h.env.RadixDeploymentNamespace, batchName)
-	if err != nil {
-		return apiErrors.NewFromError(err)
-	}
-	return batch.DeleteRadixBatch(ctx, h.kubeUtil.RadixClient(), radixBatch)
-}
-
 // DeleteRadixBatchJob Delete a batch job
 func (h *handler) DeleteRadixBatchJob(ctx context.Context, jobName string) error {
 	batchName, _, ok := internal.ParseBatchAndJobNameFromScheduledJobName(jobName)
@@ -282,129 +269,15 @@ func (h *handler) RestartRadixBatchJob(ctx context.Context, batchName, jobName s
 	return batch.RestartRadixBatchJob(ctx, h.kubeUtil.RadixClient(), radixBatch, jobName)
 }
 
-// MaintainHistoryLimit Delete outdated batches
-func (h *handler) MaintainHistoryLimit(ctx context.Context) error {
-	logger := log.Ctx(ctx)
-	const minimumAge = 3600 // TODO add as default env-var and/or job-component property
-	completedBefore := time.Now().Add(-time.Second * minimumAge)
-	completedRadixBatches, err := h.getCompletedRadixBatchesSortedByCompletionTimeAsc(ctx, completedBefore)
-	if err != nil {
-		return err
-	}
-
-	historyLimit := h.env.RadixJobSchedulersPerEnvironmentHistoryLimit
-	logger.Debug().Msg("maintain history limit for succeeded batches")
-	var errs []error
-	if err := h.maintainHistoryLimitForBatches(ctx, completedRadixBatches.SucceededRadixBatches, historyLimit); err != nil {
-		errs = append(errs, err)
-	}
-	logger.Debug().Msg("maintain history limit for not succeeded batches")
-	if err := h.maintainHistoryLimitForBatches(ctx, completedRadixBatches.NotSucceededRadixBatches, historyLimit); err != nil {
-		errs = append(errs, err)
-	}
-	logger.Debug().Msg("maintain history limit for succeeded single jobs")
-	if err := h.maintainHistoryLimitForBatches(ctx, completedRadixBatches.SucceededSingleJobs, historyLimit); err != nil {
-		errs = append(errs, err)
-	}
-	logger.Debug().Msg("maintain history limit for not succeeded single jobs")
-	if err := h.maintainHistoryLimitForBatches(ctx, completedRadixBatches.NotSucceededSingleJobs, historyLimit); err != nil {
-		errs = append(errs, err)
-	}
-	logger.Debug().Msg("delete orphaned payload secrets")
-	err = h.GarbageCollectPayloadSecrets(ctx)
-	if err != nil {
-		errs = append(errs, err)
-	}
-	return errors.Join(errs...)
-}
-
-func (h *handler) getCompletedRadixBatchesSortedByCompletionTimeAsc(ctx context.Context, completedBefore time.Time) (*CompletedRadixBatches, error) {
-	radixBatches, err := internal.GetRadixBatches(ctx, h.env.RadixDeploymentNamespace, h.kubeUtil.RadixClient(), radixLabels.ForComponentName(h.env.RadixComponentName))
-	if err != nil {
-		return nil, err
-	}
-	radixBatches = sortRJSchByCompletionTimeAsc(radixBatches)
-	return &CompletedRadixBatches{
-		SucceededRadixBatches:    h.getSucceededRadixBatches(radixBatches, completedBefore),
-		NotSucceededRadixBatches: h.getNotSucceededRadixBatches(radixBatches, completedBefore),
-		SucceededSingleJobs:      h.getSucceededSingleJobs(radixBatches, completedBefore),
-		NotSucceededSingleJobs:   h.getNotSucceededSingleJobs(radixBatches, completedBefore),
-	}, nil
-}
-
-func (h *handler) getNotSucceededRadixBatches(radixBatches []*radixv1.RadixBatch, completedBefore time.Time) []*modelsv2.RadixBatch {
-	return convertToRadixBatchStatuses(slice.FindAll(radixBatches, func(radixBatch *radixv1.RadixBatch) bool {
-		return radixBatchHasType(radixBatch, kube.RadixBatchTypeBatch) && internal.IsRadixBatchNotSucceeded(radixBatch) && radixBatchIsCompletedBefore(completedBefore, radixBatch)
-	}), h.radixDeployJobComponent)
-}
-
-func (h *handler) getSucceededRadixBatches(radixBatches []*radixv1.RadixBatch, completedBefore time.Time) []*modelsv2.RadixBatch {
-	radixBatches = slice.FindAll(radixBatches, func(radixBatch *radixv1.RadixBatch) bool {
-		return radixBatchHasType(radixBatch, kube.RadixBatchTypeBatch) && internal.IsRadixBatchSucceeded(radixBatch) && radixBatchIsCompletedBefore(completedBefore, radixBatch)
-	})
-	return convertToRadixBatchStatuses(radixBatches, h.radixDeployJobComponent)
-}
-
-func radixBatchIsCompletedBefore(completedBefore time.Time, radixBatch *radixv1.RadixBatch) bool {
-	return radixBatch.Status.Condition.CompletionTime != nil && (*radixBatch.Status.Condition.CompletionTime).Before(&metav1.Time{Time: completedBefore})
-}
-
-func (h *handler) getNotSucceededSingleJobs(radixBatches []*radixv1.RadixBatch, completedBefore time.Time) []*modelsv2.RadixBatch {
-	return convertToRadixBatchStatuses(slice.FindAll(radixBatches, func(radixBatch *radixv1.RadixBatch) bool {
-		return radixBatchHasType(radixBatch, kube.RadixBatchTypeJob) && internal.IsRadixBatchNotSucceeded(radixBatch) && radixBatchIsCompletedBefore(completedBefore, radixBatch)
-	}), h.radixDeployJobComponent)
-}
-
-func (h *handler) getSucceededSingleJobs(radixBatches []*radixv1.RadixBatch, completedBefore time.Time) []*modelsv2.RadixBatch {
-	return convertToRadixBatchStatuses(slice.FindAll(radixBatches, func(radixBatch *radixv1.RadixBatch) bool {
-		return radixBatchHasType(radixBatch, kube.RadixBatchTypeJob) && internal.IsRadixBatchSucceeded(radixBatch) && radixBatchIsCompletedBefore(completedBefore, radixBatch)
-	}), h.radixDeployJobComponent)
-}
-
-func radixBatchHasType(radixBatch *radixv1.RadixBatch, radixBatchType kube.RadixBatchType) bool {
-	return radixBatch.GetLabels()[kube.RadixBatchTypeLabel] == string(radixBatchType)
-}
-
-func (h *handler) maintainHistoryLimitForBatches(ctx context.Context, radixBatchesSortedByCompletionTimeAsc []*modelsv2.RadixBatch, historyLimit int) error {
-	logger := log.Ctx(ctx)
-	numToDelete := len(radixBatchesSortedByCompletionTimeAsc) - historyLimit
-	if numToDelete <= 0 {
-		logger.Debug().Msgf("no history batches to delete: %d batches, %d history limit", len(radixBatchesSortedByCompletionTimeAsc), historyLimit)
-		return nil
-	}
-	logger.Debug().Msgf("history batches to delete: %v", numToDelete)
-
-	for i := 0; i < numToDelete; i++ {
-		radixBatch := radixBatchesSortedByCompletionTimeAsc[i]
-		logger.Debug().Msgf("deleting batch %s", radixBatch.Name)
-		if err := h.DeleteRadixBatch(ctx, radixBatch.Name); err != nil {
-			return err
+// CleanupJobHistory Delete outdated batches
+func (h *handler) CleanupJobHistory(ctx context.Context) {
+	ctxWithTimeout, cancel := context.WithTimeout(ctx, time.Minute*5)
+	go func() {
+		defer cancel()
+		if err := h.jobHistory.Cleanup(ctxWithTimeout); err != nil {
+			log.Ctx(ctx).Error().Err(err).Msg("Failed to cleanup job history")
 		}
-	}
-	return nil
-}
-
-func sortRJSchByCompletionTimeAsc(batches []*radixv1.RadixBatch) []*radixv1.RadixBatch {
-	sort.Slice(batches, func(i, j int) bool {
-		batch1 := (batches)[i]
-		batch2 := (batches)[j]
-		return isRJS1CompletedBeforeRJS2(batch1, batch2)
-	})
-	return batches
-}
-
-func isRJS1CompletedBeforeRJS2(batch1 *radixv1.RadixBatch, batch2 *radixv1.RadixBatch) bool {
-	rd1ActiveFrom := getCompletionTimeFrom(batch1)
-	rd2ActiveFrom := getCompletionTimeFrom(batch2)
-
-	return rd1ActiveFrom.Before(rd2ActiveFrom)
-}
-
-func getCompletionTimeFrom(radixBatch *radixv1.RadixBatch) *metav1.Time {
-	if radixBatch.Status.Condition.CompletionTime.IsZero() {
-		return pointers.Ptr(radixBatch.GetCreationTimestamp())
-	}
-	return radixBatch.Status.Condition.CompletionTime
+	}()
 }
 
 func (h *handler) createRadixBatch(ctx context.Context, namespace, appName, radixDeploymentName string, radixJobComponent radixv1.RadixDeployJobComponent, batchScheduleDescription common.BatchScheduleDescription, radixBatchType kube.RadixBatchType) (*radixv1.RadixBatch, error) {
@@ -580,49 +453,6 @@ func buildRadixBatchJob(jobScheduleDescription *common.JobScheduleDescription, d
 		BackoffLimit:     jobScheduleDescription.BackoffLimit,
 		ImageTagName:     jobScheduleDescription.ImageTagName,
 	}, nil
-}
-
-// GarbageCollectPayloadSecrets Delete orphaned payload secrets
-func (h *handler) GarbageCollectPayloadSecrets(ctx context.Context) error {
-	logger := log.Ctx(ctx)
-	logger.Debug().Msgf("Garbage collecting payload secrets")
-	payloadSecretRefNames, _ := h.getJobComponentPayloadSecretRefNames(ctx)
-	payloadSecrets, err := h.kubeUtil.ListSecretsWithSelector(ctx, h.env.RadixDeploymentNamespace, radixLabels.GetRadixBatchDescendantsSelector(h.env.RadixComponentName).String())
-	if err != nil {
-		return apiErrors.NewFromError(err)
-	}
-	logger.Debug().Msgf("%d payload secrets, %d secret reference unique names", len(payloadSecrets), len(payloadSecretRefNames))
-	yesterday := time.Now().Add(time.Hour * -24)
-	for _, payloadSecret := range payloadSecrets {
-		if _, ok := payloadSecretRefNames[payloadSecret.GetName()]; !ok {
-			if payloadSecret.GetCreationTimestamp().After(yesterday) {
-				logger.Debug().Msgf("skipping deletion of an orphaned payload secret %s, created within 24 hours", payloadSecret.GetName())
-				continue
-			}
-			err := h.DeleteSecret(ctx, payloadSecret)
-			if err != nil {
-				logger.Error().Err(err).Msgf("failed deleting of an orphaned payload secret %s", payloadSecret.GetName())
-			}
-			logger.Debug().Msgf("deleted an orphaned payload secret %s", payloadSecret.GetName())
-		}
-	}
-	return nil
-}
-
-func (h *handler) getJobComponentPayloadSecretRefNames(ctx context.Context) (map[string]bool, error) {
-	radixBatches, err := internal.GetRadixBatches(ctx, h.env.RadixDeploymentNamespace, h.kubeUtil.RadixClient(), radixLabels.ForComponentName(h.env.RadixComponentName))
-	if err != nil {
-		return nil, err
-	}
-	payloadSecretRefNames := make(map[string]bool)
-	for _, radixBatch := range radixBatches {
-		for _, job := range radixBatch.Spec.Jobs {
-			if job.PayloadSecretRef != nil {
-				payloadSecretRefNames[job.PayloadSecretRef.Name] = true
-			}
-		}
-	}
-	return payloadSecretRefNames, nil
 }
 
 func (h *handler) getRadixBatchStatuses(ctx context.Context, radixBatchType kube.RadixBatchType) ([]modelsv2.RadixBatch, error) {

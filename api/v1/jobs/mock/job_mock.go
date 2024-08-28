@@ -36,6 +36,18 @@ func (m *MockJobHandler) EXPECT() *MockJobHandlerMockRecorder {
 	return m.recorder
 }
 
+// CleanupJobHistory mocks base method.
+func (m *MockJobHandler) CleanupJobHistory(ctx context.Context) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "CleanupJobHistory", ctx)
+}
+
+// CleanupJobHistory indicates an expected call of CleanupJobHistory.
+func (mr *MockJobHandlerMockRecorder) CleanupJobHistory(ctx interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CleanupJobHistory", reflect.TypeOf((*MockJobHandler)(nil).CleanupJobHistory), ctx)
+}
+
 // CopyJob mocks base method.
 func (m *MockJobHandler) CopyJob(ctx context.Context, jobName, deploymentName string) (*v1.JobStatus, error) {
 	m.ctrl.T.Helper()
@@ -108,20 +120,6 @@ func (m *MockJobHandler) GetJobs(ctx context.Context) ([]v1.JobStatus, error) {
 func (mr *MockJobHandlerMockRecorder) GetJobs(ctx interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetJobs", reflect.TypeOf((*MockJobHandler)(nil).GetJobs), ctx)
-}
-
-// MaintainHistoryLimit mocks base method.
-func (m *MockJobHandler) MaintainHistoryLimit(ctx context.Context) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "MaintainHistoryLimit", ctx)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// MaintainHistoryLimit indicates an expected call of MaintainHistoryLimit.
-func (mr *MockJobHandlerMockRecorder) MaintainHistoryLimit(ctx interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MaintainHistoryLimit", reflect.TypeOf((*MockJobHandler)(nil).MaintainHistoryLimit), ctx)
 }
 
 // StopJob mocks base method.

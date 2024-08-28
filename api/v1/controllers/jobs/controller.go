@@ -115,10 +115,8 @@ func (controller *jobController) CreateJob(c *gin.Context) {
 	}
 
 	logger.Info().Msgf("Job %s has been created", jobState.Name)
-	err = controller.handler.MaintainHistoryLimit(c.Request.Context())
-	if err != nil {
-		logger.Warn().Err(err).Msg("failed to maintain job history")
-	}
+
+	controller.handler.CleanupJobHistory(c.Request.Context())
 
 	c.JSON(http.StatusOK, jobState)
 }
