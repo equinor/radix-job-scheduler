@@ -16,7 +16,6 @@ import (
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	radixLabels "github.com/equinor/radix-operator/pkg/apis/utils/labels"
-	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 	"github.com/rs/zerolog/log"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -29,11 +28,7 @@ type History interface {
 
 type history struct {
 	namespacesRequestsToCleanup sync.Map
-	radixClient                 radixclient.Interface
-	historyLimit                int
 	kubeUtil                    *kube.Kube
-	historyPeriodLimit          time.Duration
-	namespace                   string
 	env                         *models.Env
 	radixDeployJobComponent     *radixv1.RadixDeployJobComponent
 }
@@ -57,9 +52,9 @@ func (h *history) Cleanup(ctx context.Context) error {
 		return err
 	}
 
-	historyLimit := h.historyLimit
 	logger.Debug().Msg("maintain history limit for succeeded batches")
 	var errs []error
+	historyLimit := h.env.RadixJobSchedulersPerEnvironmentHistoryLimit
 	if err := h.maintainHistoryLimitForBatches(ctx, completedRadixBatches.SucceededRadixBatches, historyLimit); err != nil {
 		errs = append(errs, err)
 	}
@@ -83,7 +78,7 @@ func (h *history) Cleanup(ctx context.Context) error {
 }
 
 func (h *history) getCompletedRadixBatchesSortedByCompletionTimeAsc(ctx context.Context, completedBefore time.Time) (*CompletedRadixBatches, error) {
-	radixBatches, err := internal.GetRadixBatches(ctx, h.namespace, h.kubeUtil.RadixClient(), radixLabels.ForComponentName(h.env.RadixComponentName))
+	radixBatches, err := internal.GetRadixBatches(ctx, h.env.RadixDeploymentNamespace, h.kubeUtil.RadixClient(), radixLabels.ForComponentName(h.env.RadixComponentName))
 	if err != nil {
 		return nil, err
 	}
@@ -141,7 +136,7 @@ func (h *history) maintainHistoryLimitForBatches(ctx context.Context, radixBatch
 	for i := 0; i < numToDelete; i++ {
 		radixBatch := radixBatchesSortedByCompletionTimeAsc[i]
 		logger.Debug().Msgf("deleting batch %s", radixBatch.Name)
-		if err := batch.DeleteRadixBatchByName(ctx, h.radixClient, h.env.RadixDeploymentNamespace, radixBatch.Name); err != nil {
+		if err := batch.DeleteRadixBatchByName(ctx, h.kubeUtil.RadixClient(), h.env.RadixDeploymentNamespace, radixBatch.Name); err != nil {
 			return err
 		}
 	}

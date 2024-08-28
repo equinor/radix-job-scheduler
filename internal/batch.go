@@ -31,7 +31,7 @@ func GetRadixBatches(ctx context.Context, namespace string, radixClient radixcli
 		)
 
 	if err != nil {
-		return nil, errors.NewFromError(err)
+		return nil, err
 	}
 
 	return slice.PointersOf(radixBatchList.Items).([]*radixv1.RadixBatch), nil

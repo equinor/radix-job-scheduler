@@ -271,7 +271,7 @@ func (h *handler) RestartRadixBatchJob(ctx context.Context, batchName, jobName s
 
 // CleanupJobHistory Delete outdated batches
 func (h *handler) CleanupJobHistory(ctx context.Context) {
-	ctxWithTimeout, cancel := context.WithTimeout(ctx, time.Minute*5)
+	ctxWithTimeout, cancel := context.WithTimeout(context.Background(), time.Minute*5)
 	go func() {
 		defer cancel()
 		if err := h.jobHistory.Cleanup(ctxWithTimeout); err != nil {
