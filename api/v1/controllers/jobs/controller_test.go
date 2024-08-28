@@ -212,8 +212,7 @@ func TestCreateJob(t *testing.T) {
 			Times(1)
 		jobHandler.
 			EXPECT().
-			MaintainHistoryLimit(test.RequestContextMatcher{}).
-			Return(nil).
+			CleanupJobHistory(test.RequestContextMatcher{}).
 			Times(1)
 		controllerTestUtils := setupTest(jobHandler)
 		responseChannel := controllerTestUtils.ExecuteRequestWithBody(ctx, http.MethodPost, "/api/v1/jobs", nil)
@@ -271,8 +270,7 @@ func TestCreateJob(t *testing.T) {
 			Times(1)
 		jobHandler.
 			EXPECT().
-			MaintainHistoryLimit(test.RequestContextMatcher{}).
-			Return(nil).
+			CleanupJobHistory(test.RequestContextMatcher{}).
 			Times(1)
 		controllerTestUtils := setupTest(jobHandler)
 		responseChannel := controllerTestUtils.ExecuteRequestWithBody(ctx, http.MethodPost, "/api/v1/jobs", jobScheduleDescription)
@@ -314,8 +312,7 @@ func TestCreateJob(t *testing.T) {
 			Times(1)
 		jobHandler.
 			EXPECT().
-			MaintainHistoryLimit(test.RequestContextMatcher{}).
-			Return(errors.New("an error")).
+			CleanupJobHistory(test.RequestContextMatcher{}).
 			Times(1)
 		controllerTestUtils := setupTest(jobHandler)
 		responseChannel := controllerTestUtils.ExecuteRequestWithBody(ctx, http.MethodPost, "/api/v1/jobs", jobScheduleDescription)
@@ -348,7 +345,7 @@ func TestCreateJob(t *testing.T) {
 			Times(0)
 		jobHandler.
 			EXPECT().
-			MaintainHistoryLimit(test.RequestContextMatcher{}).
+			CleanupJobHistory(test.RequestContextMatcher{}).
 			Times(0)
 		controllerTestUtils := setupTest(jobHandler)
 		responseChannel := controllerTestUtils.ExecuteRequestWithBody(ctx, http.MethodPost, "/api/v1/jobs", struct{ Payload interface{} }{Payload: struct{}{}})
@@ -382,7 +379,7 @@ func TestCreateJob(t *testing.T) {
 			Times(1)
 		jobHandler.
 			EXPECT().
-			MaintainHistoryLimit(test.RequestContextMatcher{}).
+			CleanupJobHistory(test.RequestContextMatcher{}).
 			Times(0)
 		controllerTestUtils := setupTest(jobHandler)
 		responseChannel := controllerTestUtils.ExecuteRequest(ctx, http.MethodPost, "/api/v1/jobs")
@@ -415,7 +412,7 @@ func TestCreateJob(t *testing.T) {
 			Times(1)
 		jobHandler.
 			EXPECT().
-			MaintainHistoryLimit(test.RequestContextMatcher{}).
+			CleanupJobHistory(test.RequestContextMatcher{}).
 			Times(0)
 		controllerTestUtils := setupTest(jobHandler)
 		responseChannel := controllerTestUtils.ExecuteRequest(ctx, http.MethodPost, "/api/v1/jobs")

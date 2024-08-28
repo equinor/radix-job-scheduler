@@ -126,10 +126,8 @@ func (controller *batchController) CreateBatch(c *gin.Context) {
 		return
 	}
 	logger.Info().Msgf("Batch %s has been created", batchState.Name)
-	// err = controller.handler.CleanupJobHistory(c.Request.Context())
-	// if err != nil {
-	// 	logger.Warn().Err(err).Msg("failed to maintain batch history")
-	// }
+
+	controller.handler.CleanupJobHistory(c.Request.Context())
 
 	c.JSON(http.StatusOK, batchState)
 }

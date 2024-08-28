@@ -220,8 +220,7 @@ func TestCreateBatch(t *testing.T) {
 			Times(1)
 		batchHandler.
 			EXPECT().
-			MaintainHistoryLimit(test.RequestContextMatcher{}).
-			Return(nil).
+			CleanupJobHistory(test.RequestContextMatcher{}).
 			Times(1)
 		controllerTestUtils := setupTest(batchHandler)
 		responseChannel := controllerTestUtils.ExecuteRequestWithBody(ctx, http.MethodPost, "/api/v1/batches", nil)
@@ -285,8 +284,7 @@ func TestCreateBatch(t *testing.T) {
 			Times(1)
 		batchHandler.
 			EXPECT().
-			MaintainHistoryLimit(test.RequestContextMatcher{}).
-			Return(nil).
+			CleanupJobHistory(test.RequestContextMatcher{}).
 			Times(1)
 		controllerTestUtils := setupTest(batchHandler)
 		responseChannel := controllerTestUtils.ExecuteRequestWithBody(ctx, http.MethodPost, "/api/v1/batches", batchScheduleDescription)
@@ -332,8 +330,7 @@ func TestCreateBatch(t *testing.T) {
 			Times(1)
 		batchHandler.
 			EXPECT().
-			MaintainHistoryLimit(test.RequestContextMatcher{}).
-			Return(errors.New("an error")).
+			CleanupJobHistory(test.RequestContextMatcher{}).
 			Times(1)
 		controllerTestUtils := setupTest(batchHandler)
 		responseChannel := controllerTestUtils.ExecuteRequestWithBody(ctx, http.MethodPost, "/api/v1/batches", batchScheduleDescription)
@@ -365,7 +362,7 @@ func TestCreateBatch(t *testing.T) {
 			Times(0)
 		batchHandler.
 			EXPECT().
-			MaintainHistoryLimit(test.RequestContextMatcher{}).
+			CleanupJobHistory(test.RequestContextMatcher{}).
 			Times(0)
 		controllerTestUtils := setupTest(batchHandler)
 		responseChannel := controllerTestUtils.ExecuteRequestWithBody(ctx, http.MethodPost, "/api/v1/batches", struct{ JobScheduleDescriptions interface{} }{JobScheduleDescriptions: struct{}{}})
@@ -399,7 +396,7 @@ func TestCreateBatch(t *testing.T) {
 			Times(1)
 		batchHandler.
 			EXPECT().
-			MaintainHistoryLimit(test.RequestContextMatcher{}).
+			CleanupJobHistory(test.RequestContextMatcher{}).
 			Times(0)
 		controllerTestUtils := setupTest(batchHandler)
 		responseChannel := controllerTestUtils.ExecuteRequest(ctx, http.MethodPost, "/api/v1/batches")
@@ -432,7 +429,7 @@ func TestCreateBatch(t *testing.T) {
 			Times(1)
 		batchHandler.
 			EXPECT().
-			MaintainHistoryLimit(test.RequestContextMatcher{}).
+			CleanupJobHistory(test.RequestContextMatcher{}).
 			Times(0)
 		controllerTestUtils := setupTest(batchHandler)
 		responseChannel := controllerTestUtils.ExecuteRequest(ctx, http.MethodPost, "/api/v1/batches")
@@ -641,8 +638,7 @@ func TestStopBatchJob(t *testing.T) {
 			Times(1)
 		batchHandler.
 			EXPECT().
-			MaintainHistoryLimit(test.RequestContextMatcher{}).
-			Return(nil).
+			CleanupJobHistory(test.RequestContextMatcher{}).
 			AnyTimes()
 		controllerTestUtils := setupTest(batchHandler)
 		responseChannel := controllerTestUtils.ExecuteRequest(ctx, http.MethodPost, fmt.Sprintf("/api/v1/batches/%s/jobs/%s/stop", batchName, jobName))
