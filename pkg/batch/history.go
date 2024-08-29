@@ -4,12 +4,10 @@ import (
 	"context"
 	"errors"
 	"sort"
-	"sync"
 	"time"
 
 	"github.com/equinor/radix-common/utils/pointers"
 	"github.com/equinor/radix-common/utils/slice"
-	"github.com/equinor/radix-job-scheduler/api/v2"
 	"github.com/equinor/radix-job-scheduler/internal"
 	"github.com/equinor/radix-job-scheduler/models"
 	modelsv2 "github.com/equinor/radix-job-scheduler/models/v2"
@@ -27,10 +25,9 @@ type History interface {
 }
 
 type history struct {
-	namespacesRequestsToCleanup sync.Map
-	kubeUtil                    *kube.Kube
-	env                         *models.Env
-	radixDeployJobComponent     *radixv1.RadixDeployJobComponent
+	kubeUtil                *kube.Kube
+	env                     *models.Env
+	radixDeployJobComponent *radixv1.RadixDeployJobComponent
 }
 
 // NewHistory Constructor for job History
@@ -77,13 +74,13 @@ func (h *history) Cleanup(ctx context.Context) error {
 	return errors.Join(errs...)
 }
 
-func (h *history) getCompletedRadixBatchesSortedByCompletionTimeAsc(ctx context.Context, completedBefore time.Time) (*apiv2.CompletedRadixBatches, error) {
+func (h *history) getCompletedRadixBatchesSortedByCompletionTimeAsc(ctx context.Context, completedBefore time.Time) (*CompletedRadixBatches, error) {
 	radixBatches, err := internal.GetRadixBatches(ctx, h.env.RadixDeploymentNamespace, h.kubeUtil.RadixClient(), radixLabels.ForComponentName(h.env.RadixComponentName))
 	if err != nil {
 		return nil, err
 	}
 	radixBatches = sortRJSchByCompletionTimeAsc(radixBatches)
-	return &apiv2.CompletedRadixBatches{
+	return &CompletedRadixBatches{
 		SucceededRadixBatches:    h.getSucceededRadixBatches(radixBatches, completedBefore),
 		NotSucceededRadixBatches: h.getNotSucceededRadixBatches(radixBatches, completedBefore),
 		SucceededSingleJobs:      h.getSucceededSingleJobs(radixBatches, completedBefore),

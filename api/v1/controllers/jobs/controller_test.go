@@ -282,44 +282,6 @@ func TestCreateJob(t *testing.T) {
 		}
 	})
 
-	t.Run("valid payload body - error from CleanupJobHistory should not fail request", func(t *testing.T) {
-		t.Parallel()
-		ctrl := gomock.NewController(t)
-		defer ctrl.Finish()
-		jobScheduleDescription := models.JobScheduleDescription{
-			Payload: "a_payload",
-		}
-		createdJob := modelsV1.JobStatus{
-			Name:    "newjob",
-			Started: utils.FormatTimestamp(time.Now()),
-			Ended:   utils.FormatTimestamp(time.Now().Add(1 * time.Minute)),
-			Status:  "jobstatus",
-		}
-		jobHandler := mock.NewMockJobHandler(ctrl)
-		ctx := context.Background()
-		jobHandler.
-			EXPECT().
-			CreateJob(test.RequestContextMatcher{}, &jobScheduleDescription).
-			Return(&createdJob, nil).
-			Times(1)
-		controllerTestUtils := setupTest(jobHandler)
-		responseChannel := controllerTestUtils.ExecuteRequestWithBody(ctx, http.MethodPost, "/api/v1/jobs", jobScheduleDescription)
-		response := <-responseChannel
-		assert.NotNil(t, response)
-
-		if response != nil {
-			assert.Equal(t, http.StatusOK, response.StatusCode)
-			var returnedJob modelsV1.JobStatus
-			err := test.GetResponseBody(response, &returnedJob)
-			require.NoError(t, err)
-			assert.Equal(t, createdJob.Name, returnedJob.Name)
-			assert.Equal(t, "", returnedJob.BatchName)
-			assert.Equal(t, createdJob.Started, returnedJob.Started)
-			assert.Equal(t, createdJob.Ended, returnedJob.Ended)
-			assert.Equal(t, createdJob.Status, returnedJob.Status)
-		}
-	})
-
 	t.Run("invalid request body - unprocessable", func(t *testing.T) {
 		t.Parallel()
 		ctrl := gomock.NewController(t)

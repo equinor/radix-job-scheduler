@@ -72,14 +72,6 @@ type Handler interface {
 	RestartRadixBatchJob(ctx context.Context, batchName, jobName string) error
 }
 
-// CompletedRadixBatches Completed RadixBatch lists
-type CompletedRadixBatches struct {
-	SucceededRadixBatches    []*modelsv2.RadixBatch
-	NotSucceededRadixBatches []*modelsv2.RadixBatch
-	SucceededSingleJobs      []*modelsv2.RadixBatch
-	NotSucceededSingleJobs   []*modelsv2.RadixBatch
-}
-
 // New Constructor of the batch handler
 func New(kubeUtil *kube.Kube, env *models.Env, radixDeployJobComponent *radixv1.RadixDeployJobComponent) Handler {
 	return &handler{
@@ -393,7 +385,7 @@ func (h *handler) createSecrets(ctx context.Context, namespace string, secrets [
 	logger := log.Ctx(ctx)
 	logger.Debug().Msgf("Create %d secrets", len(secrets))
 	for _, secret := range secrets {
-		if secret.Data == nil || len(secret.Data) == 0 {
+		if len(secret.Data) == 0 {
 			logger.Debug().Msgf("Do not create a secret %s - Data is empty, the secret is not used in any jobs", secret.GetName())
 			continue
 		}

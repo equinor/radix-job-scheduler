@@ -16,10 +16,10 @@ import (
 	batchControllers "github.com/equinor/radix-job-scheduler/api/v1/controllers/batches"
 	jobControllers "github.com/equinor/radix-job-scheduler/api/v1/controllers/jobs"
 	jobApi "github.com/equinor/radix-job-scheduler/api/v1/jobs"
-	"github.com/equinor/radix-job-scheduler/internal"
 	"github.com/equinor/radix-job-scheduler/models"
-	"github.com/equinor/radix-job-scheduler/models/notifications"
 	"github.com/equinor/radix-job-scheduler/pkg/batch"
+	"github.com/equinor/radix-job-scheduler/pkg/notifications"
+	"github.com/equinor/radix-job-scheduler/pkg/watcher"
 	"github.com/equinor/radix-job-scheduler/router"
 	_ "github.com/equinor/radix-job-scheduler/swaggerui"
 	"github.com/equinor/radix-job-scheduler/utils/radix"
@@ -30,8 +30,6 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/pflag"
 )
-
-const informerResyncPeriod = 0
 
 func main() {
 	ctx := context.Background()
@@ -47,11 +45,11 @@ func main() {
 
 	jobHistory := batch.NewHistory(kubeUtil, env, radixDeployJobComponent)
 	notifier := notifications.NewWebhookNotifier(radixDeployJobComponent)
-	radixBatchWatcher, err := internal.NewRadixBatchWatcher(ctx, kubeUtil.RadixClient(), env.RadixDeploymentNamespace, jobHistory, notifier)
+	radixBatchWatcher, err := watcher.NewRadixBatchWatcher(ctx, kubeUtil.RadixClient(), env.RadixDeploymentNamespace, jobHistory, notifier)
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed to initialize job watcher")
 	}
-	defer close(radixBatchWatcher.Stop)
+	defer radixBatchWatcher.Stop()
 
 	runApiServer(ctx, kubeUtil, env, radixDeployJobComponent)
 }

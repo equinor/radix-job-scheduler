@@ -36,18 +36,6 @@ func (m *MockJobHandler) EXPECT() *MockJobHandlerMockRecorder {
 	return m.recorder
 }
 
-// CleanupJobHistory mocks base method.
-func (m *MockJobHandler) CleanupJobHistory(ctx context.Context) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "CleanupJobHistory", ctx)
-}
-
-// CleanupJobHistory indicates an expected call of CleanupJobHistory.
-func (mr *MockJobHandlerMockRecorder) CleanupJobHistory(ctx interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CleanupJobHistory", reflect.TypeOf((*MockJobHandler)(nil).CleanupJobHistory), ctx)
-}
-
 // CopyJob mocks base method.
 func (m *MockJobHandler) CopyJob(ctx context.Context, jobName, deploymentName string) (*v1.JobStatus, error) {
 	m.ctrl.T.Helper()

@@ -278,52 +278,6 @@ func TestCreateBatch(t *testing.T) {
 			CreateBatch(test.RequestContextMatcher{}, &batchScheduleDescription).
 			Return(&createdBatch, nil).
 			Times(1)
-		batchHandler.
-			EXPECT().
-			CleanupJobHistory(test.RequestContextMatcher{}).
-			Times(1)
-		controllerTestUtils := setupTest(batchHandler)
-		responseChannel := controllerTestUtils.ExecuteRequestWithBody(ctx, http.MethodPost, "/api/v1/batches", batchScheduleDescription)
-		response := <-responseChannel
-		assert.NotNil(t, response)
-
-		if response != nil {
-			assert.Equal(t, http.StatusOK, response.StatusCode)
-			var returnedBatch modelsV1.BatchStatus
-			err := test.GetResponseBody(response, &returnedBatch)
-			require.NoError(t, err)
-			assert.Equal(t, createdBatch.Name, returnedBatch.Name)
-			assert.Equal(t, createdBatch.Started, returnedBatch.Started)
-			assert.Equal(t, createdBatch.Ended, returnedBatch.Ended)
-			assert.Equal(t, createdBatch.Status, returnedBatch.Status)
-		}
-	})
-
-	t.Run("valid payload body - error from CleanupJobHistory should not fail request", func(t *testing.T) {
-		t.Parallel()
-		ctrl := gomock.NewController(t)
-		defer ctrl.Finish()
-		batchScheduleDescription := models.BatchScheduleDescription{
-			JobScheduleDescriptions: []models.JobScheduleDescription{
-				{Payload: "a_payload"},
-			},
-		}
-		createdBatch := modelsV1.BatchStatus{
-			JobStatus: modelsV1.JobStatus{
-				Name:    "newbatch",
-				Started: commonUtils.FormatTimestamp(time.Now()),
-				Ended:   commonUtils.FormatTimestamp(time.Now().Add(1 * time.Minute)),
-				Status:  "batchstatus",
-			},
-			BatchType: string(kube.RadixBatchTypeBatch),
-		}
-		batchHandler := mock.NewMockBatchHandler(ctrl)
-		ctx := context.Background()
-		batchHandler.
-			EXPECT().
-			CreateBatch(test.RequestContextMatcher{}, &batchScheduleDescription).
-			Return(&createdBatch, nil).
-			Times(1)
 		controllerTestUtils := setupTest(batchHandler)
 		responseChannel := controllerTestUtils.ExecuteRequestWithBody(ctx, http.MethodPost, "/api/v1/batches", batchScheduleDescription)
 		response := <-responseChannel

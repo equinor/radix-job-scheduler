@@ -22,6 +22,14 @@ import (
 	"k8s.io/client-go/util/retry"
 )
 
+// CompletedRadixBatches Completed RadixBatch lists
+type CompletedRadixBatches struct {
+	SucceededRadixBatches    []*modelsv2.RadixBatch
+	NotSucceededRadixBatches []*modelsv2.RadixBatch
+	SucceededSingleJobs      []*modelsv2.RadixBatch
+	NotSucceededSingleJobs   []*modelsv2.RadixBatch
+}
+
 // GetRadixBatchStatus Get radix batch
 func GetRadixBatchStatus(radixBatch *radixv1.RadixBatch, radixDeployJobComponent *radixv1.RadixDeployJobComponent) modelsv2.RadixBatch {
 	return modelsv2.RadixBatch{
