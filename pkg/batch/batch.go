@@ -34,6 +34,7 @@ type CompletedRadixBatches struct {
 func GetRadixBatchStatus(radixBatch *radixv1.RadixBatch, radixDeployJobComponent *radixv1.RadixDeployJobComponent) modelsv2.RadixBatch {
 	return modelsv2.RadixBatch{
 		Name:           radixBatch.GetName(),
+		BatchId:        radixBatch.Spec.BatchId,
 		BatchType:      radixBatch.Labels[kube.RadixBatchTypeLabel],
 		CreationTime:   utils.FormatTime(pointers.Ptr(radixBatch.GetCreationTimestamp())),
 		Started:        utils.FormatTime(radixBatch.Status.Condition.ActiveTime),

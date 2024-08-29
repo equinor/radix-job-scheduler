@@ -3,6 +3,7 @@ package batchesv1
 import (
 	"context"
 
+	"github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-common/utils/slice"
 	apiv1 "github.com/equinor/radix-job-scheduler/api/v1"
 	apiv2 "github.com/equinor/radix-job-scheduler/api/v2"
@@ -161,6 +162,7 @@ func (handler *batchHandler) getBatchStatusFromRadixBatch(radixBatch *modelsv2.R
 	return &modelsv1.BatchStatus{
 		JobStatus: modelsv1.JobStatus{
 			Name:           radixBatch.Name,
+			BatchId:        getBatchId(radixBatch),
 			Created:        radixBatch.CreationTime,
 			Started:        radixBatch.Started,
 			Ended:          radixBatch.Ended,
@@ -186,4 +188,8 @@ func (handler *batchHandler) getBatchStatus(radixBatch *modelsv2.RadixBatch) rad
 		return append(acc, radixv1.RadixBatchJobPhase(jobStatus.Status))
 	})
 	return jobs.GetStatusFromStatusRules(jobStatusPhases, handler.common.RadixDeployJobComponent, radixBatch.Status)
+}
+
+func getBatchId(radixBatch *modelsv2.RadixBatch) string {
+	return utils.TernaryString(radixBatch.BatchType == string(kube.RadixBatchTypeJob), "", radixBatch.BatchId)
 }

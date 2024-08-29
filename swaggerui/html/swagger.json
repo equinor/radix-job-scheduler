@@ -523,6 +523,12 @@
           "description": "DeploymentName for this batch",
           "type": "string"
         },
+        "batchId": {
+          "description": "Defines a user defined ID of the batch.",
+          "type": "string",
+          "x-go-name": "BatchId",
+          "example": "'batch-id-1'"
+        },
         "batchName": {
           "description": "BatchName Optional Batch ID of a job",
           "type": "string",
@@ -658,6 +664,12 @@
         "DeploymentName": {
           "description": "DeploymentName for this batch",
           "type": "string"
+        },
+        "batchId": {
+          "description": "Defines a user defined ID of the batch.",
+          "type": "string",
+          "x-go-name": "BatchId",
+          "example": "'batch-id-1'"
         },
         "batchName": {
           "description": "BatchName Optional Batch ID of a job",
@@ -818,6 +830,12 @@
         "DeploymentName": {
           "description": "DeploymentName for this batch",
           "type": "string"
+        },
+        "batchId": {
+          "description": "Defines a user defined ID of the batch.",
+          "type": "string",
+          "x-go-name": "BatchId",
+          "example": "'batch-id-1'"
         },
         "batchName": {
           "description": "BatchName Optional Batch ID of a job",
