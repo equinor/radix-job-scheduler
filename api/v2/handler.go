@@ -278,6 +278,7 @@ func (h *handler) createRadixBatch(ctx context.Context, namespace, appName, radi
 			),
 		},
 		Spec: radixv1.RadixBatchSpec{
+			BatchId: batchScheduleDescription.BatchId,
 			RadixDeploymentJobRef: radixv1.RadixDeploymentJobComponentSelector{
 				LocalObjectReference: radixv1.LocalObjectReference{Name: radixDeploymentName},
 				Job:                  radixJobComponentName,

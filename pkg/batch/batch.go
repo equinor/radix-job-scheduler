@@ -123,6 +123,7 @@ func CopyRadixBatchOrJob(ctx context.Context, radixClient versioned.Interface, s
 			Labels: sourceRadixBatch.GetLabels(),
 		},
 		Spec: radixv1.RadixBatchSpec{
+			BatchId: sourceRadixBatch.Spec.BatchId,
 			RadixDeploymentJobRef: radixv1.RadixDeploymentJobComponentSelector{
 				LocalObjectReference: radixv1.LocalObjectReference{Name: radixDeploymentName},
 				Job:                  radixComponentName,
