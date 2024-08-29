@@ -491,8 +491,13 @@ func TestGetRadixBatchStatuses(t *testing.T) {
 				acc[batchStatus.Name] = batchStatus
 				return acc
 			})
+			radixBatchMap := slice.Reduce(tt.batchesArgs.radixBatches, make(map[string]*radixv1.RadixBatch), func(acc map[string]*radixv1.RadixBatch, batch *radixv1.RadixBatch) map[string]*radixv1.RadixBatch {
+				acc[batch.Name] = batch
+				return acc
+			})
 			for batchName, actualBatchStatus := range batchStatusesMap {
 				assert.Equal(t, tt.batchesArgs.expectedBatchStatuses[batchName], actualBatchStatus.Status, "Status is not as expected for the batch %s", batchName)
+				assert.Equal(t, radixBatchMap[batchName].Spec.BatchId, actualBatchStatus.BatchId, "Invalid or missing BatchId in the batch %s status", batchName)
 			}
 		})
 	}
