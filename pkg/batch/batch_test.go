@@ -509,10 +509,9 @@ func TestDeleteRadixBatch(t *testing.T) {
 			radixBatchToDelete: batchName1,
 		},
 		{
-			name:               "Radix batch does not exist",
+			name:               "Radix batch does not exist, no error",
 			existingRadixBatch: createRadixBatch(batchName1, props, kube.RadixBatchTypeBatch, radixDeploymentName1, []string{jobName1, jobName2}, radixv1.BatchConditionTypeWaiting, nil),
 			radixBatchToDelete: batchName2,
-			expectedError:      errors.New("radixbatches batch2 not found"),
 		},
 	}
 	for _, tt := range tests {
@@ -546,10 +545,10 @@ func TestRestartRadixBatch(t *testing.T) {
 			radixBatchToRestart: radixBatch1,
 		},
 		{
-			name:                "Radix batch does not exist",
+			name:                "Radix batch does not exist, no error",
 			existingRadixBatch:  radixBatch1,
 			radixBatchToRestart: radixBatch2,
-			expectedError:       errors.New("radixbatches batch2 not found"),
+			expectedError:       errors.New("radixbatches.radix.equinor.com \"batch2\" not found"),
 		},
 	}
 	for _, tt := range tests {
@@ -589,7 +588,7 @@ func TestRestartRadixBatchJob(t *testing.T) {
 			existingRadixBatch:     radixBatch1,
 			radixBatchToRestart:    radixBatch2,
 			radixBatchJobToRestart: jobName1,
-			expectedError:          errors.New("radixbatches batch2 not found"),
+			expectedError:          errors.New("radixbatches.radix.equinor.com \"batch2\" not found"),
 		},
 		{
 			name:                   "Radix batch job does not exists",
