@@ -10,6 +10,12 @@ type RadixBatch struct {
 	// required: true
 	Name string `json:"name"`
 
+	// Defines a user defined ID of the batch.
+	//
+	// required: false
+	// example: 'batch-id-1'
+	BatchId string `json:"batchId,omitempty"`
+
 	// Radix batch creation timestamp
 	//
 	// required: true

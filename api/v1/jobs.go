@@ -35,7 +35,7 @@ func GetJobStatusFromRadixBatchJobsStatus(batchName string, jobStatus modelsv2.R
 func GetJobStatusFromRadixBatchJobsStatuses(radixBatches ...modelsv2.RadixBatch) []modelsv1.JobStatus {
 	jobStatuses := make([]modelsv1.JobStatus, 0, len(radixBatches))
 	for _, radixBatch := range radixBatches {
-		jobStatusBatchName := getJobStatusBatchName(&radixBatch)
+		jobStatusBatchName := getBatchName(&radixBatch)
 		for _, jobStatus := range radixBatch.JobStatuses {
 			jobStatuses = append(jobStatuses, GetJobStatusFromRadixBatchJobsStatus(jobStatusBatchName, jobStatus))
 		}
@@ -62,7 +62,7 @@ func GetBatchJob(ctx context.Context, handlerApiV2 apiv2.Handler, batchName, job
 	if err != nil {
 		return nil, err
 	}
-	jobStatusBatchName := getJobStatusBatchName(radixBatch)
+	jobStatusBatchName := getBatchName(radixBatch)
 	for _, jobStatus := range radixBatch.JobStatuses {
 		if !strings.EqualFold(jobStatus.Name, jobName) {
 			continue
@@ -94,6 +94,6 @@ func GetPodStatus(podStatuses []modelsv2.RadixBatchJobPodStatus) []modelsv1.PodS
 	})
 }
 
-func getJobStatusBatchName(radixBatch *modelsv2.RadixBatch) string {
+func getBatchName(radixBatch *modelsv2.RadixBatch) string {
 	return utils.TernaryString(radixBatch.BatchType == string(kube.RadixBatchTypeJob), "", radixBatch.Name)
 }

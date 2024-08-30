@@ -8,9 +8,13 @@ import (
 
 	"github.com/equinor/radix-common/utils/slice"
 	modelsv1 "github.com/equinor/radix-job-scheduler/models/v1"
-	defaultsv1 "github.com/equinor/radix-job-scheduler/models/v1/defaults"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
+
+const (
+	// k8sJobNameLabel A label that k8s automatically adds to a Pod created by a Job
+	k8sJobNameLabel = "job-name"
 )
 
 // GetLastEventMessageForPods returns the last event message for pods
@@ -59,7 +63,7 @@ func (handler *Handler) GetRadixBatchJobMessagesAndPodMaps(ctx context.Context, 
 		return nil, nil, err
 	}
 	batchJobPodsMap := slice.Reduce(radixBatchesPods, make(map[string]corev1.Pod), func(acc map[string]corev1.Pod, pod corev1.Pod) map[string]corev1.Pod {
-		if batchJobName, ok := pod.GetLabels()[defaultsv1.K8sJobNameLabel]; ok {
+		if batchJobName, ok := pod.GetLabels()[k8sJobNameLabel]; ok {
 			acc[batchJobName] = pod
 		}
 		return acc

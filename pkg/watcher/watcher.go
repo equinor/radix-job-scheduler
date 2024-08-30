@@ -1,16 +1,13 @@
-package notifications
+package watcher
 
 import (
 	"context"
 	"fmt"
+	"time"
 
-	"github.com/equinor/radix-common/utils"
-	"github.com/equinor/radix-common/utils/pointers"
-	"github.com/equinor/radix-common/utils/slice"
-	modelsv1 "github.com/equinor/radix-job-scheduler/models/v1"
 	"github.com/equinor/radix-job-scheduler/models/v1/events"
-	"github.com/equinor/radix-job-scheduler/utils/radix/jobs"
-	"github.com/equinor/radix-operator/pkg/apis/kube"
+	"github.com/equinor/radix-job-scheduler/pkg/batch"
+	"github.com/equinor/radix-job-scheduler/pkg/notifications"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 	radixinformers "github.com/equinor/radix-operator/pkg/client/informers/externalversions"
@@ -25,26 +22,31 @@ const (
 	resyncPeriod = 0
 )
 
-type Watcher struct {
-	radixInformerFactory radixinformers.SharedInformerFactory
-	batchInformer        v1.RadixBatchInformer
-	Stop                 chan struct{}
-	logger               zerolog.Logger
+// Watcher Watcher interface
+type Watcher interface {
+	Stop()
 }
 
-// NullRadixBatchWatcher The void watcher
-func NullRadixBatchWatcher() *Watcher {
-	return &Watcher{
-		Stop: make(chan struct{}),
-	}
+type watcher struct {
+	radixInformerFactory radixinformers.SharedInformerFactory
+	batchInformer        v1.RadixBatchInformer
+	stop                 chan struct{}
+	logger               zerolog.Logger
+	jobHistory           batch.History
+}
+
+// Stop Stops the watcher
+func (w *watcher) Stop() {
+	w.stop <- struct{}{}
 }
 
 // NewRadixBatchWatcher New RadixBatch watcher, notifying on adding and changing of RadixBatches and their jobs
-func NewRadixBatchWatcher(radixClient radixclient.Interface, namespace string, notifier Notifier) (*Watcher, error) {
-	watcher := Watcher{
-		Stop:                 make(chan struct{}),
+func NewRadixBatchWatcher(ctx context.Context, radixClient radixclient.Interface, namespace string, jobHistory batch.History, notifier notifications.Notifier) (Watcher, error) {
+	watcher := watcher{
+		stop:                 make(chan struct{}),
 		radixInformerFactory: radixinformers.NewSharedInformerFactoryWithOptions(radixClient, resyncPeriod, radixinformers.WithNamespace(namespace)),
 		logger:               log.Logger.With().Str("pkg", "radix-batch-watcher").Logger(),
+		jobHistory:           jobHistory,
 	}
 
 	existingRadixBatchMap, err := getRadixBatchMap(radixClient, namespace)
@@ -58,17 +60,25 @@ func NewRadixBatchWatcher(radixClient radixclient.Interface, namespace string, n
 	errChan := make(chan error)
 	_, err = watcher.batchInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(cur interface{}) {
-			newRadixBatch := cur.(*radixv1.RadixBatch)
-			if _, ok := existingRadixBatchMap[newRadixBatch.GetName()]; ok {
-				watcher.logger.Debug().Msgf("skip existing RadixBatch object %s", newRadixBatch.GetName())
+			radixBatch, converted := cur.(*radixv1.RadixBatch)
+			if !converted {
+				log.Error().Msg("Failed to cast RadixBatch object")
 				return
 			}
-			watcher.logger.Debug().Msgf("RadixBatch object was added %s", newRadixBatch.GetName())
-			jobStatuses := newRadixBatch.Status.JobStatuses
+			if radixBatch.Status.Condition.Type != "" {
+				return // skip existing batch added to the cache
+			}
+			if _, ok := existingRadixBatchMap[radixBatch.GetName()]; ok {
+				watcher.logger.Debug().Msgf("skip existing RadixBatch object %s", radixBatch.GetName())
+				return
+			}
+			watcher.logger.Debug().Msgf("RadixBatch object was added %s", radixBatch.GetName())
+			jobStatuses := radixBatch.Status.JobStatuses
 			if len(jobStatuses) == 0 {
 				jobStatuses = make([]radixv1.RadixBatchJobStatus, 0)
 			}
-			notifier.Notify(events.Create, newRadixBatch, jobStatuses, errChan)
+			notifier.Notify(events.Create, radixBatch, jobStatuses, errChan)
+			watcher.cleanupJobHistory(ctx)
 		},
 		UpdateFunc: func(old, cur interface{}) {
 			oldRadixBatch := old.(*radixv1.RadixBatch)
@@ -102,19 +112,32 @@ func NewRadixBatchWatcher(radixClient radixclient.Interface, namespace string, n
 		return nil, err
 	}
 
-	watcher.radixInformerFactory.Start(watcher.Stop)
+	watcher.radixInformerFactory.Start(watcher.stop)
+	log.Info().Msg("Waiting for Radix objects caches to sync")
+	watcher.radixInformerFactory.WaitForCacheSync(ctx.Done())
+	log.Info().Msg("Completed syncing informer caches")
 
 	go func() {
 		for {
 			select {
 			case err := <-errChan:
 				watcher.logger.Error().Err(err).Msg("Notification failed")
-			case <-watcher.Stop:
+			case <-watcher.stop:
 				return
 			}
 		}
 	}()
 	return &watcher, nil
+}
+
+func (w *watcher) cleanupJobHistory(ctx context.Context) {
+	ctxWithTimeout, cancel := context.WithTimeout(ctx, time.Minute*5)
+	go func() {
+		defer cancel()
+		if err := w.jobHistory.Cleanup(ctxWithTimeout); err != nil {
+			log.Ctx(ctx).Error().Err(err).Msg("Failed to cleanup job history")
+		}
+	}()
 }
 
 func getUpdatedJobStatuses(oldRadixBatch *radixv1.RadixBatch, newRadixBatch *radixv1.RadixBatch) []radixv1.RadixBatchJobStatus {
@@ -157,86 +180,4 @@ func getRadixBatchMap(radixClient radixclient.Interface, namespace string) (map[
 		radixBatchMap[radixBatch.GetName()] = &radixBatch
 	}
 	return radixBatchMap, nil
-}
-
-func (notifier *webhookNotifier) getRadixBatchEventFromRadixBatch(event events.Event, radixBatch *radixv1.RadixBatch, radixBatchJobStatuses []radixv1.RadixBatchJobStatus) events.BatchEvent {
-	batchType := radixBatch.Labels[kube.RadixBatchTypeLabel]
-	jobStatusBatchName := utils.TernaryString(batchType == string(kube.RadixBatchTypeJob), "", radixBatch.GetName())
-	startedTime := utils.FormatTime(radixBatch.Status.Condition.ActiveTime)
-	endedTime := utils.FormatTime(radixBatch.Status.Condition.CompletionTime)
-	batchStatus := modelsv1.JobStatus{
-		Name:    radixBatch.GetName(),
-		Created: utils.FormatTime(pointers.Ptr(radixBatch.GetCreationTimestamp())),
-		Started: startedTime,
-		Ended:   endedTime,
-		Status:  string(jobs.GetRadixBatchStatus(radixBatch, notifier.radixDeployJobComponent)),
-		Message: radixBatch.Status.Condition.Message,
-		Updated: utils.FormatTime(pointers.Ptr(metav1.Now())),
-	}
-	jobStatuses := getRadixBatchJobStatusesFromRadixBatch(radixBatch, radixBatchJobStatuses, jobStatusBatchName)
-	return events.BatchEvent{
-		Event: event,
-		BatchStatus: modelsv1.BatchStatus{
-			JobStatus:   batchStatus,
-			JobStatuses: jobStatuses,
-			BatchType:   batchType,
-		},
-	}
-}
-
-func getRadixBatchJobStatusesFromRadixBatch(radixBatch *radixv1.RadixBatch, radixBatchJobStatuses []radixv1.RadixBatchJobStatus, jobStatusBatchName string) []modelsv1.JobStatus {
-	radixBatchJobsMap := getRadixBatchJobsMap(radixBatch.Spec.Jobs)
-	jobStatuses := make([]modelsv1.JobStatus, 0, len(radixBatchJobStatuses))
-	for _, radixBatchJobStatus := range radixBatchJobStatuses {
-		radixBatchJob, ok := radixBatchJobsMap[radixBatchJobStatus.Name]
-		if !ok {
-			continue
-		}
-		stopJob := radixBatchJob.Stop != nil && *radixBatchJob.Stop
-		jobName := fmt.Sprintf("%s-%s", radixBatch.Name, radixBatchJobStatus.Name) // composed name in models are always consist of a batchName and original jobName
-		jobStatus := modelsv1.JobStatus{
-			BatchName:   jobStatusBatchName,
-			Name:        jobName,
-			JobId:       radixBatchJob.JobId,
-			Created:     utils.FormatTime(radixBatchJobStatus.CreationTime),
-			Started:     utils.FormatTime(radixBatchJobStatus.StartTime),
-			Ended:       utils.FormatTime(radixBatchJobStatus.EndTime),
-			Status:      string(jobs.GetScheduledJobStatus(radixBatchJobStatus, stopJob)),
-			Failed:      radixBatchJobStatus.Failed,
-			Restart:     radixBatchJobStatus.Restart,
-			Message:     radixBatchJobStatus.Message,
-			Updated:     utils.FormatTime(pointers.Ptr(metav1.Now())),
-			PodStatuses: getPodStatusByRadixBatchJobPodStatus(radixBatchJobStatus.RadixBatchJobPodStatuses),
-		}
-		jobStatuses = append(jobStatuses, jobStatus)
-	}
-	return jobStatuses
-}
-
-func getRadixBatchJobsMap(radixBatchJobs []radixv1.RadixBatchJob) map[string]radixv1.RadixBatchJob {
-	jobMap := make(map[string]radixv1.RadixBatchJob, len(radixBatchJobs))
-	for _, radixBatchJob := range radixBatchJobs {
-		jobMap[radixBatchJob.Name] = radixBatchJob
-	}
-	return jobMap
-}
-
-func getPodStatusByRadixBatchJobPodStatus(podStatuses []radixv1.RadixBatchJobPodStatus) []modelsv1.PodStatus {
-	return slice.Map(podStatuses, func(status radixv1.RadixBatchJobPodStatus) modelsv1.PodStatus {
-		return modelsv1.PodStatus{
-			Name:             status.Name,
-			Created:          utils.FormatTime(status.CreationTime),
-			StartTime:        utils.FormatTime(status.StartTime),
-			EndTime:          utils.FormatTime(status.EndTime),
-			ContainerStarted: utils.FormatTime(status.StartTime),
-			Status:           modelsv1.ReplicaStatus{Status: string(status.Phase)},
-			StatusMessage:    status.Message,
-			RestartCount:     status.RestartCount,
-			Image:            status.Image,
-			ImageId:          status.ImageID,
-			PodIndex:         status.PodIndex,
-			ExitCode:         status.ExitCode,
-			Reason:           status.Reason,
-		}
-	})
 }

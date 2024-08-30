@@ -96,20 +96,6 @@ func (mr *MockHandlerMockRecorder) CreateRadixBatchSingleJob(ctx, jobScheduleDes
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateRadixBatchSingleJob", reflect.TypeOf((*MockHandler)(nil).CreateRadixBatchSingleJob), ctx, jobScheduleDescription)
 }
 
-// DeleteRadixBatch mocks base method.
-func (m *MockHandler) DeleteRadixBatch(ctx context.Context, batchName string) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteRadixBatch", ctx, batchName)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// DeleteRadixBatch indicates an expected call of DeleteRadixBatch.
-func (mr *MockHandlerMockRecorder) DeleteRadixBatch(ctx, batchName interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteRadixBatch", reflect.TypeOf((*MockHandler)(nil).DeleteRadixBatch), ctx, batchName)
-}
-
 // DeleteRadixBatchJob mocks base method.
 func (m *MockHandler) DeleteRadixBatchJob(ctx context.Context, jobName string) error {
 	m.ctrl.T.Helper()
@@ -122,20 +108,6 @@ func (m *MockHandler) DeleteRadixBatchJob(ctx context.Context, jobName string) e
 func (mr *MockHandlerMockRecorder) DeleteRadixBatchJob(ctx, jobName interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteRadixBatchJob", reflect.TypeOf((*MockHandler)(nil).DeleteRadixBatchJob), ctx, jobName)
-}
-
-// GarbageCollectPayloadSecrets mocks base method.
-func (m *MockHandler) GarbageCollectPayloadSecrets(ctx context.Context) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GarbageCollectPayloadSecrets", ctx)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// GarbageCollectPayloadSecrets indicates an expected call of GarbageCollectPayloadSecrets.
-func (mr *MockHandlerMockRecorder) GarbageCollectPayloadSecrets(ctx interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GarbageCollectPayloadSecrets", reflect.TypeOf((*MockHandler)(nil).GarbageCollectPayloadSecrets), ctx)
 }
 
 // GetRadixBatch mocks base method.
@@ -181,20 +153,6 @@ func (m *MockHandler) GetRadixBatches(ctx context.Context) ([]v2.RadixBatch, err
 func (mr *MockHandlerMockRecorder) GetRadixBatches(ctx interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRadixBatches", reflect.TypeOf((*MockHandler)(nil).GetRadixBatches), ctx)
-}
-
-// MaintainHistoryLimit mocks base method.
-func (m *MockHandler) MaintainHistoryLimit(ctx context.Context) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "MaintainHistoryLimit", ctx)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// MaintainHistoryLimit indicates an expected call of MaintainHistoryLimit.
-func (mr *MockHandlerMockRecorder) MaintainHistoryLimit(ctx interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MaintainHistoryLimit", reflect.TypeOf((*MockHandler)(nil).MaintainHistoryLimit), ctx)
 }
 
 // RestartRadixBatch mocks base method.
