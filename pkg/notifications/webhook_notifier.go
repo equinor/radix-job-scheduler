@@ -13,6 +13,7 @@ import (
 	"github.com/equinor/radix-job-scheduler/models/v1/events"
 	"github.com/equinor/radix-job-scheduler/utils/radix/jobs"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
+	"github.com/rs/zerolog/log"
 	v2 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
@@ -61,6 +62,7 @@ func (notifier *webhookNotifier) Notify(event events.Event, radixBatch *radixv1.
 			errChan <- fmt.Errorf("failed serialize updated JobStatuses %v", err)
 			return
 		}
+		log.Trace().Msg(string(statusesJson))
 		buf := bytes.NewReader(statusesJson)
 		_, err = http.Post(notifier.webhookURL, "application/json", buf)
 		if err != nil {
