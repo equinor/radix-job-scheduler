@@ -534,14 +534,14 @@
         "created": {
           "description": "Created timestamp",
           "type": "string",
-          "x-go-name": "Created",
-          "example": "2006-01-02T15:04:05Z"
+          "format": "date-time",
+          "x-go-name": "Created"
         },
         "ended": {
           "description": "Ended timestamp",
           "type": "string",
-          "x-go-name": "Ended",
-          "example": "2006-01-02T15:04:05Z"
+          "format": "date-time",
+          "x-go-name": "Ended"
         },
         "event": {
           "$ref": "#/definitions/Event"
@@ -583,8 +583,8 @@
         "started": {
           "description": "Started timestamp",
           "type": "string",
-          "x-go-name": "Started",
-          "example": "2006-01-02T15:04:05Z"
+          "format": "date-time",
+          "x-go-name": "Started"
         },
         "status": {
           "description": "Status of the job",
@@ -654,14 +654,14 @@
         "created": {
           "description": "Created timestamp",
           "type": "string",
-          "x-go-name": "Created",
-          "example": "2006-01-02T15:04:05Z"
+          "format": "date-time",
+          "x-go-name": "Created"
         },
         "ended": {
           "description": "Ended timestamp",
           "type": "string",
-          "x-go-name": "Ended",
-          "example": "2006-01-02T15:04:05Z"
+          "format": "date-time",
+          "x-go-name": "Ended"
         },
         "jobId": {
           "description": "JobId Optional ID of a job",
@@ -700,8 +700,8 @@
         "started": {
           "description": "Started timestamp",
           "type": "string",
-          "x-go-name": "Started",
-          "example": "2006-01-02T15:04:05Z"
+          "format": "date-time",
+          "x-go-name": "Started"
         },
         "status": {
           "description": "Status of the job",
@@ -792,14 +792,14 @@
         "created": {
           "description": "Created timestamp",
           "type": "string",
-          "x-go-name": "Created",
-          "example": "2006-01-02T15:04:05Z"
+          "format": "date-time",
+          "x-go-name": "Created"
         },
         "ended": {
           "description": "Ended timestamp",
           "type": "string",
-          "x-go-name": "Ended",
-          "example": "2006-01-02T15:04:05Z"
+          "format": "date-time",
+          "x-go-name": "Ended"
         },
         "jobId": {
           "description": "JobId Optional ID of a job",
@@ -830,8 +830,8 @@
         "started": {
           "description": "Started timestamp",
           "type": "string",
-          "x-go-name": "Started",
-          "example": "2006-01-02T15:04:05Z"
+          "format": "date-time",
+          "x-go-name": "Started"
         },
         "status": {
           "description": "Status of the job",
@@ -861,26 +861,27 @@
       "type": "object",
       "title": "PodStatus contains details for the current status of the job's pods.",
       "required": [
-        "name"
+        "name",
+        "created"
       ],
       "properties": {
         "containerStarted": {
           "description": "Container started timestamp",
           "type": "string",
-          "x-go-name": "ContainerStarted",
-          "example": "2006-01-02T15:04:05Z"
+          "format": "date-time",
+          "x-go-name": "ContainerStarted"
         },
         "created": {
           "description": "Created timestamp",
           "type": "string",
-          "x-go-name": "Created",
-          "example": "2006-01-02T15:04:05Z"
+          "format": "date-time",
+          "x-go-name": "Created"
         },
         "endTime": {
           "description": "The time at which the batch job's pod finishedAt.",
           "type": "string",
-          "x-go-name": "EndTime",
-          "example": "2006-01-02T15:04:05Z"
+          "format": "date-time",
+          "x-go-name": "EndTime"
         },
         "exitCode": {
           "description": "Exit status from the last termination of the container",
@@ -929,8 +930,8 @@
         "startTime": {
           "description": "The time at which the batch job's pod startedAt",
           "type": "string",
-          "x-go-name": "StartTime",
-          "example": "2006-01-02T15:04:05Z"
+          "format": "date-time",
+          "x-go-name": "StartTime"
         },
         "statusMessage": {
           "description": "StatusMessage provides message describing the status of a component container inside a pod",
@@ -958,13 +959,14 @@
         "creationTime": {
           "description": "Radix batch creation timestamp",
           "type": "string",
+          "format": "date-time",
           "x-go-name": "CreationTime"
         },
         "ended": {
           "description": "Ended timestamp",
           "type": "string",
-          "x-go-name": "Ended",
-          "example": "2006-01-02T15:04:05Z"
+          "format": "date-time",
+          "x-go-name": "Ended"
         },
         "jobStatuses": {
           "description": "JobStatuses of the Radix batch jobs",
@@ -988,8 +990,8 @@
         "started": {
           "description": "Started timestamp",
           "type": "string",
-          "x-go-name": "Started",
-          "example": "2006-01-02T15:04:05Z"
+          "format": "date-time",
+          "x-go-name": "Started"
         },
         "status": {
           "description": "Status of the job",
@@ -1019,20 +1021,20 @@
         "containerStarted": {
           "description": "Container started timestamp",
           "type": "string",
-          "x-go-name": "ContainerStarted",
-          "example": "2006-01-02T15:04:05Z"
+          "format": "date-time",
+          "x-go-name": "ContainerStarted"
         },
         "created": {
           "description": "Created timestamp",
           "type": "string",
-          "x-go-name": "Created",
-          "example": "2006-01-02T15:04:05Z"
+          "format": "date-time",
+          "x-go-name": "Created"
         },
         "endTime": {
           "description": "The time at which the batch job's pod finishedAt.",
           "type": "string",
-          "x-go-name": "EndTime",
-          "example": "2006-01-02T15:04:05Z"
+          "format": "date-time",
+          "x-go-name": "EndTime"
         },
         "exitCode": {
           "description": "Exit status from the last termination of the container",
@@ -1081,8 +1083,8 @@
         "startTime": {
           "description": "The time at which the batch job's pod startedAt",
           "type": "string",
-          "x-go-name": "StartTime",
-          "example": "2006-01-02T15:04:05Z"
+          "format": "date-time",
+          "x-go-name": "StartTime"
         },
         "statusMessage": {
           "description": "StatusMessage provides message describing the status of a component container inside a pod",
@@ -1103,13 +1105,14 @@
         "creationTime": {
           "description": "Radix batch job creation timestamp",
           "type": "string",
+          "format": "date-time",
           "x-go-name": "CreationTime"
         },
         "ended": {
           "description": "Ended timestamp",
           "type": "string",
-          "x-go-name": "Ended",
-          "example": "2006-01-02T15:04:05Z"
+          "format": "date-time",
+          "x-go-name": "Ended"
         },
         "jobId": {
           "description": "JobId Optional ID of a job",
@@ -1139,8 +1142,8 @@
         "started": {
           "description": "Started timestamp",
           "type": "string",
-          "x-go-name": "Started",
-          "example": "2006-01-02T15:04:05Z"
+          "format": "date-time",
+          "x-go-name": "Started"
         },
         "status": {
           "description": "Status of the job",
@@ -1215,7 +1218,7 @@
           "example": "Running"
         }
       },
-      "x-go-package": "github.com/equinor/radix-job-scheduler/models/v1"
+      "x-go-package": "github.com/equinor/radix-job-scheduler/models/v2"
     },
     "Status": {
       "description": "Status is a return value for calls that don't return other objects or when a request returns an error",

@@ -1,5 +1,7 @@
 package v1
 
+import "time"
+
 // JobStatus holds general information about job status
 // swagger:model JobStatus
 type JobStatus struct {
@@ -22,20 +24,23 @@ type JobStatus struct {
 	// Created timestamp
 	//
 	// required: true
+	// swagger:strfmt date-time
 	// example: 2006-01-02T15:04:05Z
-	Created string `json:"created"`
+	Created time.Time `json:"created"`
 
 	// Started timestamp
 	//
 	// required: false
+	// swagger:strfmt date-time
 	// example: 2006-01-02T15:04:05Z
-	Started string `json:"started,omitempty"`
+	Started *time.Time `json:"started"`
 
 	// Ended timestamp
 	//
 	// required: false
+	// swagger:strfmt date-time
 	// example: 2006-01-02T15:04:05Z
-	Ended string `json:"ended,omitempty"`
+	Ended *time.Time `json:"ended"`
 
 	// Status of the job
 	//
@@ -72,27 +77,31 @@ type PodStatus struct {
 
 	// Created timestamp
 	//
-	// required: false
+	// required: true
+	// swagger:strfmt date-time
 	// example: 2006-01-02T15:04:05Z
-	Created string `json:"created,omitempty"`
+	Created time.Time `json:"created,omitempty"`
 
 	// The time at which the batch job's pod startedAt
 	//
 	// required: false
+	// swagger:strfmt date-time
 	// example: 2006-01-02T15:04:05Z
-	StartTime string `json:"startTime,omitempty"`
+	StartTime *time.Time `json:"startTime,omitempty"`
 
 	// The time at which the batch job's pod finishedAt.
 	//
 	// required: false
+	// swagger:strfmt date-time
 	// example: 2006-01-02T15:04:05Z
-	EndTime string `json:"endTime,omitempty"`
+	EndTime *time.Time `json:"endTime,omitempty"`
 
 	// Container started timestamp
 	//
 	// required: false
+	// swagger:strfmt date-time
 	// example: 2006-01-02T15:04:05Z
-	ContainerStarted string `json:"containerStarted,omitempty"`
+	ContainerStarted *time.Time `json:"containerStarted,omitempty"`
 
 	// Status describes the component container status
 	//

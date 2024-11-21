@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/equinor/radix-common/utils"
+	"github.com/equinor/radix-common/utils/pointers"
 	apiErrors "github.com/equinor/radix-job-scheduler/api/errors"
 	"github.com/equinor/radix-job-scheduler/api/test"
 	"github.com/equinor/radix-job-scheduler/api/v1/jobs"
@@ -35,8 +35,8 @@ func TestGetJobs(t *testing.T) {
 		jobHandler := mock.NewMockJobHandler(ctrl)
 		jobState := modelsV1.JobStatus{
 			Name:    "jobname",
-			Started: utils.FormatTimestamp(time.Now()),
-			Ended:   utils.FormatTimestamp(time.Now().Add(1 * time.Minute)),
+			Started: pointers.Ptr(time.Now()),
+			Ended:   pointers.Ptr(time.Now().Add(1 * time.Minute)),
 			Status:  "jobstatus",
 		}
 		ctx := context.Background()
@@ -59,8 +59,8 @@ func TestGetJobs(t *testing.T) {
 			assert.Len(t, returnedJobs, 1)
 			assert.Equal(t, jobState.Name, returnedJobs[0].Name)
 			assert.Equal(t, "", returnedJobs[0].BatchName)
-			assert.Equal(t, jobState.Started, returnedJobs[0].Started)
-			assert.Equal(t, jobState.Ended, returnedJobs[0].Ended)
+			assert.WithinDuration(t, *jobState.Started, *returnedJobs[0].Started, 1)
+			assert.WithinDuration(t, *jobState.Ended, *returnedJobs[0].Ended, 1)
 			assert.Equal(t, jobState.Status, returnedJobs[0].Status)
 		}
 	})
@@ -103,8 +103,8 @@ func TestGetJob(t *testing.T) {
 		jobHandler := mock.NewMockJobHandler(ctrl)
 		jobState := modelsV1.JobStatus{
 			Name:    jobName,
-			Started: utils.FormatTimestamp(time.Now()),
-			Ended:   utils.FormatTimestamp(time.Now().Add(1 * time.Minute)),
+			Started: pointers.Ptr(time.Now()),
+			Ended:   pointers.Ptr(time.Now().Add(1 * time.Minute)),
 			Status:  "jobstatus",
 		}
 		ctx := context.Background()
@@ -126,8 +126,8 @@ func TestGetJob(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, jobState.Name, returnedJob.Name)
 			assert.Equal(t, "", returnedJob.BatchName)
-			assert.Equal(t, jobState.Started, returnedJob.Started)
-			assert.Equal(t, jobState.Ended, returnedJob.Ended)
+			assert.WithinDuration(t, *jobState.Started, *returnedJob.Started, 1)
+			assert.WithinDuration(t, *jobState.Ended, *returnedJob.Ended, 1)
 			assert.Equal(t, jobState.Status, returnedJob.Status)
 		}
 	})
@@ -199,8 +199,8 @@ func TestCreateJob(t *testing.T) {
 		jobScheduleDescription := models.JobScheduleDescription{}
 		createdJob := modelsV1.JobStatus{
 			Name:    "newjob",
-			Started: utils.FormatTimestamp(time.Now()),
-			Ended:   utils.FormatTimestamp(time.Now().Add(1 * time.Minute)),
+			Started: pointers.Ptr(time.Now()),
+			Ended:   pointers.Ptr(time.Now().Add(1 * time.Minute)),
 			Status:  "jobstatus",
 		}
 		jobHandler := mock.NewMockJobHandler(ctrl)
@@ -227,8 +227,8 @@ func TestCreateJob(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, createdJob.Name, returnedJob.Name)
 			assert.Equal(t, "", returnedJob.BatchName)
-			assert.Equal(t, createdJob.Started, returnedJob.Started)
-			assert.Equal(t, createdJob.Ended, returnedJob.Ended)
+			assert.WithinDuration(t, *createdJob.Started, *returnedJob.Started, 1)
+			assert.WithinDuration(t, *createdJob.Ended, *returnedJob.Ended, 1)
 			assert.Equal(t, createdJob.Status, returnedJob.Status)
 		}
 	})
@@ -258,8 +258,8 @@ func TestCreateJob(t *testing.T) {
 		}
 		createdJob := modelsV1.JobStatus{
 			Name:    "newjob",
-			Started: utils.FormatTimestamp(time.Now()),
-			Ended:   utils.FormatTimestamp(time.Now().Add(1 * time.Minute)),
+			Started: pointers.Ptr(time.Now()),
+			Ended:   pointers.Ptr(time.Now().Add(1 * time.Minute)),
 			Status:  "jobstatus",
 		}
 		jobHandler := mock.NewMockJobHandler(ctrl)
@@ -286,8 +286,8 @@ func TestCreateJob(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, createdJob.Name, returnedJob.Name)
 			assert.Equal(t, "", returnedJob.BatchName)
-			assert.Equal(t, createdJob.Started, returnedJob.Started)
-			assert.Equal(t, createdJob.Ended, returnedJob.Ended)
+			assert.WithinDuration(t, *createdJob.Started, *returnedJob.Started, 1)
+			assert.WithinDuration(t, *createdJob.Ended, *returnedJob.Ended, 1)
 			assert.Equal(t, createdJob.Status, returnedJob.Status)
 		}
 	})
@@ -301,8 +301,8 @@ func TestCreateJob(t *testing.T) {
 		}
 		createdJob := modelsV1.JobStatus{
 			Name:    "newjob",
-			Started: utils.FormatTimestamp(time.Now()),
-			Ended:   utils.FormatTimestamp(time.Now().Add(1 * time.Minute)),
+			Started: pointers.Ptr(time.Now()),
+			Ended:   pointers.Ptr(time.Now().Add(1 * time.Minute)),
 			Status:  "jobstatus",
 		}
 		jobHandler := mock.NewMockJobHandler(ctrl)
@@ -329,8 +329,8 @@ func TestCreateJob(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, createdJob.Name, returnedJob.Name)
 			assert.Equal(t, "", returnedJob.BatchName)
-			assert.Equal(t, createdJob.Started, returnedJob.Started)
-			assert.Equal(t, createdJob.Ended, returnedJob.Ended)
+			assert.WithinDuration(t, *createdJob.Started, *returnedJob.Started, 1)
+			assert.WithinDuration(t, *createdJob.Ended, *returnedJob.Ended, 1)
 			assert.Equal(t, createdJob.Status, returnedJob.Status)
 		}
 	})

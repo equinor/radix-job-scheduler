@@ -3,6 +3,7 @@ package notifications
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-common/utils/pointers"
@@ -161,14 +162,19 @@ func getRadixBatchMap(radixClient radixclient.Interface, namespace string) (map[
 
 func getRadixBatchEventFromRadixBatch(event events.Event, radixBatch *radixv1.RadixBatch, radixBatchJobStatuses []radixv1.RadixBatchJobStatus) events.BatchEvent {
 	batchType := radixBatch.Labels[kube.RadixBatchTypeLabel]
+	var started, ended *time.Time
+	if radixBatch.Status.Condition.ActiveTime != nil {
+		started = &radixBatch.Status.Condition.ActiveTime.Time
+	}
+	if radixBatch.Status.Condition.CompletionTime != nil {
+		ended = &radixBatch.Status.Condition.CompletionTime.Time
+	}
 	jobStatusBatchName := utils.TernaryString(batchType == string(kube.RadixBatchTypeJob), "", radixBatch.GetName())
-	startedTime := utils.FormatTime(radixBatch.Status.Condition.ActiveTime)
-	endedTime := utils.FormatTime(radixBatch.Status.Condition.CompletionTime)
 	batchStatus := modelsv1.JobStatus{
 		Name:    radixBatch.GetName(),
-		Created: utils.FormatTime(pointers.Ptr(radixBatch.GetCreationTimestamp())),
-		Started: startedTime,
-		Ended:   endedTime,
+		Created: radixBatch.GetCreationTimestamp().Time,
+		Started: started,
+		Ended:   ended,
 		Status:  jobs.GetRadixBatchStatus(radixBatch).String(),
 		Message: radixBatch.Status.Condition.Message,
 		Updated: utils.FormatTime(pointers.Ptr(metav1.Now())),
@@ -192,15 +198,26 @@ func getRadixBatchJobStatusesFromRadixBatch(radixBatch *radixv1.RadixBatch, radi
 		if !ok {
 			continue
 		}
+		created := radixBatch.GetCreationTimestamp().Time
+		if radixBatchJobStatus.CreationTime != nil {
+			created = radixBatchJobStatus.CreationTime.Time
+		}
+		var started, ended *time.Time
+		if radixBatchJobStatus.StartTime != nil {
+			started = &radixBatchJobStatus.StartTime.Time
+		}
+		if radixBatchJobStatus.EndTime != nil {
+			ended = &radixBatchJobStatus.EndTime.Time
+		}
 		stopJob := radixBatchJob.Stop != nil && *radixBatchJob.Stop
 		jobName := fmt.Sprintf("%s-%s", radixBatch.Name, radixBatchJobStatus.Name) // composed name in models are always consist of a batchName and original jobName
 		jobStatus := modelsv1.JobStatus{
 			BatchName:   jobStatusBatchName,
 			Name:        jobName,
 			JobId:       radixBatchJob.JobId,
-			Created:     utils.FormatTime(radixBatchJobStatus.CreationTime),
-			Started:     utils.FormatTime(radixBatchJobStatus.StartTime),
-			Ended:       utils.FormatTime(radixBatchJobStatus.EndTime),
+			Created:     created,
+			Started:     started,
+			Ended:       ended,
 			Status:      jobs.GetScheduledJobStatus(radixBatchJobStatus, stopJob).String(),
 			Message:     radixBatchJobStatus.Message,
 			Updated:     utils.FormatTime(pointers.Ptr(metav1.Now())),
@@ -221,12 +238,21 @@ func getRadixBatchJobsMap(radixBatchJobs []radixv1.RadixBatchJob) map[string]rad
 
 func getPodStatusByRadixBatchJobPodStatus(podStatuses []radixv1.RadixBatchJobPodStatus) []modelsv1.PodStatus {
 	return slice.Map(podStatuses, func(status radixv1.RadixBatchJobPodStatus) modelsv1.PodStatus {
+		var started, ended *time.Time
+
+		if status.StartTime != nil {
+			started = &status.StartTime.Time
+		}
+		if status.EndTime != nil {
+			ended = &status.EndTime.Time
+		}
+
 		return modelsv1.PodStatus{
 			Name:             status.Name,
-			Created:          utils.FormatTime(status.CreationTime),
-			StartTime:        utils.FormatTime(status.StartTime),
-			EndTime:          utils.FormatTime(status.EndTime),
-			ContainerStarted: utils.FormatTime(status.StartTime),
+			Created:          pointers.Val(status.CreationTime).Time,
+			StartTime:        started,
+			EndTime:          ended,
+			ContainerStarted: started,
 			Status:           modelsv1.ReplicaStatus{Status: jobs.GetReplicaStatusByJobPodStatusPhase(status.Phase)},
 			StatusMessage:    status.Message,
 			RestartCount:     status.RestartCount,
