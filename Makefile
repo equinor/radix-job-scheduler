@@ -59,7 +59,8 @@ mocks: bootstrap
 	mockgen -source ./api/v2/handler.go -destination ./api/v2/mock/handler_mock.go -package mock
 	mockgen -source ./api/v1/jobs/job_handler.go -destination ./api/v1/jobs/mock/job_mock.go -package mock
 	mockgen -source ./api/v1/batches/batch_handler.go -destination ./api/v1/batches/mock/batch_mock.go -package mock
-	mockgen -source ./models/notifications/notifier.go -destination ./models/notifications/notifier_mock.go -package notifications
+	mockgen -source ./pkg/notifications/notifier.go -destination ./pkg/notifications/notifier_mock.go -package notifications
+	mockgen -source ./pkg/batch/history.go -destination ./pkg/batch/history_mock.go -package batch
 
 .PHONY: generate
 generate: swagger mocks
@@ -77,7 +78,7 @@ ifndef HAS_SWAGGER
 	go install github.com/go-swagger/go-swagger/cmd/swagger@v0.31.0
 endif
 ifndef HAS_GOLANGCI_LINT
-	go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.55.2
+	go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.59.1
 endif
 ifndef HAS_MOCKGEN
 	go install github.com/golang/mock/mockgen@v1.6.0

@@ -10,11 +10,18 @@ type JobStatus struct {
 	// required: false
 	// example: 'job1'
 	JobId string `json:"jobId,omitempty"`
+
 	// BatchName Optional Batch ID of a job
 	//
 	// required: false
 	// example: 'batch1'
 	BatchName string `json:"batchName,omitempty"`
+
+	// Defines a user defined ID of the batch.
+	//
+	// required: false
+	// example: 'batch-id-1'
+	BatchId string `json:"batchId,omitempty"`
 
 	// Name of the job
 	// required: true
@@ -43,9 +50,17 @@ type JobStatus struct {
 	Ended *time.Time `json:"ended"`
 
 	// Status of the job
+	// - Running = Job is running
+	// - Succeeded = Job has succeeded
+	// - Failed = Job has failed
+	// - Waiting = Job is waiting
+	// - Stopping = Job is stopping
+	// - Stopped = Job has been stopped
+	// - Active = Job is active
+	// - Completed = Job is completed
 	//
 	// required: false
-	// Enum: Waiting,Running,Succeeded,Stopping,Stopped,Failed,DeadlineExceeded
+	// Enum: Running,Succeeded,Failed,Waiting,Stopping,Stopped,Active,Completed
 	// example: Waiting
 	Status string `json:"status,omitempty"`
 
@@ -61,9 +76,21 @@ type JobStatus struct {
 	// example: 2006-01-02T15:04:05Z
 	Updated string `json:"updated,omitempty"`
 
+	// The number of times the container for the job has failed.
+	// +optional
+	Failed int32 `json:"failed,omitempty"`
+
+	// Timestamp of the job restart, if applied.
+	// +optional
+	Restart string `json:"restart,omitempty"`
+
 	// PodStatuses for each pod of the job
 	// required: false
 	PodStatuses []PodStatus `json:"podStatuses,omitempty"`
+
+	// DeploymentName for this batch
+	// required: false
+	DeploymentName string
 }
 
 // PodStatus contains details for the current status of the job's pods.
@@ -150,9 +177,10 @@ type ReplicaStatus struct {
 	// - Running = Container in Running state
 	// - Succeeded = Container in Succeeded state
 	// - Terminated = Container in Terminated state
+	// - Stopped = Job has been stopped
 	//
 	// required: true
-	// enum: Pending,Succeeded,Failing,Failed,Running,Terminated,Starting
+	// enum: Pending,Succeeded,Failing,Failed,Running,Terminated,Starting,Stopped
 	// example: Running
 	Status string `json:"status"`
 }

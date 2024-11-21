@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/equinor/radix-common/utils/pointers"
+	"github.com/equinor/radix-common/utils"
 	apiErrors "github.com/equinor/radix-job-scheduler/api/errors"
 	"github.com/equinor/radix-job-scheduler/api/test"
 	"github.com/equinor/radix-job-scheduler/api/v1/jobs"
@@ -210,11 +211,6 @@ func TestCreateJob(t *testing.T) {
 			CreateJob(test.RequestContextMatcher{}, &jobScheduleDescription).
 			Return(&createdJob, nil).
 			Times(1)
-		jobHandler.
-			EXPECT().
-			MaintainHistoryLimit(test.RequestContextMatcher{}).
-			Return(nil).
-			Times(1)
 		controllerTestUtils := setupTest(jobHandler)
 		responseChannel := controllerTestUtils.ExecuteRequestWithBody(ctx, http.MethodPost, "/api/v1/jobs", nil)
 		response := <-responseChannel
@@ -269,54 +265,6 @@ func TestCreateJob(t *testing.T) {
 			CreateJob(test.RequestContextMatcher{}, &jobScheduleDescription).
 			Return(&createdJob, nil).
 			Times(1)
-		jobHandler.
-			EXPECT().
-			MaintainHistoryLimit(test.RequestContextMatcher{}).
-			Return(nil).
-			Times(1)
-		controllerTestUtils := setupTest(jobHandler)
-		responseChannel := controllerTestUtils.ExecuteRequestWithBody(ctx, http.MethodPost, "/api/v1/jobs", jobScheduleDescription)
-		response := <-responseChannel
-		assert.NotNil(t, response)
-
-		if response != nil {
-			assert.Equal(t, http.StatusOK, response.StatusCode)
-			var returnedJob modelsV1.JobStatus
-			err := test.GetResponseBody(response, &returnedJob)
-			require.NoError(t, err)
-			assert.Equal(t, createdJob.Name, returnedJob.Name)
-			assert.Equal(t, "", returnedJob.BatchName)
-			assert.WithinDuration(t, *createdJob.Started, *returnedJob.Started, 1)
-			assert.WithinDuration(t, *createdJob.Ended, *returnedJob.Ended, 1)
-			assert.Equal(t, createdJob.Status, returnedJob.Status)
-		}
-	})
-
-	t.Run("valid payload body - error from MaintainHistoryLimit should not fail request", func(t *testing.T) {
-		t.Parallel()
-		ctrl := gomock.NewController(t)
-		defer ctrl.Finish()
-		jobScheduleDescription := models.JobScheduleDescription{
-			Payload: "a_payload",
-		}
-		createdJob := modelsV1.JobStatus{
-			Name:    "newjob",
-			Started: pointers.Ptr(time.Now()),
-			Ended:   pointers.Ptr(time.Now().Add(1 * time.Minute)),
-			Status:  "jobstatus",
-		}
-		jobHandler := mock.NewMockJobHandler(ctrl)
-		ctx := context.Background()
-		jobHandler.
-			EXPECT().
-			CreateJob(test.RequestContextMatcher{}, &jobScheduleDescription).
-			Return(&createdJob, nil).
-			Times(1)
-		jobHandler.
-			EXPECT().
-			MaintainHistoryLimit(test.RequestContextMatcher{}).
-			Return(errors.New("an error")).
-			Times(1)
 		controllerTestUtils := setupTest(jobHandler)
 		responseChannel := controllerTestUtils.ExecuteRequestWithBody(ctx, http.MethodPost, "/api/v1/jobs", jobScheduleDescription)
 		response := <-responseChannel
@@ -345,10 +293,6 @@ func TestCreateJob(t *testing.T) {
 		jobHandler.
 			EXPECT().
 			CreateJob(test.RequestContextMatcher{}, gomock.Any()).
-			Times(0)
-		jobHandler.
-			EXPECT().
-			MaintainHistoryLimit(test.RequestContextMatcher{}).
 			Times(0)
 		controllerTestUtils := setupTest(jobHandler)
 		responseChannel := controllerTestUtils.ExecuteRequestWithBody(ctx, http.MethodPost, "/api/v1/jobs", struct{ Payload interface{} }{Payload: struct{}{}})
@@ -380,10 +324,6 @@ func TestCreateJob(t *testing.T) {
 			CreateJob(test.RequestContextMatcher{}, &jobScheduleDescription).
 			Return(nil, apiErrors.NewNotFound(anyKind, anyName)).
 			Times(1)
-		jobHandler.
-			EXPECT().
-			MaintainHistoryLimit(test.RequestContextMatcher{}).
-			Times(0)
 		controllerTestUtils := setupTest(jobHandler)
 		responseChannel := controllerTestUtils.ExecuteRequest(ctx, http.MethodPost, "/api/v1/jobs")
 		response := <-responseChannel
@@ -413,10 +353,6 @@ func TestCreateJob(t *testing.T) {
 			CreateJob(test.RequestContextMatcher{}, &jobScheduleDescription).
 			Return(nil, errors.New("any error")).
 			Times(1)
-		jobHandler.
-			EXPECT().
-			MaintainHistoryLimit(test.RequestContextMatcher{}).
-			Times(0)
 		controllerTestUtils := setupTest(jobHandler)
 		responseChannel := controllerTestUtils.ExecuteRequest(ctx, http.MethodPost, "/api/v1/jobs")
 		response := <-responseChannel

@@ -17,7 +17,9 @@ import (
 	jobControllers "github.com/equinor/radix-job-scheduler/api/v1/controllers/jobs"
 	jobApi "github.com/equinor/radix-job-scheduler/api/v1/jobs"
 	"github.com/equinor/radix-job-scheduler/models"
-	"github.com/equinor/radix-job-scheduler/models/notifications"
+	"github.com/equinor/radix-job-scheduler/pkg/batch"
+	"github.com/equinor/radix-job-scheduler/pkg/notifications"
+	"github.com/equinor/radix-job-scheduler/pkg/watcher"
 	"github.com/equinor/radix-job-scheduler/router"
 	_ "github.com/equinor/radix-job-scheduler/swaggerui"
 	"github.com/equinor/radix-job-scheduler/utils/radix"
@@ -41,13 +43,15 @@ func main() {
 		log.Fatal().Err(err).Msg("failed to get job specification")
 	}
 
-	radixBatchWatcher, err := getRadixBatchWatcher(kubeUtil, radixDeployJobComponent, env)
+	jobHistory := batch.NewHistory(kubeUtil, env, radixDeployJobComponent)
+	notifier := notifications.NewWebhookNotifier(radixDeployJobComponent)
+	radixBatchWatcher, err := watcher.NewRadixBatchWatcher(ctx, kubeUtil.RadixClient(), env.RadixDeploymentNamespace, jobHistory, notifier)
 	if err != nil {
-		log.Fatal().Err(err).Msg("failed to inititialize job watcher")
+		log.Fatal().Err(err).Msg("failed to initialize job watcher")
 	}
-	defer close(radixBatchWatcher.Stop)
+	defer radixBatchWatcher.Stop()
 
-	runApiServer(ctx, kubeUtil, env)
+	runApiServer(ctx, kubeUtil, env, radixDeployJobComponent)
 }
 
 func initLogger(env *models.Env) {
@@ -66,7 +70,7 @@ func initLogger(env *models.Env) {
 	zerolog.DefaultContextLogger = &log.Logger
 }
 
-func runApiServer(ctx context.Context, kubeUtil *kube.Kube, env *models.Env) {
+func runApiServer(ctx context.Context, kubeUtil *kube.Kube, env *models.Env, radixDeployJobComponent *radixv1.RadixDeployJobComponent) {
 	ctx, stop := signal.NotifyContext(ctx, syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
@@ -76,7 +80,7 @@ func runApiServer(ctx context.Context, kubeUtil *kube.Kube, env *models.Env) {
 
 	srv := &http.Server{
 		Addr:        fmt.Sprintf(":%s", *port),
-		Handler:     router.NewServer(env, getControllers(kubeUtil, env)...),
+		Handler:     router.NewServer(env, getControllers(kubeUtil, env, radixDeployJobComponent)...),
 		BaseContext: func(_ net.Listener) context.Context { return ctx },
 	}
 
@@ -95,27 +99,16 @@ func runApiServer(ctx context.Context, kubeUtil *kube.Kube, env *models.Env) {
 	}
 }
 
-func getRadixBatchWatcher(kubeUtil *kube.Kube, radixDeployJobComponent *radixv1.RadixDeployJobComponent, env *models.Env) (*notifications.Watcher, error) {
-	notifier := notifications.NewWebhookNotifier(radixDeployJobComponent)
-	log.Info().Msgf("Created notifier: %s", notifier.String())
-	if !notifier.Enabled() {
-		log.Info().Msg("Notifiers are not enabled, RadixBatch event and changes watcher is skipped.")
-		return notifications.NullRadixBatchWatcher(), nil
-	}
-
-	return notifications.NewRadixBatchWatcher(kubeUtil.RadixClient(), env.RadixDeploymentNamespace, notifier)
-}
-
 func getKubeUtil(ctx context.Context) *kube.Kube {
 	kubeClient, radixClient, kedaClient, _, secretProviderClient, _ := utils.GetKubernetesClient(ctx)
 	kubeUtil, _ := kube.New(kubeClient, radixClient, kedaClient, secretProviderClient)
 	return kubeUtil
 }
 
-func getControllers(kubeUtil *kube.Kube, env *models.Env) []api.Controller {
+func getControllers(kubeUtil *kube.Kube, env *models.Env, radixDeployJobComponent *radixv1.RadixDeployJobComponent) []api.Controller {
 	return []api.Controller{
-		jobControllers.New(jobApi.New(kubeUtil, env)),
-		batchControllers.New(batchApi.New(kubeUtil, env)),
+		jobControllers.New(jobApi.New(kubeUtil, env, radixDeployJobComponent)),
+		batchControllers.New(batchApi.New(kubeUtil, env, radixDeployJobComponent)),
 	}
 }
 

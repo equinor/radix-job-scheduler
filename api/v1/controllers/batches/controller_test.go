@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/equinor/radix-common/utils/pointers"
+	commonUtils "github.com/equinor/radix-common/utils"
 	apiErrors "github.com/equinor/radix-job-scheduler/api/errors"
 	"github.com/equinor/radix-job-scheduler/api/test"
 	api "github.com/equinor/radix-job-scheduler/api/v1/batches"
@@ -218,11 +219,6 @@ func TestCreateBatch(t *testing.T) {
 			CreateBatch(test.RequestContextMatcher{}, &batchScheduleDescription).
 			Return(&createdBatch, nil).
 			Times(1)
-		batchHandler.
-			EXPECT().
-			MaintainHistoryLimit(test.RequestContextMatcher{}).
-			Return(nil).
-			Times(1)
 		controllerTestUtils := setupTest(batchHandler)
 		responseChannel := controllerTestUtils.ExecuteRequestWithBody(ctx, http.MethodPost, "/api/v1/batches", nil)
 		response := <-responseChannel
@@ -283,58 +279,6 @@ func TestCreateBatch(t *testing.T) {
 			CreateBatch(test.RequestContextMatcher{}, &batchScheduleDescription).
 			Return(&createdBatch, nil).
 			Times(1)
-		batchHandler.
-			EXPECT().
-			MaintainHistoryLimit(test.RequestContextMatcher{}).
-			Return(nil).
-			Times(1)
-		controllerTestUtils := setupTest(batchHandler)
-		responseChannel := controllerTestUtils.ExecuteRequestWithBody(ctx, http.MethodPost, "/api/v1/batches", batchScheduleDescription)
-		response := <-responseChannel
-		assert.NotNil(t, response)
-
-		if response != nil {
-			assert.Equal(t, http.StatusOK, response.StatusCode)
-			var returnedBatch modelsV1.BatchStatus
-			err := test.GetResponseBody(response, &returnedBatch)
-			require.NoError(t, err)
-			assert.Equal(t, createdBatch.Name, returnedBatch.Name)
-			assert.WithinDuration(t, *createdBatch.Started, *returnedBatch.Started, 1)
-			assert.WithinDuration(t, *createdBatch.Ended, *returnedBatch.Ended, 1)
-			assert.Equal(t, createdBatch.Status, returnedBatch.Status)
-		}
-	})
-
-	t.Run("valid payload body - error from MaintainHistoryLimit should not fail request", func(t *testing.T) {
-		t.Parallel()
-		ctrl := gomock.NewController(t)
-		defer ctrl.Finish()
-		batchScheduleDescription := models.BatchScheduleDescription{
-			JobScheduleDescriptions: []models.JobScheduleDescription{
-				{Payload: "a_payload"},
-			},
-		}
-		createdBatch := modelsV1.BatchStatus{
-			JobStatus: modelsV1.JobStatus{
-				Name:    "newbatch",
-				Started: pointers.Ptr(time.Now()),
-				Ended:   pointers.Ptr(time.Now().Add(1 * time.Minute)),
-				Status:  "batchstatus",
-			},
-			BatchType: string(kube.RadixBatchTypeBatch),
-		}
-		batchHandler := mock.NewMockBatchHandler(ctrl)
-		ctx := context.Background()
-		batchHandler.
-			EXPECT().
-			CreateBatch(test.RequestContextMatcher{}, &batchScheduleDescription).
-			Return(&createdBatch, nil).
-			Times(1)
-		batchHandler.
-			EXPECT().
-			MaintainHistoryLimit(test.RequestContextMatcher{}).
-			Return(errors.New("an error")).
-			Times(1)
 		controllerTestUtils := setupTest(batchHandler)
 		responseChannel := controllerTestUtils.ExecuteRequestWithBody(ctx, http.MethodPost, "/api/v1/batches", batchScheduleDescription)
 		response := <-responseChannel
@@ -362,10 +306,6 @@ func TestCreateBatch(t *testing.T) {
 		batchHandler.
 			EXPECT().
 			CreateBatch(test.RequestContextMatcher{}, gomock.Any()).
-			Times(0)
-		batchHandler.
-			EXPECT().
-			MaintainHistoryLimit(test.RequestContextMatcher{}).
 			Times(0)
 		controllerTestUtils := setupTest(batchHandler)
 		responseChannel := controllerTestUtils.ExecuteRequestWithBody(ctx, http.MethodPost, "/api/v1/batches", struct{ JobScheduleDescriptions interface{} }{JobScheduleDescriptions: struct{}{}})
@@ -397,10 +337,6 @@ func TestCreateBatch(t *testing.T) {
 			CreateBatch(test.RequestContextMatcher{}, &batchScheduleDescription).
 			Return(nil, apiErrors.NewNotFound(anyKind, anyName)).
 			Times(1)
-		batchHandler.
-			EXPECT().
-			MaintainHistoryLimit(test.RequestContextMatcher{}).
-			Times(0)
 		controllerTestUtils := setupTest(batchHandler)
 		responseChannel := controllerTestUtils.ExecuteRequest(ctx, http.MethodPost, "/api/v1/batches")
 		response := <-responseChannel
@@ -430,10 +366,6 @@ func TestCreateBatch(t *testing.T) {
 			CreateBatch(test.RequestContextMatcher{}, &batchScheduleDescription).
 			Return(nil, errors.New("any error")).
 			Times(1)
-		batchHandler.
-			EXPECT().
-			MaintainHistoryLimit(test.RequestContextMatcher{}).
-			Times(0)
 		controllerTestUtils := setupTest(batchHandler)
 		responseChannel := controllerTestUtils.ExecuteRequest(ctx, http.MethodPost, "/api/v1/batches")
 		response := <-responseChannel
@@ -639,11 +571,6 @@ func TestStopBatchJob(t *testing.T) {
 			StopBatchJob(test.RequestContextMatcher{}, batchName, jobName).
 			Return(nil).
 			Times(1)
-		batchHandler.
-			EXPECT().
-			MaintainHistoryLimit(test.RequestContextMatcher{}).
-			Return(nil).
-			AnyTimes()
 		controllerTestUtils := setupTest(batchHandler)
 		responseChannel := controllerTestUtils.ExecuteRequest(ctx, http.MethodPost, fmt.Sprintf("/api/v1/batches/%s/jobs/%s/stop", batchName, jobName))
 		response := <-responseChannel

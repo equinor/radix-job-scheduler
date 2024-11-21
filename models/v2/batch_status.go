@@ -1,13 +1,21 @@
 package v2
 
-import "time"
+import (
+	"time"
+	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
+)
 
 // RadixBatch holds general information about batch status
-// swagger:model RadixBatch
 type RadixBatch struct {
 	// Name of the Radix batch
 	// required: true
 	Name string `json:"name"`
+
+	// Defines a user defined ID of the batch.
+	//
+	// required: false
+	// example: 'batch-id-1'
+	BatchId string `json:"batchId,omitempty"`
 
 	// Radix batch creation timestamp
 	//
@@ -33,9 +41,9 @@ type RadixBatch struct {
 	// Status of the job
 	//
 	// required: false
-	// Enum: Waiting,Running,Succeeded,Stopping,Stopped,Failed,DeadlineExceeded
+	// Enum: Running,Succeeded,Failed,Waiting,Stopping,Stopped,Active,Completed
 	// example: Waiting
-	Status string `json:"status,omitempty"`
+	Status radixv1.RadixBatchJobApiStatus `json:"status,omitempty"`
 
 	// JobStatuses of the Radix batch jobs
 	// required: false
@@ -52,10 +60,14 @@ type RadixBatch struct {
 	// required: true
 	// example: "job"
 	BatchType string `json:"batchType"`
+
+	// DeploymentName of this batch
+	//
+	// required: false
+	DeploymentName string
 }
 
 // RadixBatchJobStatus holds general information about batch job status
-// swagger:model RadixBatchJobStatus
 type RadixBatchJobStatus struct {
 	// Name of the Radix batch job
 	// required: true
@@ -91,9 +103,9 @@ type RadixBatchJobStatus struct {
 	// Status of the job
 	//
 	// required: false
-	// Enum: Waiting,Running,Succeeded,Stopping,Stopped,Failed,DeadlineExceeded
+	// Enum: Waiting,Running,Succeeded,Stopping,Stopped,Failed,Completed
 	// example: Waiting
-	Status string `json:"status,omitempty"`
+	Status radixv1.RadixBatchJobApiStatus `json:"status,omitempty"`
 
 	// Status message, if any, of the job
 	//
@@ -101,13 +113,20 @@ type RadixBatchJobStatus struct {
 	// example: "Error occurred"
 	Message string `json:"message,omitempty"`
 
+	// The number of times the container for the job has failed.
+	// +optional
+	Failed int32 `json:"failed,omitempty"`
+
+	// Timestamp of the job restart, if applied.
+	// +optional
+	Restart string `json:"restart,omitempty"`
+
 	// PodStatuses for each pod of the job
 	// required: false
 	PodStatuses []RadixBatchJobPodStatus `json:"podStatuses,omitempty"`
 }
 
 // RadixBatchJobPodStatus contains details for the current status of the job's pods.
-// swagger:model RadixBatchJobPodStatus
 type RadixBatchJobPodStatus struct {
 	// Pod name
 	//
@@ -181,7 +200,6 @@ type RadixBatchJobPodStatus struct {
 }
 
 // ReplicaStatus describes the status of a component container inside a pod
-// swagger:model ReplicaStatus
 type ReplicaStatus struct {
 	// Status of the container
 	// - Pending = Container in Waiting state and the reason is ContainerCreating

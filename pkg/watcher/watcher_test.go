@@ -1,12 +1,14 @@
-package notifications
+package watcher
 
 import (
 	"context"
-	"github.com/equinor/radix-job-scheduler/models/v1/events"
 	"testing"
 	"time"
 
 	commonUtils "github.com/equinor/radix-common/utils"
+	"github.com/equinor/radix-job-scheduler/models/v1/events"
+	"github.com/equinor/radix-job-scheduler/pkg/batch"
+	notifications2 "github.com/equinor/radix-job-scheduler/pkg/notifications"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/equinor/radix-operator/pkg/apis/utils/labels"
@@ -29,7 +31,7 @@ func Test_RadixBatchWatcher(t *testing.T) {
 		event            events.Event
 	}
 	type args struct {
-		getNotifier func(*gomock.Controller) Notifier
+		getNotifier func(*gomock.Controller) notifications2.Notifier
 	}
 	tests := []struct {
 		name   string
@@ -42,8 +44,8 @@ func Test_RadixBatchWatcher(t *testing.T) {
 				newRadixBatch: nil,
 			},
 			args: args{
-				getNotifier: func(ctrl *gomock.Controller) Notifier {
-					return NewMockNotifier(ctrl)
+				getNotifier: func(ctrl *gomock.Controller) notifications2.Notifier {
+					return notifications2.NewMockNotifier(ctrl)
 				},
 			},
 		},
@@ -60,8 +62,8 @@ func Test_RadixBatchWatcher(t *testing.T) {
 				event:            events.Create,
 			},
 			args: args{
-				getNotifier: func(ctrl *gomock.Controller) Notifier {
-					notifier := NewMockNotifier(ctrl)
+				getNotifier: func(ctrl *gomock.Controller) notifications2.Notifier {
+					notifier := notifications2.NewMockNotifier(ctrl)
 					rbMatcher := newRadixBatchMatcher(func(radixBatch *radixv1.RadixBatch) bool {
 						return radixBatch.Name == "batch1" && radixBatch.Status.Condition == radixv1.RadixBatchCondition{}
 					})
@@ -87,8 +89,8 @@ func Test_RadixBatchWatcher(t *testing.T) {
 				event: events.Update,
 			},
 			args: args{
-				getNotifier: func(ctrl *gomock.Controller) Notifier {
-					notifier := NewMockNotifier(ctrl)
+				getNotifier: func(ctrl *gomock.Controller) notifications2.Notifier {
+					notifier := notifications2.NewMockNotifier(ctrl)
 					rbMatcher := newRadixBatchMatcher(func(radixBatch *radixv1.RadixBatch) bool {
 						return radixBatch.Name == "batch1" &&
 							radixBatch.Status.Condition.Type == radixv1.BatchConditionTypeWaiting
@@ -141,8 +143,8 @@ func Test_RadixBatchWatcher(t *testing.T) {
 				event: events.Update,
 			},
 			args: args{
-				getNotifier: func(ctrl *gomock.Controller) Notifier {
-					notifier := NewMockNotifier(ctrl)
+				getNotifier: func(ctrl *gomock.Controller) notifications2.Notifier {
+					notifier := notifications2.NewMockNotifier(ctrl)
 					rbMatcher := newRadixBatchMatcher(func(radixBatch *radixv1.RadixBatch) bool {
 						return radixBatch.Name == "batch1" && *radixBatch.Status.Condition.ActiveTime == activeTime
 					})
@@ -173,8 +175,8 @@ func Test_RadixBatchWatcher(t *testing.T) {
 				event: events.Delete,
 			},
 			args: args{
-				getNotifier: func(ctrl *gomock.Controller) Notifier {
-					notifier := NewMockNotifier(ctrl)
+				getNotifier: func(ctrl *gomock.Controller) notifications2.Notifier {
+					notifier := notifications2.NewMockNotifier(ctrl)
 					rbMatcher := newRadixBatchMatcher(func(radixBatch *radixv1.RadixBatch) bool {
 						return radixBatch.Name == "batch1"
 					})
@@ -204,19 +206,17 @@ func Test_RadixBatchWatcher(t *testing.T) {
 			}
 
 			ctrl := gomock.NewController(t)
-			watcher, err := NewRadixBatchWatcher(radixClient, namespace, tt.args.getNotifier(ctrl))
+			history := batch.NewMockHistory(ctrl)
+			batchWatcher, err := NewRadixBatchWatcher(context.Background(), radixClient, namespace, history, tt.args.getNotifier(ctrl))
+			defer batchWatcher.Stop()
 			if err != nil {
 				assert.Fail(t, err.Error())
-				watcher.Stop <- struct{}{}
 				return
 			}
-			assert.False(t, commonUtils.IsNil(watcher))
-			for !watcher.batchInformer.Informer().HasSynced() {
-				t.Log("wait for sync informer")
-				time.Sleep(time.Millisecond * 100)
-			}
+			assert.False(t, commonUtils.IsNil(batchWatcher))
 
 			if tt.fields.newRadixBatch != nil && tt.fields.event == events.Create {
+				history.EXPECT().Cleanup(gomock.Any()).Times(1)
 				// when radix batch exists and during test it will be updated
 				_, err := radixClient.RadixV1().RadixBatches(namespace).Create(context.TODO(), tt.fields.newRadixBatch, metav1.CreateOptions{})
 				if err != nil {
@@ -239,13 +239,8 @@ func Test_RadixBatchWatcher(t *testing.T) {
 					}
 				}
 			}
-			for !watcher.batchInformer.Informer().HasSynced() {
-				t.Log("wait for sync informer")
-				time.Sleep(time.Millisecond * 100)
-			}
 			time.Sleep(time.Second * 1) // wait to possible fail due to a missed expected call
 			ctrl.Finish()
-			watcher.Stop <- struct{}{}
 		})
 	}
 }

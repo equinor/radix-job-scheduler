@@ -7,11 +7,14 @@ import (
 	apiErrors "github.com/equinor/radix-job-scheduler/api/errors"
 	apiv1 "github.com/equinor/radix-job-scheduler/api/v1"
 	apiv2 "github.com/equinor/radix-job-scheduler/api/v2"
+	"github.com/equinor/radix-job-scheduler/internal"
 	"github.com/equinor/radix-job-scheduler/models"
 	"github.com/equinor/radix-job-scheduler/models/common"
 	modelsv1 "github.com/equinor/radix-job-scheduler/models/v1"
 	modelsv2 "github.com/equinor/radix-job-scheduler/models/v2"
+	"github.com/equinor/radix-job-scheduler/pkg/batch"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
+	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/rs/zerolog/log"
 	"k8s.io/apimachinery/pkg/api/errors"
 )
@@ -29,8 +32,6 @@ type JobHandler interface {
 	CreateJob(ctx context.Context, jobScheduleDescription *common.JobScheduleDescription) (*modelsv1.JobStatus, error)
 	// CopyJob creates a copy of an existing job with deploymentName as value for radixDeploymentJobRef.name
 	CopyJob(ctx context.Context, jobName string, deploymentName string) (*modelsv1.JobStatus, error)
-	// MaintainHistoryLimit Delete outdated jobs
-	MaintainHistoryLimit(ctx context.Context) error
 	// DeleteJob Delete a job
 	DeleteJob(ctx context.Context, jobName string) error
 	// StopJob Stop a job
@@ -38,12 +39,13 @@ type JobHandler interface {
 }
 
 // New Constructor for job handler
-func New(kube *kube.Kube, env *models.Env) JobHandler {
+func New(kube *kube.Kube, env *models.Env, radixDeployJobComponent *radixv1.RadixDeployJobComponent) JobHandler {
 	return &jobHandler{
 		common: &apiv1.Handler{
-			Kube:         kube,
-			Env:          env,
-			HandlerApiV2: apiv2.New(kube, env),
+			Kube:                    kube,
+			Env:                     env,
+			HandlerApiV2:            apiv2.New(kube, env, radixDeployJobComponent),
+			RadixDeployJobComponent: radixDeployJobComponent,
 		},
 	}
 }
@@ -86,7 +88,7 @@ func (handler *jobHandler) GetJobs(ctx context.Context) ([]modelsv1.JobStatus, e
 func (handler *jobHandler) GetJob(ctx context.Context, jobName string) (*modelsv1.JobStatus, error) {
 	logger := log.Ctx(ctx)
 	logger.Debug().Msgf("get job %s for namespace: %s", jobName, handler.common.Env.RadixDeploymentNamespace)
-	if batchName, _, ok := apiv1.ParseBatchAndJobNameFromScheduledJobName(jobName); ok {
+	if batchName, _, ok := internal.ParseBatchAndJobNameFromScheduledJobName(jobName); ok {
 		jobStatus, err := apiv1.GetBatchJob(ctx, handler.common.HandlerApiV2, batchName, jobName)
 		if err != nil {
 			return nil, err
@@ -128,7 +130,7 @@ func (handler *jobHandler) CopyJob(ctx context.Context, jobName string, deployme
 func (handler *jobHandler) DeleteJob(ctx context.Context, jobName string) error {
 	logger := log.Ctx(ctx)
 	logger.Debug().Msgf("delete job %s for namespace: %s", jobName, handler.common.Env.RadixDeploymentNamespace)
-	batchName, _, ok := apiv1.ParseBatchAndJobNameFromScheduledJobName(jobName)
+	batchName, _, ok := internal.ParseBatchAndJobNameFromScheduledJobName(jobName)
 	if !ok {
 		return apiErrors.NewInvalidWithReason(jobName, "is not a valid job name")
 	}
@@ -145,14 +147,14 @@ func (handler *jobHandler) DeleteJob(ctx context.Context, jobName string) error 
 	if !jobExistInBatch(radixBatchStatus, jobName) {
 		return apiErrors.NewNotFound("batch job", jobName)
 	}
-	err = handler.common.HandlerApiV2.DeleteRadixBatch(ctx, batchName)
+	err = batch.DeleteRadixBatchByName(ctx, handler.common.Kube.RadixClient(), handler.common.Env.RadixDeploymentNamespace, batchName)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			return apiErrors.NewNotFound("batch job", jobName)
 		}
 		return apiErrors.NewFromError(err)
 	}
-	return handler.common.HandlerApiV2.GarbageCollectPayloadSecrets(ctx)
+	return internal.GarbageCollectPayloadSecrets(ctx, handler.common.Kube, handler.common.Env.RadixDeploymentNamespace, handler.common.Env.RadixComponentName)
 }
 
 func jobExistInBatch(radixBatch *modelsv2.RadixBatch, jobName string) bool {
@@ -171,11 +173,6 @@ func (handler *jobHandler) StopJob(ctx context.Context, jobName string) error {
 	return apiv1.StopJob(ctx, handler.common.HandlerApiV2, jobName)
 }
 
-// MaintainHistoryLimit Delete outdated jobs
-func (handler *jobHandler) MaintainHistoryLimit(ctx context.Context) error {
-	return handler.common.HandlerApiV2.MaintainHistoryLimit(ctx)
-}
-
 func getSingleJobStatusFromRadixBatchJob(radixBatch *modelsv2.RadixBatch) (*modelsv1.JobStatus, error) {
 	if len(radixBatch.JobStatuses) != 1 {
 		return nil, fmt.Errorf("batch should have only one job")
@@ -192,8 +189,10 @@ func getSingleJobStatusFromRadixBatchJob(radixBatch *modelsv2.RadixBatch) (*mode
 		Created:     created,
 		Started:     radixBatchJobStatus.Started,
 		Ended:       radixBatchJobStatus.Ended,
-		Status:      radixBatchJobStatus.Status,
+		Status:      string(radixBatchJobStatus.Status),
 		Message:     radixBatchJobStatus.Message,
+		Failed:      radixBatchJobStatus.Failed,
+		Restart:     radixBatchJobStatus.Restart,
 		PodStatuses: apiv1.GetPodStatus(radixBatchJobStatus.PodStatuses),
 	}
 	return &jobStatus, nil

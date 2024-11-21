@@ -8,6 +8,7 @@ import (
 	"github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-common/utils/slice"
 	apiv2 "github.com/equinor/radix-job-scheduler/api/v2"
+	"github.com/equinor/radix-job-scheduler/internal"
 	modelsv1 "github.com/equinor/radix-job-scheduler/models/v1"
 	modelsv2 "github.com/equinor/radix-job-scheduler/models/v2"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
@@ -22,27 +23,17 @@ func GetJobStatusFromRadixBatchJobsStatus(radixBatch *modelsv2.RadixBatch, jobSt
 
 	return modelsv1.JobStatus{
 		JobId:       jobStatus.JobId,
-		BatchName:   getJobStatusBatchName(radixBatch),
+		BatchName:   getBatchName(radixBatch),
 		Name:        jobStatus.Name,
 		Created:     created,
 		Started:     jobStatus.Started,
 		Ended:       jobStatus.Ended,
-		Status:      jobStatus.Status,
+		Status:      string(jobStatus.Status),
 		Message:     jobStatus.Message,
+		Failed:      jobStatus.Failed,
+		Restart:     jobStatus.Restart,
 		PodStatuses: GetPodStatus(jobStatus.PodStatuses),
 	}
-}
-
-// ParseBatchAndJobNameFromScheduledJobName Decompose V2 batch name and jobs name from V1 job-name
-func ParseBatchAndJobNameFromScheduledJobName(scheduleJobName string) (batchName, batchJobName string, ok bool) {
-	scheduleJobNameParts := strings.Split(scheduleJobName, "-")
-	if len(scheduleJobNameParts) < 2 {
-		return
-	}
-	batchName = strings.Join(scheduleJobNameParts[:len(scheduleJobNameParts)-1], "-")
-	batchJobName = scheduleJobNameParts[len(scheduleJobNameParts)-1]
-	ok = true
-	return
 }
 
 // GetJobStatusFromRadixBatchJobsStatuses Get JobStatuses from RadixBatch job statuses V2
@@ -58,16 +49,13 @@ func GetJobStatusFromRadixBatchJobsStatuses(radixBatches ...modelsv2.RadixBatch)
 
 // CopyJob Copy a job
 func CopyJob(ctx context.Context, handlerApiV2 apiv2.Handler, jobName, deploymentName string) (*modelsv2.RadixBatch, error) {
-	if batchName, jobName, ok := ParseBatchAndJobNameFromScheduledJobName(jobName); ok {
-		return handlerApiV2.CopyRadixBatchSingleJob(ctx, batchName, jobName, deploymentName)
-	}
-	return nil, fmt.Errorf("copy of this job is not supported")
+	return handlerApiV2.CopyRadixBatchJob(ctx, jobName, deploymentName)
 }
 
 // StopJob Stop a job
 func StopJob(ctx context.Context, handlerApiV2 apiv2.Handler, jobName string) error {
-	if batchName, jobName, ok := ParseBatchAndJobNameFromScheduledJobName(jobName); ok {
-		return handlerApiV2.StopRadixBatchJob(ctx, batchName, jobName)
+	if batchName, batchJobName, ok := internal.ParseBatchAndJobNameFromScheduledJobName(jobName); ok {
+		return handlerApiV2.StopRadixBatchJob(ctx, batchName, batchJobName)
 	}
 	return fmt.Errorf("stop of this job is not supported")
 }
@@ -109,6 +97,6 @@ func GetPodStatus(podStatuses []modelsv2.RadixBatchJobPodStatus) []modelsv1.PodS
 	})
 }
 
-func getJobStatusBatchName(radixBatch *modelsv2.RadixBatch) string {
+func getBatchName(radixBatch *modelsv2.RadixBatch) string {
 	return utils.TernaryString(radixBatch.BatchType == string(kube.RadixBatchTypeJob), "", radixBatch.Name)
 }
