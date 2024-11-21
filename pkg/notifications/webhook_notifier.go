@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-common/utils/pointers"
@@ -80,12 +81,18 @@ func webhookIsNotEmpty(webhook *string) bool {
 
 func getRadixBatchEventFromRadixBatch(event events.Event, radixBatch *radixv1.RadixBatch, radixBatchJobStatuses []radixv1.RadixBatchJobStatus, radixDeployJobComponent *radixv1.RadixDeployJobComponent) events.BatchEvent {
 	batchType := radixBatch.Labels[kube.RadixBatchTypeLabel]
-	startedTime := utils.FormatTime(radixBatch.Status.Condition.ActiveTime)
-	endedTime := utils.FormatTime(radixBatch.Status.Condition.CompletionTime)
+	var startedTime, endedTime *time.Time
+	if radixBatch.Status.Condition.ActiveTime != nil {
+		startedTime = &radixBatch.Status.Condition.ActiveTime.Time
+	}
+	if radixBatch.Status.Condition.CompletionTime != nil {
+		endedTime = &radixBatch.Status.Condition.CompletionTime.Time
+	}
+
 	batchStatus := v1.JobStatus{
 		Name:    radixBatch.GetName(),
 		BatchId: getBatchId(radixBatch),
-		Created: utils.FormatTime(pointers.Ptr(radixBatch.GetCreationTimestamp())),
+		Created: radixBatch.GetCreationTimestamp().Time,
 		Started: startedTime,
 		Ended:   endedTime,
 		Status:  string(jobs.GetRadixBatchStatus(radixBatch, radixDeployJobComponent)),
@@ -108,6 +115,19 @@ func getRadixBatchJobStatusesFromRadixBatch(radixBatch *radixv1.RadixBatch, radi
 	radixBatchJobsMap := getRadixBatchJobsMap(radixBatch.Spec.Jobs)
 	jobStatuses := make([]v1.JobStatus, 0, len(radixBatchJobStatuses))
 	for _, radixBatchJobStatus := range radixBatchJobStatuses {
+		var started, ended *time.Time
+		created := radixBatch.CreationTimestamp.Time
+		if radixBatchJobStatus.CreationTime != nil {
+			created = radixBatchJobStatus.CreationTime.Time
+		}
+		if radixBatchJobStatus.StartTime != nil {
+			started = &radixBatchJobStatus.StartTime.Time
+		}
+
+		if radixBatchJobStatus.EndTime != nil {
+			ended = &radixBatchJobStatus.EndTime.Time
+		}
+
 		radixBatchJob, ok := radixBatchJobsMap[radixBatchJobStatus.Name]
 		if !ok {
 			continue
@@ -118,15 +138,15 @@ func getRadixBatchJobStatusesFromRadixBatch(radixBatch *radixv1.RadixBatch, radi
 			BatchName:   batchName,
 			Name:        jobName,
 			JobId:       radixBatchJob.JobId,
-			Created:     utils.FormatTime(radixBatchJobStatus.CreationTime),
-			Started:     utils.FormatTime(radixBatchJobStatus.StartTime),
-			Ended:       utils.FormatTime(radixBatchJobStatus.EndTime),
+			Created:     created,
+			Started:     started,
+			Ended:       ended,
 			Status:      string(jobs.GetScheduledJobStatus(radixBatchJobStatus, stopJob)),
 			Failed:      radixBatchJobStatus.Failed,
 			Restart:     radixBatchJobStatus.Restart,
 			Message:     radixBatchJobStatus.Message,
 			Updated:     utils.FormatTime(pointers.Ptr(v2.Now())),
-			PodStatuses: getPodStatusByRadixBatchJobPodStatus(radixBatchJobStatus.RadixBatchJobPodStatuses),
+			PodStatuses: getPodStatusByRadixBatchJobPodStatus(radixBatchJobStatus.RadixBatchJobPodStatuses, created),
 		}
 		jobStatuses = append(jobStatuses, jobStatus)
 	}
@@ -141,14 +161,26 @@ func getRadixBatchJobsMap(radixBatchJobs []radixv1.RadixBatchJob) map[string]rad
 	return jobMap
 }
 
-func getPodStatusByRadixBatchJobPodStatus(podStatuses []radixv1.RadixBatchJobPodStatus) []v1.PodStatus {
+func getPodStatusByRadixBatchJobPodStatus(podStatuses []radixv1.RadixBatchJobPodStatus, created time.Time) []v1.PodStatus {
 	return slice.Map(podStatuses, func(status radixv1.RadixBatchJobPodStatus) v1.PodStatus {
+		var started, ended *time.Time
+		if status.CreationTime != nil {
+			created = status.CreationTime.Time
+		}
+		if status.StartTime != nil {
+			started = &status.StartTime.Time
+		}
+
+		if status.EndTime != nil {
+			ended = &status.EndTime.Time
+		}
+
 		return v1.PodStatus{
 			Name:             status.Name,
-			Created:          utils.FormatTime(status.CreationTime),
-			StartTime:        utils.FormatTime(status.StartTime),
-			EndTime:          utils.FormatTime(status.EndTime),
-			ContainerStarted: utils.FormatTime(status.StartTime),
+			Created:          created,
+			StartTime:        started,
+			EndTime:          ended,
+			ContainerStarted: started,
 			Status:           v1.ReplicaStatus{Status: string(status.Phase)},
 			StatusMessage:    status.Message,
 			RestartCount:     status.RestartCount,

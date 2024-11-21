@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/equinor/radix-common/utils/pointers"
-	commonUtils "github.com/equinor/radix-common/utils"
 	apiErrors "github.com/equinor/radix-job-scheduler/api/errors"
 	"github.com/equinor/radix-job-scheduler/api/test"
 	api "github.com/equinor/radix-job-scheduler/api/v1/batches"
