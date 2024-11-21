@@ -14,12 +14,17 @@ import (
 )
 
 // GetJobStatusFromRadixBatchJobsStatus Get Job status from RadixBatchJob
-func GetJobStatusFromRadixBatchJobsStatus(batchName string, jobStatus modelsv2.RadixBatchJobStatus) modelsv1.JobStatus {
+func GetJobStatusFromRadixBatchJobsStatus(radixBatch *modelsv2.RadixBatch, jobStatus modelsv2.RadixBatchJobStatus) modelsv1.JobStatus {
+	created := jobStatus.CreationTime
+	if created.IsZero() {
+		created = radixBatch.CreationTime
+	}
+
 	return modelsv1.JobStatus{
 		JobId:       jobStatus.JobId,
-		BatchName:   batchName,
+		BatchName:   getJobStatusBatchName(radixBatch),
 		Name:        jobStatus.Name,
-		Created:     jobStatus.CreationTime,
+		Created:     created,
 		Started:     jobStatus.Started,
 		Ended:       jobStatus.Ended,
 		Status:      jobStatus.Status,
@@ -44,9 +49,8 @@ func ParseBatchAndJobNameFromScheduledJobName(scheduleJobName string) (batchName
 func GetJobStatusFromRadixBatchJobsStatuses(radixBatches ...modelsv2.RadixBatch) []modelsv1.JobStatus {
 	jobStatuses := make([]modelsv1.JobStatus, 0, len(radixBatches))
 	for _, radixBatch := range radixBatches {
-		jobStatusBatchName := getJobStatusBatchName(&radixBatch)
 		for _, jobStatus := range radixBatch.JobStatuses {
-			jobStatuses = append(jobStatuses, GetJobStatusFromRadixBatchJobsStatus(jobStatusBatchName, jobStatus))
+			jobStatuses = append(jobStatuses, GetJobStatusFromRadixBatchJobsStatus(&radixBatch, jobStatus))
 		}
 	}
 	return jobStatuses
@@ -74,12 +78,11 @@ func GetBatchJob(ctx context.Context, handlerApiV2 apiv2.Handler, batchName, job
 	if err != nil {
 		return nil, err
 	}
-	jobStatusBatchName := getJobStatusBatchName(radixBatch)
 	for _, jobStatus := range radixBatch.JobStatuses {
 		if !strings.EqualFold(jobStatus.Name, jobName) {
 			continue
 		}
-		jobsStatus := GetJobStatusFromRadixBatchJobsStatus(jobStatusBatchName, jobStatus)
+		jobsStatus := GetJobStatusFromRadixBatchJobsStatus(radixBatch, jobStatus)
 		return &jobsStatus, nil
 	}
 	return nil, fmt.Errorf("not found")
