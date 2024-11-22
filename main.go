@@ -85,7 +85,7 @@ func runApiServer(ctx context.Context, kubeUtil *kube.Kube, env *models.Env, rad
 	}
 
 	go func() {
-		log.Info().Msgf("Radix job API is serving on port http://localhost:%s/swaggerui", *port)
+		log.Info().Msgf("Radix job API is serving on port %s, http://localhost:%s/swaggerui", *port, *port)
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Fatal().Err(err).Msg("Radix job API server failed to start")
 		}
