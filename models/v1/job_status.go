@@ -32,21 +32,18 @@ type JobStatus struct {
 	//
 	// required: true
 	// swagger:strfmt date-time
-	// example: 2006-01-02T15:04:05Z
 	Created time.Time `json:"created"`
 
 	// Started timestamp
 	//
 	// required: false
 	// swagger:strfmt date-time
-	// example: 2006-01-02T15:04:05Z
 	Started *time.Time `json:"started"`
 
 	// Ended timestamp
 	//
 	// required: false
 	// swagger:strfmt date-time
-	// example: 2006-01-02T15:04:05Z
 	Ended *time.Time `json:"ended"`
 
 	// Status of the job
@@ -74,7 +71,6 @@ type JobStatus struct {
 	//
 	// required: false
 	// swagger:strfmt date-time
-	// example: 2006-01-02T15:04:05Z
 	Updated *time.Time `json:"updated"`
 
 	// The number of times the container for the job has failed.
@@ -107,28 +103,24 @@ type PodStatus struct {
 	//
 	// required: true
 	// swagger:strfmt date-time
-	// example: 2006-01-02T15:04:05Z
 	Created time.Time `json:"created,omitempty"`
 
 	// The time at which the batch job's pod startedAt
 	//
 	// required: false
 	// swagger:strfmt date-time
-	// example: 2006-01-02T15:04:05Z
 	StartTime *time.Time `json:"startTime,omitempty"`
 
 	// The time at which the batch job's pod finishedAt.
 	//
 	// required: false
 	// swagger:strfmt date-time
-	// example: 2006-01-02T15:04:05Z
 	EndTime *time.Time `json:"endTime,omitempty"`
 
 	// Container started timestamp
 	//
 	// required: false
 	// swagger:strfmt date-time
-	// example: 2006-01-02T15:04:05Z
 	ContainerStarted *time.Time `json:"containerStarted,omitempty"`
 
 	// Status describes the component container status

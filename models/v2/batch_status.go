@@ -22,21 +22,18 @@ type RadixBatch struct {
 	//
 	// required: true
 	// swagger:strfmt date-time
-	// example: 2006-01-02T15:04:05Z
 	CreationTime time.Time `json:"creationTime"`
 
 	// Started timestamp
 	//
 	// required: false
 	// swagger:strfmt date-time
-	// example: 2006-01-02T15:04:05Z
 	Started *time.Time `json:"started"`
 
 	// Ended timestamp
 	//
 	// required: false
 	// swagger:strfmt date-time
-	// example: 2006-01-02T15:04:05Z
 	Ended *time.Time `json:"ended"`
 
 	// Status of the job
@@ -78,7 +75,6 @@ type RadixBatchJobStatus struct {
 	//
 	// required: true
 	// swagger:strfmt date-time
-	// example: 2006-01-02T15:04:05Z
 	CreationTime time.Time `json:"creationTime"`
 
 	// JobId Optional ID of a job
@@ -91,14 +87,12 @@ type RadixBatchJobStatus struct {
 	//
 	// required: false
 	// swagger:strfmt date-time
-	// example: 2006-01-02T15:04:05Z
 	Started *time.Time `json:"started"`
 
 	// Ended timestamp
 	//
 	// required: false
 	// swagger:strfmt date-time
-	// example: 2006-01-02T15:04:05Z
 	Ended *time.Time `json:"ended"`
 
 	// Status of the job
@@ -139,28 +133,24 @@ type RadixBatchJobPodStatus struct {
 	//
 	// required: false
 	// swagger:strfmt date-time
-	// example: 2006-01-02T15:04:05Z
 	Created time.Time `json:"created"`
 
 	// The time at which the batch job's pod startedAt
 	//
 	// required: false
 	// swagger:strfmt date-time
-	// example: 2006-01-02T15:04:05Z
 	StartTime *time.Time `json:"startTime"`
 
 	// The time at which the batch job's pod finishedAt.
 	//
 	// required: false
 	// swagger:strfmt date-time
-	// example: 2006-01-02T15:04:05Z
 	EndTime *time.Time `json:"endTime"`
 
 	// Container started timestamp
 	//
 	// required: false
 	// swagger:strfmt date-time
-	// example: 2006-01-02T15:04:05Z
 	ContainerStarted *time.Time `json:"containerStarted"`
 
 	// Status describes the component container status
