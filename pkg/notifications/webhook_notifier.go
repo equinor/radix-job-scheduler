@@ -14,10 +14,8 @@ import (
 	"github.com/equinor/radix-job-scheduler/models/v1/events"
 	"github.com/equinor/radix-job-scheduler/utils/radix/jobs"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
-	"github.com/rs/zerolog/log"
-	v2 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
+	"github.com/rs/zerolog/log"
 )
 
 type webhookNotifier struct {
@@ -97,7 +95,7 @@ func getRadixBatchEventFromRadixBatch(event events.Event, radixBatch *radixv1.Ra
 		Ended:   endedTime,
 		Status:  string(jobs.GetRadixBatchStatus(radixBatch, radixDeployJobComponent)),
 		Message: radixBatch.Status.Condition.Message,
-		Updated: utils.FormatTime(pointers.Ptr(v2.Now())),
+		Updated: pointers.Ptr(time.Now()),
 	}
 	jobStatuses := getRadixBatchJobStatusesFromRadixBatch(radixBatch, radixBatchJobStatuses)
 	return events.BatchEvent{
@@ -145,7 +143,7 @@ func getRadixBatchJobStatusesFromRadixBatch(radixBatch *radixv1.RadixBatch, radi
 			Failed:      radixBatchJobStatus.Failed,
 			Restart:     radixBatchJobStatus.Restart,
 			Message:     radixBatchJobStatus.Message,
-			Updated:     utils.FormatTime(pointers.Ptr(v2.Now())),
+			Updated:     pointers.Ptr(time.Now()),
 			PodStatuses: getPodStatusByRadixBatchJobPodStatus(radixBatchJobStatus.RadixBatchJobPodStatuses, created),
 		}
 		jobStatuses = append(jobStatuses, jobStatus)

@@ -73,8 +73,9 @@ type JobStatus struct {
 	// Updated timestamp when the status was updated
 	//
 	// required: false
+	// swagger:strfmt date-time
 	// example: 2006-01-02T15:04:05Z
-	Updated string `json:"updated,omitempty"`
+	Updated *time.Time `json:"updated"`
 
 	// The number of times the container for the job has failed.
 	// +optional

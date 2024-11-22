@@ -626,8 +626,8 @@
         "updated": {
           "description": "Updated timestamp when the status was updated",
           "type": "string",
-          "x-go-name": "Updated",
-          "example": "2006-01-02T15:04:05Z"
+          "format": "date-time",
+          "x-go-name": "Updated"
         }
       },
       "x-go-package": "github.com/equinor/radix-job-scheduler/models/v1/events"
@@ -771,8 +771,8 @@
         "updated": {
           "description": "Updated timestamp when the status was updated",
           "type": "string",
-          "x-go-name": "Updated",
-          "example": "2006-01-02T15:04:05Z"
+          "format": "date-time",
+          "x-go-name": "Updated"
         }
       },
       "x-go-package": "github.com/equinor/radix-job-scheduler/models/v1"
@@ -923,8 +923,8 @@
         "updated": {
           "description": "Updated timestamp when the status was updated",
           "type": "string",
-          "x-go-name": "Updated",
-          "example": "2006-01-02T15:04:05Z"
+          "format": "date-time",
+          "x-go-name": "Updated"
         }
       },
       "x-go-package": "github.com/equinor/radix-job-scheduler/models/v1"
