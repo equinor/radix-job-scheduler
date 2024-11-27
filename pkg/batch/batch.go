@@ -79,9 +79,8 @@ func getRadixBatchJobStatusesFromRadixBatch(radixBatch *radixv1.RadixBatch, radi
 		}
 
 		if jobStatus, ok := radixBatchJobsStatuses[radixBatchJob.Name]; ok {
-			radixBatchJobStatus.CreationTime = radixBatch.CreationTimestamp.Time
 			if jobStatus.CreationTime != nil {
-				radixBatchJobStatus.CreationTime = jobStatus.CreationTime.Time
+				radixBatchJobStatus.CreationTime = &jobStatus.CreationTime.Time
 			}
 			if jobStatus.StartTime != nil {
 				radixBatchJobStatus.Started = &jobStatus.StartTime.Time

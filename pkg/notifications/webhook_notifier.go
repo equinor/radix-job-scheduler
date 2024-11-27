@@ -90,7 +90,7 @@ func getRadixBatchEventFromRadixBatch(event events.Event, radixBatch *radixv1.Ra
 	batchStatus := v1.JobStatus{
 		Name:    radixBatch.GetName(),
 		BatchId: getBatchId(radixBatch),
-		Created: radixBatch.GetCreationTimestamp().Time,
+		Created: pointers.Ptr(radixBatch.GetCreationTimestamp().Time),
 		Started: startedTime,
 		Ended:   endedTime,
 		Status:  string(jobs.GetRadixBatchStatus(radixBatch, radixDeployJobComponent)),
@@ -113,10 +113,9 @@ func getRadixBatchJobStatusesFromRadixBatch(radixBatch *radixv1.RadixBatch, radi
 	radixBatchJobsMap := getRadixBatchJobsMap(radixBatch.Spec.Jobs)
 	jobStatuses := make([]v1.JobStatus, 0, len(radixBatchJobStatuses))
 	for _, radixBatchJobStatus := range radixBatchJobStatuses {
-		var started, ended *time.Time
-		created := radixBatch.CreationTimestamp.Time
+		var started, ended, created *time.Time
 		if radixBatchJobStatus.CreationTime != nil {
-			created = radixBatchJobStatus.CreationTime.Time
+			created = &radixBatchJobStatus.CreationTime.Time
 		}
 		if radixBatchJobStatus.StartTime != nil {
 			started = &radixBatchJobStatus.StartTime.Time
@@ -144,7 +143,7 @@ func getRadixBatchJobStatusesFromRadixBatch(radixBatch *radixv1.RadixBatch, radi
 			Restart:     radixBatchJobStatus.Restart,
 			Message:     radixBatchJobStatus.Message,
 			Updated:     pointers.Ptr(time.Now()),
-			PodStatuses: getPodStatusByRadixBatchJobPodStatus(radixBatchJobStatus.RadixBatchJobPodStatuses, created),
+			PodStatuses: getPodStatusByRadixBatchJobPodStatus(radixBatchJobStatus.RadixBatchJobPodStatuses),
 		}
 		jobStatuses = append(jobStatuses, jobStatus)
 	}
@@ -159,11 +158,11 @@ func getRadixBatchJobsMap(radixBatchJobs []radixv1.RadixBatchJob) map[string]rad
 	return jobMap
 }
 
-func getPodStatusByRadixBatchJobPodStatus(podStatuses []radixv1.RadixBatchJobPodStatus, created time.Time) []v1.PodStatus {
+func getPodStatusByRadixBatchJobPodStatus(podStatuses []radixv1.RadixBatchJobPodStatus) []v1.PodStatus {
 	return slice.Map(podStatuses, func(status radixv1.RadixBatchJobPodStatus) v1.PodStatus {
-		var started, ended *time.Time
+		var started, ended, created *time.Time
 		if status.CreationTime != nil {
-			created = status.CreationTime.Time
+			created = &status.CreationTime.Time
 		}
 		if status.StartTime != nil {
 			started = &status.StartTime.Time

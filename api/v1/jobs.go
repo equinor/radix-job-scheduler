@@ -16,16 +16,11 @@ import (
 
 // GetJobStatusFromRadixBatchJobsStatus Get Job status from RadixBatchJob
 func GetJobStatusFromRadixBatchJobsStatus(radixBatch *modelsv2.RadixBatch, jobStatus modelsv2.RadixBatchJobStatus) modelsv1.JobStatus {
-	created := jobStatus.CreationTime
-	if created.IsZero() {
-		created = radixBatch.CreationTime
-	}
-
 	return modelsv1.JobStatus{
 		JobId:       jobStatus.JobId,
 		BatchName:   getBatchName(radixBatch),
 		Name:        jobStatus.Name,
-		Created:     created,
+		Created:     jobStatus.CreationTime,
 		Started:     jobStatus.Started,
 		Ended:       jobStatus.Ended,
 		Status:      string(jobStatus.Status),
@@ -81,7 +76,7 @@ func GetPodStatus(podStatuses []modelsv2.RadixBatchJobPodStatus) []modelsv1.PodS
 	return slice.Map(podStatuses, func(status modelsv2.RadixBatchJobPodStatus) modelsv1.PodStatus {
 		return modelsv1.PodStatus{
 			Name:             status.Name,
-			Created:          status.Created,
+			Created:          &status.Created,
 			StartTime:        status.StartTime,
 			EndTime:          status.EndTime,
 			ContainerStarted: status.StartTime,

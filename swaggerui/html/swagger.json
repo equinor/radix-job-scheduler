@@ -515,7 +515,6 @@
       "type": "object",
       "required": [
         "name",
-        "created",
         "event"
       ],
       "properties": {
@@ -663,8 +662,7 @@
       "description": "BatchStatus holds general information about batch status",
       "type": "object",
       "required": [
-        "name",
-        "created"
+        "name"
       ],
       "properties": {
         "DeploymentName": {
@@ -829,8 +827,7 @@
       "description": "JobStatus holds general information about job status",
       "type": "object",
       "required": [
-        "name",
-        "created"
+        "name"
       ],
       "properties": {
         "DeploymentName": {
@@ -933,8 +930,7 @@
       "type": "object",
       "title": "PodStatus contains details for the current status of the job's pods.",
       "required": [
-        "name",
-        "created"
+        "name"
       ],
       "properties": {
         "containerStarted": {

@@ -30,9 +30,9 @@ type JobStatus struct {
 
 	// Created timestamp
 	//
-	// required: true
+	// required: false
 	// swagger:strfmt date-time
-	Created time.Time `json:"created"`
+	Created *time.Time `json:"created"`
 
 	// Started timestamp
 	//
@@ -101,9 +101,9 @@ type PodStatus struct {
 
 	// Created timestamp
 	//
-	// required: true
+	// required: false
 	// swagger:strfmt date-time
-	Created time.Time `json:"created,omitempty"`
+	Created *time.Time `json:"created,omitempty"`
 
 	// The time at which the batch job's pod startedAt
 	//

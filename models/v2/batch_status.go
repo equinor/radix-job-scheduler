@@ -73,9 +73,9 @@ type RadixBatchJobStatus struct {
 
 	// Radix batch job creation timestamp
 	//
-	// required: true
+	// required: false
 	// swagger:strfmt date-time
-	CreationTime time.Time `json:"creationTime"`
+	CreationTime *time.Time `json:"creationTime"`
 
 	// JobId Optional ID of a job
 	//

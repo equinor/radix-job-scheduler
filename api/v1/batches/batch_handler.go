@@ -163,7 +163,7 @@ func (handler *batchHandler) getBatchStatusFromRadixBatch(radixBatch *modelsv2.R
 		JobStatus: modelsv1.JobStatus{
 			Name:           radixBatch.Name,
 			BatchId:        getBatchId(radixBatch),
-			Created:        radixBatch.CreationTime,
+			Created:        &radixBatch.CreationTime,
 			Started:        radixBatch.Started,
 			Ended:          radixBatch.Ended,
 			Status:         string(handler.getBatchStatus(radixBatch)),

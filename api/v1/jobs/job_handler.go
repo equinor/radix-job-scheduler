@@ -178,15 +178,11 @@ func getSingleJobStatusFromRadixBatchJob(radixBatch *modelsv2.RadixBatch) (*mode
 		return nil, fmt.Errorf("batch should have only one job")
 	}
 	radixBatchJobStatus := radixBatch.JobStatuses[0]
-	created := radixBatchJobStatus.CreationTime
-	if created.IsZero() {
-		created = radixBatch.CreationTime
-	}
 
 	jobStatus := modelsv1.JobStatus{
 		JobId:       radixBatchJobStatus.JobId,
 		Name:        radixBatchJobStatus.Name,
-		Created:     created,
+		Created:     radixBatchJobStatus.CreationTime,
 		Started:     radixBatchJobStatus.Started,
 		Ended:       radixBatchJobStatus.Ended,
 		Status:      string(radixBatchJobStatus.Status),
