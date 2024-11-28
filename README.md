@@ -19,16 +19,7 @@ Request from application container URLs
 
 ## Developing
 
-You need Go installed. Make sure `GOPATH` and `GOROOT` are properly set up.
-
-Clone the repo into your `GOPATH` and run `go mod download`.
-
-Also needed:
-
-- [`go-swagger`](https://github.com/go-swagger/go-swagger) (on a Mac, you can install it with Homebrew: `brew install go-swagger`)
-- [`statik`](https://github.com/rakyll/statik) (install with `go get github.com/rakyll/statik`)
-
-Clone the repo into your `GOPATH` and run `go mod download`.
+You need Go installed. Run `make bootstrap` to install required tools.
 
 #### Update version
 We follow the [semantic version](https://semver.org/) as recommended by [go](https://blog.golang.org/publishing-go-modules).
@@ -59,7 +50,7 @@ We use gomock to generate mocks used in unit test. [https://github.com/golang/mo
 
 You need to regenerate mocks if you make changes to any of the interfaces in the code, e.g. the job Handler interface
 
-Run `make mock` to regenerate mocks
+Run `make mocks` to regenerate mocks
 
 #### Update version
 We follow the [semantic version](https://semver.org/) as recommended by [go](https://blog.golang.org/publishing-go-modules).

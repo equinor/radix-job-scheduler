@@ -1,5 +1,7 @@
 package v1
 
+import "time"
+
 // JobStatus holds general information about job status
 // swagger:model JobStatus
 type JobStatus struct {
@@ -28,21 +30,21 @@ type JobStatus struct {
 
 	// Created timestamp
 	//
-	// required: true
-	// example: 2006-01-02T15:04:05Z
-	Created string `json:"created"`
+	// required: false
+	// swagger:strfmt date-time
+	Created *time.Time `json:"created"`
 
 	// Started timestamp
 	//
 	// required: false
-	// example: 2006-01-02T15:04:05Z
-	Started string `json:"started,omitempty"`
+	// swagger:strfmt date-time
+	Started *time.Time `json:"started"`
 
 	// Ended timestamp
 	//
 	// required: false
-	// example: 2006-01-02T15:04:05Z
-	Ended string `json:"ended,omitempty"`
+	// swagger:strfmt date-time
+	Ended *time.Time `json:"ended"`
 
 	// Status of the job
 	// - Running = Job is running
@@ -68,8 +70,8 @@ type JobStatus struct {
 	// Updated timestamp when the status was updated
 	//
 	// required: false
-	// example: 2006-01-02T15:04:05Z
-	Updated string `json:"updated,omitempty"`
+	// swagger:strfmt date-time
+	Updated *time.Time `json:"updated"`
 
 	// The number of times the container for the job has failed.
 	// +optional
@@ -100,26 +102,26 @@ type PodStatus struct {
 	// Created timestamp
 	//
 	// required: false
-	// example: 2006-01-02T15:04:05Z
-	Created string `json:"created,omitempty"`
+	// swagger:strfmt date-time
+	Created *time.Time `json:"created,omitempty"`
 
 	// The time at which the batch job's pod startedAt
 	//
 	// required: false
-	// example: 2006-01-02T15:04:05Z
-	StartTime string `json:"startTime,omitempty"`
+	// swagger:strfmt date-time
+	StartTime *time.Time `json:"startTime,omitempty"`
 
 	// The time at which the batch job's pod finishedAt.
 	//
 	// required: false
-	// example: 2006-01-02T15:04:05Z
-	EndTime string `json:"endTime,omitempty"`
+	// swagger:strfmt date-time
+	EndTime *time.Time `json:"endTime,omitempty"`
 
 	// Container started timestamp
 	//
 	// required: false
-	// example: 2006-01-02T15:04:05Z
-	ContainerStarted string `json:"containerStarted,omitempty"`
+	// swagger:strfmt date-time
+	ContainerStarted *time.Time `json:"containerStarted,omitempty"`
 
 	// Status describes the component container status
 	//

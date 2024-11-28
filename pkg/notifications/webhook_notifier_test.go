@@ -10,7 +10,6 @@ import (
 
 	"github.com/equinor/radix-job-scheduler/models/v1/events"
 
-	commonUtils "github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-common/utils/pointers"
 	modelsv1 "github.com/equinor/radix-job-scheduler/models/v1"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
@@ -319,15 +318,15 @@ func Test_webhookNotifier_Notify(t *testing.T) {
 	}
 }
 
-func assertTimesEqual(t *testing.T, expectedTime *metav1.Time, resultTime string, arg string) {
-	if expectedTime != nil && len(resultTime) == 0 {
+func assertTimesEqual(t *testing.T, expectedTime *metav1.Time, resultTime *time.Time, arg string) {
+	if expectedTime != nil && resultTime == nil {
 		assert.Fail(t, fmt.Sprintf("missing an expected %s", arg))
 		return
-	} else if expectedTime == nil && len(resultTime) > 0 {
+	} else if expectedTime == nil && resultTime != nil {
 		assert.Fail(t, fmt.Sprintf("got a not expected %s", arg))
 		return
 	}
 	if expectedTime != nil {
-		assert.Equal(t, commonUtils.FormatTime(expectedTime), resultTime)
+		assert.WithinDuration(t, expectedTime.Time, *resultTime, 1, arg)
 	}
 }

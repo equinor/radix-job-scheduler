@@ -32,13 +32,22 @@ type CompletedRadixBatches struct {
 
 // GetRadixBatchStatus Get radix batch
 func GetRadixBatchStatus(radixBatch *radixv1.RadixBatch, radixDeployJobComponent *radixv1.RadixDeployJobComponent) modelsv2.RadixBatch {
+	var started, ended *time.Time
+	if radixBatch.Status.Condition.ActiveTime != nil {
+		started = &radixBatch.Status.Condition.ActiveTime.Time
+	}
+
+	if radixBatch.Status.Condition.CompletionTime != nil {
+		ended = &radixBatch.Status.Condition.CompletionTime.Time
+	}
+
 	return modelsv2.RadixBatch{
 		Name:           radixBatch.GetName(),
 		BatchId:        radixBatch.Spec.BatchId,
 		BatchType:      radixBatch.Labels[kube.RadixBatchTypeLabel],
-		CreationTime:   utils.FormatTime(pointers.Ptr(radixBatch.GetCreationTimestamp())),
-		Started:        utils.FormatTime(radixBatch.Status.Condition.ActiveTime),
-		Ended:          utils.FormatTime(radixBatch.Status.Condition.CompletionTime),
+		CreationTime:   radixBatch.GetCreationTimestamp().Time,
+		Started:        started,
+		Ended:          ended,
 		Status:         jobs.GetRadixBatchStatus(radixBatch, radixDeployJobComponent),
 		Message:        radixBatch.Status.Condition.Message,
 		JobStatuses:    getRadixBatchJobStatusesFromRadixBatch(radixBatch, radixBatch.Status.JobStatuses),
@@ -68,15 +77,24 @@ func getRadixBatchJobStatusesFromRadixBatch(radixBatch *radixv1.RadixBatch, radi
 			Name:  jobName,
 			JobId: radixBatchJob.JobId,
 		}
+
 		if jobStatus, ok := radixBatchJobsStatuses[radixBatchJob.Name]; ok {
-			radixBatchJobStatus.CreationTime = utils.FormatTime(jobStatus.CreationTime)
-			radixBatchJobStatus.Started = utils.FormatTime(jobStatus.StartTime)
-			radixBatchJobStatus.Ended = utils.FormatTime(jobStatus.EndTime)
+			if jobStatus.CreationTime != nil {
+				radixBatchJobStatus.CreationTime = &jobStatus.CreationTime.Time
+			}
+			if jobStatus.StartTime != nil {
+				radixBatchJobStatus.Started = &jobStatus.StartTime.Time
+			}
+
+			if jobStatus.EndTime != nil {
+				radixBatchJobStatus.Ended = &jobStatus.EndTime.Time
+			}
+
 			radixBatchJobStatus.Status = jobs.GetScheduledJobStatus(jobStatus, stopJob)
 			radixBatchJobStatus.Message = jobStatus.Message
 			radixBatchJobStatus.Failed = jobStatus.Failed
 			radixBatchJobStatus.Restart = jobStatus.Restart
-			radixBatchJobStatus.PodStatuses = getPodStatusByRadixBatchJobPodStatus(jobStatus.RadixBatchJobPodStatuses)
+			radixBatchJobStatus.PodStatuses = getPodStatusByRadixBatchJobPodStatus(jobStatus.RadixBatchJobPodStatuses, radixBatch.CreationTimestamp.Time)
 		} else {
 			radixBatchJobStatus.Status = jobs.GetScheduledJobStatus(radixv1.RadixBatchJobStatus{Phase: radixv1.RadixBatchJobApiStatusWaiting}, stopJob)
 		}
@@ -85,14 +103,26 @@ func getRadixBatchJobStatusesFromRadixBatch(radixBatch *radixv1.RadixBatch, radi
 	return jobStatuses
 }
 
-func getPodStatusByRadixBatchJobPodStatus(podStatuses []radixv1.RadixBatchJobPodStatus) []modelsv2.RadixBatchJobPodStatus {
+func getPodStatusByRadixBatchJobPodStatus(podStatuses []radixv1.RadixBatchJobPodStatus, created time.Time) []modelsv2.RadixBatchJobPodStatus {
 	return slice.Map(podStatuses, func(status radixv1.RadixBatchJobPodStatus) modelsv2.RadixBatchJobPodStatus {
+		if status.CreationTime != nil {
+			created = status.CreationTime.Time
+		}
+		var started, ended *time.Time
+		if status.StartTime != nil {
+			started = &status.StartTime.Time
+		}
+
+		if status.EndTime != nil {
+			ended = &status.EndTime.Time
+		}
+
 		return modelsv2.RadixBatchJobPodStatus{
 			Name:             status.Name,
-			Created:          utils.FormatTime(status.CreationTime),
-			StartTime:        utils.FormatTime(status.StartTime),
-			EndTime:          utils.FormatTime(status.EndTime),
-			ContainerStarted: utils.FormatTime(status.StartTime),
+			Created:          created,
+			StartTime:        started,
+			EndTime:          ended,
+			ContainerStarted: started,
 			Status:           modelsv2.ReplicaStatus{Status: string(status.Phase)},
 			StatusMessage:    status.Message,
 			RestartCount:     status.RestartCount,

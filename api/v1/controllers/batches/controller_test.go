@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	commonUtils "github.com/equinor/radix-common/utils"
+	"github.com/equinor/radix-common/utils/pointers"
 	apiErrors "github.com/equinor/radix-job-scheduler/api/errors"
 	"github.com/equinor/radix-job-scheduler/api/test"
 	api "github.com/equinor/radix-job-scheduler/api/v1/batches"
@@ -37,8 +37,8 @@ func TestGetBatches(t *testing.T) {
 		batchState := modelsV1.BatchStatus{
 			JobStatus: modelsV1.JobStatus{
 				Name:    "batchname",
-				Started: commonUtils.FormatTimestamp(time.Now()),
-				Ended:   commonUtils.FormatTimestamp(time.Now().Add(1 * time.Minute)),
+				Started: pointers.Ptr(time.Now()),
+				Ended:   pointers.Ptr(time.Now().Add(1 * time.Minute)),
 				Status:  "batchstatus",
 			},
 			BatchType: string(kube.RadixBatchTypeBatch),
@@ -62,8 +62,8 @@ func TestGetBatches(t *testing.T) {
 			require.NoError(t, err)
 			assert.Len(t, returnedBatches, 1)
 			assert.Equal(t, batchState.JobStatus.Name, returnedBatches[0].Name)
-			assert.Equal(t, batchState.JobStatus.Started, returnedBatches[0].Started)
-			assert.Equal(t, batchState.JobStatus.Ended, returnedBatches[0].Ended)
+			assert.WithinDuration(t, *batchState.JobStatus.Started, *returnedBatches[0].Started, 1)
+			assert.WithinDuration(t, *batchState.JobStatus.Ended, *returnedBatches[0].Ended, 1)
 			assert.Equal(t, batchState.JobStatus.Status, returnedBatches[0].Status)
 		}
 	})
@@ -107,8 +107,8 @@ func TestGetBatch(t *testing.T) {
 		batchState := modelsV1.BatchStatus{
 			JobStatus: modelsV1.JobStatus{
 				Name:    batchName,
-				Started: commonUtils.FormatTimestamp(time.Now()),
-				Ended:   commonUtils.FormatTimestamp(time.Now().Add(1 * time.Minute)),
+				Started: pointers.Ptr(time.Now()),
+				Ended:   pointers.Ptr(time.Now().Add(1 * time.Minute)),
 				Status:  "batchstatus",
 			},
 			BatchType: string(kube.RadixBatchTypeBatch),
@@ -131,8 +131,8 @@ func TestGetBatch(t *testing.T) {
 			err := test.GetResponseBody(response, &returnedBatch)
 			require.NoError(t, err)
 			assert.Equal(t, batchState.Name, returnedBatch.Name)
-			assert.Equal(t, batchState.Started, returnedBatch.Started)
-			assert.Equal(t, batchState.Ended, returnedBatch.Ended)
+			assert.WithinDuration(t, *batchState.Started, *returnedBatch.Started, 1)
+			assert.WithinDuration(t, *batchState.Ended, *returnedBatch.Ended, 1)
 			assert.Equal(t, batchState.Status, returnedBatch.Status)
 		}
 	})
@@ -205,8 +205,8 @@ func TestCreateBatch(t *testing.T) {
 		createdBatch := modelsV1.BatchStatus{
 			JobStatus: modelsV1.JobStatus{
 				Name:    "newbatch",
-				Started: commonUtils.FormatTimestamp(time.Now()),
-				Ended:   commonUtils.FormatTimestamp(time.Now().Add(1 * time.Minute)),
+				Started: pointers.Ptr(time.Now()),
+				Ended:   pointers.Ptr(time.Now().Add(1 * time.Minute)),
 				Status:  "batchstatus",
 			},
 			BatchType: string(kube.RadixBatchTypeBatch),
@@ -229,8 +229,8 @@ func TestCreateBatch(t *testing.T) {
 			err := test.GetResponseBody(response, &returnedBatch)
 			require.NoError(t, err)
 			assert.Equal(t, createdBatch.Name, returnedBatch.Name)
-			assert.Equal(t, createdBatch.Started, returnedBatch.Started)
-			assert.Equal(t, createdBatch.Ended, returnedBatch.Ended)
+			assert.WithinDuration(t, *createdBatch.Started, *returnedBatch.Started, 1)
+			assert.WithinDuration(t, *createdBatch.Ended, *returnedBatch.Ended, 1)
 			assert.Equal(t, createdBatch.Status, returnedBatch.Status)
 		}
 	})
@@ -265,8 +265,8 @@ func TestCreateBatch(t *testing.T) {
 		createdBatch := modelsV1.BatchStatus{
 			JobStatus: modelsV1.JobStatus{
 				Name:    "newbatch",
-				Started: commonUtils.FormatTimestamp(time.Now()),
-				Ended:   commonUtils.FormatTimestamp(time.Now().Add(1 * time.Minute)),
+				Started: pointers.Ptr(time.Now()),
+				Ended:   pointers.Ptr(time.Now().Add(1 * time.Minute)),
 				Status:  "batchstatus",
 			},
 			BatchType: string(kube.RadixBatchTypeBatch),
@@ -289,8 +289,8 @@ func TestCreateBatch(t *testing.T) {
 			err := test.GetResponseBody(response, &returnedBatch)
 			require.NoError(t, err)
 			assert.Equal(t, createdBatch.Name, returnedBatch.Name)
-			assert.Equal(t, createdBatch.Started, returnedBatch.Started)
-			assert.Equal(t, createdBatch.Ended, returnedBatch.Ended)
+			assert.WithinDuration(t, *createdBatch.Started, *returnedBatch.Started, 1)
+			assert.WithinDuration(t, *createdBatch.Ended, *returnedBatch.Ended, 1)
 			assert.Equal(t, createdBatch.Status, returnedBatch.Status)
 		}
 	})
@@ -656,8 +656,8 @@ func TestGetBatchJob(t *testing.T) {
 		jobHandler := mock.NewMockBatchHandler(ctrl)
 		jobState := modelsV1.JobStatus{
 			Name:    jobName,
-			Started: commonUtils.FormatTimestamp(time.Now()),
-			Ended:   commonUtils.FormatTimestamp(time.Now().Add(1 * time.Minute)),
+			Started: pointers.Ptr(time.Now()),
+			Ended:   pointers.Ptr(time.Now().Add(1 * time.Minute)),
 			Status:  "jobstatus",
 		}
 		ctx := context.Background()
@@ -679,8 +679,8 @@ func TestGetBatchJob(t *testing.T) {
 			err := test.GetResponseBody(response, &returnedJob)
 			require.NoError(t, err)
 			assert.Equal(t, jobState.Name, returnedJob.Name)
-			assert.Equal(t, jobState.Started, returnedJob.Started)
-			assert.Equal(t, jobState.Ended, returnedJob.Ended)
+			assert.WithinDuration(t, *jobState.Started, *returnedJob.Started, 1)
+			assert.WithinDuration(t, *jobState.Ended, *returnedJob.Ended, 1)
 			assert.Equal(t, jobState.Status, returnedJob.Status)
 		}
 	})
