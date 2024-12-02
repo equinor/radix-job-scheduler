@@ -1,6 +1,8 @@
 package v2
 
 import (
+	"time"
+
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 )
 
@@ -19,19 +21,20 @@ type RadixBatch struct {
 	// Radix batch creation timestamp
 	//
 	// required: true
-	CreationTime string `json:"creationTime"`
+	// swagger:strfmt date-time
+	CreationTime time.Time `json:"creationTime"`
 
 	// Started timestamp
 	//
 	// required: false
-	// example: 2006-01-02T15:04:05Z
-	Started string `json:"started,omitempty"`
+	// swagger:strfmt date-time
+	Started *time.Time `json:"started"`
 
 	// Ended timestamp
 	//
 	// required: false
-	// example: 2006-01-02T15:04:05Z
-	Ended string `json:"ended,omitempty"`
+	// swagger:strfmt date-time
+	Ended *time.Time `json:"ended"`
 
 	// Status of the job
 	//
@@ -70,8 +73,9 @@ type RadixBatchJobStatus struct {
 
 	// Radix batch job creation timestamp
 	//
-	// required: true
-	CreationTime string `json:"creationTime"`
+	// required: false
+	// swagger:strfmt date-time
+	CreationTime *time.Time `json:"creationTime"`
 
 	// JobId Optional ID of a job
 	//
@@ -82,14 +86,14 @@ type RadixBatchJobStatus struct {
 	// Started timestamp
 	//
 	// required: false
-	// example: 2006-01-02T15:04:05Z
-	Started string `json:"started,omitempty"`
+	// swagger:strfmt date-time
+	Started *time.Time `json:"started"`
 
 	// Ended timestamp
 	//
 	// required: false
-	// example: 2006-01-02T15:04:05Z
-	Ended string `json:"ended,omitempty"`
+	// swagger:strfmt date-time
+	Ended *time.Time `json:"ended"`
 
 	// Status of the job
 	//
@@ -128,26 +132,26 @@ type RadixBatchJobPodStatus struct {
 	// Created timestamp
 	//
 	// required: false
-	// example: 2006-01-02T15:04:05Z
-	Created string `json:"created,omitempty"`
+	// swagger:strfmt date-time
+	Created time.Time `json:"created"`
 
 	// The time at which the batch job's pod startedAt
 	//
 	// required: false
-	// example: 2006-01-02T15:04:05Z
-	StartTime string `json:"startTime,omitempty"`
+	// swagger:strfmt date-time
+	StartTime *time.Time `json:"startTime"`
 
 	// The time at which the batch job's pod finishedAt.
 	//
 	// required: false
-	// example: 2006-01-02T15:04:05Z
-	EndTime string `json:"endTime,omitempty"`
+	// swagger:strfmt date-time
+	EndTime *time.Time `json:"endTime"`
 
 	// Container started timestamp
 	//
 	// required: false
-	// example: 2006-01-02T15:04:05Z
-	ContainerStarted string `json:"containerStarted,omitempty"`
+	// swagger:strfmt date-time
+	ContainerStarted *time.Time `json:"containerStarted"`
 
 	// Status describes the component container status
 	//
