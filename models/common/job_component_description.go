@@ -23,6 +23,11 @@ type RadixJobComponentConfig struct {
 	// required: false
 	BackoffLimit *int32 `json:"backoffLimit,omitempty"`
 
+	// FailurePolicy defines how failed job replicas influence the backoffLimit.
+	//
+	// required: false
+	FailurePolicy *v1.RadixJobComponentFailurePolicy `json:"failurePolicy,omitempty"`
+
 	// ImageTagName defines the image tag name to use for the job image
 	//
 	// required: false
