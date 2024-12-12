@@ -789,6 +789,10 @@
           "format": "int32",
           "x-go-name": "BackoffLimit"
         },
+        "failurePolicy": {
+          "description": "FailurePolicy defines how failed job replicas influence the backoffLimit.",
+          "x-go-name": "FailurePolicy"
+        },
         "imageTagName": {
           "description": "ImageTagName defines the image tag name to use for the job image",
           "type": "string",
@@ -1018,6 +1022,10 @@
           "type": "integer",
           "format": "int32",
           "x-go-name": "BackoffLimit"
+        },
+        "failurePolicy": {
+          "description": "FailurePolicy defines how failed job replicas influence the backoffLimit.",
+          "x-go-name": "FailurePolicy"
         },
         "imageTagName": {
           "description": "ImageTagName defines the image tag name to use for the job image",
