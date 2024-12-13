@@ -13,6 +13,8 @@ endif
 CONTAINER_REPO ?= radix$(ENVIRONMENT)
 DOCKER_REGISTRY	?= $(CONTAINER_REPO).azurecr.io
 
+DOCKER_BUILDX_BUILD_BASE_CMD := docker buildx build -t $(DOCKER_REGISTRY)/radix-job-scheduler:$(TAG) --platform linux/arm64,linux/amd64 -f Dockerfile
+
 echo:
 	@echo "ENVIRONMENT : " $(ENVIRONMENT)
 	@echo "DNS_ZONE : " $(DNS_ZONE)
@@ -31,21 +33,15 @@ swagger: bootstrap
 
 .PHONY: docker-build
 docker-build:
-	docker build -t $(DOCKER_REGISTRY)/radix-job-scheduler:$(TAG) -f Dockerfile .
+	${DOCKER_BUILDX_BUILD_BASE_CMD} .
 
 .PHONY: docker-push
 docker-push:
 	az acr login --name $(CONTAINER_REPO)
-	docker push $(DOCKER_REGISTRY)/radix-job-scheduler:$(TAG)
+	${DOCKER_BUILDX_BUILD_BASE_CMD} --push .
 
 .PHONY: deploy
 deploy: docker-build docker-push
-
-.PHONY: docker-push-main
-docker-push-main:
-	docker build -t $(DOCKER_REGISTRY)/radix-job-scheduler:main-latest -f Dockerfile .
-	az acr login --name $(CONTAINER_REPO)
-	docker push $(DOCKER_REGISTRY)/radix-job-scheduler:main-latest
 
 .PHONY: test
 test:
