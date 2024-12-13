@@ -6,7 +6,7 @@ import (
 
 type ResourceList map[string]string
 
-// ResourceRequirements describes the compute resource requirements.
+// Resources describes the compute resource requirements.
 type Resources struct {
 	// Limits describes the maximum amount of compute resources allowed.
 	//
