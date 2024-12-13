@@ -1172,7 +1172,7 @@
     },
     "Resources": {
       "type": "object",
-      "title": "ResourceRequirements describes the compute resource requirements.",
+      "title": "Resources describes the compute resource requirements.",
       "properties": {
         "limits": {
           "$ref": "#/definitions/ResourceList"
