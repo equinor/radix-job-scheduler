@@ -37,7 +37,7 @@ type RadixJobComponentConfig struct {
 type JobScheduleDescription struct {
 	// JobId Optional ID of a job
 	//
-	// required: true
+	// required: false
 	// example: 'job1'
 	JobId string `json:"jobId,omitempty"`
 

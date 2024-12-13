@@ -859,9 +859,6 @@
     "JobScheduleDescription": {
       "description": "JobScheduleDescription holds description about scheduling job",
       "type": "object",
-      "required": [
-        "jobId"
-      ],
       "properties": {
         "backoffLimit": {
           "description": "BackoffLimit defines attempts to restart job if it fails. Corresponds to BackoffLimit in K8s.",
