@@ -16,7 +16,6 @@ import (
 	models "github.com/equinor/radix-job-scheduler/models/common"
 	modelsV1 "github.com/equinor/radix-job-scheduler/models/v1"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
-	"github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -244,17 +243,17 @@ func TestCreateBatch(t *testing.T) {
 				{
 					Payload: "a_payload",
 					RadixJobComponentConfig: models.RadixJobComponentConfig{
-						Resources: &v1.ResourceRequirements{
-							Requests: v1.ResourceList{
+						Resources: &models.Resources{
+							Requests: models.ResourceList{
 								"cpu":    "20m",
 								"memory": "256M",
 							},
-							Limits: v1.ResourceList{
+							Limits: models.ResourceList{
 								"cpu":    "10m",
 								"memory": "128M",
 							},
 						},
-						Node: &v1.RadixNode{
+						Node: &models.Node{
 							Gpu:      "nvidia",
 							GpuCount: "6",
 						},

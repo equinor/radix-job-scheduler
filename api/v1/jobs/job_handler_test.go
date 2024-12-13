@@ -230,12 +230,12 @@ func TestCreateJob(t *testing.T) {
 
 		jobRequestConfig := models.JobScheduleDescription{
 			RadixJobComponentConfig: models.RadixJobComponentConfig{
-				Resources: &v1.ResourceRequirements{
-					Requests: v1.ResourceList{
+				Resources: &models.Resources{
+					Requests: models.ResourceList{
 						"cpu":    "50m",
 						"memory": "60M",
 					},
-					Limits: v1.ResourceList{
+					Limits: models.ResourceList{
 						"cpu":    "100m",
 						"memory": "120M",
 					},
@@ -330,7 +330,7 @@ func TestCreateJob(t *testing.T) {
 		handler := New(kubeUtil, modelsEnv.NewEnv(), &radixDeployJobComponent)
 		jobStatus, err := handler.CreateJob(context.TODO(), &models.JobScheduleDescription{
 			RadixJobComponentConfig: models.RadixJobComponentConfig{
-				Node: &v1.RadixNode{
+				Node: &models.Node{
 					Gpu:      "gpu1, gpu2",
 					GpuCount: "2",
 				},
@@ -372,12 +372,12 @@ func TestCreateJob(t *testing.T) {
 		handler := New(kubeUtil, modelsEnv.NewEnv(), &radixDeployJobComponent)
 		jobStatus, err := handler.CreateJob(context.TODO(), &models.JobScheduleDescription{
 			RadixJobComponentConfig: models.RadixJobComponentConfig{
-				FailurePolicy: &v1.RadixJobComponentFailurePolicy{
-					Rules: []v1.RadixJobComponentFailurePolicyRule{
+				FailurePolicy: &models.FailurePolicy{
+					Rules: []models.FailurePolicyRule{
 						{
-							Action: v1.RadixJobComponentFailurePolicyActionFailJob,
-							OnExitCodes: v1.RadixJobComponentFailurePolicyRuleOnExitCodes{
-								Operator: v1.RadixJobComponentFailurePolicyRuleOnExitCodesOpIn,
+							Action: models.FailurePolicyRuleActionFailJob,
+							OnExitCodes: models.FailurePolicyRuleOnExitCodes{
+								Operator: models.FailurePolicyRuleOnExitCodesOpIn,
 								Values:   []int32{42},
 							},
 						},

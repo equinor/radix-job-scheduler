@@ -11,7 +11,6 @@ import (
 	"github.com/equinor/radix-job-scheduler/models/common"
 	modelsv2 "github.com/equinor/radix-job-scheduler/models/v2"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
-	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/equinor/radix-operator/pkg/apis/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -143,23 +142,23 @@ func TestMergeJobDescriptionWithDefaultJobDescription(t *testing.T) {
 	tests := testSpec{
 		"Resources merged from job and default spec": {
 			defaultRadixJobComponentConfig: &common.RadixJobComponentConfig{
-				Resources: &v1.ResourceRequirements{
-					Limits: v1.ResourceList{
+				Resources: &common.Resources{
+					Limits: common.ResourceList{
 						"cpu":    "20m",
 						"memory": "20M",
 					},
-					Requests: v1.ResourceList{
+					Requests: common.ResourceList{
 						"cpu": "10m",
 					},
 				},
 			},
 			jobScheduleDescription: &common.JobScheduleDescription{
 				RadixJobComponentConfig: common.RadixJobComponentConfig{
-					Resources: &v1.ResourceRequirements{
-						Limits: v1.ResourceList{
+					Resources: &common.Resources{
+						Limits: common.ResourceList{
 							"memory": "21M",
 						},
-						Requests: v1.ResourceList{
+						Requests: common.ResourceList{
 							"memory": "10M",
 							"cpu":    "11m",
 						},
@@ -167,12 +166,12 @@ func TestMergeJobDescriptionWithDefaultJobDescription(t *testing.T) {
 				},
 			},
 			expectedRadixJobComponentConfig: &common.RadixJobComponentConfig{
-				Resources: &v1.ResourceRequirements{
-					Limits: v1.ResourceList{
+				Resources: &common.Resources{
+					Limits: common.ResourceList{
 						"cpu":    "20m",
 						"memory": "21M",
 					},
-					Requests: v1.ResourceList{
+					Requests: common.ResourceList{
 						"cpu":    "11m",
 						"memory": "10M",
 					},
@@ -183,22 +182,22 @@ func TestMergeJobDescriptionWithDefaultJobDescription(t *testing.T) {
 			defaultRadixJobComponentConfig: &common.RadixJobComponentConfig{},
 			jobScheduleDescription: &common.JobScheduleDescription{
 				RadixJobComponentConfig: common.RadixJobComponentConfig{
-					Resources: &v1.ResourceRequirements{
-						Limits: v1.ResourceList{
+					Resources: &common.Resources{
+						Limits: common.ResourceList{
 							"memory": "20M",
 						},
-						Requests: v1.ResourceList{
+						Requests: common.ResourceList{
 							"memory": "10M",
 						},
 					},
 				},
 			},
 			expectedRadixJobComponentConfig: &common.RadixJobComponentConfig{
-				Resources: &v1.ResourceRequirements{
-					Limits: v1.ResourceList{
+				Resources: &common.Resources{
+					Limits: common.ResourceList{
 						"memory": "20M",
 					},
-					Requests: v1.ResourceList{
+					Requests: common.ResourceList{
 						"memory": "10M",
 					},
 				},
@@ -206,11 +205,11 @@ func TestMergeJobDescriptionWithDefaultJobDescription(t *testing.T) {
 		},
 		"Resources from default spec only": {
 			defaultRadixJobComponentConfig: &common.RadixJobComponentConfig{
-				Resources: &v1.ResourceRequirements{
-					Limits: v1.ResourceList{
+				Resources: &common.Resources{
+					Limits: common.ResourceList{
 						"memory": "20M",
 					},
-					Requests: v1.ResourceList{
+					Requests: common.ResourceList{
 						"memory": "10M",
 					},
 				},
@@ -219,11 +218,11 @@ func TestMergeJobDescriptionWithDefaultJobDescription(t *testing.T) {
 				RadixJobComponentConfig: common.RadixJobComponentConfig{},
 			},
 			expectedRadixJobComponentConfig: &common.RadixJobComponentConfig{
-				Resources: &v1.ResourceRequirements{
-					Limits: v1.ResourceList{
+				Resources: &common.Resources{
+					Limits: common.ResourceList{
 						"memory": "20M",
 					},
-					Requests: v1.ResourceList{
+					Requests: common.ResourceList{
 						"memory": "10M",
 					},
 				},
@@ -231,20 +230,20 @@ func TestMergeJobDescriptionWithDefaultJobDescription(t *testing.T) {
 		},
 		"Node merged from job and default spec": {
 			defaultRadixJobComponentConfig: &common.RadixJobComponentConfig{
-				Node: &v1.RadixNode{
+				Node: &common.Node{
 					GpuCount: "2",
 					Gpu:      "gpu1,gpu2",
 				},
 			},
 			jobScheduleDescription: &common.JobScheduleDescription{
 				RadixJobComponentConfig: common.RadixJobComponentConfig{
-					Node: &v1.RadixNode{
+					Node: &common.Node{
 						Gpu: "gpu3",
 					},
 				},
 			},
 			expectedRadixJobComponentConfig: &common.RadixJobComponentConfig{
-				Node: &v1.RadixNode{
+				Node: &common.Node{
 					GpuCount: "2",
 					Gpu:      "gpu3",
 				},
@@ -252,7 +251,7 @@ func TestMergeJobDescriptionWithDefaultJobDescription(t *testing.T) {
 		},
 		"Node from default spec only": {
 			defaultRadixJobComponentConfig: &common.RadixJobComponentConfig{
-				Node: &v1.RadixNode{
+				Node: &common.Node{
 					GpuCount: "2",
 					Gpu:      "gpu1,gpu2",
 				},
@@ -261,7 +260,7 @@ func TestMergeJobDescriptionWithDefaultJobDescription(t *testing.T) {
 				RadixJobComponentConfig: common.RadixJobComponentConfig{},
 			},
 			expectedRadixJobComponentConfig: &common.RadixJobComponentConfig{
-				Node: &v1.RadixNode{
+				Node: &common.Node{
 					GpuCount: "2",
 					Gpu:      "gpu1,gpu2",
 				},
@@ -271,14 +270,14 @@ func TestMergeJobDescriptionWithDefaultJobDescription(t *testing.T) {
 			defaultRadixJobComponentConfig: &common.RadixJobComponentConfig{},
 			jobScheduleDescription: &common.JobScheduleDescription{
 				RadixJobComponentConfig: common.RadixJobComponentConfig{
-					Node: &v1.RadixNode{
+					Node: &common.Node{
 						GpuCount: "2",
 						Gpu:      "gpu3",
 					},
 				},
 			},
 			expectedRadixJobComponentConfig: &common.RadixJobComponentConfig{
-				Node: &v1.RadixNode{
+				Node: &common.Node{
 					GpuCount: "2",
 					Gpu:      "gpu3",
 				},
@@ -334,12 +333,12 @@ func TestMergeJobDescriptionWithDefaultJobDescription(t *testing.T) {
 		},
 		"FailurePolicy from job spec only": {
 			defaultRadixJobComponentConfig: &common.RadixJobComponentConfig{
-				FailurePolicy: &v1.RadixJobComponentFailurePolicy{
-					Rules: []v1.RadixJobComponentFailurePolicyRule{
+				FailurePolicy: &common.FailurePolicy{
+					Rules: []common.FailurePolicyRule{
 						{
-							Action: v1.RadixJobComponentFailurePolicyActionCount,
-							OnExitCodes: v1.RadixJobComponentFailurePolicyRuleOnExitCodes{
-								Operator: v1.RadixJobComponentFailurePolicyRuleOnExitCodesOpIn,
+							Action: common.FailurePolicyRuleActionCount,
+							OnExitCodes: common.FailurePolicyRuleOnExitCodes{
+								Operator: common.FailurePolicyRuleOnExitCodesOpIn,
 								Values:   []int32{1, 2, 3},
 							},
 						},
@@ -348,12 +347,12 @@ func TestMergeJobDescriptionWithDefaultJobDescription(t *testing.T) {
 			},
 			jobScheduleDescription: &common.JobScheduleDescription{
 				RadixJobComponentConfig: common.RadixJobComponentConfig{
-					FailurePolicy: &v1.RadixJobComponentFailurePolicy{
-						Rules: []v1.RadixJobComponentFailurePolicyRule{
+					FailurePolicy: &common.FailurePolicy{
+						Rules: []common.FailurePolicyRule{
 							{
-								Action: v1.RadixJobComponentFailurePolicyActionFailJob,
-								OnExitCodes: v1.RadixJobComponentFailurePolicyRuleOnExitCodes{
-									Operator: v1.RadixJobComponentFailurePolicyRuleOnExitCodesOpNotIn,
+								Action: common.FailurePolicyRuleActionFailJob,
+								OnExitCodes: common.FailurePolicyRuleOnExitCodes{
+									Operator: common.FailurePolicyRuleOnExitCodesOpNotIn,
 									Values:   []int32{0, 1},
 								},
 							},
@@ -362,12 +361,12 @@ func TestMergeJobDescriptionWithDefaultJobDescription(t *testing.T) {
 				},
 			},
 			expectedRadixJobComponentConfig: &common.RadixJobComponentConfig{
-				FailurePolicy: &v1.RadixJobComponentFailurePolicy{
-					Rules: []v1.RadixJobComponentFailurePolicyRule{
+				FailurePolicy: &common.FailurePolicy{
+					Rules: []common.FailurePolicyRule{
 						{
-							Action: v1.RadixJobComponentFailurePolicyActionFailJob,
-							OnExitCodes: v1.RadixJobComponentFailurePolicyRuleOnExitCodes{
-								Operator: v1.RadixJobComponentFailurePolicyRuleOnExitCodesOpNotIn,
+							Action: common.FailurePolicyRuleActionFailJob,
+							OnExitCodes: common.FailurePolicyRuleOnExitCodes{
+								Operator: common.FailurePolicyRuleOnExitCodesOpNotIn,
 								Values:   []int32{0, 1},
 							},
 						},
@@ -377,12 +376,12 @@ func TestMergeJobDescriptionWithDefaultJobDescription(t *testing.T) {
 		},
 		"FailurePolicy from default spec": {
 			defaultRadixJobComponentConfig: &common.RadixJobComponentConfig{
-				FailurePolicy: &v1.RadixJobComponentFailurePolicy{
-					Rules: []v1.RadixJobComponentFailurePolicyRule{
+				FailurePolicy: &common.FailurePolicy{
+					Rules: []common.FailurePolicyRule{
 						{
-							Action: v1.RadixJobComponentFailurePolicyActionCount,
-							OnExitCodes: v1.RadixJobComponentFailurePolicyRuleOnExitCodes{
-								Operator: v1.RadixJobComponentFailurePolicyRuleOnExitCodesOpIn,
+							Action: common.FailurePolicyRuleActionCount,
+							OnExitCodes: common.FailurePolicyRuleOnExitCodes{
+								Operator: common.FailurePolicyRuleOnExitCodesOpIn,
 								Values:   []int32{1, 2, 3},
 							},
 						},
@@ -393,12 +392,12 @@ func TestMergeJobDescriptionWithDefaultJobDescription(t *testing.T) {
 				RadixJobComponentConfig: common.RadixJobComponentConfig{},
 			},
 			expectedRadixJobComponentConfig: &common.RadixJobComponentConfig{
-				FailurePolicy: &v1.RadixJobComponentFailurePolicy{
-					Rules: []v1.RadixJobComponentFailurePolicyRule{
+				FailurePolicy: &common.FailurePolicy{
+					Rules: []common.FailurePolicyRule{
 						{
-							Action: v1.RadixJobComponentFailurePolicyActionCount,
-							OnExitCodes: v1.RadixJobComponentFailurePolicyRuleOnExitCodes{
-								Operator: v1.RadixJobComponentFailurePolicyRuleOnExitCodesOpIn,
+							Action: common.FailurePolicyRuleActionCount,
+							OnExitCodes: common.FailurePolicyRuleOnExitCodes{
+								Operator: common.FailurePolicyRuleOnExitCodesOpIn,
 								Values:   []int32{1, 2, 3},
 							},
 						},

@@ -426,12 +426,12 @@ func buildRadixBatchJob(jobScheduleDescription *common.JobScheduleDescription, d
 	return &radixv1.RadixBatchJob{
 		Name:             internal.CreateJobName(),
 		JobId:            jobScheduleDescription.JobId,
-		Resources:        jobScheduleDescription.Resources,
-		Node:             jobScheduleDescription.Node,
+		Resources:        jobScheduleDescription.Resources.MapToRadixResourceRequirements(),
+		Node:             jobScheduleDescription.Node.MapToRadixNode(),
 		TimeLimitSeconds: jobScheduleDescription.TimeLimitSeconds,
 		BackoffLimit:     jobScheduleDescription.BackoffLimit,
 		ImageTagName:     jobScheduleDescription.ImageTagName,
-		FailurePolicy:    jobScheduleDescription.FailurePolicy,
+		FailurePolicy:    jobScheduleDescription.FailurePolicy.MapToRadixFailurePolicy(),
 	}, nil
 }
 

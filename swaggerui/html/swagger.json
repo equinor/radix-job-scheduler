@@ -779,9 +779,89 @@
       "type": "string",
       "x-go-package": "github.com/equinor/radix-job-scheduler/models/v1/events"
     },
+    "FailurePolicy": {
+      "type": "object",
+      "title": "FailurePolicy describes how failed job replicas influence the backoffLimit.",
+      "required": [
+        "rules"
+      ],
+      "properties": {
+        "rules": {
+          "description": "A list of failure policy rules. The rules are evaluated in order.\nOnce a rule matches a job replica failure, the remaining of the rules are ignored.\nWhen no rule matches the failure, the default handling applies - the\ncounter of failures is incremented and it is checked against\nthe backoffLimit.",
+          "type": "array",
+          "maxItems": 20,
+          "items": {
+            "$ref": "#/definitions/FailurePolicyRule"
+          },
+          "x-go-name": "Rules"
+        }
+      },
+      "x-go-package": "github.com/equinor/radix-job-scheduler/models/common"
+    },
+    "FailurePolicyRule": {
+      "type": "object",
+      "title": "FailurePolicyRule describes how a job replica failure is handled when the onExitCodes rules are met.",
+      "required": [
+        "action",
+        "onExitCodes"
+      ],
+      "properties": {
+        "action": {
+          "description": "Specifies the action taken on a job replica failure when the onExitCodes requirements are satisfied.\nFailJob FailurePolicyRuleActionFailJob  This is an action which might be taken on a job replica failure - mark the  job as Failed and terminate all running pods.\nIgnore FailurePolicyRuleActionIgnore  This is an action which might be taken on a job replica failure - the counter towards  .backoffLimit is not incremented and a replacement replica is created.\nCount FailurePolicyRuleActionCount  This is an action which might be taken on a job replica failure - the replica failure  is handled in the default way - the counter towards .backoffLimit is incremented.",
+          "type": "string",
+          "enum": [
+            "FailJob",
+            "Ignore",
+            "Count"
+          ],
+          "x-go-enum-desc": "FailJob FailurePolicyRuleActionFailJob  This is an action which might be taken on a job replica failure - mark the  job as Failed and terminate all running pods.\nIgnore FailurePolicyRuleActionIgnore  This is an action which might be taken on a job replica failure - the counter towards  .backoffLimit is not incremented and a replacement replica is created.\nCount FailurePolicyRuleActionCount  This is an action which might be taken on a job replica failure - the replica failure  is handled in the default way - the counter towards .backoffLimit is incremented.",
+          "x-go-name": "Action"
+        },
+        "onExitCodes": {
+          "$ref": "#/definitions/FailurePolicyRuleOnExitCodes"
+        }
+      },
+      "x-go-package": "github.com/equinor/radix-job-scheduler/models/common"
+    },
+    "FailurePolicyRuleOnExitCodes": {
+      "description": "FailurePolicyRuleOnExitCodes describes the requirement for handling\na failed job replica based on its exit code.",
+      "type": "object",
+      "required": [
+        "operator",
+        "values"
+      ],
+      "properties": {
+        "operator": {
+          "description": "Represents the relationship between the job replica's exit code and the\nspecified values. Replicas completed with success (exit code 0) are\nexcluded from the requirement check.\nIn FailurePolicyRuleOnExitCodesOpIn  The requirement is satisfied if the job replica's exit code is in the set of specified values.\nNotIn FailurePolicyRuleOnExitCodesOpNotIn  The requirement is satisfied if the job replica's exit code is not in the set of specified values.",
+          "type": "string",
+          "enum": [
+            "In",
+            "NotIn"
+          ],
+          "x-go-enum-desc": "In FailurePolicyRuleOnExitCodesOpIn  The requirement is satisfied if the job replica's exit code is in the set of specified values.\nNotIn FailurePolicyRuleOnExitCodesOpNotIn  The requirement is satisfied if the job replica's exit code is not in the set of specified values.",
+          "x-go-name": "Operator"
+        },
+        "values": {
+          "description": "Specifies the set of values. The job replica's exit code is checked against this set of\nvalues with respect to the operator. The list must not contain duplicates.\nValue '0' cannot be used for the In operator.",
+          "type": "array",
+          "minimum": 0,
+          "maxItems": 255,
+          "minItems": 1,
+          "items": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "x-go-name": "Values"
+        }
+      },
+      "x-go-package": "github.com/equinor/radix-job-scheduler/models/common"
+    },
     "JobScheduleDescription": {
       "description": "JobScheduleDescription holds description about scheduling job",
       "type": "object",
+      "required": [
+        "jobId"
+      ],
       "properties": {
         "backoffLimit": {
           "description": "BackoffLimit defines attempts to restart job if it fails. Corresponds to BackoffLimit in K8s.",
@@ -790,8 +870,7 @@
           "x-go-name": "BackoffLimit"
         },
         "failurePolicy": {
-          "description": "FailurePolicy defines how failed job replicas influence the backoffLimit.",
-          "x-go-name": "FailurePolicy"
+          "$ref": "#/definitions/FailurePolicy"
         },
         "imageTagName": {
           "description": "ImageTagName defines the image tag name to use for the job image",
@@ -805,8 +884,7 @@
           "example": "'job1'"
         },
         "node": {
-          "description": "Node defines node attributes, where container should be scheduled",
-          "x-go-name": "Node"
+          "$ref": "#/definitions/Node"
         },
         "payload": {
           "description": "Payload holding json data to be mapped to component",
@@ -815,8 +893,7 @@
           "example": "{'data':'value'}"
         },
         "resources": {
-          "description": "Resource describes the compute resource requirements.",
-          "x-go-name": "Resources"
+          "$ref": "#/definitions/Resources"
         },
         "timeLimitSeconds": {
           "description": "TimeLimitSeconds defines maximum job run time. Corresponds to ActiveDeadlineSeconds in K8s.",
@@ -930,6 +1007,23 @@
       },
       "x-go-package": "github.com/equinor/radix-job-scheduler/models/v1"
     },
+    "Node": {
+      "description": "Node defines node attributes, where container should be scheduled",
+      "type": "object",
+      "properties": {
+        "gpu": {
+          "description": "Defines rules for allowed GPU types.",
+          "type": "string",
+          "x-go-name": "Gpu"
+        },
+        "gpuCount": {
+          "description": "Defines minimum number of required GPUs.",
+          "type": "string",
+          "x-go-name": "GpuCount"
+        }
+      },
+      "x-go-package": "github.com/equinor/radix-job-scheduler/models/common"
+    },
     "PodStatus": {
       "type": "object",
       "title": "PodStatus contains details for the current status of the job's pods.",
@@ -1024,8 +1118,7 @@
           "x-go-name": "BackoffLimit"
         },
         "failurePolicy": {
-          "description": "FailurePolicy defines how failed job replicas influence the backoffLimit.",
-          "x-go-name": "FailurePolicy"
+          "$ref": "#/definitions/FailurePolicy"
         },
         "imageTagName": {
           "description": "ImageTagName defines the image tag name to use for the job image",
@@ -1033,12 +1126,10 @@
           "x-go-name": "ImageTagName"
         },
         "node": {
-          "description": "Node defines node attributes, where container should be scheduled",
-          "x-go-name": "Node"
+          "$ref": "#/definitions/Node"
         },
         "resources": {
-          "description": "Resource describes the compute resource requirements.",
-          "x-go-name": "Resources"
+          "$ref": "#/definitions/Resources"
         },
         "timeLimitSeconds": {
           "description": "TimeLimitSeconds defines maximum job run time. Corresponds to ActiveDeadlineSeconds in K8s.",
@@ -1074,6 +1165,26 @@
         }
       },
       "x-go-package": "github.com/equinor/radix-job-scheduler/models/v1"
+    },
+    "ResourceList": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      },
+      "x-go-package": "github.com/equinor/radix-job-scheduler/models/common"
+    },
+    "Resources": {
+      "type": "object",
+      "title": "ResourceRequirements describes the compute resource requirements.",
+      "properties": {
+        "limits": {
+          "$ref": "#/definitions/ResourceList"
+        },
+        "requests": {
+          "$ref": "#/definitions/ResourceList"
+        }
+      },
+      "x-go-package": "github.com/equinor/radix-job-scheduler/models/common"
     },
     "Status": {
       "description": "Status is a return value for calls that don't return other objects or when a request returns an error",
