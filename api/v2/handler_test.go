@@ -11,7 +11,6 @@ import (
 	"github.com/equinor/radix-job-scheduler/models/common"
 	modelsv2 "github.com/equinor/radix-job-scheduler/models/v2"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
-	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/equinor/radix-operator/pkg/apis/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -134,179 +133,284 @@ func Test_createBatch(t *testing.T) {
 }
 
 func TestMergeJobDescriptionWithDefaultJobDescription(t *testing.T) {
-	type scenario struct {
-		name                            string
+	type testSpec map[string]struct {
 		defaultRadixJobComponentConfig  *common.RadixJobComponentConfig
 		jobScheduleDescription          *common.JobScheduleDescription
 		expectedRadixJobComponentConfig *common.RadixJobComponentConfig
 	}
 
-	scenarios := []scenario{
-		{
-			name:                           "Only job description",
-			defaultRadixJobComponentConfig: nil,
-			jobScheduleDescription: &common.JobScheduleDescription{
-				JobId:   "job1",
-				Payload: "{'n':'v'}",
-				RadixJobComponentConfig: common.RadixJobComponentConfig{
-					Resources: &radixv1.ResourceRequirements{
-						Limits:   radixv1.ResourceList{"cpu": "100m", "memory": "1000Mi"},
-						Requests: radixv1.ResourceList{"cpu": "200m", "memory": "2000Mi"},
+	tests := testSpec{
+		"Resources merged from job and default spec": {
+			defaultRadixJobComponentConfig: &common.RadixJobComponentConfig{
+				Resources: &common.Resources{
+					Limits: common.ResourceList{
+						"cpu":    "20m",
+						"memory": "20M",
 					},
-					Node:             &radixv1.RadixNode{Gpu: "v100", GpuCount: "1"},
-					TimeLimitSeconds: pointers.Ptr(int64(1000)),
-					BackoffLimit:     pointers.Ptr(int32(1)),
-					ImageTagName:     "job1-tag",
+					Requests: common.ResourceList{
+						"cpu": "10m",
+					},
 				},
-			},
-			expectedRadixJobComponentConfig: &common.RadixJobComponentConfig{
-				Resources: &radixv1.ResourceRequirements{
-					Limits:   radixv1.ResourceList{"cpu": "100m", "memory": "1000Mi"},
-					Requests: radixv1.ResourceList{"cpu": "200m", "memory": "2000Mi"},
-				},
-				Node:             &radixv1.RadixNode{Gpu: "v100", GpuCount: "1"},
-				TimeLimitSeconds: pointers.Ptr(int64(1000)),
-				BackoffLimit:     pointers.Ptr(int32(1)),
-				ImageTagName:     "job1-tag",
-			},
-		},
-		{
-			name: "Only default job description",
-			defaultRadixJobComponentConfig: &common.RadixJobComponentConfig{
-				Resources: &radixv1.ResourceRequirements{
-					Limits:   radixv1.ResourceList{"cpu": "100m", "memory": "1000Mi"},
-					Requests: radixv1.ResourceList{"cpu": "200m", "memory": "2000Mi"},
-				},
-				Node:             &radixv1.RadixNode{Gpu: "v100", GpuCount: "1"},
-				TimeLimitSeconds: pointers.Ptr(int64(1000)),
-				BackoffLimit:     pointers.Ptr(int32(1)),
-				ImageTagName:     "default-tag",
-			},
-			jobScheduleDescription: &common.JobScheduleDescription{},
-			expectedRadixJobComponentConfig: &common.RadixJobComponentConfig{
-				Resources: &radixv1.ResourceRequirements{
-					Limits:   radixv1.ResourceList{"cpu": "100m", "memory": "1000Mi"},
-					Requests: radixv1.ResourceList{"cpu": "200m", "memory": "2000Mi"},
-				},
-				Node:             &radixv1.RadixNode{Gpu: "v100", GpuCount: "1"},
-				TimeLimitSeconds: pointers.Ptr(int64(1000)),
-				BackoffLimit:     pointers.Ptr(int32(1)),
-				ImageTagName:     "default-tag",
-			},
-		},
-		{
-			name: "Added values to job description",
-			defaultRadixJobComponentConfig: &common.RadixJobComponentConfig{
-				Resources: &radixv1.ResourceRequirements{
-					Limits:   radixv1.ResourceList{"cpu": "100m"},
-					Requests: radixv1.ResourceList{"memory": "2000Mi"},
-				},
-				Node:             &radixv1.RadixNode{GpuCount: "1"},
-				TimeLimitSeconds: pointers.Ptr(int64(1000)),
-				BackoffLimit:     nil,
 			},
 			jobScheduleDescription: &common.JobScheduleDescription{
-				JobId:   "job1",
-				Payload: "{'n':'v'}",
 				RadixJobComponentConfig: common.RadixJobComponentConfig{
-					Resources: &radixv1.ResourceRequirements{
-						Limits:   radixv1.ResourceList{"memory": "1000Mi"},
-						Requests: radixv1.ResourceList{"cpu": "200m"},
+					Resources: &common.Resources{
+						Limits: common.ResourceList{
+							"memory": "21M",
+						},
+						Requests: common.ResourceList{
+							"memory": "10M",
+							"cpu":    "11m",
+						},
 					},
-					Node:             &radixv1.RadixNode{Gpu: "v100"},
-					TimeLimitSeconds: nil,
-					BackoffLimit:     pointers.Ptr(int32(1)),
-					ImageTagName:     "job1-tag",
 				},
 			},
 			expectedRadixJobComponentConfig: &common.RadixJobComponentConfig{
-				Resources: &radixv1.ResourceRequirements{
-					Limits:   radixv1.ResourceList{"cpu": "100m", "memory": "1000Mi"},
-					Requests: radixv1.ResourceList{"cpu": "200m", "memory": "2000Mi"},
+				Resources: &common.Resources{
+					Limits: common.ResourceList{
+						"cpu":    "20m",
+						"memory": "21M",
+					},
+					Requests: common.ResourceList{
+						"cpu":    "11m",
+						"memory": "10M",
+					},
 				},
-				Node:             &radixv1.RadixNode{Gpu: "v100", GpuCount: "1"},
-				TimeLimitSeconds: pointers.Ptr(int64(1000)),
-				BackoffLimit:     pointers.Ptr(int32(1)),
-				ImageTagName:     "job1-tag",
 			},
 		},
-		{
-			name: "Not overwritten values in job description",
-			defaultRadixJobComponentConfig: &common.RadixJobComponentConfig{
-				Resources: &radixv1.ResourceRequirements{
-					Limits:   radixv1.ResourceList{"cpu": "400m", "memory": "4000Mi"},
-					Requests: radixv1.ResourceList{"cpu": "400m", "memory": "4000Mi"},
-				},
-				Node:             &radixv1.RadixNode{Gpu: "P100", GpuCount: "5"},
-				TimeLimitSeconds: pointers.Ptr(int64(6000)),
-				BackoffLimit:     pointers.Ptr(int32(3)),
-				ImageTagName:     "default-tag",
-			},
+		"Resources from job spec only": {
+			defaultRadixJobComponentConfig: &common.RadixJobComponentConfig{},
 			jobScheduleDescription: &common.JobScheduleDescription{
-				JobId:   "job1",
-				Payload: "{'n':'v'}",
 				RadixJobComponentConfig: common.RadixJobComponentConfig{
-					Resources: &radixv1.ResourceRequirements{
-						Limits:   radixv1.ResourceList{"cpu": "100m", "memory": "1000Mi"},
-						Requests: radixv1.ResourceList{"cpu": "200m", "memory": "2000Mi"},
+					Resources: &common.Resources{
+						Limits: common.ResourceList{
+							"memory": "20M",
+						},
+						Requests: common.ResourceList{
+							"memory": "10M",
+						},
 					},
-					Node:             &radixv1.RadixNode{Gpu: "v100", GpuCount: "1"},
-					TimeLimitSeconds: pointers.Ptr(int64(1000)),
-					BackoffLimit:     pointers.Ptr(int32(1)),
-					ImageTagName:     "job1-tag",
 				},
 			},
 			expectedRadixJobComponentConfig: &common.RadixJobComponentConfig{
-				Resources: &radixv1.ResourceRequirements{
-					Limits:   radixv1.ResourceList{"cpu": "100m", "memory": "1000Mi"},
-					Requests: radixv1.ResourceList{"cpu": "200m", "memory": "2000Mi"},
+				Resources: &common.Resources{
+					Limits: common.ResourceList{
+						"memory": "20M",
+					},
+					Requests: common.ResourceList{
+						"memory": "10M",
+					},
 				},
-				Node:             &radixv1.RadixNode{Gpu: "v100", GpuCount: "1"},
-				TimeLimitSeconds: pointers.Ptr(int64(1000)),
-				BackoffLimit:     pointers.Ptr(int32(1)),
-				ImageTagName:     "job1-tag",
 			},
 		},
-		{
-			name: "Added but not overwritten values in job description",
+		"Resources from default spec only": {
 			defaultRadixJobComponentConfig: &common.RadixJobComponentConfig{
-				Resources: &radixv1.ResourceRequirements{
-					Limits:   radixv1.ResourceList{"cpu": "100m", "memory": "4000Mi"},
-					Requests: radixv1.ResourceList{"cpu": "200m", "memory": "2000Mi"},
+				Resources: &common.Resources{
+					Limits: common.ResourceList{
+						"memory": "20M",
+					},
+					Requests: common.ResourceList{
+						"memory": "10M",
+					},
 				},
-				Node:             &radixv1.RadixNode{Gpu: "P100", GpuCount: "1"},
-				TimeLimitSeconds: pointers.Ptr(int64(1000)),
-				BackoffLimit:     pointers.Ptr(int32(3)),
-				ImageTagName:     "default-tag",
 			},
 			jobScheduleDescription: &common.JobScheduleDescription{
-				JobId:   "job1",
-				Payload: "{'n':'v'}",
-				RadixJobComponentConfig: common.RadixJobComponentConfig{
-					Resources: &radixv1.ResourceRequirements{
-						Limits: radixv1.ResourceList{"memory": "1000Mi"},
+				RadixJobComponentConfig: common.RadixJobComponentConfig{},
+			},
+			expectedRadixJobComponentConfig: &common.RadixJobComponentConfig{
+				Resources: &common.Resources{
+					Limits: common.ResourceList{
+						"memory": "20M",
 					},
-					Node:         &radixv1.RadixNode{Gpu: "v100"},
-					BackoffLimit: pointers.Ptr(int32(1)),
+					Requests: common.ResourceList{
+						"memory": "10M",
+					},
+				},
+			},
+		},
+		"Node merged from job and default spec": {
+			defaultRadixJobComponentConfig: &common.RadixJobComponentConfig{
+				Node: &common.Node{
+					GpuCount: "2",
+					Gpu:      "gpu1,gpu2",
+				},
+			},
+			jobScheduleDescription: &common.JobScheduleDescription{
+				RadixJobComponentConfig: common.RadixJobComponentConfig{
+					Node: &common.Node{
+						Gpu: "gpu3",
+					},
 				},
 			},
 			expectedRadixJobComponentConfig: &common.RadixJobComponentConfig{
-				Resources: &radixv1.ResourceRequirements{
-					Limits:   radixv1.ResourceList{"cpu": "100m", "memory": "1000Mi"},
-					Requests: radixv1.ResourceList{"cpu": "200m", "memory": "2000Mi"},
+				Node: &common.Node{
+					GpuCount: "2",
+					Gpu:      "gpu3",
 				},
-				Node:             &radixv1.RadixNode{Gpu: "v100", GpuCount: "1"},
-				TimeLimitSeconds: pointers.Ptr(int64(1000)),
-				BackoffLimit:     pointers.Ptr(int32(1)),
-				ImageTagName:     "default-tag",
+			},
+		},
+		"Node from default spec only": {
+			defaultRadixJobComponentConfig: &common.RadixJobComponentConfig{
+				Node: &common.Node{
+					GpuCount: "2",
+					Gpu:      "gpu1,gpu2",
+				},
+			},
+			jobScheduleDescription: &common.JobScheduleDescription{
+				RadixJobComponentConfig: common.RadixJobComponentConfig{},
+			},
+			expectedRadixJobComponentConfig: &common.RadixJobComponentConfig{
+				Node: &common.Node{
+					GpuCount: "2",
+					Gpu:      "gpu1,gpu2",
+				},
+			},
+		},
+		"Node from job spec only": {
+			defaultRadixJobComponentConfig: &common.RadixJobComponentConfig{},
+			jobScheduleDescription: &common.JobScheduleDescription{
+				RadixJobComponentConfig: common.RadixJobComponentConfig{
+					Node: &common.Node{
+						GpuCount: "2",
+						Gpu:      "gpu3",
+					},
+				},
+			},
+			expectedRadixJobComponentConfig: &common.RadixJobComponentConfig{
+				Node: &common.Node{
+					GpuCount: "2",
+					Gpu:      "gpu3",
+				},
+			},
+		},
+		"BackoffLimit from job spec": {
+			defaultRadixJobComponentConfig: &common.RadixJobComponentConfig{
+				BackoffLimit: pointers.Ptr[int32](2000),
+			},
+			jobScheduleDescription: &common.JobScheduleDescription{
+				RadixJobComponentConfig: common.RadixJobComponentConfig{
+					BackoffLimit: pointers.Ptr[int32](1000),
+				},
+			},
+			expectedRadixJobComponentConfig: &common.RadixJobComponentConfig{
+				BackoffLimit: pointers.Ptr[int32](1000),
+			},
+		},
+		"BackoffLimit from default spec": {
+			defaultRadixJobComponentConfig: &common.RadixJobComponentConfig{
+				BackoffLimit: pointers.Ptr[int32](2000),
+			},
+			jobScheduleDescription: &common.JobScheduleDescription{
+				RadixJobComponentConfig: common.RadixJobComponentConfig{},
+			},
+			expectedRadixJobComponentConfig: &common.RadixJobComponentConfig{
+				BackoffLimit: pointers.Ptr[int32](2000),
+			},
+		},
+		"TimeLimitSeconds from job spec": {
+			defaultRadixJobComponentConfig: &common.RadixJobComponentConfig{
+				TimeLimitSeconds: pointers.Ptr[int64](2000),
+			},
+			jobScheduleDescription: &common.JobScheduleDescription{
+				RadixJobComponentConfig: common.RadixJobComponentConfig{
+					TimeLimitSeconds: pointers.Ptr[int64](1000),
+				},
+			},
+			expectedRadixJobComponentConfig: &common.RadixJobComponentConfig{
+				TimeLimitSeconds: pointers.Ptr[int64](1000),
+			},
+		},
+		"TimeLimitSeconds from default spec": {
+			defaultRadixJobComponentConfig: &common.RadixJobComponentConfig{
+				TimeLimitSeconds: pointers.Ptr[int64](2000),
+			},
+			jobScheduleDescription: &common.JobScheduleDescription{
+				RadixJobComponentConfig: common.RadixJobComponentConfig{},
+			},
+			expectedRadixJobComponentConfig: &common.RadixJobComponentConfig{
+				TimeLimitSeconds: pointers.Ptr[int64](2000),
+			},
+		},
+		"FailurePolicy from job spec only": {
+			defaultRadixJobComponentConfig: &common.RadixJobComponentConfig{
+				FailurePolicy: &common.FailurePolicy{
+					Rules: []common.FailurePolicyRule{
+						{
+							Action: common.FailurePolicyRuleActionCount,
+							OnExitCodes: common.FailurePolicyRuleOnExitCodes{
+								Operator: common.FailurePolicyRuleOnExitCodesOpIn,
+								Values:   []int32{1, 2, 3},
+							},
+						},
+					},
+				},
+			},
+			jobScheduleDescription: &common.JobScheduleDescription{
+				RadixJobComponentConfig: common.RadixJobComponentConfig{
+					FailurePolicy: &common.FailurePolicy{
+						Rules: []common.FailurePolicyRule{
+							{
+								Action: common.FailurePolicyRuleActionFailJob,
+								OnExitCodes: common.FailurePolicyRuleOnExitCodes{
+									Operator: common.FailurePolicyRuleOnExitCodesOpNotIn,
+									Values:   []int32{0, 1},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedRadixJobComponentConfig: &common.RadixJobComponentConfig{
+				FailurePolicy: &common.FailurePolicy{
+					Rules: []common.FailurePolicyRule{
+						{
+							Action: common.FailurePolicyRuleActionFailJob,
+							OnExitCodes: common.FailurePolicyRuleOnExitCodes{
+								Operator: common.FailurePolicyRuleOnExitCodesOpNotIn,
+								Values:   []int32{0, 1},
+							},
+						},
+					},
+				},
+			},
+		},
+		"FailurePolicy from default spec": {
+			defaultRadixJobComponentConfig: &common.RadixJobComponentConfig{
+				FailurePolicy: &common.FailurePolicy{
+					Rules: []common.FailurePolicyRule{
+						{
+							Action: common.FailurePolicyRuleActionCount,
+							OnExitCodes: common.FailurePolicyRuleOnExitCodes{
+								Operator: common.FailurePolicyRuleOnExitCodesOpIn,
+								Values:   []int32{1, 2, 3},
+							},
+						},
+					},
+				},
+			},
+			jobScheduleDescription: &common.JobScheduleDescription{
+				RadixJobComponentConfig: common.RadixJobComponentConfig{},
+			},
+			expectedRadixJobComponentConfig: &common.RadixJobComponentConfig{
+				FailurePolicy: &common.FailurePolicy{
+					Rules: []common.FailurePolicyRule{
+						{
+							Action: common.FailurePolicyRuleActionCount,
+							OnExitCodes: common.FailurePolicyRuleOnExitCodes{
+								Operator: common.FailurePolicyRuleOnExitCodesOpIn,
+								Values:   []int32{1, 2, 3},
+							},
+						},
+					},
+				},
 			},
 		},
 	}
-	for _, ts := range scenarios {
-		t.Run(ts.name, func(t *testing.T) {
-			err := applyDefaultJobDescriptionProperties(ts.jobScheduleDescription, ts.defaultRadixJobComponentConfig)
+	for testName, test := range tests {
+		t.Run(testName, func(t *testing.T) {
+			err := applyDefaultJobDescriptionProperties(test.jobScheduleDescription, test.defaultRadixJobComponentConfig)
 			require.NoError(t, err)
-			assert.EqualValues(t, *ts.expectedRadixJobComponentConfig, ts.jobScheduleDescription.RadixJobComponentConfig)
+			assert.EqualValues(t, *test.expectedRadixJobComponentConfig, test.jobScheduleDescription.RadixJobComponentConfig)
 		})
 	}
 }

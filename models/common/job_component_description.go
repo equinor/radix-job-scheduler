@@ -1,17 +1,15 @@
 package common
 
-import v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
-
 // RadixJobComponentConfig holds description of RadixJobComponent
 type RadixJobComponentConfig struct {
 	// Resource describes the compute resource requirements.
 	//
 	// required: false
-	Resources *v1.ResourceRequirements `json:"resources,omitempty"`
+	Resources *Resources `json:"resources,omitempty"`
 	// Node defines node attributes, where container should be scheduled
 	//
 	// required: false
-	Node *v1.RadixNode `json:"node,omitempty"`
+	Node *Node `json:"node,omitempty"`
 
 	// TimeLimitSeconds defines maximum job run time. Corresponds to ActiveDeadlineSeconds in K8s.
 	//
@@ -22,6 +20,11 @@ type RadixJobComponentConfig struct {
 	//
 	// required: false
 	BackoffLimit *int32 `json:"backoffLimit,omitempty"`
+
+	// FailurePolicy defines how failed job replicas influence the backoffLimit.
+	//
+	// required: false
+	FailurePolicy *FailurePolicy `json:"failurePolicy,omitempty"`
 
 	// ImageTagName defines the image tag name to use for the job image
 	//
