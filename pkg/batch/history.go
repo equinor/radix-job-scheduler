@@ -88,15 +88,15 @@ func (h *history) getCompletedRadixBatchesSortedByCompletionTimeAsc(ctx context.
 	}, nil
 }
 
-func (h *history) getNotSucceededRadixBatches(radixBatches []*radixv1.RadixBatch, completedBefore time.Time) []*modelsv2.RadixBatch {
-	return convertToRadixBatchStatuses(slice.FindAll(radixBatches, func(radixBatch *radixv1.RadixBatch) bool {
-		return radixBatchHasType(radixBatch, kube.RadixBatchTypeBatch) && internal.IsRadixBatchNotSucceeded(radixBatch) && radixBatchIsCompletedBefore(completedBefore, radixBatch)
+func (h *history) getNotSucceededRadixBatches(radixBatches []radixv1.RadixBatch, completedBefore time.Time) []*modelsv2.RadixBatch {
+	return convertToRadixBatchStatuses(slice.FindAll(radixBatches, func(radixBatch radixv1.RadixBatch) bool {
+		return radixBatchHasType(&radixBatch, kube.RadixBatchTypeBatch) && internal.IsRadixBatchNotSucceeded(&radixBatch) && radixBatchIsCompletedBefore(completedBefore, &radixBatch)
 	}), h.radixDeployJobComponent)
 }
 
-func (h *history) getSucceededRadixBatches(radixBatches []*radixv1.RadixBatch, completedBefore time.Time) []*modelsv2.RadixBatch {
-	radixBatches = slice.FindAll(radixBatches, func(radixBatch *radixv1.RadixBatch) bool {
-		return radixBatchHasType(radixBatch, kube.RadixBatchTypeBatch) && internal.IsRadixBatchSucceeded(radixBatch) && radixBatchIsCompletedBefore(completedBefore, radixBatch)
+func (h *history) getSucceededRadixBatches(radixBatches []radixv1.RadixBatch, completedBefore time.Time) []*modelsv2.RadixBatch {
+	radixBatches = slice.FindAll(radixBatches, func(radixBatch radixv1.RadixBatch) bool {
+		return radixBatchHasType(&radixBatch, kube.RadixBatchTypeBatch) && internal.IsRadixBatchSucceeded(&radixBatch) && radixBatchIsCompletedBefore(completedBefore, &radixBatch)
 	})
 	return convertToRadixBatchStatuses(radixBatches, h.radixDeployJobComponent)
 }
@@ -105,15 +105,15 @@ func radixBatchIsCompletedBefore(completedBefore time.Time, radixBatch *radixv1.
 	return radixBatch.Status.Condition.CompletionTime != nil && (*radixBatch.Status.Condition.CompletionTime).Before(&metav1.Time{Time: completedBefore})
 }
 
-func (h *history) getNotSucceededSingleJobs(radixBatches []*radixv1.RadixBatch, completedBefore time.Time) []*modelsv2.RadixBatch {
-	return convertToRadixBatchStatuses(slice.FindAll(radixBatches, func(radixBatch *radixv1.RadixBatch) bool {
-		return radixBatchHasType(radixBatch, kube.RadixBatchTypeJob) && internal.IsRadixBatchNotSucceeded(radixBatch) && radixBatchIsCompletedBefore(completedBefore, radixBatch)
+func (h *history) getNotSucceededSingleJobs(radixBatches []radixv1.RadixBatch, completedBefore time.Time) []*modelsv2.RadixBatch {
+	return convertToRadixBatchStatuses(slice.FindAll(radixBatches, func(radixBatch radixv1.RadixBatch) bool {
+		return radixBatchHasType(&radixBatch, kube.RadixBatchTypeJob) && internal.IsRadixBatchNotSucceeded(&radixBatch) && radixBatchIsCompletedBefore(completedBefore, &radixBatch)
 	}), h.radixDeployJobComponent)
 }
 
-func (h *history) getSucceededSingleJobs(radixBatches []*radixv1.RadixBatch, completedBefore time.Time) []*modelsv2.RadixBatch {
-	return convertToRadixBatchStatuses(slice.FindAll(radixBatches, func(radixBatch *radixv1.RadixBatch) bool {
-		return radixBatchHasType(radixBatch, kube.RadixBatchTypeJob) && internal.IsRadixBatchSucceeded(radixBatch) && radixBatchIsCompletedBefore(completedBefore, radixBatch)
+func (h *history) getSucceededSingleJobs(radixBatches []radixv1.RadixBatch, completedBefore time.Time) []*modelsv2.RadixBatch {
+	return convertToRadixBatchStatuses(slice.FindAll(radixBatches, func(radixBatch radixv1.RadixBatch) bool {
+		return radixBatchHasType(&radixBatch, kube.RadixBatchTypeJob) && internal.IsRadixBatchSucceeded(&radixBatch) && radixBatchIsCompletedBefore(completedBefore, &radixBatch)
 	}), h.radixDeployJobComponent)
 }
 
@@ -140,10 +140,10 @@ func (h *history) cleanupRadixBatchHistory(ctx context.Context, radixBatchesSort
 	return nil
 }
 
-func sortRJSchByCompletionTimeAsc(batches []*radixv1.RadixBatch) []*radixv1.RadixBatch {
+func sortRJSchByCompletionTimeAsc(batches []radixv1.RadixBatch) []radixv1.RadixBatch {
 	sort.Slice(batches, func(i, j int) bool {
-		batch1 := (batches)[i]
-		batch2 := (batches)[j]
+		batch1 := &(batches)[i]
+		batch2 := &(batches)[j]
 		return isRJS1CompletedBeforeRJS2(batch1, batch2)
 	})
 	return batches
@@ -163,10 +163,10 @@ func getCompletionTimeFrom(radixBatch *radixv1.RadixBatch) *metav1.Time {
 	return radixBatch.Status.Condition.CompletionTime
 }
 
-func convertToRadixBatchStatuses(radixBatches []*radixv1.RadixBatch, radixDeployJobComponent *radixv1.RadixDeployJobComponent) []*modelsv2.RadixBatch {
+func convertToRadixBatchStatuses(radixBatches []radixv1.RadixBatch, radixDeployJobComponent *radixv1.RadixDeployJobComponent) []*modelsv2.RadixBatch {
 	batches := make([]*modelsv2.RadixBatch, 0, len(radixBatches))
 	for _, radixBatch := range radixBatches {
-		batches = append(batches, pointers.Ptr(GetRadixBatchStatus(radixBatch, radixDeployJobComponent)))
+		batches = append(batches, pointers.Ptr(GetRadixBatchStatus(&radixBatch, radixDeployJobComponent)))
 	}
 	return batches
 }

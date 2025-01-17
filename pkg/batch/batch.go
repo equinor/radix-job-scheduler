@@ -48,7 +48,7 @@ func GetRadixBatchStatus(radixBatch *radixv1.RadixBatch, radixDeployJobComponent
 		CreationTime:   radixBatch.GetCreationTimestamp().Time,
 		Started:        started,
 		Ended:          ended,
-		Status:         jobs.GetRadixBatchStatus(radixBatch, radixDeployJobComponent),
+		Status:         jobs.GetRadixBatchJobApiStatus(radixBatch, radixDeployJobComponent),
 		Message:        radixBatch.Status.Condition.Message,
 		JobStatuses:    getRadixBatchJobStatusesFromRadixBatch(radixBatch, radixBatch.Status.JobStatuses),
 		DeploymentName: radixBatch.Spec.RadixDeploymentJobRef.Name,
@@ -136,15 +136,15 @@ func getPodStatusByRadixBatchJobPodStatus(podStatuses []radixv1.RadixBatchJobPod
 }
 
 // GetRadixBatchStatuses Convert to radix batch statuses
-func GetRadixBatchStatuses(radixBatches []*radixv1.RadixBatch, radixDeployJobComponent *radixv1.RadixDeployJobComponent) []modelsv2.RadixBatch {
-	return slice.Reduce(radixBatches, make([]modelsv2.RadixBatch, 0, len(radixBatches)), func(acc []modelsv2.RadixBatch, radixBatch *radixv1.RadixBatch) []modelsv2.RadixBatch {
-		return append(acc, GetRadixBatchStatus(radixBatch, radixDeployJobComponent))
+func GetRadixBatchStatuses(radixBatches []radixv1.RadixBatch, radixDeployJobComponent *radixv1.RadixDeployJobComponent) []modelsv2.RadixBatch {
+	return slice.Map(radixBatches, func(rb radixv1.RadixBatch) modelsv2.RadixBatch {
+		return GetRadixBatchStatus(&rb, radixDeployJobComponent)
 	})
 }
 
 // CopyRadixBatchOrJob Copy the Radix batch or job
-func CopyRadixBatchOrJob(ctx context.Context, radixClient versioned.Interface, sourceRadixBatch *radixv1.RadixBatch, sourceJobName string, radixDeployJobComponent *radixv1.RadixDeployJobComponent, radixDeploymentName string) (*modelsv2.RadixBatch, error) {
-	radixComponentName := radixDeployJobComponent.GetName()
+func CopyRadixBatchOrJob(ctx context.Context, radixClient versioned.Interface, sourceRadixBatch *radixv1.RadixBatch, sourceJobName string, radixDeploymentName string) (*radixv1.RadixBatch, error) {
+	radixComponentName := sourceRadixBatch.Spec.RadixDeploymentJobRef.Job
 	logger := log.Ctx(ctx)
 	logger.Info().Msgf("copy a jobs %s of the batch %s", sourceJobName, sourceRadixBatch.GetName())
 	radixBatch := radixv1.RadixBatch{
@@ -169,7 +169,7 @@ func CopyRadixBatchOrJob(ctx context.Context, radixClient versioned.Interface, s
 	}
 
 	logger.Debug().Msgf("copied the batch %s for the component %s", radixBatch.GetName(), radixComponentName)
-	return pointers.Ptr(GetRadixBatchStatus(createdRadixBatch, radixDeployJobComponent)), nil
+	return createdRadixBatch, nil
 }
 
 // StopRadixBatch Stop a batch

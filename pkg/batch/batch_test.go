@@ -9,13 +9,12 @@ import (
 	"github.com/equinor/radix-common/utils/numbers"
 	"github.com/equinor/radix-common/utils/pointers"
 	"github.com/equinor/radix-common/utils/slice"
-	testUtil "github.com/equinor/radix-job-scheduler/internal/test"
+	testutil "github.com/equinor/radix-job-scheduler/internal/test"
 	modelsv2 "github.com/equinor/radix-job-scheduler/models/v2"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
-	"github.com/equinor/radix-operator/pkg/apis/utils"
-	operatorUtils "github.com/equinor/radix-operator/pkg/apis/utils"
-	radixLabels "github.com/equinor/radix-operator/pkg/apis/utils/labels"
+	operatorutils "github.com/equinor/radix-operator/pkg/apis/utils"
+	radixlabels "github.com/equinor/radix-operator/pkg/apis/utils/labels"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -30,8 +29,8 @@ type testProps struct {
 type jobStatusPhase map[string]radixv1.RadixBatchJobPhase
 type testArgs struct {
 	radixBatch          *radixv1.RadixBatch
-	batchRadixDeploy    operatorUtils.DeploymentBuilder
-	activeRadixDeploy   *operatorUtils.DeploymentBuilder
+	batchRadixDeploy    operatorutils.DeploymentBuilder
+	activeRadixDeploy   *operatorutils.DeploymentBuilder
 	expectedBatchStatus radixv1.RadixBatchJobApiStatus
 }
 
@@ -108,20 +107,20 @@ func TestCopyRadixBatchOrJob(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			radixClient, _, _, _ := testUtil.SetupTest(props.appName, props.envName, props.radixJobComponentName, radixDeploymentName1, 1)
+			radixClient, _, _, _ := testutil.SetupTest(props.appName, props.envName, props.radixJobComponentName, radixDeploymentName1, 1)
 			tt.args.batchRadixDeploy.WithActiveFrom(yesterday)
 			var activeRadixDeployment *radixv1.RadixDeployment
 			if tt.args.activeRadixDeploy != nil {
 				tt.args.batchRadixDeploy.WithActiveTo(now)
 				tt.args.batchRadixDeploy.WithCondition(radixv1.DeploymentInactive)
 				activeRadixDeployment = (*tt.args.activeRadixDeploy).WithActiveFrom(now).WithCondition(radixv1.DeploymentActive).BuildRD()
-				_, err := radixClient.RadixV1().RadixDeployments(utils.GetEnvironmentNamespace(props.appName, props.envName)).
+				_, err := radixClient.RadixV1().RadixDeployments(operatorutils.GetEnvironmentNamespace(props.appName, props.envName)).
 					Create(context.Background(), activeRadixDeployment, metav1.CreateOptions{})
 				require.NoError(t, err)
 			} else {
 				tt.args.batchRadixDeploy.WithCondition(radixv1.DeploymentActive)
 			}
-			batchRadixDeploy, err := radixClient.RadixV1().RadixDeployments(utils.GetEnvironmentNamespace(props.appName, props.envName)).
+			batchRadixDeploy, err := radixClient.RadixV1().RadixDeployments(operatorutils.GetEnvironmentNamespace(props.appName, props.envName)).
 				Create(context.Background(), tt.args.batchRadixDeploy.BuildRD(), metav1.CreateOptions{})
 			require.NoError(t, err)
 			if activeRadixDeployment == nil {
@@ -132,12 +131,13 @@ func TestCopyRadixBatchOrJob(t *testing.T) {
 			})
 			require.True(t, ok)
 
-			createdRadixBatchStatus, err := CopyRadixBatchOrJob(context.Background(), radixClient, tt.args.radixBatch, "", &radixDeployJobComponent, radixDeploymentName1)
+			createdRadixBatch, err := CopyRadixBatchOrJob(context.Background(), radixClient, tt.args.radixBatch, "", radixDeploymentName1)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("CopyRadixBatchOrJob() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			assert.NotNil(t, createdRadixBatchStatus, "Status is nil")
+			assert.NotNil(t, createdRadixBatch, "RadixBatch is nil")
+			createdRadixBatchStatus := GetRadixBatchStatus(createdRadixBatch, &radixDeployJobComponent)
 			assert.Equal(t, tt.args.expectedBatchStatus, createdRadixBatchStatus.Status, "Status is not as expected")
 		})
 	}
@@ -260,20 +260,20 @@ func TestGetRadixBatchStatus(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			radixClient, _, _, _ := testUtil.SetupTest(props.appName, props.envName, props.radixJobComponentName, radixDeploymentName1, 1)
+			radixClient, _, _, _ := testutil.SetupTest(props.appName, props.envName, props.radixJobComponentName, radixDeploymentName1, 1)
 			tt.args.batchRadixDeploy.WithActiveFrom(yesterday)
 			var activeRadixDeployment *radixv1.RadixDeployment
 			if tt.args.activeRadixDeploy != nil {
 				tt.args.batchRadixDeploy.WithActiveTo(now)
 				tt.args.batchRadixDeploy.WithCondition(radixv1.DeploymentInactive)
 				activeRadixDeployment = (*tt.args.activeRadixDeploy).WithActiveFrom(now).WithCondition(radixv1.DeploymentActive).BuildRD()
-				_, err := radixClient.RadixV1().RadixDeployments(utils.GetEnvironmentNamespace(props.appName, props.envName)).
+				_, err := radixClient.RadixV1().RadixDeployments(operatorutils.GetEnvironmentNamespace(props.appName, props.envName)).
 					Create(context.Background(), activeRadixDeployment, metav1.CreateOptions{})
 				require.NoError(t, err)
 			} else {
 				tt.args.batchRadixDeploy.WithCondition(radixv1.DeploymentActive)
 			}
-			batchRadixDeploy, err := radixClient.RadixV1().RadixDeployments(utils.GetEnvironmentNamespace(props.appName, props.envName)).
+			batchRadixDeploy, err := radixClient.RadixV1().RadixDeployments(operatorutils.GetEnvironmentNamespace(props.appName, props.envName)).
 				Create(context.Background(), tt.args.batchRadixDeploy.BuildRD(), metav1.CreateOptions{})
 			require.NoError(t, err)
 			if activeRadixDeployment == nil {
@@ -292,8 +292,8 @@ func TestGetRadixBatchStatus(t *testing.T) {
 
 func TestGetRadixBatchStatuses(t *testing.T) {
 	type multiBatchArgs struct {
-		radixBatches                 []*radixv1.RadixBatch
-		batchRadixDeploymentBuilders map[string]operatorUtils.DeploymentBuilder
+		radixBatches                 []radixv1.RadixBatch
+		batchRadixDeploymentBuilders map[string]operatorutils.DeploymentBuilder
 		activeRadixDeploymentName    string
 		expectedBatchStatuses        map[string]radixv1.RadixBatchJobApiStatus
 	}
@@ -306,13 +306,13 @@ func TestGetRadixBatchStatuses(t *testing.T) {
 		{
 			name: "only deployment has no rules, no job statuses",
 			batchesArgs: multiBatchArgs{
-				radixBatches: []*radixv1.RadixBatch{
-					createRadixBatch(batchName1, batchId1, props, kube.RadixBatchTypeBatch, radixDeploymentName1, []string{jobName1, jobName2},
+				radixBatches: []radixv1.RadixBatch{
+					*createRadixBatch(batchName1, batchId1, props, kube.RadixBatchTypeBatch, radixDeploymentName1, []string{jobName1, jobName2},
 						radixv1.BatchConditionTypeWaiting, nil),
-					createRadixBatch(batchName2, batchId2, props, kube.RadixBatchTypeBatch, radixDeploymentName1, []string{jobName1, jobName2},
+					*createRadixBatch(batchName2, batchId2, props, kube.RadixBatchTypeBatch, radixDeploymentName1, []string{jobName1, jobName2},
 						radixv1.BatchConditionTypeWaiting, nil),
 				},
-				batchRadixDeploymentBuilders: map[string]operatorUtils.DeploymentBuilder{radixDeploymentName1: createRadixDeployJobComponent(radixDeploymentName1, props)},
+				batchRadixDeploymentBuilders: map[string]operatorutils.DeploymentBuilder{radixDeploymentName1: createRadixDeployJobComponent(radixDeploymentName1, props)},
 				activeRadixDeploymentName:    radixDeploymentName1,
 				expectedBatchStatuses: map[string]radixv1.RadixBatchJobApiStatus{
 					batchName1: radixv1.RadixBatchJobApiStatusWaiting,
@@ -322,15 +322,15 @@ func TestGetRadixBatchStatuses(t *testing.T) {
 		{
 			name: "only deployment has no rules, batch status is default",
 			batchesArgs: multiBatchArgs{
-				radixBatches: []*radixv1.RadixBatch{
-					createRadixBatch(batchName1, batchId1, props, kube.RadixBatchTypeBatch, radixDeploymentName1, []string{jobName1, jobName2},
+				radixBatches: []radixv1.RadixBatch{
+					*createRadixBatch(batchName1, batchId1, props, kube.RadixBatchTypeBatch, radixDeploymentName1, []string{jobName1, jobName2},
 						radixv1.BatchConditionTypeWaiting, jobStatusPhase{jobName1: radixv1.BatchJobPhaseWaiting, jobName2: radixv1.BatchJobPhaseActive}),
-					createRadixBatch(batchName2, batchId2, props, kube.RadixBatchTypeBatch, radixDeploymentName1, []string{jobName1, jobName2},
+					*createRadixBatch(batchName2, batchId2, props, kube.RadixBatchTypeBatch, radixDeploymentName1, []string{jobName1, jobName2},
 						radixv1.BatchConditionTypeActive, jobStatusPhase{jobName1: radixv1.BatchJobPhaseSucceeded, jobName2: radixv1.BatchJobPhaseRunning}),
-					createRadixBatch(batchName3, batchId3, props, kube.RadixBatchTypeBatch, radixDeploymentName1, []string{jobName1, jobName2},
+					*createRadixBatch(batchName3, batchId3, props, kube.RadixBatchTypeBatch, radixDeploymentName1, []string{jobName1, jobName2},
 						radixv1.BatchConditionTypeCompleted, jobStatusPhase{jobName1: radixv1.BatchJobPhaseSucceeded, jobName2: radixv1.BatchJobPhaseFailed}),
 				},
-				batchRadixDeploymentBuilders: map[string]operatorUtils.DeploymentBuilder{radixDeploymentName1: createRadixDeployJobComponent(radixDeploymentName1, props)},
+				batchRadixDeploymentBuilders: map[string]operatorutils.DeploymentBuilder{radixDeploymentName1: createRadixDeployJobComponent(radixDeploymentName1, props)},
 				activeRadixDeploymentName:    radixDeploymentName1,
 				expectedBatchStatuses: map[string]radixv1.RadixBatchJobApiStatus{
 					batchName1: radixv1.RadixBatchJobApiStatusWaiting,
@@ -342,15 +342,15 @@ func TestGetRadixBatchStatuses(t *testing.T) {
 		{
 			name: "only deployment, with only rule does not match, batch status is default",
 			batchesArgs: multiBatchArgs{
-				radixBatches: []*radixv1.RadixBatch{
-					createRadixBatch(batchName1, batchId1, props, kube.RadixBatchTypeBatch, radixDeploymentName1, []string{jobName1, jobName2},
+				radixBatches: []radixv1.RadixBatch{
+					*createRadixBatch(batchName1, batchId1, props, kube.RadixBatchTypeBatch, radixDeploymentName1, []string{jobName1, jobName2},
 						radixv1.BatchConditionTypeWaiting, jobStatusPhase{jobName1: radixv1.BatchJobPhaseWaiting, jobName2: radixv1.BatchJobPhaseWaiting}),
-					createRadixBatch(batchName2, batchId2, props, kube.RadixBatchTypeBatch, radixDeploymentName1, []string{jobName1, jobName2},
+					*createRadixBatch(batchName2, batchId2, props, kube.RadixBatchTypeBatch, radixDeploymentName1, []string{jobName1, jobName2},
 						radixv1.BatchConditionTypeActive, jobStatusPhase{jobName1: radixv1.BatchJobPhaseSucceeded, jobName2: radixv1.BatchJobPhaseRunning}),
-					createRadixBatch(batchName3, batchId3, props, kube.RadixBatchTypeBatch, radixDeploymentName1, []string{jobName1, jobName2},
+					*createRadixBatch(batchName3, batchId3, props, kube.RadixBatchTypeBatch, radixDeploymentName1, []string{jobName1, jobName2},
 						radixv1.BatchConditionTypeCompleted, jobStatusPhase{jobName1: radixv1.BatchJobPhaseSucceeded, jobName2: radixv1.BatchJobPhaseStopped}),
 				},
-				batchRadixDeploymentBuilders: map[string]operatorUtils.DeploymentBuilder{radixDeploymentName1: createRadixDeployJobComponent(radixDeploymentName1, props,
+				batchRadixDeploymentBuilders: map[string]operatorutils.DeploymentBuilder{radixDeploymentName1: createRadixDeployJobComponent(radixDeploymentName1, props,
 					createBatchStatusRule(radixv1.RadixBatchJobApiStatusFailed, radixv1.ConditionAny, radixv1.OperatorIn, radixv1.BatchJobPhaseFailed))},
 				activeRadixDeploymentName: radixDeploymentName1,
 				expectedBatchStatuses: map[string]radixv1.RadixBatchJobApiStatus{
@@ -363,15 +363,15 @@ func TestGetRadixBatchStatuses(t *testing.T) {
 		{
 			name: "only deployment, with only rule and it matches on two batches, third batch status is default",
 			batchesArgs: multiBatchArgs{
-				radixBatches: []*radixv1.RadixBatch{
-					createRadixBatch(batchName1, batchId1, props, kube.RadixBatchTypeBatch, radixDeploymentName1, []string{jobName1, jobName2},
+				radixBatches: []radixv1.RadixBatch{
+					*createRadixBatch(batchName1, batchId1, props, kube.RadixBatchTypeBatch, radixDeploymentName1, []string{jobName1, jobName2},
 						radixv1.BatchConditionTypeActive, jobStatusPhase{jobName1: radixv1.BatchJobPhaseWaiting, jobName2: radixv1.BatchJobPhaseRunning, jobName3: radixv1.BatchJobPhaseSucceeded}),
-					createRadixBatch(batchName2, batchId2, props, kube.RadixBatchTypeBatch, radixDeploymentName1, []string{jobName1, jobName2},
+					*createRadixBatch(batchName2, batchId2, props, kube.RadixBatchTypeBatch, radixDeploymentName1, []string{jobName1, jobName2},
 						radixv1.BatchConditionTypeActive, jobStatusPhase{jobName1: radixv1.BatchJobPhaseStopped, jobName2: radixv1.BatchJobPhaseRunning}),
-					createRadixBatch(batchName3, batchId3, props, kube.RadixBatchTypeBatch, radixDeploymentName1, []string{jobName1, jobName2},
+					*createRadixBatch(batchName3, batchId3, props, kube.RadixBatchTypeBatch, radixDeploymentName1, []string{jobName1, jobName2},
 						radixv1.BatchConditionTypeCompleted, jobStatusPhase{jobName1: radixv1.BatchJobPhaseSucceeded, jobName2: radixv1.BatchJobPhaseFailed}),
 				},
-				batchRadixDeploymentBuilders: map[string]operatorUtils.DeploymentBuilder{radixDeploymentName1: createRadixDeployJobComponent(radixDeploymentName1, props,
+				batchRadixDeploymentBuilders: map[string]operatorutils.DeploymentBuilder{radixDeploymentName1: createRadixDeployJobComponent(radixDeploymentName1, props,
 					createBatchStatusRule(radixv1.RadixBatchJobApiStatusRunning, radixv1.ConditionAny, radixv1.OperatorIn, radixv1.BatchJobPhaseRunning))},
 				activeRadixDeploymentName: radixDeploymentName1,
 				expectedBatchStatuses: map[string]radixv1.RadixBatchJobApiStatus{
@@ -384,15 +384,15 @@ func TestGetRadixBatchStatuses(t *testing.T) {
 		{
 			name: "only deployment, multiple rules, first matching rule applied on two batches, third batch status is default",
 			batchesArgs: multiBatchArgs{
-				radixBatches: []*radixv1.RadixBatch{
-					createRadixBatch(batchName1, batchId1, props, kube.RadixBatchTypeBatch, radixDeploymentName1, []string{jobName1, jobName2},
+				radixBatches: []radixv1.RadixBatch{
+					*createRadixBatch(batchName1, batchId1, props, kube.RadixBatchTypeBatch, radixDeploymentName1, []string{jobName1, jobName2},
 						radixv1.BatchConditionTypeActive, jobStatusPhase{jobName1: radixv1.BatchJobPhaseStopped, jobName2: radixv1.BatchJobPhaseRunning, jobName3: radixv1.BatchJobPhaseSucceeded}),
-					createRadixBatch(batchName2, batchId2, props, kube.RadixBatchTypeBatch, radixDeploymentName1, []string{jobName1, jobName2},
+					*createRadixBatch(batchName2, batchId2, props, kube.RadixBatchTypeBatch, radixDeploymentName1, []string{jobName1, jobName2},
 						radixv1.BatchConditionTypeActive, jobStatusPhase{jobName1: radixv1.BatchJobPhaseStopped, jobName2: radixv1.BatchJobPhaseWaiting, jobName3: radixv1.BatchJobPhaseFailed}),
-					createRadixBatch(batchName3, batchId3, props, kube.RadixBatchTypeBatch, radixDeploymentName1, []string{jobName1, jobName2},
+					*createRadixBatch(batchName3, batchId3, props, kube.RadixBatchTypeBatch, radixDeploymentName1, []string{jobName1, jobName2},
 						radixv1.BatchConditionTypeCompleted, jobStatusPhase{jobName1: radixv1.BatchJobPhaseSucceeded, jobName2: radixv1.BatchJobPhaseFailed}),
 				},
-				batchRadixDeploymentBuilders: map[string]operatorUtils.DeploymentBuilder{radixDeploymentName1: createRadixDeployJobComponent(radixDeploymentName1, props,
+				batchRadixDeploymentBuilders: map[string]operatorutils.DeploymentBuilder{radixDeploymentName1: createRadixDeployJobComponent(radixDeploymentName1, props,
 					createBatchStatusRule(radixv1.RadixBatchJobApiStatusRunning, radixv1.ConditionAny, radixv1.OperatorIn, radixv1.BatchJobPhaseRunning),
 					createBatchStatusRule(radixv1.RadixBatchJobApiStatusStopped, radixv1.ConditionAny, radixv1.OperatorIn, radixv1.BatchJobPhaseStopped),
 				)},
@@ -407,15 +407,15 @@ func TestGetRadixBatchStatuses(t *testing.T) {
 		{
 			name: "only deployment, multiple rules, only first matching rule not-in applied on two batches, third batch status is default",
 			batchesArgs: multiBatchArgs{
-				radixBatches: []*radixv1.RadixBatch{
-					createRadixBatch(batchName1, batchId1, props, kube.RadixBatchTypeBatch, radixDeploymentName1, []string{jobName1, jobName2},
+				radixBatches: []radixv1.RadixBatch{
+					*createRadixBatch(batchName1, batchId1, props, kube.RadixBatchTypeBatch, radixDeploymentName1, []string{jobName1, jobName2},
 						radixv1.BatchConditionTypeActive, jobStatusPhase{jobName1: radixv1.BatchJobPhaseWaiting, jobName2: radixv1.BatchJobPhaseRunning, jobName3: radixv1.BatchJobPhaseActive}),
-					createRadixBatch(batchName2, batchId2, props, kube.RadixBatchTypeBatch, radixDeploymentName1, []string{jobName1, jobName2},
+					*createRadixBatch(batchName2, batchId2, props, kube.RadixBatchTypeBatch, radixDeploymentName1, []string{jobName1, jobName2},
 						radixv1.BatchConditionTypeCompleted, jobStatusPhase{jobName1: radixv1.BatchJobPhaseStopped, jobName2: radixv1.BatchJobPhaseSucceeded, jobName3: radixv1.BatchJobPhaseRunning, jobName4: radixv1.BatchJobPhaseWaiting}),
-					createRadixBatch(batchName3, batchId3, props, kube.RadixBatchTypeBatch, radixDeploymentName1, []string{jobName1, jobName2},
+					*createRadixBatch(batchName3, batchId3, props, kube.RadixBatchTypeBatch, radixDeploymentName1, []string{jobName1, jobName2},
 						radixv1.BatchConditionTypeCompleted, jobStatusPhase{jobName1: radixv1.BatchJobPhaseFailed, jobName2: radixv1.BatchJobPhaseFailed}),
 				},
-				batchRadixDeploymentBuilders: map[string]operatorUtils.DeploymentBuilder{radixDeploymentName1: createRadixDeployJobComponent(radixDeploymentName1, props,
+				batchRadixDeploymentBuilders: map[string]operatorutils.DeploymentBuilder{radixDeploymentName1: createRadixDeployJobComponent(radixDeploymentName1, props,
 					createBatchStatusRule(radixv1.RadixBatchJobApiStatusRunning, radixv1.ConditionAll, radixv1.OperatorNotIn, radixv1.BatchJobPhaseStopped, radixv1.BatchJobPhaseFailed, radixv1.BatchJobPhaseSucceeded),
 					createBatchStatusRule(radixv1.RadixBatchJobApiStatusSucceeded, radixv1.ConditionAny, radixv1.OperatorNotIn, radixv1.BatchJobPhaseFailed),
 				)},
@@ -430,15 +430,15 @@ func TestGetRadixBatchStatuses(t *testing.T) {
 		{
 			name: "multiple deployments, used rules from active deployment",
 			batchesArgs: multiBatchArgs{
-				radixBatches: []*radixv1.RadixBatch{
-					createRadixBatch(batchName1, batchId1, props, kube.RadixBatchTypeBatch, radixDeploymentName1, []string{jobName1, jobName2},
+				radixBatches: []radixv1.RadixBatch{
+					*createRadixBatch(batchName1, batchId1, props, kube.RadixBatchTypeBatch, radixDeploymentName1, []string{jobName1, jobName2},
 						radixv1.BatchConditionTypeActive, jobStatusPhase{jobName1: radixv1.BatchJobPhaseWaiting, jobName2: radixv1.BatchJobPhaseRunning, jobName3: radixv1.BatchJobPhaseActive}),
-					createRadixBatch(batchName2, batchId2, props, kube.RadixBatchTypeBatch, radixDeploymentName2, []string{jobName1, jobName2},
+					*createRadixBatch(batchName2, batchId2, props, kube.RadixBatchTypeBatch, radixDeploymentName2, []string{jobName1, jobName2},
 						radixv1.BatchConditionTypeActive, jobStatusPhase{jobName1: radixv1.BatchJobPhaseWaiting, jobName2: radixv1.BatchJobPhaseRunning, jobName3: radixv1.BatchJobPhaseActive}),
-					createRadixBatch(batchName3, batchId3, props, kube.RadixBatchTypeBatch, radixDeploymentName3, []string{jobName1, jobName2},
+					*createRadixBatch(batchName3, batchId3, props, kube.RadixBatchTypeBatch, radixDeploymentName3, []string{jobName1, jobName2},
 						radixv1.BatchConditionTypeActive, jobStatusPhase{jobName1: radixv1.BatchJobPhaseWaiting, jobName2: radixv1.BatchJobPhaseRunning, jobName3: radixv1.BatchJobPhaseActive}),
 				},
-				batchRadixDeploymentBuilders: map[string]operatorUtils.DeploymentBuilder{
+				batchRadixDeploymentBuilders: map[string]operatorutils.DeploymentBuilder{
 					radixDeploymentName1: createRadixDeployJobComponent(radixDeploymentName1, props,
 						createBatchStatusRule(radixv1.RadixBatchJobApiStatusActive, radixv1.ConditionAny, radixv1.OperatorIn, radixv1.BatchJobPhaseRunning, radixv1.BatchJobPhaseActive),
 						createBatchStatusRule(radixv1.RadixBatchJobApiStatusFailed, radixv1.ConditionAny, radixv1.OperatorNotIn, radixv1.BatchJobPhaseRunning),
@@ -461,7 +461,7 @@ func TestGetRadixBatchStatuses(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			someTime := now.Add(time.Hour * -20)
-			radixClient, _, _, _ := testUtil.SetupTest(props.appName, props.envName, props.radixJobComponentName, radixDeploymentName1, 1)
+			radixClient, _, _, _ := testutil.SetupTest(props.appName, props.envName, props.radixJobComponentName, radixDeploymentName1, 1)
 			var activeRadixDeployment *radixv1.RadixDeployment
 			for radixDeploymentName, deploymentBuilder := range tt.batchesArgs.batchRadixDeploymentBuilders {
 				deploymentBuilder.WithActiveFrom(someTime)
@@ -476,7 +476,7 @@ func TestGetRadixBatchStatuses(t *testing.T) {
 				if radixDeploymentName == tt.batchesArgs.activeRadixDeploymentName {
 					activeRadixDeployment = radixDeployment
 				}
-				_, err := radixClient.RadixV1().RadixDeployments(utils.GetEnvironmentNamespace(props.appName, props.envName)).
+				_, err := radixClient.RadixV1().RadixDeployments(operatorutils.GetEnvironmentNamespace(props.appName, props.envName)).
 					Create(context.Background(), radixDeployment, metav1.CreateOptions{})
 				require.NoError(t, err)
 			}
@@ -491,7 +491,7 @@ func TestGetRadixBatchStatuses(t *testing.T) {
 				acc[batchStatus.Name] = batchStatus
 				return acc
 			})
-			radixBatchMap := slice.Reduce(tt.batchesArgs.radixBatches, make(map[string]*radixv1.RadixBatch), func(acc map[string]*radixv1.RadixBatch, batch *radixv1.RadixBatch) map[string]*radixv1.RadixBatch {
+			radixBatchMap := slice.Reduce(tt.batchesArgs.radixBatches, make(map[string]radixv1.RadixBatch), func(acc map[string]radixv1.RadixBatch, batch radixv1.RadixBatch) map[string]radixv1.RadixBatch {
 				acc[batch.Name] = batch
 				return acc
 			})
@@ -524,10 +524,10 @@ func TestDeleteRadixBatch(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			radixClient, _, _, _ := testUtil.SetupTest(props.appName, props.envName, props.radixJobComponentName, radixDeploymentName1, 1)
-			_, err := radixClient.RadixV1().RadixBatches(utils.GetEnvironmentNamespace(props.appName, props.envName)).Create(context.Background(), tt.existingRadixBatch, metav1.CreateOptions{})
+			radixClient, _, _, _ := testutil.SetupTest(props.appName, props.envName, props.radixJobComponentName, radixDeploymentName1, 1)
+			_, err := radixClient.RadixV1().RadixBatches(operatorutils.GetEnvironmentNamespace(props.appName, props.envName)).Create(context.Background(), tt.existingRadixBatch, metav1.CreateOptions{})
 			require.NoError(t, err)
-			err = DeleteRadixBatch(context.Background(), radixClient, &radixv1.RadixBatch{ObjectMeta: metav1.ObjectMeta{Name: tt.radixBatchToDelete, Namespace: utils.GetEnvironmentNamespace(props.appName, props.envName)}})
+			err = DeleteRadixBatch(context.Background(), radixClient, &radixv1.RadixBatch{ObjectMeta: metav1.ObjectMeta{Name: tt.radixBatchToDelete, Namespace: operatorutils.GetEnvironmentNamespace(props.appName, props.envName)}})
 			if tt.expectedError != nil {
 				assert.EqualError(t, err, tt.expectedError.Error())
 			} else {
@@ -561,8 +561,8 @@ func TestRestartRadixBatch(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			radixClient, _, _, _ := testUtil.SetupTest(props.appName, props.envName, props.radixJobComponentName, radixDeploymentName1, 1)
-			_, err := radixClient.RadixV1().RadixBatches(utils.GetEnvironmentNamespace(props.appName, props.envName)).Create(context.Background(), tt.existingRadixBatch, metav1.CreateOptions{})
+			radixClient, _, _, _ := testutil.SetupTest(props.appName, props.envName, props.radixJobComponentName, radixDeploymentName1, 1)
+			_, err := radixClient.RadixV1().RadixBatches(operatorutils.GetEnvironmentNamespace(props.appName, props.envName)).Create(context.Background(), tt.existingRadixBatch, metav1.CreateOptions{})
 			require.NoError(t, err)
 			err = RestartRadixBatch(context.Background(), radixClient, tt.radixBatchToRestart)
 			if tt.expectedError != nil {
@@ -608,8 +608,8 @@ func TestRestartRadixBatchJob(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			radixClient, _, _, _ := testUtil.SetupTest(props.appName, props.envName, props.radixJobComponentName, radixDeploymentName1, 1)
-			_, err := radixClient.RadixV1().RadixBatches(utils.GetEnvironmentNamespace(props.appName, props.envName)).Create(context.Background(), tt.existingRadixBatch, metav1.CreateOptions{})
+			radixClient, _, _, _ := testutil.SetupTest(props.appName, props.envName, props.radixJobComponentName, radixDeploymentName1, 1)
+			_, err := radixClient.RadixV1().RadixBatches(operatorutils.GetEnvironmentNamespace(props.appName, props.envName)).Create(context.Background(), tt.existingRadixBatch, metav1.CreateOptions{})
 			require.NoError(t, err)
 			err = RestartRadixBatchJob(context.Background(), radixClient, tt.radixBatchToRestart, tt.radixBatchJobToRestart)
 			if tt.expectedError != nil {
@@ -645,8 +645,8 @@ func TestStopRadixBatch(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			radixClient, _, _, _ := testUtil.SetupTest(props.appName, props.envName, props.radixJobComponentName, radixDeploymentName1, 1)
-			_, err := radixClient.RadixV1().RadixBatches(utils.GetEnvironmentNamespace(props.appName, props.envName)).Create(context.Background(), tt.existingRadixBatch, metav1.CreateOptions{})
+			radixClient, _, _, _ := testutil.SetupTest(props.appName, props.envName, props.radixJobComponentName, radixDeploymentName1, 1)
+			_, err := radixClient.RadixV1().RadixBatches(operatorutils.GetEnvironmentNamespace(props.appName, props.envName)).Create(context.Background(), tt.existingRadixBatch, metav1.CreateOptions{})
 			require.NoError(t, err)
 			err = StopRadixBatch(context.Background(), radixClient, tt.radixBatchToStop)
 			if tt.expectedError != nil {
@@ -716,8 +716,8 @@ func TestStopRadixBatchJob(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			radixClient, _, _, _ := testUtil.SetupTest(props.appName, props.envName, props.radixJobComponentName, radixDeploymentName1, 1)
-			_, err := radixClient.RadixV1().RadixBatches(utils.GetEnvironmentNamespace(props.appName, props.envName)).Create(context.Background(), tt.existingRadixBatch, metav1.CreateOptions{})
+			radixClient, _, _, _ := testutil.SetupTest(props.appName, props.envName, props.radixJobComponentName, radixDeploymentName1, 1)
+			_, err := radixClient.RadixV1().RadixBatches(operatorutils.GetEnvironmentNamespace(props.appName, props.envName)).Create(context.Background(), tt.existingRadixBatch, metav1.CreateOptions{})
 			require.NoError(t, err)
 			err = StopRadixBatchJob(context.Background(), radixClient, tt.radixBatchToStop, tt.radixBatchJobToStop)
 			if tt.expectedError != nil {
@@ -729,13 +729,13 @@ func TestStopRadixBatchJob(t *testing.T) {
 	}
 }
 
-func aRadixDeploymentWithComponentModifier(props testProps, radixDeploymentName string, m func(builder operatorUtils.DeployJobComponentBuilder) operatorUtils.DeployJobComponentBuilder) operatorUtils.DeploymentBuilder {
-	builder := operatorUtils.NewDeploymentBuilder().
+func aRadixDeploymentWithComponentModifier(props testProps, radixDeploymentName string, m func(builder operatorutils.DeployJobComponentBuilder) operatorutils.DeployJobComponentBuilder) operatorutils.DeploymentBuilder {
+	builder := operatorutils.NewDeploymentBuilder().
 		WithAppName(props.appName).
 		WithDeploymentName(radixDeploymentName).
 		WithImageTag("imagetag").
 		WithEnvironment(props.envName).
-		WithJobComponent(m(operatorUtils.NewDeployJobComponentBuilder().
+		WithJobComponent(m(operatorutils.NewDeployJobComponentBuilder().
 			WithName(props.radixJobComponentName).
 			WithImage("radixdev.azurecr.io/job:imagetag").
 			WithSchedulerPort(numbers.Int32Ptr(8080))))
@@ -746,8 +746,8 @@ func createBatchStatusRule(batchStatus radixv1.RadixBatchJobApiStatus, condition
 	return radixv1.BatchStatusRule{Condition: condition, BatchStatus: batchStatus, Operator: operator, JobStatuses: jobPhases}
 }
 
-func createRadixDeployJobComponent(radixDeploymentName string, props testProps, rules ...radixv1.BatchStatusRule) operatorUtils.DeploymentBuilder {
-	return aRadixDeploymentWithComponentModifier(props, radixDeploymentName, func(builder operatorUtils.DeployJobComponentBuilder) operatorUtils.DeployJobComponentBuilder {
+func createRadixDeployJobComponent(radixDeploymentName string, props testProps, rules ...radixv1.BatchStatusRule) operatorutils.DeploymentBuilder {
+	return aRadixDeploymentWithComponentModifier(props, radixDeploymentName, func(builder operatorutils.DeployJobComponentBuilder) operatorutils.DeployJobComponentBuilder {
 		return builder.WithBatchStatusRules(rules...)
 	})
 }
@@ -756,11 +756,11 @@ func createRadixBatch(batchName, batchId string, props testProps, radixBatchType
 	radixBatch := radixv1.RadixBatch{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      batchName,
-			Namespace: utils.GetEnvironmentNamespace(props.appName, props.envName),
-			Labels: radixLabels.Merge(
-				radixLabels.ForApplicationName(props.appName),
-				radixLabels.ForComponentName(props.radixJobComponentName),
-				radixLabels.ForBatchType(radixBatchType),
+			Namespace: operatorutils.GetEnvironmentNamespace(props.appName, props.envName),
+			Labels: radixlabels.Merge(
+				radixlabels.ForApplicationName(props.appName),
+				radixlabels.ForComponentName(props.radixJobComponentName),
+				radixlabels.ForBatchType(radixBatchType),
 			),
 		},
 		Spec: radixv1.RadixBatchSpec{

@@ -10,7 +10,7 @@ import (
 	"github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-common/utils/pointers"
 	"github.com/equinor/radix-common/utils/slice"
-	"github.com/equinor/radix-job-scheduler/models/v1"
+	v1 "github.com/equinor/radix-job-scheduler/models/v1"
 	"github.com/equinor/radix-job-scheduler/models/v1/events"
 	"github.com/equinor/radix-job-scheduler/utils/radix/jobs"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
@@ -93,7 +93,7 @@ func getRadixBatchEventFromRadixBatch(event events.Event, radixBatch *radixv1.Ra
 		Created: pointers.Ptr(radixBatch.GetCreationTimestamp().Time),
 		Started: startedTime,
 		Ended:   endedTime,
-		Status:  string(jobs.GetRadixBatchStatus(radixBatch, radixDeployJobComponent)),
+		Status:  string(jobs.GetRadixBatchJobApiStatus(radixBatch, radixDeployJobComponent)),
 		Message: radixBatch.Status.Condition.Message,
 		Updated: pointers.Ptr(time.Now()),
 	}

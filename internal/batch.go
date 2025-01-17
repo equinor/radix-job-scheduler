@@ -19,7 +19,7 @@ import (
 var defaultSrc = rand.NewSource(time.Now().UnixNano())
 
 // GetRadixBatches Get Radix batches
-func GetRadixBatches(ctx context.Context, namespace string, radixClient radixclient.Interface, labels ...map[string]string) ([]*radixv1.RadixBatch, error) {
+func GetRadixBatches(ctx context.Context, namespace string, radixClient radixclient.Interface, labels ...map[string]string) ([]radixv1.RadixBatch, error) {
 	radixBatchList, err := radixClient.
 		RadixV1().
 		RadixBatches(namespace).
@@ -34,7 +34,7 @@ func GetRadixBatches(ctx context.Context, namespace string, radixClient radixcli
 		return nil, err
 	}
 
-	return slice.PointersOf(radixBatchList.Items).([]*radixv1.RadixBatch), nil
+	return radixBatchList.Items, nil
 }
 
 // GenerateBatchName Generate batch name

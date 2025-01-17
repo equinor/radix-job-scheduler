@@ -140,7 +140,12 @@ func (h *handler) CopyRadixBatch(ctx context.Context, sourceBatchName, deploymen
 	if err != nil {
 		return nil, err
 	}
-	return batch.CopyRadixBatchOrJob(ctx, h.kubeUtil.RadixClient(), sourceRadixBatch, "", h.radixDeployJobComponent, deploymentName)
+	rb, err := batch.CopyRadixBatchOrJob(ctx, h.kubeUtil.RadixClient(), sourceRadixBatch, "", deploymentName)
+	if err != nil {
+		return nil, err
+	}
+	batchStatus := batch.GetRadixBatchStatus(rb, h.radixDeployJobComponent)
+	return &batchStatus, nil
 }
 
 func (h *handler) createRadixBatchOrJob(ctx context.Context, batchScheduleDescription common.BatchScheduleDescription, radixBatchType kube.RadixBatchType) (*modelsv2.RadixBatch, error) {
@@ -203,7 +208,12 @@ func (h *handler) CopyRadixBatchJob(ctx context.Context, sourceJobName, deployme
 	if err != nil {
 		return nil, err
 	}
-	return batch.CopyRadixBatchOrJob(ctx, h.kubeUtil.RadixClient(), sourceRadixBatch, jobName, h.radixDeployJobComponent, deploymentName)
+	rb, err := batch.CopyRadixBatchOrJob(ctx, h.kubeUtil.RadixClient(), sourceRadixBatch, jobName, deploymentName)
+	if err != nil {
+		return nil, err
+	}
+	batchStatus := batch.GetRadixBatchStatus(rb, h.radixDeployJobComponent)
+	return &batchStatus, nil
 }
 
 // DeleteRadixBatchJob Delete a batch job
