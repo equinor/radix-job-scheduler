@@ -2,6 +2,7 @@ package notifications
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -46,12 +47,11 @@ func (notifier *webhookNotifier) String() string {
 	return "Webhook notifier is disabled"
 }
 
-func (notifier *webhookNotifier) Notify(event events.Event, radixBatch *radixv1.RadixBatch, updatedJobStatuses []radixv1.RadixBatchJobStatus, errChan chan error) (done chan struct{}) {
-	done = make(chan struct{})
+func (notifier *webhookNotifier) Notify(ctx context.Context, event events.Event, radixBatch *radixv1.RadixBatch, updatedJobStatuses []radixv1.RadixBatchJobStatus, errChan chan error) {
 	go func() {
-		defer close(done)
+		_, cancelFunc := context.WithTimeout(ctx, 1*time.Minute)
+		defer cancelFunc()
 		if !notifier.Enabled() || len(notifier.webhookURL) == 0 || radixBatch.Spec.RadixDeploymentJobRef.Job != notifier.jobComponentName {
-			done <- struct{}{}
 			return
 		}
 		// RadixBatch status and only changed job statuses
@@ -68,9 +68,7 @@ func (notifier *webhookNotifier) Notify(event events.Event, radixBatch *radixv1.
 			errChan <- fmt.Errorf("failed to notify on RadixBatch object create or change %s: %v", radixBatch.GetName(), err)
 			return
 		}
-		done <- struct{}{}
 	}()
-	return done
 }
 
 func webhookIsNotEmpty(webhook *string) bool {

@@ -1,6 +1,7 @@
 package notifications
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -8,10 +9,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/equinor/radix-job-scheduler/models/v1/events"
-
 	"github.com/equinor/radix-common/utils/pointers"
 	modelsv1 "github.com/equinor/radix-job-scheduler/models/v1"
+	"github.com/equinor/radix-job-scheduler/models/v1/events"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/equinor/radix-operator/pkg/apis/utils/labels"
@@ -63,10 +63,10 @@ func TestNewWebhookNotifier(t *testing.T) {
 }
 
 type testTransport struct {
-	requestReceived func(request *http.Request)
+	requestReceived func(request *http.Request) (*http.Respond, error)
 }
 
-func (t *testTransport) RoundTrip(request *http.Request) (*http.Response, error) {
+func (t testTransport) RoundTrip(request *http.Request) (*http.Response, error) {
 	t.requestReceived(request)
 	return &http.Response{
 		Status:     "200 OK",
@@ -259,22 +259,23 @@ func Test_webhookNotifier_Notify(t *testing.T) {
 			var receivedRequest *http.Request
 			http.DefaultClient = &http.Client{
 				Transport: &testTransport{
-					requestReceived: func(request *http.Request) {
+					requestReceived: func(request *http.Request) (*http.Respond, error) {
 						receivedRequest = request
+						return &http.Response{
+							Status:     "200 OK",
+							StatusCode: 200,
+						}, nil
 					},
 				},
 			}
 
 			errChan := make(chan error)
-			doneChan := notifier.Notify(tt.args.event, tt.args.radixBatch, tt.args.updatedJobStatuses, errChan)
 
-			var notificationErr error
-			select {
-			case <-doneChan:
-			case notificationErr = <-errChan:
-			case <-time.After(1 * time.Minute):
-				assert.Fail(t, "unexpected long request timeout")
-			}
+			ctx := context.Background()
+			notifier.Notify(ctx, tt.args.event, tt.args.radixBatch, tt.args.updatedJobStatuses, errChan)
+
+			<-ctx.Done()
+			notificationErr := ctx.Err()
 
 			if tt.fields.expectedRequest && receivedRequest == nil {
 				assert.Fail(t, "missing an expected http request")
@@ -317,6 +318,23 @@ func Test_webhookNotifier_Notify(t *testing.T) {
 		})
 	}
 }
+
+//func TestName(t *testing.T) {
+//	for i := 0; i < 200000; i++ {
+//		jobComponent := &radixv1.RadixDeployJobComponent{
+//			Name:          fmt.Sprintf("anyjobcomponent%d", i),
+//			Notifications: &radixv1.Notifications{Webhook: pointers.Ptr("http://job1:8080")},
+//		}
+//		notifier := NewWebhookNotifier(jobComponent)
+//		errChan := make(chan error)
+//		ctx := context.Background()
+//		notifier.Notify(ctx, events.Update, &radixv1.RadixBatch{
+//			ObjectMeta: metav1.ObjectMeta{Name: fmt.Sprintf("batch%d", i), Labels: labels.ForBatchType(kube.RadixBatchTypeBatch)},
+//			Spec:       radixv1.RadixBatchSpec{},
+//		}, make([]radixv1.RadixBatchJobStatus, 0), errChan)
+//	}
+//	assert.True(t, true)
+//}
 
 func assertTimesEqual(t *testing.T, expectedTime *metav1.Time, resultTime *time.Time, arg string) {
 	if expectedTime != nil && resultTime == nil {
