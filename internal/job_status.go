@@ -1,4 +1,4 @@
-package jobs
+package internal
 
 import (
 	"github.com/equinor/radix-common/utils/slice"

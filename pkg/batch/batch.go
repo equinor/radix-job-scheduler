@@ -12,7 +12,6 @@ import (
 	apiErrors "github.com/equinor/radix-job-scheduler/api/errors"
 	"github.com/equinor/radix-job-scheduler/internal"
 	modelsv2 "github.com/equinor/radix-job-scheduler/models/v2"
-	"github.com/equinor/radix-job-scheduler/utils/radix/jobs"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/equinor/radix-operator/pkg/client/clientset/versioned"
@@ -48,7 +47,7 @@ func GetRadixBatchStatus(radixBatch *radixv1.RadixBatch, radixDeployJobComponent
 		CreationTime:   radixBatch.GetCreationTimestamp().Time,
 		Started:        started,
 		Ended:          ended,
-		Status:         jobs.GetRadixBatchJobApiStatus(radixBatch, radixDeployJobComponent),
+		Status:         internal.GetRadixBatchJobApiStatus(radixBatch, radixDeployJobComponent),
 		Message:        radixBatch.Status.Condition.Message,
 		JobStatuses:    getRadixBatchJobStatusesFromRadixBatch(radixBatch, radixBatch.Status.JobStatuses),
 		DeploymentName: radixBatch.Spec.RadixDeploymentJobRef.Name,
@@ -90,13 +89,13 @@ func getRadixBatchJobStatusesFromRadixBatch(radixBatch *radixv1.RadixBatch, radi
 				radixBatchJobStatus.Ended = &jobStatus.EndTime.Time
 			}
 
-			radixBatchJobStatus.Status = jobs.GetScheduledJobStatus(jobStatus, stopJob)
+			radixBatchJobStatus.Status = internal.GetScheduledJobStatus(jobStatus, stopJob)
 			radixBatchJobStatus.Message = jobStatus.Message
 			radixBatchJobStatus.Failed = jobStatus.Failed
 			radixBatchJobStatus.Restart = jobStatus.Restart
 			radixBatchJobStatus.PodStatuses = getPodStatusByRadixBatchJobPodStatus(jobStatus.RadixBatchJobPodStatuses, radixBatch.CreationTimestamp.Time)
 		} else {
-			radixBatchJobStatus.Status = jobs.GetScheduledJobStatus(radixv1.RadixBatchJobStatus{Phase: radixv1.RadixBatchJobApiStatusWaiting}, stopJob)
+			radixBatchJobStatus.Status = internal.GetScheduledJobStatus(radixv1.RadixBatchJobStatus{Phase: radixv1.RadixBatchJobApiStatusWaiting}, stopJob)
 		}
 		jobStatuses = append(jobStatuses, radixBatchJobStatus)
 	}

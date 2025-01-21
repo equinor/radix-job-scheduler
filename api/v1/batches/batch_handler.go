@@ -13,7 +13,6 @@ import (
 	modelsv1 "github.com/equinor/radix-job-scheduler/models/v1"
 	modelsv2 "github.com/equinor/radix-job-scheduler/models/v2"
 	"github.com/equinor/radix-job-scheduler/pkg/batch"
-	"github.com/equinor/radix-job-scheduler/utils/radix/jobs"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/rs/zerolog/log"
@@ -185,7 +184,7 @@ func (handler *batchHandler) getBatchStatus(radixBatch *modelsv2.Batch) radixv1.
 	jobStatusPhases := slice.Reduce(radixBatch.JobStatuses, make([]radixv1.RadixBatchJobPhase, 0), func(acc []radixv1.RadixBatchJobPhase, jobStatus modelsv2.Job) []radixv1.RadixBatchJobPhase {
 		return append(acc, radixv1.RadixBatchJobPhase(jobStatus.Status))
 	})
-	return jobs.GetStatusFromStatusRules(jobStatusPhases, handler.common.RadixDeployJobComponent, radixBatch.Status)
+	return internal.GetStatusFromStatusRules(jobStatusPhases, handler.common.RadixDeployJobComponent, radixBatch.Status)
 }
 
 func getBatchId(radixBatch *modelsv2.Batch) string {

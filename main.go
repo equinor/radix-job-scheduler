@@ -16,13 +16,13 @@ import (
 	jobcontrollers "github.com/equinor/radix-job-scheduler/api/controllers/jobs"
 	batchApi "github.com/equinor/radix-job-scheduler/api/v1/batches"
 	jobApi "github.com/equinor/radix-job-scheduler/api/v1/jobs"
+	"github.com/equinor/radix-job-scheduler/internal"
 	"github.com/equinor/radix-job-scheduler/models"
 	"github.com/equinor/radix-job-scheduler/pkg/batch"
 	"github.com/equinor/radix-job-scheduler/pkg/notifications"
 	"github.com/equinor/radix-job-scheduler/pkg/watcher"
 	"github.com/equinor/radix-job-scheduler/router"
 	_ "github.com/equinor/radix-job-scheduler/swaggerui"
-	"github.com/equinor/radix-job-scheduler/utils/radix"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/equinor/radix-operator/pkg/apis/utils"
@@ -38,7 +38,7 @@ func main() {
 
 	kubeUtil := getKubeUtil(ctx)
 
-	radixDeployJobComponent, err := radix.GetRadixDeployJobComponentByName(ctx, kubeUtil.RadixClient(), env.RadixDeploymentNamespace, env.RadixDeploymentName, env.RadixComponentName)
+	radixDeployJobComponent, err := internal.GetRadixDeployJobComponentByName(ctx, kubeUtil.RadixClient(), env.RadixDeploymentNamespace, env.RadixDeploymentName, env.RadixComponentName)
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed to get job specification")
 	}
