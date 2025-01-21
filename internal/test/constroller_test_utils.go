@@ -55,7 +55,7 @@ func (ctrl *ControllerTestUtils) ExecuteRequestWithBody(ctx context.Context, met
 			reader = bytes.NewReader(payload)
 		}
 
-		serverRouter := router.NewServer(models.NewEnv(), ctrl.controllers...)
+		serverRouter := router.NewServer(models.NewConfigFromEnv(), ctrl.controllers...)
 		server := httptest.NewServer(serverRouter)
 		defer server.Close()
 		serverUrl := buildURLFromServer(server, path)

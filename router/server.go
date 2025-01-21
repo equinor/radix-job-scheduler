@@ -16,7 +16,7 @@ const (
 )
 
 // NewServer creates a new Radix job scheduler REST service
-func NewServer(env *models.Env, controllers ...controllers.Controller) http.Handler {
+func NewServer(env *models.Config, controllers ...controllers.Controller) http.Handler {
 	gin.SetMode(gin.ReleaseMode)
 	engine := gin.New()
 	engine.RemoveExtraSlash = true

@@ -39,7 +39,7 @@ type JobHandler interface {
 }
 
 // New Constructor for job handler
-func New(kube *kube.Kube, env *models.Env, radixDeployJobComponent *radixv1.RadixDeployJobComponent) JobHandler {
+func New(kube *kube.Kube, env *models.Config, radixDeployJobComponent *radixv1.RadixDeployJobComponent) JobHandler {
 	return &jobHandler{
 		common: &apiv1.Handler{
 			Kube:                    kube,

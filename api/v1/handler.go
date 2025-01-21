@@ -9,7 +9,7 @@ import (
 
 type Handler struct {
 	Kube                    *kube.Kube
-	Env                     *models.Env
+	Env                     *models.Config
 	HandlerApiV2            apiv2.Handler
 	RadixDeployJobComponent *radixv1.RadixDeployJobComponent
 }

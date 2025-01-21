@@ -10,8 +10,8 @@ import (
 	"github.com/equinor/radix-operator/pkg/apis/utils"
 )
 
-// Env instance variables
-type Env struct {
+// Config instance variables
+type Config struct {
 	UseSwagger                                   bool
 	RadixComponentName                           string
 	RadixDeploymentName                          string
@@ -21,8 +21,8 @@ type Env struct {
 	LogLevel                                     string
 }
 
-// NewEnv Constructor
-func NewEnv() *Env {
+// NewConfigFromEnv Constructor
+func NewConfigFromEnv() *Config {
 	var (
 		useSwagger, _                                = strconv.ParseBool(os.Getenv("USE_SWAGGER"))
 		radixAppName                                 = strings.TrimSpace(os.Getenv(defaults.RadixAppEnvironmentVariable))
@@ -33,7 +33,7 @@ func NewEnv() *Env {
 		radixPorts                                   = strings.TrimSpace(os.Getenv(defaults.RadixPortsEnvironmentVariable))
 		logLevel                                     = os.Getenv("LOG_LEVEL")
 	)
-	env := Env{
+	cfg := Config{
 		RadixComponentName:       radixComponentName,
 		RadixDeploymentName:      radixDeployment,
 		RadixDeploymentNamespace: utils.GetEnvironmentNamespace(radixAppName, radixEnv),
@@ -41,12 +41,12 @@ func NewEnv() *Env {
 		RadixJobSchedulersPerEnvironmentHistoryLimit: 10,
 		LogLevel: logLevel,
 	}
-	setPort(radixPorts, &env)
-	setHistoryLimit(radixJobSchedulersPerEnvironmentHistoryLimit, &env)
-	return &env
+	setPort(radixPorts, &cfg)
+	setHistoryLimit(radixJobSchedulersPerEnvironmentHistoryLimit, &cfg)
+	return &cfg
 }
 
-func setHistoryLimit(radixJobSchedulersPerEnvironmentHistoryLimit string, env *Env) {
+func setHistoryLimit(radixJobSchedulersPerEnvironmentHistoryLimit string, env *Config) {
 	if len(radixJobSchedulersPerEnvironmentHistoryLimit) > 0 {
 		if historyLimit, err := strconv.Atoi(radixJobSchedulersPerEnvironmentHistoryLimit); err == nil && historyLimit > 0 {
 			env.RadixJobSchedulersPerEnvironmentHistoryLimit = historyLimit
@@ -54,7 +54,7 @@ func setHistoryLimit(radixJobSchedulersPerEnvironmentHistoryLimit string, env *E
 	}
 }
 
-func setPort(radixPorts string, env *Env) {
+func setPort(radixPorts string, env *Config) {
 	radixPorts = strings.ReplaceAll(radixPorts, "(", "")
 	radixPorts = strings.ReplaceAll(radixPorts, ")", "")
 	ports := strings.Split(radixPorts, ",")

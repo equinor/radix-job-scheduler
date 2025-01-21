@@ -33,7 +33,7 @@ import (
 
 func main() {
 	ctx := context.Background()
-	env := models.NewEnv()
+	env := models.NewConfigFromEnv()
 	initLogger(env)
 
 	kubeUtil := getKubeUtil(ctx)
@@ -54,7 +54,7 @@ func main() {
 	runApiServer(ctx, kubeUtil, env, radixDeployJobComponent)
 }
 
-func initLogger(env *models.Env) {
+func initLogger(env *models.Config) {
 	logLevelStr := env.LogLevel
 	if len(logLevelStr) == 0 {
 		logLevelStr = zerolog.LevelInfoValue
@@ -70,7 +70,7 @@ func initLogger(env *models.Env) {
 	zerolog.DefaultContextLogger = &log.Logger
 }
 
-func runApiServer(ctx context.Context, kubeUtil *kube.Kube, env *models.Env, radixDeployJobComponent *radixv1.RadixDeployJobComponent) {
+func runApiServer(ctx context.Context, kubeUtil *kube.Kube, env *models.Config, radixDeployJobComponent *radixv1.RadixDeployJobComponent) {
 	ctx, stop := signal.NotifyContext(ctx, syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
@@ -105,7 +105,7 @@ func getKubeUtil(ctx context.Context) *kube.Kube {
 	return kubeUtil
 }
 
-func getControllers(kubeUtil *kube.Kube, env *models.Env, radixDeployJobComponent *radixv1.RadixDeployJobComponent) []controllers.Controller {
+func getControllers(kubeUtil *kube.Kube, env *models.Config, radixDeployJobComponent *radixv1.RadixDeployJobComponent) []controllers.Controller {
 	return []controllers.Controller{
 		jobcontrollers.New(jobApi.New(kubeUtil, env, radixDeployJobComponent)),
 		batchcontroller.New(batchApi.New(kubeUtil, env, radixDeployJobComponent)),

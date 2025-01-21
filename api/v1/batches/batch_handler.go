@@ -44,7 +44,7 @@ type BatchHandler interface {
 }
 
 // New Constructor of the batch handler
-func New(kube *kube.Kube, env *models.Env, radixDeployJobComponent *radixv1.RadixDeployJobComponent) BatchHandler {
+func New(kube *kube.Kube, env *models.Config, radixDeployJobComponent *radixv1.RadixDeployJobComponent) BatchHandler {
 	return &batchHandler{
 		common: &apiv1.Handler{
 			Kube:                    kube,

@@ -26,12 +26,12 @@ type History interface {
 
 type history struct {
 	kubeUtil                *kube.Kube
-	env                     *models.Env
+	env                     *models.Config
 	radixDeployJobComponent *radixv1.RadixDeployJobComponent
 }
 
 // NewHistory Constructor for job History
-func NewHistory(kubeUtil *kube.Kube, env *models.Env, radixDeployJobComponent *radixv1.RadixDeployJobComponent) History {
+func NewHistory(kubeUtil *kube.Kube, env *models.Config, radixDeployJobComponent *radixv1.RadixDeployJobComponent) History {
 	return &history{
 		kubeUtil:                kubeUtil,
 		env:                     env,

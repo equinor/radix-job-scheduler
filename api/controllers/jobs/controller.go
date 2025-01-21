@@ -60,40 +60,38 @@ func (controller *jobController) GetRoutes() []controllers.Route {
 	return routes
 }
 
-// swagger:operation POST /jobs Job createJob
-// ---
-// summary: Create job
-// parameters:
-//   - name: jobCreation
-//     in: body
-//     description: Job to create
-//     required: true
-//     schema:
-//     "$ref": "#/definitions/JobScheduleDescription"
-//
-// responses:
-//
-//	"200":
-//	  description: "Successful create job"
-//	  schema:
-//	     "$ref": "#/definitions/JobStatus"
-//	"400":
-//	  description: "Bad request"
-//	  schema:
-//	     "$ref": "#/definitions/Status"
-//	"404":
-//	  description: "Not found"
-//	  schema:
-//	     "$ref": "#/definitions/Status"
-//	"422":
-//	  description: "Invalid data in request"
-//	  schema:
-//	     "$ref": "#/definitions/Status"
-//	"500":
-//	  description: "Internal server error"
-//	  schema:
-//	     "$ref": "#/definitions/Status"
 func (controller *jobController) CreateJob(c *gin.Context) {
+	// swagger:operation POST /jobs Job createJob
+	// ---
+	// summary: Create job
+	// parameters:
+	// - name: jobCreation
+	//   in: body
+	//   description: Job to create
+	//   required: true
+	//   schema:
+	//       "$ref": "#/definitions/JobScheduleDescription"
+	// responses:
+	//   "200":
+	//     description: "Successful create job"
+	//     schema:
+	//        "$ref": "#/definitions/JobStatus"
+	//   "400":
+	//     description: "Bad request"
+	//     schema:
+	//        "$ref": "#/definitions/Status"
+	//   "404":
+	//     description: "Not found"
+	//     schema:
+	//        "$ref": "#/definitions/Status"
+	//   "422":
+	//     description: "Invalid data in request"
+	//     schema:
+	//        "$ref": "#/definitions/Status"
+	//   "500":
+	//     description: "Internal server error"
+	//     schema:
+	//        "$ref": "#/definitions/Status"
 	logger := log.Ctx(c.Request.Context())
 	logger.Info().Msg("Create Job")
 	logger.Debug().Msgf("Read the request body. Request content length %d", c.Request.ContentLength)
@@ -120,23 +118,22 @@ func (controller *jobController) CreateJob(c *gin.Context) {
 	c.JSON(http.StatusOK, jobState)
 }
 
-// swagger:operation GET /jobs/ Job getJobs
-// ---
-// summary: Gets jobs
-// parameters:
-// responses:
-//
-//	"200":
-//	  description: "Successful get jobs"
-//	  schema:
-//	     type: "array"
-//	     items:
-//	        "$ref": "#/definitions/JobStatus"
-//	"500":
-//	  description: "Internal server error"
-//	  schema:
-//	     "$ref": "#/definitions/Status"
 func (controller *jobController) GetJobs(c *gin.Context) {
+	// swagger:operation GET /jobs/ Job getJobs
+	// ---
+	// summary: Gets jobs
+	// parameters:
+	// responses:
+	//   "200":
+	//     description: "Successful get jobs"
+	//     schema:
+	//        type: "array"
+	//        items:
+	//           "$ref": "#/definitions/JobStatus"
+	//   "500":
+	//     description: "Internal server error"
+	//     schema:
+	//        "$ref": "#/definitions/Status"
 	logger := log.Ctx(c.Request.Context())
 	logger.Info().Msg("Get job list")
 	jobs, err := controller.handler.GetJobs(c.Request.Context())
@@ -148,31 +145,29 @@ func (controller *jobController) GetJobs(c *gin.Context) {
 	c.JSON(http.StatusOK, jobs)
 }
 
-// swagger:operation GET /jobs/{jobName} Job getJob
-// ---
-// summary: Gets job
-// parameters:
-//   - name: jobName
-//     in: path
-//     description: Name of job
-//     type: string
-//     required: true
-//
-// responses:
-//
-//	"200":
-//	  description: "Successful get job"
-//	  schema:
-//	     "$ref": "#/definitions/JobStatus"
-//	"404":
-//	  description: "Not found"
-//	  schema:
-//	     "$ref": "#/definitions/Status"
-//	"500":
-//	  description: "Internal server error"
-//	  schema:
-//	     "$ref": "#/definitions/Status"
 func (controller *jobController) GetJob(c *gin.Context) {
+	// swagger:operation GET /jobs/{jobName} Job getJob
+	// ---
+	// summary: Gets job
+	// parameters:
+	// - name: jobName
+	//   in: path
+	//   description: Name of job
+	//   type: string
+	//   required: true
+	// responses:
+	//   "200":
+	//     description: "Successful get job"
+	//     schema:
+	//        "$ref": "#/definitions/JobStatus"
+	//   "404":
+	//     description: "Not found"
+	//     schema:
+	//        "$ref": "#/definitions/Status"
+	//   "500":
+	//     description: "Internal server error"
+	//     schema:
+	//        "$ref": "#/definitions/Status"
 	jobName := c.Param(jobNameParam)
 	logger := log.Ctx(c.Request.Context())
 	logger.Info().Msgf("Get job %s", jobName)
@@ -184,31 +179,29 @@ func (controller *jobController) GetJob(c *gin.Context) {
 	c.JSON(http.StatusOK, job)
 }
 
-// swagger:operation DELETE /jobs/{jobName} Job deleteJob
-// ---
-// summary: Delete job
-// parameters:
-//   - name: jobName
-//     in: path
-//     description: Name of job
-//     type: string
-//     required: true
-//
-// responses:
-//
-//	"200":
-//	  description: "Successful delete job"
-//	  schema:
-//	     "$ref": "#/definitions/Status"
-//	"404":
-//	  description: "Not found"
-//	  schema:
-//	     "$ref": "#/definitions/Status"
-//	"500":
-//	  description: "Internal server error"
-//	  schema:
-//	     "$ref": "#/definitions/Status"
 func (controller *jobController) DeleteJob(c *gin.Context) {
+	// swagger:operation DELETE /jobs/{jobName} Job deleteJob
+	// ---
+	// summary: Delete job
+	// parameters:
+	// - name: jobName
+	//   in: path
+	//   description: Name of job
+	//   type: string
+	//   required: true
+	// responses:
+	//   "200":
+	//     description: "Successful delete job"
+	//     schema:
+	//        "$ref": "#/definitions/Status"
+	//   "404":
+	//     description: "Not found"
+	//     schema:
+	//        "$ref": "#/definitions/Status"
+	//   "500":
+	//     description: "Internal server error"
+	//     schema:
+	//        "$ref": "#/definitions/Status"
 	jobName := c.Param(jobNameParam)
 	logger := log.Ctx(c.Request.Context())
 	logger.Info().Msgf("Delete job %s", jobName)
@@ -227,35 +220,33 @@ func (controller *jobController) DeleteJob(c *gin.Context) {
 	c.JSON(http.StatusOK, &status)
 }
 
-// swagger:operation POST /jobs/{jobName}/stop Job stopJob
-// ---
-// summary: Stop job
-// parameters:
-//   - name: jobName
-//     in: path
-//     description: Name of job
-//     type: string
-//     required: true
-//
-// responses:
-//
-//	"200":
-//	  description: "Successful delete job"
-//	  schema:
-//	     "$ref": "#/definitions/Status"
-//	"400":
-//	  description: "Bad request"
-//	  schema:
-//	     "$ref": "#/definitions/Status"
-//	"404":
-//	  description: "Not found"
-//	  schema:
-//	     "$ref": "#/definitions/Status"
-//	"500":
-//	  description: "Internal server error"
-//	  schema:
-//	     "$ref": "#/definitions/Status"
 func (controller *jobController) StopJob(c *gin.Context) {
+	// swagger:operation POST /jobs/{jobName}/stop Job stopJob
+	// ---
+	// summary: Stop job
+	// parameters:
+	// - name: jobName
+	//   in: path
+	//   description: Name of job
+	//   type: string
+	//   required: true
+	// responses:
+	//   "200":
+	//     description: "Successful delete job"
+	//     schema:
+	//        "$ref": "#/definitions/Status"
+	//   "400":
+	//     description: "Bad request"
+	//     schema:
+	//        "$ref": "#/definitions/Status"
+	//   "404":
+	//     description: "Not found"
+	//     schema:
+	//        "$ref": "#/definitions/Status"
+	//   "500":
+	//     description: "Internal server error"
+	//     schema:
+	//        "$ref": "#/definitions/Status"
 	jobName := c.Param(jobNameParam)
 	logger := log.Ctx(c.Request.Context())
 	logger.Info().Msgf("Stop the job %s", jobName)

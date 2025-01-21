@@ -40,7 +40,7 @@ var (
 
 type handler struct {
 	kubeUtil                *kube.Kube
-	env                     *models.Env
+	env                     *models.Config
 	radixDeployJobComponent *radixv1.RadixDeployJobComponent
 	jobHistory              batch.History
 }
@@ -73,7 +73,7 @@ type Handler interface {
 }
 
 // New Constructor of the batch handler
-func New(kubeUtil *kube.Kube, env *models.Env, radixDeployJobComponent *radixv1.RadixDeployJobComponent) Handler {
+func New(kubeUtil *kube.Kube, env *models.Config, radixDeployJobComponent *radixv1.RadixDeployJobComponent) Handler {
 	return &handler{
 		kubeUtil:                kubeUtil,
 		env:                     env,

@@ -84,7 +84,7 @@ func Test_createBatch(t *testing.T) {
 		appJobComponent := "compute"
 		radixDeployJobComponent := utils.NewDeployJobComponentBuilder().WithName(appJobComponent).BuildJobComponent()
 		_, _, _, kubeUtil := testUtil.SetupTest("app", "qa", appJobComponent, "app-deploy-1", 1)
-		env := models.NewEnv()
+		env := models.NewConfigFromEnv()
 
 		h := &handler{
 			kubeUtil:                kubeUtil,
