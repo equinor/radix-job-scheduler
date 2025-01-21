@@ -13,6 +13,7 @@ import (
 // Env instance variables
 type Env struct {
 	UseSwagger                                   bool
+	UseProfiler                                  bool
 	RadixComponentName                           string
 	RadixDeploymentName                          string
 	RadixDeploymentNamespace                     string
@@ -25,6 +26,7 @@ type Env struct {
 func NewEnv() *Env {
 	var (
 		useSwagger, _                                = strconv.ParseBool(os.Getenv("USE_SWAGGER"))
+		useProfiler, _                               = strconv.ParseBool(os.Getenv("USE_PROFILER"))
 		radixAppName                                 = strings.TrimSpace(os.Getenv(defaults.RadixAppEnvironmentVariable))
 		radixEnv                                     = strings.TrimSpace(os.Getenv(defaults.EnvironmentnameEnvironmentVariable))
 		radixComponentName                           = strings.TrimSpace(os.Getenv(defaults.RadixComponentEnvironmentVariable))
@@ -39,7 +41,8 @@ func NewEnv() *Env {
 		RadixDeploymentNamespace: utils.GetEnvironmentNamespace(radixAppName, radixEnv),
 		UseSwagger:               useSwagger,
 		RadixJobSchedulersPerEnvironmentHistoryLimit: 10,
-		LogLevel: logLevel,
+		LogLevel:    logLevel,
+		UseProfiler: useProfiler,
 	}
 	setPort(radixPorts, &env)
 	setHistoryLimit(radixJobSchedulersPerEnvironmentHistoryLimit, &env)
