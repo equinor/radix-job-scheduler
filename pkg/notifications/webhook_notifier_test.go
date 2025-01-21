@@ -1,7 +1,6 @@
 package notifications
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -63,11 +62,14 @@ func TestNewWebhookNotifier(t *testing.T) {
 }
 
 type testTransport struct {
-	requestReceived func(request *http.Request) (*http.Respond, error)
+	requestReceived func(request *http.Request) (*http.Response, error)
 }
 
-func (t testTransport) RoundTrip(request *http.Request) (*http.Response, error) {
-	t.requestReceived(request)
+func (t *testTransport) RoundTrip(request *http.Request) (*http.Response, error) {
+	_, err := t.requestReceived(request)
+	if err != nil {
+		return nil, err
+	}
 	return &http.Response{
 		Status:     "200 OK",
 		StatusCode: 200,
@@ -259,7 +261,7 @@ func Test_webhookNotifier_Notify(t *testing.T) {
 			var receivedRequest *http.Request
 			http.DefaultClient = &http.Client{
 				Transport: &testTransport{
-					requestReceived: func(request *http.Request) (*http.Respond, error) {
+					requestReceived: func(request *http.Request) (*http.Response, error) {
 						receivedRequest = request
 						return &http.Response{
 							Status:     "200 OK",
@@ -269,13 +271,7 @@ func Test_webhookNotifier_Notify(t *testing.T) {
 				},
 			}
 
-			errChan := make(chan error)
-
-			ctx := context.Background()
-			notifier.Notify(ctx, tt.args.event, tt.args.radixBatch, tt.args.updatedJobStatuses, errChan)
-
-			<-ctx.Done()
-			notificationErr := ctx.Err()
+			notificationErr := notifier.Notify(tt.args.event, tt.args.radixBatch, tt.args.updatedJobStatuses)
 
 			if tt.fields.expectedRequest && receivedRequest == nil {
 				assert.Fail(t, "missing an expected http request")
