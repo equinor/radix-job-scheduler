@@ -33,25 +33,25 @@ import (
 
 func main() {
 	ctx := context.Background()
-	env := models.NewConfigFromEnv()
-	initLogger(env)
+	cfg := models.NewConfigFromEnv()
+	initLogger(cfg)
 
 	kubeUtil := getKubeUtil(ctx)
 
-	radixDeployJobComponent, err := internal.GetRadixDeployJobComponentByName(ctx, kubeUtil.RadixClient(), env.RadixDeploymentNamespace, env.RadixDeploymentName, env.RadixComponentName)
+	radixDeployJobComponent, err := internal.GetRadixDeployJobComponentByName(ctx, kubeUtil.RadixClient(), cfg.RadixDeploymentNamespace, cfg.RadixDeploymentName, cfg.RadixComponentName)
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed to get job specification")
 	}
 
-	jobHistory := batch.NewHistory(kubeUtil, env, radixDeployJobComponent)
+	jobHistory := batch.NewHistory(kubeUtil, cfg, radixDeployJobComponent)
 	notifier := notifications.NewWebhookNotifier(radixDeployJobComponent)
-	radixBatchWatcher, err := watcher.NewRadixBatchWatcher(ctx, kubeUtil.RadixClient(), env.RadixDeploymentNamespace, jobHistory, notifier)
+	radixBatchWatcher, err := watcher.NewRadixBatchWatcher(ctx, kubeUtil.RadixClient(), cfg.RadixDeploymentNamespace, jobHistory, notifier)
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed to initialize job watcher")
 	}
 	defer radixBatchWatcher.Stop()
 
-	runApiServer(ctx, kubeUtil, env, radixDeployJobComponent)
+	runApiServer(ctx, kubeUtil, cfg, radixDeployJobComponent)
 }
 
 func initLogger(env *models.Config) {
