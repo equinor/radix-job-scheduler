@@ -528,12 +528,6 @@
           "x-go-name": "BatchId",
           "example": "'batch-id-1'"
         },
-        "batchName": {
-          "description": "BatchName Optional Batch ID of a job",
-          "type": "string",
-          "x-go-name": "BatchName",
-          "example": "'batch1'"
-        },
         "batchType": {
           "description": "BatchType Single job or multiple jobs batch",
           "type": "string",
@@ -555,18 +549,6 @@
         "event": {
           "$ref": "#/definitions/Event"
         },
-        "failed": {
-          "description": "The number of times the container for the job has failed.\n+optional",
-          "type": "integer",
-          "format": "int32",
-          "x-go-name": "Failed"
-        },
-        "jobId": {
-          "description": "JobId Optional ID of a job",
-          "type": "string",
-          "x-go-name": "JobId",
-          "example": "'job1'"
-        },
         "jobStatuses": {
           "description": "JobStatuses of the jobs in the batch",
           "type": "array",
@@ -576,29 +558,14 @@
           "x-go-name": "JobStatuses"
         },
         "message": {
-          "description": "Message, if any, of the job",
+          "description": "Message describing the reason for the status",
           "type": "string",
-          "x-go-name": "Message",
-          "example": "\"Error occurred\""
+          "x-go-name": "Message"
         },
         "name": {
-          "description": "Name of the job",
+          "description": "Name of the batch",
           "type": "string",
-          "x-go-name": "Name",
-          "example": "calculator"
-        },
-        "podStatuses": {
-          "description": "PodStatuses for each pod of the job",
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/PodStatus"
-          },
-          "x-go-name": "PodStatuses"
-        },
-        "restart": {
-          "description": "Timestamp of the job restart, if applied.\n+optional",
-          "type": "string",
-          "x-go-name": "Restart"
+          "x-go-name": "Name"
         },
         "started": {
           "description": "Started timestamp",
@@ -607,7 +574,7 @@
           "x-go-name": "Started"
         },
         "status": {
-          "description": "Status of the job\nRunning = Job is running\nSucceeded = Job has succeeded\nFailed = Job has failed\nWaiting = Job is waiting\nStopping = Job is stopping\nStopped = Job has been stopped\nActive = Job is active\nCompleted = Job is completed",
+          "description": "Status of the batch.\nWaiting = All jobs are in waiting status\nActive = One or more jobs are active\nCompleted = All jobs are done (failed, succeeded or stopped)\n\nIf batchStatusRules is configured for the job in radixconfig,\nthe following statuses may also be returned (in addition to the three statuses above)\nRunning\nSucceeded\nFailed\nStopping\nStopped\n\nNote that batchStatusRules can override the the meaning of the three standard statuses.",
           "type": "string",
           "enum": [
             "Running",
@@ -675,12 +642,6 @@
           "x-go-name": "BatchId",
           "example": "'batch-id-1'"
         },
-        "batchName": {
-          "description": "BatchName Optional Batch ID of a job",
-          "type": "string",
-          "x-go-name": "BatchName",
-          "example": "'batch1'"
-        },
         "batchType": {
           "description": "BatchType Single job or multiple jobs batch",
           "type": "string",
@@ -699,18 +660,6 @@
           "format": "date-time",
           "x-go-name": "Ended"
         },
-        "failed": {
-          "description": "The number of times the container for the job has failed.\n+optional",
-          "type": "integer",
-          "format": "int32",
-          "x-go-name": "Failed"
-        },
-        "jobId": {
-          "description": "JobId Optional ID of a job",
-          "type": "string",
-          "x-go-name": "JobId",
-          "example": "'job1'"
-        },
         "jobStatuses": {
           "description": "JobStatuses of the jobs in the batch",
           "type": "array",
@@ -720,29 +669,14 @@
           "x-go-name": "JobStatuses"
         },
         "message": {
-          "description": "Message, if any, of the job",
+          "description": "Message describing the reason for the status",
           "type": "string",
-          "x-go-name": "Message",
-          "example": "\"Error occurred\""
+          "x-go-name": "Message"
         },
         "name": {
-          "description": "Name of the job",
+          "description": "Name of the batch",
           "type": "string",
-          "x-go-name": "Name",
-          "example": "calculator"
-        },
-        "podStatuses": {
-          "description": "PodStatuses for each pod of the job",
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/PodStatus"
-          },
-          "x-go-name": "PodStatuses"
-        },
-        "restart": {
-          "description": "Timestamp of the job restart, if applied.\n+optional",
-          "type": "string",
-          "x-go-name": "Restart"
+          "x-go-name": "Name"
         },
         "started": {
           "description": "Started timestamp",
@@ -751,7 +685,7 @@
           "x-go-name": "Started"
         },
         "status": {
-          "description": "Status of the job\nRunning = Job is running\nSucceeded = Job has succeeded\nFailed = Job has failed\nWaiting = Job is waiting\nStopping = Job is stopping\nStopped = Job has been stopped\nActive = Job is active\nCompleted = Job is completed",
+          "description": "Status of the batch.\nWaiting = All jobs are in waiting status\nActive = One or more jobs are active\nCompleted = All jobs are done (failed, succeeded or stopped)\n\nIf batchStatusRules is configured for the job in radixconfig,\nthe following statuses may also be returned (in addition to the three statuses above)\nRunning\nSucceeded\nFailed\nStopping\nStopped\n\nNote that batchStatusRules can override the the meaning of the three standard statuses.",
           "type": "string",
           "enum": [
             "Running",
@@ -765,12 +699,6 @@
           ],
           "x-go-name": "Status",
           "example": "Waiting"
-        },
-        "updated": {
-          "description": "Updated timestamp when the status was updated",
-          "type": "string",
-          "format": "date-time",
-          "x-go-name": "Updated"
         }
       },
       "x-go-package": "github.com/equinor/radix-job-scheduler/models/v1"
@@ -994,12 +922,6 @@
           ],
           "x-go-name": "Status",
           "example": "Waiting"
-        },
-        "updated": {
-          "description": "Updated timestamp when the status was updated",
-          "type": "string",
-          "format": "date-time",
-          "x-go-name": "Updated"
         }
       },
       "x-go-package": "github.com/equinor/radix-job-scheduler/models/v1"

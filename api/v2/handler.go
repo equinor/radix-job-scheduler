@@ -47,19 +47,19 @@ type handler struct {
 
 type Handler interface {
 	// GetRadixBatches Get status of all batches
-	GetRadixBatches(ctx context.Context) ([]modelsv2.RadixBatch, error)
+	GetRadixBatches(ctx context.Context) ([]modelsv2.Batch, error)
 	// GetRadixBatchSingleJobs Get status of all single jobs
-	GetRadixBatchSingleJobs(ctx context.Context) ([]modelsv2.RadixBatch, error)
+	GetRadixBatchSingleJobs(ctx context.Context) ([]modelsv2.Batch, error)
 	// GetRadixBatch Get a batch
-	GetRadixBatch(ctx context.Context, batchName string) (*modelsv2.RadixBatch, error)
+	GetRadixBatch(ctx context.Context, batchName string) (*modelsv2.Batch, error)
 	// CreateRadixBatch Create a batch with parameters
-	CreateRadixBatch(ctx context.Context, batchScheduleDescription *common.BatchScheduleDescription) (*modelsv2.RadixBatch, error)
+	CreateRadixBatch(ctx context.Context, batchScheduleDescription *common.BatchScheduleDescription) (*modelsv2.Batch, error)
 	// CopyRadixBatch Copy a batch with deployment and optional parameters
-	CopyRadixBatch(ctx context.Context, batchName, deploymentName string) (*modelsv2.RadixBatch, error)
+	CopyRadixBatch(ctx context.Context, batchName, deploymentName string) (*modelsv2.Batch, error)
 	// CreateRadixBatchSingleJob Create a batch with single job parameters
-	CreateRadixBatchSingleJob(ctx context.Context, jobScheduleDescription *common.JobScheduleDescription) (*modelsv2.RadixBatch, error)
+	CreateRadixBatchSingleJob(ctx context.Context, jobScheduleDescription *common.JobScheduleDescription) (*modelsv2.Batch, error)
 	// CopyRadixBatchJob Copy a batch job parameter
-	CopyRadixBatchJob(ctx context.Context, jobName, deploymentName string) (*modelsv2.RadixBatch, error)
+	CopyRadixBatchJob(ctx context.Context, jobName, deploymentName string) (*modelsv2.Batch, error)
 	// DeleteRadixBatchJob Delete a single job
 	DeleteRadixBatchJob(ctx context.Context, jobName string) error
 	// StopRadixBatch Stop a batch
@@ -88,21 +88,21 @@ type radixBatchJobWithDescription struct {
 }
 
 // GetRadixBatches Get statuses of all batches
-func (h *handler) GetRadixBatches(ctx context.Context) ([]modelsv2.RadixBatch, error) {
+func (h *handler) GetRadixBatches(ctx context.Context) ([]modelsv2.Batch, error) {
 	logger := log.Ctx(ctx)
 	logger.Debug().Msgf("Get batches for the namespace: %s", h.env.RadixDeploymentNamespace)
 	return h.getRadixBatchStatuses(ctx, kube.RadixBatchTypeBatch)
 }
 
 // GetRadixBatchSingleJobs Get statuses of all single jobs
-func (h *handler) GetRadixBatchSingleJobs(ctx context.Context) ([]modelsv2.RadixBatch, error) {
+func (h *handler) GetRadixBatchSingleJobs(ctx context.Context) ([]modelsv2.Batch, error) {
 	logger := log.Ctx(ctx)
 	logger.Debug().Msgf("Get sigle jobs for the namespace: %s", h.env.RadixDeploymentNamespace)
 	return h.getRadixBatchStatuses(ctx, kube.RadixBatchTypeJob)
 }
 
 // GetRadixBatch Get status of a batch
-func (h *handler) GetRadixBatch(ctx context.Context, batchName string) (*modelsv2.RadixBatch, error) {
+func (h *handler) GetRadixBatch(ctx context.Context, batchName string) (*modelsv2.Batch, error) {
 	logger := log.Ctx(ctx)
 	logger.Debug().Msgf("get batch status for the batch %s", batchName)
 	radixBatch, err := internal.GetRadixBatch(ctx, h.kubeUtil.RadixClient(), h.env.RadixDeploymentNamespace, batchName)
@@ -113,7 +113,7 @@ func (h *handler) GetRadixBatch(ctx context.Context, batchName string) (*modelsv
 }
 
 // CreateRadixBatch Create a batch with parameters
-func (h *handler) CreateRadixBatch(ctx context.Context, batchScheduleDescription *common.BatchScheduleDescription) (*modelsv2.RadixBatch, error) {
+func (h *handler) CreateRadixBatch(ctx context.Context, batchScheduleDescription *common.BatchScheduleDescription) (*modelsv2.Batch, error) {
 	logger := log.Ctx(ctx)
 	if batchScheduleDescription == nil {
 		return nil, apiErrors.NewInvalidWithReason("BatchScheduleDescription", "empty request body")
@@ -133,7 +133,7 @@ func (h *handler) CreateRadixBatch(ctx context.Context, batchScheduleDescription
 }
 
 // CopyRadixBatch Copy a batch with deployment and optional parameters
-func (h *handler) CopyRadixBatch(ctx context.Context, sourceBatchName, deploymentName string) (*modelsv2.RadixBatch, error) {
+func (h *handler) CopyRadixBatch(ctx context.Context, sourceBatchName, deploymentName string) (*modelsv2.Batch, error) {
 	logger := log.Ctx(ctx)
 	logger.Debug().Msgf("Copy Radix Batch %s for the deployment %s", sourceBatchName, deploymentName)
 	sourceRadixBatch, err := internal.GetRadixBatch(ctx, h.kubeUtil.RadixClient(), h.env.RadixDeploymentNamespace, sourceBatchName)
@@ -148,7 +148,7 @@ func (h *handler) CopyRadixBatch(ctx context.Context, sourceBatchName, deploymen
 	return &batchStatus, nil
 }
 
-func (h *handler) createRadixBatchOrJob(ctx context.Context, batchScheduleDescription common.BatchScheduleDescription, radixBatchType kube.RadixBatchType) (*modelsv2.RadixBatch, error) {
+func (h *handler) createRadixBatchOrJob(ctx context.Context, batchScheduleDescription common.BatchScheduleDescription, radixBatchType kube.RadixBatchType) (*modelsv2.Batch, error) {
 	logger := log.Ctx(ctx)
 	namespace := h.env.RadixDeploymentNamespace
 	radixComponentName := h.env.RadixComponentName
@@ -181,7 +181,7 @@ func (h *handler) createRadixBatchOrJob(ctx context.Context, batchScheduleDescri
 }
 
 // CreateRadixBatchSingleJob Create a batch single job with parameters
-func (h *handler) CreateRadixBatchSingleJob(ctx context.Context, jobScheduleDescription *common.JobScheduleDescription) (*modelsv2.RadixBatch, error) {
+func (h *handler) CreateRadixBatchSingleJob(ctx context.Context, jobScheduleDescription *common.JobScheduleDescription) (*modelsv2.Batch, error) {
 	logger := log.Ctx(ctx)
 	logger.Info().Msg("Create Radix Batch single job")
 	if jobScheduleDescription == nil {
@@ -199,7 +199,7 @@ func (h *handler) CreateRadixBatchSingleJob(ctx context.Context, jobScheduleDesc
 }
 
 // CopyRadixBatchJob Copy a batch job
-func (h *handler) CopyRadixBatchJob(ctx context.Context, sourceJobName, deploymentName string) (*modelsv2.RadixBatch, error) {
+func (h *handler) CopyRadixBatchJob(ctx context.Context, sourceJobName, deploymentName string) (*modelsv2.Batch, error) {
 	batchName, jobName, ok := internal.ParseBatchAndJobNameFromScheduledJobName(sourceJobName)
 	if !ok {
 		return nil, fmt.Errorf("copy of this job is not supported or invalid job name")
@@ -445,7 +445,7 @@ func buildRadixBatchJob(jobScheduleDescription *common.JobScheduleDescription, d
 	}, nil
 }
 
-func (h *handler) getRadixBatchStatuses(ctx context.Context, radixBatchType kube.RadixBatchType) ([]modelsv2.RadixBatch, error) {
+func (h *handler) getRadixBatchStatuses(ctx context.Context, radixBatchType kube.RadixBatchType) ([]modelsv2.Batch, error) {
 	logger := log.Ctx(ctx)
 	radixBatches, err := internal.GetRadixBatches(ctx, h.env.RadixDeploymentNamespace, h.kubeUtil.RadixClient(),
 		radixLabels.ForComponentName(h.radixDeployJobComponent.GetName()),

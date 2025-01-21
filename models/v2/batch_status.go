@@ -6,8 +6,8 @@ import (
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 )
 
-// RadixBatch holds general information about batch status
-type RadixBatch struct {
+// Batch holds general information about batch status
+type Batch struct {
 	// Name of the Radix batch
 	// required: true
 	Name string `json:"name"`
@@ -45,7 +45,7 @@ type RadixBatch struct {
 
 	// JobStatuses of the Radix batch jobs
 	// required: false
-	JobStatuses []RadixBatchJobStatus `json:"jobStatuses,omitempty"`
+	JobStatuses []Job `json:"jobStatuses,omitempty"`
 
 	// Status message, if any, of the job
 	//
@@ -65,8 +65,8 @@ type RadixBatch struct {
 	DeploymentName string
 }
 
-// RadixBatchJobStatus holds general information about batch job status
-type RadixBatchJobStatus struct {
+// Job holds general information about batch job status
+type Job struct {
 	// Name of the Radix batch job
 	// required: true
 	Name string `json:"name"`

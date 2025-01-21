@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/equinor/radix-common/utils"
-	"github.com/equinor/radix-common/utils/pointers"
 	"github.com/equinor/radix-common/utils/slice"
 	v1 "github.com/equinor/radix-job-scheduler/models/v1"
 	"github.com/equinor/radix-job-scheduler/models/v1/events"
@@ -87,23 +86,20 @@ func getRadixBatchEventFromRadixBatch(event events.Event, radixBatch *radixv1.Ra
 		endedTime = &radixBatch.Status.Condition.CompletionTime.Time
 	}
 
-	batchStatus := v1.JobStatus{
-		Name:    radixBatch.GetName(),
-		BatchId: getBatchId(radixBatch),
-		Created: pointers.Ptr(radixBatch.GetCreationTimestamp().Time),
-		Started: startedTime,
-		Ended:   endedTime,
-		Status:  string(jobs.GetRadixBatchJobApiStatus(radixBatch, radixDeployJobComponent)),
-		Message: radixBatch.Status.Condition.Message,
-		Updated: pointers.Ptr(time.Now()),
-	}
 	jobStatuses := getRadixBatchJobStatusesFromRadixBatch(radixBatch, radixBatchJobStatuses)
 	return events.BatchEvent{
-		Event: event,
+		Event:   event,
+		Updated: time.Now(),
 		BatchStatus: v1.BatchStatus{
-			JobStatus:   batchStatus,
-			JobStatuses: jobStatuses,
+			Name:        radixBatch.GetName(),
+			BatchId:     getBatchId(radixBatch),
+			Created:     radixBatch.GetCreationTimestamp().Time,
+			Started:     startedTime,
+			Ended:       endedTime,
+			Status:      string(jobs.GetRadixBatchJobApiStatus(radixBatch, radixDeployJobComponent)),
+			Message:     radixBatch.Status.Condition.Message,
 			BatchType:   batchType,
+			JobStatuses: jobStatuses,
 		},
 	}
 }
@@ -142,7 +138,6 @@ func getRadixBatchJobStatusesFromRadixBatch(radixBatch *radixv1.RadixBatch, radi
 			Failed:      radixBatchJobStatus.Failed,
 			Restart:     radixBatchJobStatus.Restart,
 			Message:     radixBatchJobStatus.Message,
-			Updated:     pointers.Ptr(time.Now()),
 			PodStatuses: getPodStatusByRadixBatchJobPodStatus(radixBatchJobStatus.RadixBatchJobPodStatuses),
 		}
 		jobStatuses = append(jobStatuses, jobStatus)

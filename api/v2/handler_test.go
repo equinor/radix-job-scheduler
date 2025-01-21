@@ -98,7 +98,7 @@ func Test_createBatch(t *testing.T) {
 			assert.NotNil(t, rd)
 
 			var err error
-			var createdRadixBatch *modelsv2.RadixBatch
+			var createdRadixBatch *modelsv2.Batch
 			if ts.expectedBatchType == kube.RadixBatchTypeBatch {
 				createdRadixBatch, err = h.CreateRadixBatch(context.TODO(), &ts.batchDescription)
 			} else {

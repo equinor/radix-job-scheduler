@@ -37,10 +37,10 @@ func (m *MockHandler) EXPECT() *MockHandlerMockRecorder {
 }
 
 // CopyRadixBatch mocks base method.
-func (m *MockHandler) CopyRadixBatch(ctx context.Context, batchName, deploymentName string) (*v2.RadixBatch, error) {
+func (m *MockHandler) CopyRadixBatch(ctx context.Context, batchName, deploymentName string) (*v2.Batch, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CopyRadixBatch", ctx, batchName, deploymentName)
-	ret0, _ := ret[0].(*v2.RadixBatch)
+	ret0, _ := ret[0].(*v2.Batch)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -52,10 +52,10 @@ func (mr *MockHandlerMockRecorder) CopyRadixBatch(ctx, batchName, deploymentName
 }
 
 // CopyRadixBatchJob mocks base method.
-func (m *MockHandler) CopyRadixBatchJob(ctx context.Context, jobName, deploymentName string) (*v2.RadixBatch, error) {
+func (m *MockHandler) CopyRadixBatchJob(ctx context.Context, jobName, deploymentName string) (*v2.Batch, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CopyRadixBatchJob", ctx, jobName, deploymentName)
-	ret0, _ := ret[0].(*v2.RadixBatch)
+	ret0, _ := ret[0].(*v2.Batch)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -67,10 +67,10 @@ func (mr *MockHandlerMockRecorder) CopyRadixBatchJob(ctx, jobName, deploymentNam
 }
 
 // CreateRadixBatch mocks base method.
-func (m *MockHandler) CreateRadixBatch(ctx context.Context, batchScheduleDescription *common.BatchScheduleDescription) (*v2.RadixBatch, error) {
+func (m *MockHandler) CreateRadixBatch(ctx context.Context, batchScheduleDescription *common.BatchScheduleDescription) (*v2.Batch, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateRadixBatch", ctx, batchScheduleDescription)
-	ret0, _ := ret[0].(*v2.RadixBatch)
+	ret0, _ := ret[0].(*v2.Batch)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -82,10 +82,10 @@ func (mr *MockHandlerMockRecorder) CreateRadixBatch(ctx, batchScheduleDescriptio
 }
 
 // CreateRadixBatchSingleJob mocks base method.
-func (m *MockHandler) CreateRadixBatchSingleJob(ctx context.Context, jobScheduleDescription *common.JobScheduleDescription) (*v2.RadixBatch, error) {
+func (m *MockHandler) CreateRadixBatchSingleJob(ctx context.Context, jobScheduleDescription *common.JobScheduleDescription) (*v2.Batch, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateRadixBatchSingleJob", ctx, jobScheduleDescription)
-	ret0, _ := ret[0].(*v2.RadixBatch)
+	ret0, _ := ret[0].(*v2.Batch)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -111,10 +111,10 @@ func (mr *MockHandlerMockRecorder) DeleteRadixBatchJob(ctx, jobName interface{})
 }
 
 // GetRadixBatch mocks base method.
-func (m *MockHandler) GetRadixBatch(ctx context.Context, batchName string) (*v2.RadixBatch, error) {
+func (m *MockHandler) GetRadixBatch(ctx context.Context, batchName string) (*v2.Batch, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetRadixBatch", ctx, batchName)
-	ret0, _ := ret[0].(*v2.RadixBatch)
+	ret0, _ := ret[0].(*v2.Batch)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -126,10 +126,10 @@ func (mr *MockHandlerMockRecorder) GetRadixBatch(ctx, batchName interface{}) *go
 }
 
 // GetRadixBatchSingleJobs mocks base method.
-func (m *MockHandler) GetRadixBatchSingleJobs(ctx context.Context) ([]v2.RadixBatch, error) {
+func (m *MockHandler) GetRadixBatchSingleJobs(ctx context.Context) ([]v2.Batch, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetRadixBatchSingleJobs", ctx)
-	ret0, _ := ret[0].([]v2.RadixBatch)
+	ret0, _ := ret[0].([]v2.Batch)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -141,10 +141,10 @@ func (mr *MockHandlerMockRecorder) GetRadixBatchSingleJobs(ctx interface{}) *gom
 }
 
 // GetRadixBatches mocks base method.
-func (m *MockHandler) GetRadixBatches(ctx context.Context) ([]v2.RadixBatch, error) {
+func (m *MockHandler) GetRadixBatches(ctx context.Context) ([]v2.Batch, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetRadixBatches", ctx)
-	ret0, _ := ret[0].([]v2.RadixBatch)
+	ret0, _ := ret[0].([]v2.Batch)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

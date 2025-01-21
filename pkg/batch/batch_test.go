@@ -64,7 +64,7 @@ func TestCopyRadixBatchOrJob(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    testArgs
-		want    *modelsv2.RadixBatch
+		want    *modelsv2.Batch
 		wantErr bool
 	}{
 		{
@@ -147,7 +147,7 @@ func TestGetRadixBatchStatus(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    testArgs
-		want    *modelsv2.RadixBatch
+		want    *modelsv2.Batch
 		wantErr bool
 	}{
 		{
@@ -300,7 +300,7 @@ func TestGetRadixBatchStatuses(t *testing.T) {
 	tests := []struct {
 		name        string
 		batchesArgs multiBatchArgs
-		want        *modelsv2.RadixBatch
+		want        *modelsv2.Batch
 		wantErr     bool
 	}{
 		{
@@ -487,7 +487,7 @@ func TestGetRadixBatchStatuses(t *testing.T) {
 			require.True(t, ok)
 
 			actualBatchStatuses := GetRadixBatchStatuses(tt.batchesArgs.radixBatches, &radixDeployJobComponent)
-			batchStatusesMap := slice.Reduce(actualBatchStatuses, map[string]modelsv2.RadixBatch{}, func(acc map[string]modelsv2.RadixBatch, batchStatus modelsv2.RadixBatch) map[string]modelsv2.RadixBatch {
+			batchStatusesMap := slice.Reduce(actualBatchStatuses, map[string]modelsv2.Batch{}, func(acc map[string]modelsv2.Batch, batchStatus modelsv2.Batch) map[string]modelsv2.Batch {
 				acc[batchStatus.Name] = batchStatus
 				return acc
 			})

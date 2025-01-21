@@ -34,12 +34,10 @@ func TestGetBatches(t *testing.T) {
 		defer ctrl.Finish()
 		batchHandler := mock.NewMockBatchHandler(ctrl)
 		batchState := modelsV1.BatchStatus{
-			JobStatus: modelsV1.JobStatus{
-				Name:    "batchname",
-				Started: pointers.Ptr(time.Now()),
-				Ended:   pointers.Ptr(time.Now().Add(1 * time.Minute)),
-				Status:  "batchstatus",
-			},
+			Name:      "batchname",
+			Started:   pointers.Ptr(time.Now()),
+			Ended:     pointers.Ptr(time.Now().Add(1 * time.Minute)),
+			Status:    "batchstatus",
 			BatchType: string(kube.RadixBatchTypeBatch),
 		}
 		ctx := context.Background()
@@ -60,10 +58,10 @@ func TestGetBatches(t *testing.T) {
 			err := test.GetResponseBody(response, &returnedBatches)
 			require.NoError(t, err)
 			assert.Len(t, returnedBatches, 1)
-			assert.Equal(t, batchState.JobStatus.Name, returnedBatches[0].Name)
-			assert.WithinDuration(t, *batchState.JobStatus.Started, *returnedBatches[0].Started, 1)
-			assert.WithinDuration(t, *batchState.JobStatus.Ended, *returnedBatches[0].Ended, 1)
-			assert.Equal(t, batchState.JobStatus.Status, returnedBatches[0].Status)
+			assert.Equal(t, batchState.Name, returnedBatches[0].Name)
+			assert.WithinDuration(t, *batchState.Started, *returnedBatches[0].Started, 1)
+			assert.WithinDuration(t, *batchState.Ended, *returnedBatches[0].Ended, 1)
+			assert.Equal(t, batchState.Status, returnedBatches[0].Status)
 		}
 	})
 
@@ -104,12 +102,10 @@ func TestGetBatch(t *testing.T) {
 		batchName := "batchname"
 		batchHandler := mock.NewMockBatchHandler(ctrl)
 		batchState := modelsV1.BatchStatus{
-			JobStatus: modelsV1.JobStatus{
-				Name:    batchName,
-				Started: pointers.Ptr(time.Now()),
-				Ended:   pointers.Ptr(time.Now().Add(1 * time.Minute)),
-				Status:  "batchstatus",
-			},
+			Name:      batchName,
+			Started:   pointers.Ptr(time.Now()),
+			Ended:     pointers.Ptr(time.Now().Add(1 * time.Minute)),
+			Status:    "batchstatus",
 			BatchType: string(kube.RadixBatchTypeBatch),
 		}
 		ctx := context.Background()
@@ -202,12 +198,10 @@ func TestCreateBatch(t *testing.T) {
 		defer ctrl.Finish()
 		batchScheduleDescription := models.BatchScheduleDescription{}
 		createdBatch := modelsV1.BatchStatus{
-			JobStatus: modelsV1.JobStatus{
-				Name:    "newbatch",
-				Started: pointers.Ptr(time.Now()),
-				Ended:   pointers.Ptr(time.Now().Add(1 * time.Minute)),
-				Status:  "batchstatus",
-			},
+			Name:      "newbatch",
+			Started:   pointers.Ptr(time.Now()),
+			Ended:     pointers.Ptr(time.Now().Add(1 * time.Minute)),
+			Status:    "batchstatus",
 			BatchType: string(kube.RadixBatchTypeBatch),
 		}
 		batchHandler := mock.NewMockBatchHandler(ctrl)
@@ -262,12 +256,10 @@ func TestCreateBatch(t *testing.T) {
 			},
 		}
 		createdBatch := modelsV1.BatchStatus{
-			JobStatus: modelsV1.JobStatus{
-				Name:    "newbatch",
-				Started: pointers.Ptr(time.Now()),
-				Ended:   pointers.Ptr(time.Now().Add(1 * time.Minute)),
-				Status:  "batchstatus",
-			},
+			Name:      "newbatch",
+			Started:   pointers.Ptr(time.Now()),
+			Ended:     pointers.Ptr(time.Now().Add(1 * time.Minute)),
+			Status:    "batchstatus",
 			BatchType: string(kube.RadixBatchTypeBatch),
 		}
 		batchHandler := mock.NewMockBatchHandler(ctrl)

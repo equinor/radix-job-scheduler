@@ -24,14 +24,14 @@ import (
 
 // CompletedRadixBatches Completed RadixBatch lists
 type CompletedRadixBatches struct {
-	SucceededRadixBatches    []*modelsv2.RadixBatch
-	NotSucceededRadixBatches []*modelsv2.RadixBatch
-	SucceededSingleJobs      []*modelsv2.RadixBatch
-	NotSucceededSingleJobs   []*modelsv2.RadixBatch
+	SucceededRadixBatches    []*modelsv2.Batch
+	NotSucceededRadixBatches []*modelsv2.Batch
+	SucceededSingleJobs      []*modelsv2.Batch
+	NotSucceededSingleJobs   []*modelsv2.Batch
 }
 
 // GetRadixBatchStatus Get radix batch
-func GetRadixBatchStatus(radixBatch *radixv1.RadixBatch, radixDeployJobComponent *radixv1.RadixDeployJobComponent) modelsv2.RadixBatch {
+func GetRadixBatchStatus(radixBatch *radixv1.RadixBatch, radixDeployJobComponent *radixv1.RadixDeployJobComponent) modelsv2.Batch {
 	var started, ended *time.Time
 	if radixBatch.Status.Condition.ActiveTime != nil {
 		started = &radixBatch.Status.Condition.ActiveTime.Time
@@ -41,7 +41,7 @@ func GetRadixBatchStatus(radixBatch *radixv1.RadixBatch, radixDeployJobComponent
 		ended = &radixBatch.Status.Condition.CompletionTime.Time
 	}
 
-	return modelsv2.RadixBatch{
+	return modelsv2.Batch{
 		Name:           radixBatch.GetName(),
 		BatchId:        radixBatch.Spec.BatchId,
 		BatchType:      radixBatch.Labels[kube.RadixBatchTypeLabel],
@@ -67,13 +67,13 @@ func DeleteRadixBatchByName(ctx context.Context, radixClient versioned.Interface
 	return DeleteRadixBatch(ctx, radixClient, radixBatch)
 }
 
-func getRadixBatchJobStatusesFromRadixBatch(radixBatch *radixv1.RadixBatch, radixBatchJobStatuses []radixv1.RadixBatchJobStatus) []modelsv2.RadixBatchJobStatus {
+func getRadixBatchJobStatusesFromRadixBatch(radixBatch *radixv1.RadixBatch, radixBatchJobStatuses []radixv1.RadixBatchJobStatus) []modelsv2.Job {
 	radixBatchJobsStatuses := internal.GetRadixBatchJobsStatusesMap(radixBatchJobStatuses)
-	jobStatuses := make([]modelsv2.RadixBatchJobStatus, 0, len(radixBatch.Spec.Jobs))
+	jobStatuses := make([]modelsv2.Job, 0, len(radixBatch.Spec.Jobs))
 	for _, radixBatchJob := range radixBatch.Spec.Jobs {
 		stopJob := radixBatchJob.Stop != nil && *radixBatchJob.Stop
 		jobName := fmt.Sprintf("%s-%s", radixBatch.Name, radixBatchJob.Name) // composed name in models are always consist of a batchName and original jobName
-		radixBatchJobStatus := modelsv2.RadixBatchJobStatus{
+		radixBatchJobStatus := modelsv2.Job{
 			Name:  jobName,
 			JobId: radixBatchJob.JobId,
 		}
@@ -136,8 +136,8 @@ func getPodStatusByRadixBatchJobPodStatus(podStatuses []radixv1.RadixBatchJobPod
 }
 
 // GetRadixBatchStatuses Convert to radix batch statuses
-func GetRadixBatchStatuses(radixBatches []radixv1.RadixBatch, radixDeployJobComponent *radixv1.RadixDeployJobComponent) []modelsv2.RadixBatch {
-	return slice.Map(radixBatches, func(rb radixv1.RadixBatch) modelsv2.RadixBatch {
+func GetRadixBatchStatuses(radixBatches []radixv1.RadixBatch, radixDeployJobComponent *radixv1.RadixDeployJobComponent) []modelsv2.Batch {
+	return slice.Map(radixBatches, func(rb radixv1.RadixBatch) modelsv2.Batch {
 		return GetRadixBatchStatus(&rb, radixDeployJobComponent)
 	})
 }

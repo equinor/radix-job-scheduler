@@ -157,7 +157,7 @@ func (handler *jobHandler) DeleteJob(ctx context.Context, jobName string) error 
 	return internal.GarbageCollectPayloadSecrets(ctx, handler.common.Kube, handler.common.Env.RadixDeploymentNamespace, handler.common.Env.RadixComponentName)
 }
 
-func jobExistInBatch(radixBatch *modelsv2.RadixBatch, jobName string) bool {
+func jobExistInBatch(radixBatch *modelsv2.Batch, jobName string) bool {
 	for _, jobStatus := range radixBatch.JobStatuses {
 		if jobStatus.Name == jobName {
 			return true
@@ -173,7 +173,7 @@ func (handler *jobHandler) StopJob(ctx context.Context, jobName string) error {
 	return apiv1.StopJob(ctx, handler.common.HandlerApiV2, jobName)
 }
 
-func getSingleJobStatusFromRadixBatchJob(radixBatch *modelsv2.RadixBatch) (*modelsv1.JobStatus, error) {
+func getSingleJobStatusFromRadixBatchJob(radixBatch *modelsv2.Batch) (*modelsv1.JobStatus, error) {
 	if len(radixBatch.JobStatuses) != 1 {
 		return nil, fmt.Errorf("batch should have only one job")
 	}

@@ -67,12 +67,6 @@ type JobStatus struct {
 	// example: "Error occurred"
 	Message string `json:"message,omitempty"`
 
-	// Updated timestamp when the status was updated
-	//
-	// required: false
-	// swagger:strfmt date-time
-	Updated *time.Time `json:"updated"`
-
 	// The number of times the container for the job has failed.
 	// +optional
 	Failed int32 `json:"failed,omitempty"`
@@ -87,7 +81,7 @@ type JobStatus struct {
 
 	// DeploymentName for this batch
 	// required: false
-	DeploymentName string
+	DeploymentName string `json:"DeploymentName,omitempty"`
 }
 
 // PodStatus contains details for the current status of the job's pods.

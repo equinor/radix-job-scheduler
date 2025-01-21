@@ -15,7 +15,7 @@ import (
 )
 
 // GetJobStatusFromRadixBatchJobsStatus Get Job status from RadixBatchJob
-func GetJobStatusFromRadixBatchJobsStatus(radixBatch *modelsv2.RadixBatch, jobStatus modelsv2.RadixBatchJobStatus) modelsv1.JobStatus {
+func GetJobStatusFromRadixBatchJobsStatus(radixBatch *modelsv2.Batch, jobStatus modelsv2.Job) modelsv1.JobStatus {
 	return modelsv1.JobStatus{
 		JobId:       jobStatus.JobId,
 		BatchName:   getBatchName(radixBatch),
@@ -32,7 +32,7 @@ func GetJobStatusFromRadixBatchJobsStatus(radixBatch *modelsv2.RadixBatch, jobSt
 }
 
 // GetJobStatusFromRadixBatchJobsStatuses Get JobStatuses from RadixBatch job statuses V2
-func GetJobStatusFromRadixBatchJobsStatuses(radixBatches ...modelsv2.RadixBatch) []modelsv1.JobStatus {
+func GetJobStatusFromRadixBatchJobsStatuses(radixBatches ...modelsv2.Batch) []modelsv1.JobStatus {
 	jobStatuses := make([]modelsv1.JobStatus, 0, len(radixBatches))
 	for _, radixBatch := range radixBatches {
 		for _, jobStatus := range radixBatch.JobStatuses {
@@ -43,7 +43,7 @@ func GetJobStatusFromRadixBatchJobsStatuses(radixBatches ...modelsv2.RadixBatch)
 }
 
 // CopyJob Copy a job
-func CopyJob(ctx context.Context, handlerApiV2 apiv2.Handler, jobName, deploymentName string) (*modelsv2.RadixBatch, error) {
+func CopyJob(ctx context.Context, handlerApiV2 apiv2.Handler, jobName, deploymentName string) (*modelsv2.Batch, error) {
 	return handlerApiV2.CopyRadixBatchJob(ctx, jobName, deploymentName)
 }
 
@@ -92,6 +92,6 @@ func GetPodStatus(podStatuses []modelsv2.RadixBatchJobPodStatus) []modelsv1.PodS
 	})
 }
 
-func getBatchName(radixBatch *modelsv2.RadixBatch) string {
+func getBatchName(radixBatch *modelsv2.Batch) string {
 	return utils.TernaryString(radixBatch.BatchType == string(kube.RadixBatchTypeJob), "", radixBatch.Name)
 }
