@@ -59,7 +59,6 @@ func NewRadixBatchWatcher(ctx context.Context, radixClient radixclient.Interface
 	watcher.logger.Info().Msg("Setting up event handlers")
 
 	errChan := make(chan error)
-	defer close(errChan)
 
 	_, err = watcher.batchInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(cur interface{}) {
@@ -81,7 +80,7 @@ func NewRadixBatchWatcher(ctx context.Context, radixClient radixclient.Interface
 				jobStatuses = make([]radixv1.RadixBatchJobStatus, 0)
 			}
 			notify(notifier, events.Create, radixBatch, jobStatuses, errChan)
-			watcher.cleanupJobHistory(ctx)
+			watcher.cleanupJobHistory(ctx, errChan)
 		},
 		UpdateFunc: func(old, cur interface{}) {
 			oldRadixBatch := old.(*radixv1.RadixBatch)
@@ -121,10 +120,11 @@ func NewRadixBatchWatcher(ctx context.Context, radixClient radixclient.Interface
 	log.Info().Msg("Completed syncing informer caches")
 
 	go func() {
+		defer close(errChan)
 		for {
 			select {
-			case err := <-errChan:
-				watcher.logger.Error().Err(err).Msg("Notification failed")
+			case notifyErr := <-errChan:
+				watcher.logger.Error().Err(notifyErr).Msg("Notification failed")
 			case <-watcher.stop:
 				return
 			}
@@ -133,7 +133,7 @@ func NewRadixBatchWatcher(ctx context.Context, radixClient radixclient.Interface
 	return &watcher, nil
 }
 
-func notify(notifier notifications.Notifier, ev events.Event, newRadixBatch *radixv1.RadixBatch, updatedJobStatuses []radixv1.RadixBatchJobStatus, errChan chan error) {
+func notify(notifier notifications.Notifier, ev events.Event, newRadixBatch *radixv1.RadixBatch, updatedJobStatuses []radixv1.RadixBatchJobStatus, errChan chan<- error) {
 	go func() {
 		if err := notifier.Notify(ev, newRadixBatch, updatedJobStatuses); err != nil {
 			errChan <- err
@@ -141,12 +141,12 @@ func notify(notifier notifications.Notifier, ev events.Event, newRadixBatch *rad
 	}()
 }
 
-func (w *watcher) cleanupJobHistory(ctx context.Context) {
+func (w *watcher) cleanupJobHistory(ctx context.Context, errChan chan error) {
 	ctxWithTimeout, cancel := context.WithTimeout(ctx, time.Minute*5)
 	go func() {
 		defer cancel()
 		if err := w.jobHistory.Cleanup(ctxWithTimeout); err != nil {
-			log.Ctx(ctx).Error().Err(err).Msg("Failed to cleanup job history")
+			errChan <- fmt.Errorf("failed to cleanup job history %w", err)
 		}
 	}()
 }

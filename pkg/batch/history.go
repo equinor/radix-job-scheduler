@@ -131,6 +131,9 @@ func (h *history) cleanupRadixBatchHistory(ctx context.Context, radixBatchesSort
 	logger.Debug().Msgf("history batches to delete: %v", numToDelete)
 
 	for i := 0; i < numToDelete; i++ {
+		if ctx.Err() != nil {
+			return nil
+		}
 		radixBatch := radixBatchesSortedByCompletionTimeAsc[i]
 		logger.Debug().Msgf("deleting batch %s", radixBatch.Name)
 		if err := DeleteRadixBatchByName(ctx, h.kubeUtil.RadixClient(), h.env.RadixDeploymentNamespace, radixBatch.Name); err != nil {

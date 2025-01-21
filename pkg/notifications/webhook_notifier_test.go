@@ -315,23 +315,6 @@ func Test_webhookNotifier_Notify(t *testing.T) {
 	}
 }
 
-//func TestName(t *testing.T) {
-//	for i := 0; i < 200000; i++ {
-//		jobComponent := &radixv1.RadixDeployJobComponent{
-//			Name:          fmt.Sprintf("anyjobcomponent%d", i),
-//			Notifications: &radixv1.Notifications{Webhook: pointers.Ptr("http://job1:8080")},
-//		}
-//		notifier := NewWebhookNotifier(jobComponent)
-//		errChan := make(chan error)
-//		ctx := context.Background()
-//		notifier.Notify(ctx, events.Update, &radixv1.RadixBatch{
-//			ObjectMeta: metav1.ObjectMeta{Name: fmt.Sprintf("batch%d", i), Labels: labels.ForBatchType(kube.RadixBatchTypeBatch)},
-//			Spec:       radixv1.RadixBatchSpec{},
-//		}, make([]radixv1.RadixBatchJobStatus, 0), errChan)
-//	}
-//	assert.True(t, true)
-//}
-
 func assertTimesEqual(t *testing.T, expectedTime *metav1.Time, resultTime *time.Time, arg string) {
 	if expectedTime != nil && resultTime == nil {
 		assert.Fail(t, fmt.Sprintf("missing an expected %s", arg))
