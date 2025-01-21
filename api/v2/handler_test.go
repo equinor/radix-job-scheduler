@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/equinor/radix-common/utils/pointers"
-	"github.com/equinor/radix-job-scheduler/api/test"
+	"github.com/equinor/radix-job-scheduler/internal/test"
 	testUtil "github.com/equinor/radix-job-scheduler/internal/test"
 	"github.com/equinor/radix-job-scheduler/models"
 	"github.com/equinor/radix-job-scheduler/models/common"

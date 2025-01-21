@@ -10,9 +10,9 @@ import (
 
 	"github.com/equinor/radix-common/utils/pointers"
 	apiErrors "github.com/equinor/radix-job-scheduler/api/errors"
-	"github.com/equinor/radix-job-scheduler/api/test"
 	"github.com/equinor/radix-job-scheduler/api/v1/jobs"
 	"github.com/equinor/radix-job-scheduler/api/v1/jobs/mock"
+	"github.com/equinor/radix-job-scheduler/internal/test"
 	models "github.com/equinor/radix-job-scheduler/models/common"
 	modelsV1 "github.com/equinor/radix-job-scheduler/models/v1"
 	"github.com/golang/mock/gomock"
@@ -22,7 +22,7 @@ import (
 
 func setupTest(handler jobs.JobHandler) *test.ControllerTestUtils {
 	jobController := jobController{handler: handler}
-	controllerTestUtils := test.New(&jobController)
+	controllerTestUtils := test.NewControllerTestUtils(&jobController)
 	return &controllerTestUtils
 }
 

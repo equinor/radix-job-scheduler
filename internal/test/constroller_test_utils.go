@@ -14,7 +14,7 @@ import (
 
 	radixUtils "github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-common/utils/numbers"
-	"github.com/equinor/radix-job-scheduler/api"
+	"github.com/equinor/radix-job-scheduler/api/controllers"
 	"github.com/equinor/radix-job-scheduler/models"
 	modelsv1 "github.com/equinor/radix-job-scheduler/models/v1"
 	"github.com/equinor/radix-job-scheduler/router"
@@ -29,10 +29,10 @@ import (
 )
 
 type ControllerTestUtils struct {
-	controllers []api.Controller
+	controllers []controllers.Controller
 }
 
-func New(controllers ...api.Controller) ControllerTestUtils {
+func NewControllerTestUtils(controllers ...controllers.Controller) ControllerTestUtils {
 	return ControllerTestUtils{
 		controllers: controllers,
 	}

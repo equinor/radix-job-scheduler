@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	commongin "github.com/equinor/radix-common/pkg/gin"
-	"github.com/equinor/radix-job-scheduler/api"
+	"github.com/equinor/radix-job-scheduler/api/controllers"
 	"github.com/equinor/radix-job-scheduler/models"
 	"github.com/equinor/radix-job-scheduler/swaggerui"
 	"github.com/gin-gonic/gin"
@@ -16,7 +16,7 @@ const (
 )
 
 // NewServer creates a new Radix job scheduler REST service
-func NewServer(env *models.Env, controllers ...api.Controller) http.Handler {
+func NewServer(env *models.Env, controllers ...controllers.Controller) http.Handler {
 	gin.SetMode(gin.ReleaseMode)
 	engine := gin.New()
 	engine.RemoveExtraSlash = true
@@ -40,7 +40,7 @@ func initializeSwaggerUI(engine *gin.Engine) {
 	engine.StaticFS(swaggerUIPath, swaggerFsHandler)
 }
 
-func initializeAPIServer(router gin.IRoutes, controllers []api.Controller) {
+func initializeAPIServer(router gin.IRoutes, controllers []controllers.Controller) {
 	for _, controller := range controllers {
 		for _, route := range controller.GetRoutes() {
 			addHandlerRoute(router, route)
@@ -48,6 +48,6 @@ func initializeAPIServer(router gin.IRoutes, controllers []api.Controller) {
 	}
 }
 
-func addHandlerRoute(router gin.IRoutes, route api.Route) {
+func addHandlerRoute(router gin.IRoutes, route controllers.Route) {
 	router.Handle(route.Method, route.Path, route.Handler)
 }

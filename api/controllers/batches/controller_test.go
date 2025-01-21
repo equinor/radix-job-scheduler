@@ -10,9 +10,9 @@ import (
 
 	"github.com/equinor/radix-common/utils/pointers"
 	apiErrors "github.com/equinor/radix-job-scheduler/api/errors"
-	"github.com/equinor/radix-job-scheduler/api/test"
 	api "github.com/equinor/radix-job-scheduler/api/v1/batches"
 	"github.com/equinor/radix-job-scheduler/api/v1/batches/mock"
+	"github.com/equinor/radix-job-scheduler/internal/test"
 	models "github.com/equinor/radix-job-scheduler/models/common"
 	modelsV1 "github.com/equinor/radix-job-scheduler/models/v1"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
@@ -23,7 +23,7 @@ import (
 
 func setupTest(handler api.BatchHandler) *test.ControllerTestUtils {
 	controller := batchController{handler: handler}
-	controllerTestUtils := test.New(&controller)
+	controllerTestUtils := test.NewControllerTestUtils(&controller)
 	return &controllerTestUtils
 }
 
