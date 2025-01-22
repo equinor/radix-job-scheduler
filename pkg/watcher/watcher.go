@@ -116,11 +116,6 @@ func NewRadixBatchWatcher(ctx context.Context, radixClient radixclient.Interface
 	log.Info().Msg("Waiting for Radix objects caches to sync")
 	watcher.radixInformerFactory.WaitForCacheSync(ctx.Done())
 	log.Info().Msg("Completed syncing informer caches")
-
-	go func() {
-		<-watcher.stop
-		return
-	}()
 	return &watcher, nil
 }
 
