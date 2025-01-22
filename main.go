@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 
@@ -29,6 +31,10 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/pflag"
+)
+
+const (
+	defaultProfilePort = "7070"
 )
 
 func main() {
@@ -78,24 +84,34 @@ func runApiServer(ctx context.Context, kubeUtil *kube.Kube, env *models.Env, rad
 	port := fs.StringP("port", "p", env.RadixPort, "Port where API will be served")
 	parseFlagsFromArgs(fs)
 
-	srv := &http.Server{
+	var servers []*http.Server
+	if env.UseProfiler {
+		log.Info().Msgf("Initializing a profile server on a port %s", defaultProfilePort)
+		servers = append(servers, &http.Server{Addr: fmt.Sprintf(":%s", defaultProfilePort)})
+	}
+	apiServer := &http.Server{
 		Addr:        fmt.Sprintf(":%s", *port),
 		Handler:     router.NewServer(env, getControllers(kubeUtil, env, radixDeployJobComponent)...),
 		BaseContext: func(_ net.Listener) context.Context { return ctx },
 	}
+	servers = append(servers, apiServer)
 
-	go func() {
-		log.Info().Msgf("Radix job API is serving on port %s, http://localhost:%s/swaggerui", *port, *port)
-		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			log.Fatal().Err(err).Msg("Radix job API server failed to start")
-		}
-		log.Info().Msg("Radix job API server stopped")
-	}()
+	startServers(servers...)
 
 	<-ctx.Done()
-	err := srv.Shutdown(context.Background())
-	if err != nil {
-		log.Fatal().Err(err).Msg("Radix job API failed to stop")
+	shutdownServersGracefulOnSignal(servers...)
+}
+
+func startServers(servers ...*http.Server) {
+	for _, srv := range servers {
+		go func() {
+			log.Debug().Msgf("Starting a server on address %s", srv.Addr)
+			if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+				log.Fatal().Err(err).Msgf("Unable to start server on address %s", srv.Addr)
+				return
+			}
+			log.Info().Msgf("Started a server on address %s", srv.Addr)
+		}()
 	}
 }
 
@@ -135,4 +151,21 @@ func parseFlagsFromArgs(fs *pflag.FlagSet) {
 		fs.Usage()
 		os.Exit(2)
 	}
+}
+
+func shutdownServersGracefulOnSignal(servers ...*http.Server) {
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	var wg sync.WaitGroup
+	for _, srv := range servers {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			log.Info().Msgf("Shutting down server on address %s", srv.Addr)
+			if err := srv.Shutdown(shutdownCtx); err != nil {
+				log.Warn().Err(err).Msgf("shutdown of server on address %s returned an error", srv.Addr)
+			}
+		}()
+	}
+	wg.Wait()
 }

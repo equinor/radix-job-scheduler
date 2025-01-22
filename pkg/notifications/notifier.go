@@ -8,7 +8,7 @@ import (
 // Notifier to notify about RadixBatch events and changes
 type Notifier interface {
 	// Notify Send notification
-	Notify(event events.Event, radixBatch *radixv1.RadixBatch, jopbStatuses []radixv1.RadixBatchJobStatus, errChan chan error) chan struct{}
+	Notify(event events.Event, radixBatch *radixv1.RadixBatch, jobStatuses []radixv1.RadixBatchJobStatus) error
 	// Enabled The notifier is enabled and can be used
 	Enabled() bool
 	// String Describes the notifier

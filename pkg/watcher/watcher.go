@@ -57,7 +57,7 @@ func NewRadixBatchWatcher(ctx context.Context, radixClient radixclient.Interface
 	watcher.batchInformer = watcher.radixInformerFactory.Radix().V1().RadixBatches()
 
 	watcher.logger.Info().Msg("Setting up event handlers")
-	errChan := make(chan error)
+
 	_, err = watcher.batchInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(cur interface{}) {
 			radixBatch, converted := cur.(*radixv1.RadixBatch)
@@ -77,7 +77,7 @@ func NewRadixBatchWatcher(ctx context.Context, radixClient radixclient.Interface
 			if len(jobStatuses) == 0 {
 				jobStatuses = make([]radixv1.RadixBatchJobStatus, 0)
 			}
-			notifier.Notify(events.Create, radixBatch, jobStatuses, errChan)
+			notify(ctx, notifier, events.Create, radixBatch, jobStatuses)
 			watcher.cleanupJobHistory(ctx)
 		},
 		UpdateFunc: func(old, cur interface{}) {
@@ -89,7 +89,7 @@ func NewRadixBatchWatcher(ctx context.Context, radixClient radixclient.Interface
 				return
 			}
 			watcher.logger.Debug().Msgf("RadixBatch object was changed %s", newRadixBatch.GetName())
-			notifier.Notify(events.Update, newRadixBatch, updatedJobStatuses, errChan)
+			notify(ctx, notifier, events.Update, newRadixBatch, updatedJobStatuses)
 		},
 		DeleteFunc: func(obj interface{}) {
 			radixBatch, _ := obj.(*radixv1.RadixBatch)
@@ -103,7 +103,7 @@ func NewRadixBatchWatcher(ctx context.Context, radixClient radixclient.Interface
 			if len(jobStatuses) == 0 {
 				jobStatuses = make([]radixv1.RadixBatchJobStatus, 0)
 			}
-			notifier.Notify(events.Delete, radixBatch, jobStatuses, errChan)
+			notify(ctx, notifier, events.Delete, radixBatch, jobStatuses)
 			delete(existingRadixBatchMap, radixBatch.GetName())
 		},
 	})
@@ -116,18 +116,15 @@ func NewRadixBatchWatcher(ctx context.Context, radixClient radixclient.Interface
 	log.Info().Msg("Waiting for Radix objects caches to sync")
 	watcher.radixInformerFactory.WaitForCacheSync(ctx.Done())
 	log.Info().Msg("Completed syncing informer caches")
+	return &watcher, nil
+}
 
+func notify(ctx context.Context, notifier notifications.Notifier, ev events.Event, newRadixBatch *radixv1.RadixBatch, updatedJobStatuses []radixv1.RadixBatchJobStatus) {
 	go func() {
-		for {
-			select {
-			case err := <-errChan:
-				watcher.logger.Error().Err(err).Msg("Notification failed")
-			case <-watcher.stop:
-				return
-			}
+		if err := notifier.Notify(ev, newRadixBatch, updatedJobStatuses); err != nil {
+			log.Ctx(ctx).Error().Err(err).Msg("failed to notify")
 		}
 	}()
-	return &watcher, nil
 }
 
 func (w *watcher) cleanupJobHistory(ctx context.Context) {
@@ -135,7 +132,7 @@ func (w *watcher) cleanupJobHistory(ctx context.Context) {
 	go func() {
 		defer cancel()
 		if err := w.jobHistory.Cleanup(ctxWithTimeout); err != nil {
-			log.Ctx(ctx).Error().Err(err).Msg("Failed to cleanup job history")
+			log.Ctx(ctx).Error().Err(err).Msg("failed to cleanup job history")
 		}
 	}()
 }
