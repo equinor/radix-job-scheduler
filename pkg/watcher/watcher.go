@@ -89,7 +89,7 @@ func NewRadixBatchWatcher(ctx context.Context, radixClient radixclient.Interface
 				return
 			}
 			watcher.logger.Debug().Msgf("RadixBatch object was changed %s", newRadixBatch.GetName())
-			notify(nil, notifier, events.Update, newRadixBatch, updatedJobStatuses)
+			notify(ctx, notifier, events.Update, newRadixBatch, updatedJobStatuses)
 		},
 		DeleteFunc: func(obj interface{}) {
 			radixBatch, _ := obj.(*radixv1.RadixBatch)
@@ -103,7 +103,7 @@ func NewRadixBatchWatcher(ctx context.Context, radixClient radixclient.Interface
 			if len(jobStatuses) == 0 {
 				jobStatuses = make([]radixv1.RadixBatchJobStatus, 0)
 			}
-			notify(nil, notifier, events.Delete, radixBatch, jobStatuses)
+			notify(ctx, notifier, events.Delete, radixBatch, jobStatuses)
 			delete(existingRadixBatchMap, radixBatch.GetName())
 		},
 	})
