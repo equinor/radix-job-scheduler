@@ -35,7 +35,7 @@ func (m *MockHistory) EXPECT() *MockHistoryMockRecorder {
 }
 
 // Cleanup mocks base method.
-func (m *MockHistory) Cleanup(ctx context.Context) error {
+func (m *MockHistory) Cleanup(ctx context.Context, namesMap map[string]struct{}) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Cleanup", ctx)
 	ret0, _ := ret[0].(error)

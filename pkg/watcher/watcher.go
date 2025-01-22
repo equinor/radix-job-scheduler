@@ -49,7 +49,7 @@ func NewRadixBatchWatcher(ctx context.Context, radixClient radixclient.Interface
 		jobHistory:           jobHistory,
 	}
 
-	existingRadixBatchMap, err := getRadixBatchMap(radixClient, namespace)
+	existingRadixBatchNamesMap, err := getExistingRadixBatchNamesMap(radixClient, namespace)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get list of RadixBatches %w", err)
 	}
@@ -68,7 +68,7 @@ func NewRadixBatchWatcher(ctx context.Context, radixClient radixclient.Interface
 			if radixBatch.Status.Condition.Type != "" {
 				return // skip existing batch added to the cache
 			}
-			if _, ok := existingRadixBatchMap[radixBatch.GetName()]; ok {
+			if _, ok := existingRadixBatchNamesMap[radixBatch.GetName()]; ok {
 				watcher.logger.Debug().Msgf("skip existing RadixBatch object %s", radixBatch.GetName())
 				return
 			}
@@ -78,7 +78,7 @@ func NewRadixBatchWatcher(ctx context.Context, radixClient radixclient.Interface
 				jobStatuses = make([]radixv1.RadixBatchJobStatus, 0)
 			}
 			notify(ctx, notifier, events.Create, radixBatch, jobStatuses)
-			watcher.cleanupJobHistory(ctx)
+			watcher.cleanupJobHistory(ctx, existingRadixBatchNamesMap)
 		},
 		UpdateFunc: func(old, cur interface{}) {
 			oldRadixBatch := old.(*radixv1.RadixBatch)
@@ -104,7 +104,7 @@ func NewRadixBatchWatcher(ctx context.Context, radixClient radixclient.Interface
 				jobStatuses = make([]radixv1.RadixBatchJobStatus, 0)
 			}
 			notify(ctx, notifier, events.Delete, radixBatch, jobStatuses)
-			delete(existingRadixBatchMap, radixBatch.GetName())
+			delete(existingRadixBatchNamesMap, radixBatch.GetName())
 		},
 	})
 	if err != nil {
@@ -127,11 +127,11 @@ func notify(ctx context.Context, notifier notifications.Notifier, ev events.Even
 	}()
 }
 
-func (w *watcher) cleanupJobHistory(ctx context.Context) {
+func (w *watcher) cleanupJobHistory(ctx context.Context, existingRadixBatchNamesMap map[string]struct{}) {
 	ctxWithTimeout, cancel := context.WithTimeout(ctx, time.Minute*5)
 	go func() {
 		defer cancel()
-		if err := w.jobHistory.Cleanup(ctxWithTimeout); err != nil {
+		if err := w.jobHistory.Cleanup(ctxWithTimeout, existingRadixBatchNamesMap); err != nil {
 			log.Ctx(ctx).Error().Err(err).Msg("failed to cleanup job history")
 		}
 	}()
@@ -166,15 +166,14 @@ func equalBatchStatuses(status1, status2 *radixv1.RadixBatchStatus) bool {
 		status1.Condition.Message == status2.Condition.Message
 }
 
-func getRadixBatchMap(radixClient radixclient.Interface, namespace string) (map[string]*radixv1.RadixBatch, error) {
+func getExistingRadixBatchNamesMap(radixClient radixclient.Interface, namespace string) (map[string]struct{}, error) {
 	radixBatchList, err := radixClient.RadixV1().RadixBatches(namespace).List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
-	radixBatchMap := make(map[string]*radixv1.RadixBatch, len(radixBatchList.Items))
+	radixBatchMap := make(map[string]struct{}, len(radixBatchList.Items))
 	for _, radixBatch := range radixBatchList.Items {
-		radixBatch := radixBatch
-		radixBatchMap[radixBatch.GetName()] = &radixBatch
+		radixBatchMap[radixBatch.GetName()] = struct{}{}
 	}
 	return radixBatchMap, nil
 }
