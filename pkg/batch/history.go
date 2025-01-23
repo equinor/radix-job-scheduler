@@ -27,6 +27,7 @@ type history struct {
 	kubeUtil                *kube.Kube
 	env                     *models.Env
 	radixDeployJobComponent *radixv1.RadixDeployJobComponent
+	lastCleanupTime         time.Time
 }
 
 // NewHistory Constructor for job History
@@ -41,8 +42,16 @@ func NewHistory(kubeUtil *kube.Kube, env *models.Env, radixDeployJobComponent *r
 // Cleanup the pipeline job history
 func (h *history) Cleanup(ctx context.Context, existingRadixBatchNamesMap map[string]struct{}) error {
 	logger := log.Ctx(ctx)
-	const minimumAge = 3600 // TODO add as default env-var and/or job-component property
-	completedBefore := time.Now().Add(-time.Second * minimumAge)
+	const (
+		minimumAgeSeconds    = 3600 // TODO add as default env-var and/or job-component property
+		cleanupPeriodSeconds = 60
+	)
+	if h.lastCleanupTime.After(time.Now().Add(-time.Second * cleanupPeriodSeconds)) {
+		logger.Debug().Msg("skip cleanup RadixBatch history")
+		return nil
+	}
+	h.lastCleanupTime = time.Now()
+	completedBefore := time.Now().Add(-time.Second * minimumAgeSeconds)
 	completedRadixBatches, err := h.getCompletedRadixBatchesSortedByCompletionTimeAsc(ctx, completedBefore)
 	if err != nil {
 		return err
