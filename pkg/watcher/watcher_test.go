@@ -216,7 +216,7 @@ func Test_RadixBatchWatcher(t *testing.T) {
 			assert.False(t, commonUtils.IsNil(batchWatcher))
 
 			if tt.fields.newRadixBatch != nil && tt.fields.event == events.Create {
-				history.EXPECT().Cleanup(gomock.Any()).Times(1)
+				history.EXPECT().Cleanup(gomock.Any(), make(map[string]struct{})).Times(1)
 				// when radix batch exists and during test it will be updated
 				_, err := radixClient.RadixV1().RadixBatches(namespace).Create(context.TODO(), tt.fields.newRadixBatch, metav1.CreateOptions{})
 				if err != nil {
