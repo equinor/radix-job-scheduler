@@ -45,6 +45,25 @@ By default `Info` and `Error` messages are logged. This can be configured via en
 By default `swagger UI` is not available. This can be configured via environment variable `USE_SWAGGER`
 * `USE_SWAGGER=true` - allows to use swagger UI with URL `<api-endpoint>/swaggerui`
 
+* `USE_PROFILER`
+  * `false` or `not set` - do not use profiler
+  * `true` - use [pprof](https://golang.org/pkg/net/http/pprof/) profiler, running on `http://localhost:7070/debug/pprof`. Use web-UI to profile, when started service:
+
+  Prerequisite is an installed util `graphviz`
+  * Linux: `sudo apt-get install graphviz`
+  * Mac: `brew install graphviz`
+  
+  Run following command to start service with profiler
+  ```
+  go tool pprof -http=:6070 http://localhost:7070/debug/pprof/heap
+  ```
+  Compare two states:
+  ```bash
+  curl -s http://localhost:7070/debug/pprof/heap > ~/tmp/base.heap
+  #perform some activity, then grab data again, comparing with the base
+  go tool pprof -http=:6070 -base ~/tmp/base.heap http://localhost:7070/debug/pprof/heap
+  ```
+
 ### Generating mocks
 We use gomock to generate mocks used in unit test. [https://github.com/golang/mock](https://github.com/golang/mock)
 

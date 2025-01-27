@@ -68,7 +68,7 @@ func Test_RadixBatchWatcher(t *testing.T) {
 						return radixBatch.Name == "batch1" && radixBatch.Status.Condition == radixv1.RadixBatchCondition{}
 					})
 					notifier.EXPECT().Notify(events.Create, rbMatcher,
-						[]radixv1.RadixBatchJobStatus{}, gomock.Any()).Times(1)
+						[]radixv1.RadixBatchJobStatus{}).Times(1)
 					return notifier
 				},
 			},
@@ -96,7 +96,7 @@ func Test_RadixBatchWatcher(t *testing.T) {
 							radixBatch.Status.Condition.Type == radixv1.BatchConditionTypeWaiting
 					})
 					notifier.EXPECT().Notify(events.Update, rbMatcher,
-						[]radixv1.RadixBatchJobStatus{}, gomock.Any()).Times(1)
+						[]radixv1.RadixBatchJobStatus{}).Times(1)
 					return notifier
 				},
 			},
@@ -158,7 +158,7 @@ func Test_RadixBatchWatcher(t *testing.T) {
 							*jobStatuses[0].EndTime == endJobTime2
 					})
 					notifier.EXPECT().Notify(events.Update, rbMatcher,
-						jobStatusesMatcher, gomock.Any()).Times(1)
+						jobStatusesMatcher).Times(1)
 					return notifier
 				},
 			},
@@ -181,7 +181,7 @@ func Test_RadixBatchWatcher(t *testing.T) {
 						return radixBatch.Name == "batch1"
 					})
 					notifier.EXPECT().Notify(events.Delete, rbMatcher,
-						[]radixv1.RadixBatchJobStatus{}, gomock.Any()).Times(1)
+						[]radixv1.RadixBatchJobStatus{}).Times(1)
 					return notifier
 				},
 			},
@@ -216,7 +216,7 @@ func Test_RadixBatchWatcher(t *testing.T) {
 			assert.False(t, commonUtils.IsNil(batchWatcher))
 
 			if tt.fields.newRadixBatch != nil && tt.fields.event == events.Create {
-				history.EXPECT().Cleanup(gomock.Any()).Times(1)
+				history.EXPECT().Cleanup(gomock.Any(), make(map[string]struct{})).Times(1)
 				// when radix batch exists and during test it will be updated
 				_, err := radixClient.RadixV1().RadixBatches(namespace).Create(context.TODO(), tt.fields.newRadixBatch, metav1.CreateOptions{})
 				if err != nil {

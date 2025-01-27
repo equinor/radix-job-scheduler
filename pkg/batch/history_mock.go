@@ -35,15 +35,15 @@ func (m *MockHistory) EXPECT() *MockHistoryMockRecorder {
 }
 
 // Cleanup mocks base method.
-func (m *MockHistory) Cleanup(ctx context.Context) error {
+func (m *MockHistory) Cleanup(ctx context.Context, existingRadixBatchNamesMap map[string]struct{}) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Cleanup", ctx)
+	ret := m.ctrl.Call(m, "Cleanup", ctx, existingRadixBatchNamesMap)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Cleanup indicates an expected call of Cleanup.
-func (mr *MockHistoryMockRecorder) Cleanup(ctx interface{}) *gomock.Call {
+func (mr *MockHistoryMockRecorder) Cleanup(ctx, existingRadixBatchNamesMap interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Cleanup", reflect.TypeOf((*MockHistory)(nil).Cleanup), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Cleanup", reflect.TypeOf((*MockHistory)(nil).Cleanup), ctx, existingRadixBatchNamesMap)
 }

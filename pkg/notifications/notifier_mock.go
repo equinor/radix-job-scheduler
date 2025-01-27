@@ -50,17 +50,17 @@ func (mr *MockNotifierMockRecorder) Enabled() *gomock.Call {
 }
 
 // Notify mocks base method.
-func (m *MockNotifier) Notify(event events.Event, radixBatch *v1.RadixBatch, jopbStatuses []v1.RadixBatchJobStatus, errChan chan error) chan struct{} {
+func (m *MockNotifier) Notify(event events.Event, radixBatch *v1.RadixBatch, jobStatuses []v1.RadixBatchJobStatus) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Notify", event, radixBatch, jopbStatuses, errChan)
-	ret0, _ := ret[0].(chan struct{})
+	ret := m.ctrl.Call(m, "Notify", event, radixBatch, jobStatuses)
+	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Notify indicates an expected call of Notify.
-func (mr *MockNotifierMockRecorder) Notify(event, radixBatch, jopbStatuses, errChan interface{}) *gomock.Call {
+func (mr *MockNotifierMockRecorder) Notify(event, radixBatch, jobStatuses interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Notify", reflect.TypeOf((*MockNotifier)(nil).Notify), event, radixBatch, jopbStatuses, errChan)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Notify", reflect.TypeOf((*MockNotifier)(nil).Notify), event, radixBatch, jobStatuses)
 }
 
 // String mocks base method.

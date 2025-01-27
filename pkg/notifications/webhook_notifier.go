@@ -46,31 +46,22 @@ func (notifier *webhookNotifier) String() string {
 	return "Webhook notifier is disabled"
 }
 
-func (notifier *webhookNotifier) Notify(event events.Event, radixBatch *radixv1.RadixBatch, updatedJobStatuses []radixv1.RadixBatchJobStatus, errChan chan error) (done chan struct{}) {
-	done = make(chan struct{})
-	go func() {
-		defer close(done)
-		if !notifier.Enabled() || len(notifier.webhookURL) == 0 || radixBatch.Spec.RadixDeploymentJobRef.Job != notifier.jobComponentName {
-			done <- struct{}{}
-			return
-		}
-		// RadixBatch status and only changed job statuses
-		batchStatus := getRadixBatchEventFromRadixBatch(event, radixBatch, updatedJobStatuses, notifier.radixDeployJobComponent)
-		statusesJson, err := json.Marshal(batchStatus)
-		if err != nil {
-			errChan <- fmt.Errorf("failed serialize updated JobStatuses %v", err)
-			return
-		}
-		log.Trace().Msg(string(statusesJson))
-		buf := bytes.NewReader(statusesJson)
-		_, err = http.Post(notifier.webhookURL, "application/json", buf)
-		if err != nil {
-			errChan <- fmt.Errorf("failed to notify on RadixBatch object create or change %s: %v", radixBatch.GetName(), err)
-			return
-		}
-		done <- struct{}{}
-	}()
-	return done
+func (notifier *webhookNotifier) Notify(event events.Event, radixBatch *radixv1.RadixBatch, updatedJobStatuses []radixv1.RadixBatchJobStatus) error {
+	if !notifier.Enabled() || len(notifier.webhookURL) == 0 || radixBatch.Spec.RadixDeploymentJobRef.Job != notifier.jobComponentName {
+		return nil
+	}
+	// RadixBatch status and only changed job statuses
+	batchStatus := getRadixBatchEventFromRadixBatch(event, radixBatch, updatedJobStatuses, notifier.radixDeployJobComponent)
+	statusesJson, err := json.Marshal(batchStatus)
+	if err != nil {
+		return fmt.Errorf("failed serialize updated JobStatuses %v", err)
+	}
+	log.Trace().Msg(string(statusesJson))
+	buf := bytes.NewReader(statusesJson)
+	if _, err = http.Post(notifier.webhookURL, "application/json", buf); err != nil {
+		return fmt.Errorf("failed to notify on RadixBatch object create or change %s: %v", radixBatch.GetName(), err)
+	}
+	return nil
 }
 
 func webhookIsNotEmpty(webhook *string) bool {
