@@ -1,6 +1,40 @@
 package v1
 
-import "time"
+import (
+	"slices"
+	"time"
+)
+
+// Status of the job
+// swagger:enum JobStatusEnum
+type JobStatusEnum string
+
+func (s JobStatusEnum) IsCompleted() bool {
+	return slices.Contains([]JobStatusEnum{JobStatusEnumFailed, JobStatusEnumStopped, JobStatusEnumSucceeded}, s)
+}
+
+const (
+	// Waiting means that the job is waiting to start
+	JobStatusEnumWaiting JobStatusEnum = "Waiting"
+
+	// Active means that the job is active, but the container is not yet running
+	JobStatusEnumActive JobStatusEnum = "Active"
+
+	// Active means that the job is active and the container is running
+	JobStatusEnumRunning JobStatusEnum = "Running"
+
+	// Succeeded means that the job has completed without errors
+	JobStatusEnumSucceeded JobStatusEnum = "Succeeded"
+
+	// Failed means that the job has failed
+	JobStatusEnumFailed JobStatusEnum = "Failed"
+
+	// Stopping means that a request to stop the job is sent, but not yet processed by Radix
+	JobStatusEnumStopping JobStatusEnum = "Stopping"
+
+	// Stopped means that the job has been stopped
+	JobStatusEnumStopped JobStatusEnum = "Stopped"
+)
 
 // JobStatus holds general information about job status
 // swagger:model JobStatus
@@ -16,12 +50,6 @@ type JobStatus struct {
 	// required: false
 	// example: 'batch1'
 	BatchName string `json:"batchName,omitempty"`
-
-	// Defines a user defined ID of the batch.
-	//
-	// required: false
-	// example: 'batch-id-1'
-	BatchId string `json:"batchId,omitempty"`
 
 	// Name of the job
 	// required: true
@@ -47,19 +75,10 @@ type JobStatus struct {
 	Ended *time.Time `json:"ended"`
 
 	// Status of the job
-	// - Running = Job is running
-	// - Succeeded = Job has succeeded
-	// - Failed = Job has failed
-	// - Waiting = Job is waiting
-	// - Stopping = Job is stopping
-	// - Stopped = Job has been stopped
-	// - Active = Job is active
-	// - Completed = Job is completed
 	//
 	// required: false
-	// Enum: Running,Succeeded,Failed,Waiting,Stopping,Stopped,Active,Completed
 	// example: Waiting
-	Status string `json:"status,omitempty"`
+	Status JobStatusEnum `json:"status,omitempty"`
 
 	// Message, if any, of the job
 	//
@@ -78,10 +97,6 @@ type JobStatus struct {
 	// PodStatuses for each pod of the job
 	// required: false
 	PodStatuses []PodStatus `json:"podStatuses,omitempty"`
-
-	// DeploymentName for this batch
-	// required: false
-	DeploymentName string `json:"DeploymentName,omitempty"`
 }
 
 // PodStatus contains details for the current status of the job's pods.

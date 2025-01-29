@@ -75,7 +75,7 @@ func (h *history) Cleanup(ctx context.Context) error {
 }
 
 func (h *history) getCompletedRadixBatchesSortedByCompletionTimeAsc(ctx context.Context, completedBefore time.Time) (*CompletedRadixBatches, error) {
-	radixBatches, err := internal.GetRadixBatches(ctx, h.env.RadixDeploymentNamespace, h.kubeUtil.RadixClient(), radixLabels.ForComponentName(h.env.RadixComponentName))
+	radixBatches, err := internal.ListRadixBatches(ctx, h.env.RadixDeploymentNamespace, h.kubeUtil.RadixClient(), radixLabels.ForComponentName(h.env.RadixComponentName))
 	if err != nil {
 		return nil, err
 	}

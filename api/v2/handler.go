@@ -447,7 +447,7 @@ func buildRadixBatchJob(jobScheduleDescription *common.JobScheduleDescription, d
 
 func (h *handler) getRadixBatchStatuses(ctx context.Context, radixBatchType kube.RadixBatchType) ([]modelsv2.Batch, error) {
 	logger := log.Ctx(ctx)
-	radixBatches, err := internal.GetRadixBatches(ctx, h.env.RadixDeploymentNamespace, h.kubeUtil.RadixClient(),
+	radixBatches, err := internal.ListRadixBatches(ctx, h.env.RadixDeploymentNamespace, h.kubeUtil.RadixClient(),
 		radixLabels.ForComponentName(h.radixDeployJobComponent.GetName()),
 		radixLabels.ForBatchType(radixBatchType),
 	)

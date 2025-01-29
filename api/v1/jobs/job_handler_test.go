@@ -29,10 +29,10 @@ func TestNewHandler(t *testing.T) {
 	assert.IsType(t, &jobHandler{}, h)
 	actualHandler := h.(*jobHandler)
 
-	assert.Equal(t, kubeUtil, actualHandler.common.Kube)
-	assert.Equal(t, env, actualHandler.common.Env)
-	assert.Equal(t, kubeClient, actualHandler.common.Kube.KubeClient())
-	assert.Equal(t, radixClient, actualHandler.common.Kube.RadixClient())
+	assert.Equal(t, kubeUtil, actualHandler.Kube)
+	assert.Equal(t, env, actualHandler.Config)
+	assert.Equal(t, kubeClient, actualHandler.Kube.KubeClient())
+	assert.Equal(t, radixClient, actualHandler.Kube.RadixClient())
 }
 
 func TestGetJobs(t *testing.T) {

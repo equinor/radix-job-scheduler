@@ -18,8 +18,8 @@ import (
 
 var defaultSrc = rand.NewSource(time.Now().UnixNano())
 
-// GetRadixBatches Get Radix batches
-func GetRadixBatches(ctx context.Context, namespace string, radixClient radixclient.Interface, labels ...map[string]string) ([]radixv1.RadixBatch, error) {
+// ListRadixBatches Get Radix batches
+func ListRadixBatches(ctx context.Context, namespace string, radixClient radixclient.Interface, labels ...map[string]string) ([]radixv1.RadixBatch, error) {
 	radixBatchList, err := radixClient.
 		RadixV1().
 		RadixBatches(namespace).

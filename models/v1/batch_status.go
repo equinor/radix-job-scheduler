@@ -1,6 +1,44 @@
 package v1
 
-import "time"
+import (
+	"time"
+)
+
+// Status of the batch
+// swagger:enum BatchStatusEnum
+type BatchStatusEnum string
+
+const (
+	// Waiting means that all jobs are waiting to start
+	//
+	// This status can also be defined with batchStatusRules in radixconfig, which will override the original meaning
+	BatchStatusEnumWaiting BatchStatusEnum = "Waiting"
+
+	// Active means that one or more jobs are active
+	//
+	// This status can also be defined with batchStatusRules in radixconfig, which will override the original meaning
+	BatchStatusEnumActive BatchStatusEnum = "Active"
+
+	// Completed means that all jobs have completed (status stopped, succeeded or failed)
+	//
+	// This status can also be defined with batchStatusRules in radixconfig, which will override the original meaning
+	BatchStatusEnumCompleted BatchStatusEnum = "Completed"
+
+	// Active is a custom status that can only be defined with batchStatusRules in radixconfig
+	BatchStatusEnumRunning BatchStatusEnum = "Running"
+
+	// Succeeded is a custom status that can only be defined with batchStatusRules in radixconfig
+	BatchStatusEnumSucceeded BatchStatusEnum = "Succeeded"
+
+	// Failed is a custom status that can only be defined with batchStatusRules in radixconfig
+	BatchStatusEnumFailed BatchStatusEnum = "Failed"
+
+	// Stopping is a custom status that can only be defined with batchStatusRules in radixconfig
+	BatchStatusEnumStopping BatchStatusEnum = "Stopping"
+
+	// Stopped is a custom status that can only be defined with batchStatusRules in radixconfig
+	BatchStatusEnumStopped BatchStatusEnum = "Stopped"
+)
 
 // BatchStatus holds general information about batch status
 // swagger:model BatchStatus
@@ -37,24 +75,10 @@ type BatchStatus struct {
 	Ended *time.Time `json:"ended"`
 
 	// Status of the batch.
-	// - Waiting = All jobs are in waiting status
-	// - Active = One or more jobs are active
-	// - Completed = All jobs are done (failed, succeeded or stopped)
-	//
-	// If batchStatusRules is configured for the job in radixconfig,
-	// the following statuses may also be returned (in addition to the three statuses above)
-	// - Running
-	// - Succeeded
-	// - Failed
-	// - Stopping
-	// - Stopped
-	//
-	// Note that batchStatusRules can override the the meaning of the three standard statuses.
 	//
 	// required: false
-	// Enum: Running,Succeeded,Failed,Waiting,Stopping,Stopped,Active,Completed
 	// example: Waiting
-	Status string `json:"status,omitempty"`
+	Status BatchStatusEnum `json:"status,omitempty"`
 
 	// Message describing the reason for the status
 	//

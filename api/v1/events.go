@@ -24,7 +24,7 @@ func (handler *Handler) GetLastEventMessageForPods(ctx context.Context, pods []c
 		return acc
 	})
 	eventMap := make(map[string]string)
-	eventsList, err := handler.Kube.KubeClient().CoreV1().Events(handler.Env.RadixDeploymentNamespace).List(ctx, metav1.ListOptions{})
+	eventsList, err := handler.Kube.KubeClient().CoreV1().Events(handler.Config.RadixDeploymentNamespace).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return eventMap, err
 	}

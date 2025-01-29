@@ -574,18 +574,19 @@
           "x-go-name": "Started"
         },
         "status": {
-          "description": "Status of the batch.\nWaiting = All jobs are in waiting status\nActive = One or more jobs are active\nCompleted = All jobs are done (failed, succeeded or stopped)\n\nIf batchStatusRules is configured for the job in radixconfig,\nthe following statuses may also be returned (in addition to the three statuses above)\nRunning\nSucceeded\nFailed\nStopping\nStopped\n\nNote that batchStatusRules can override the the meaning of the three standard statuses.",
+          "description": "Status of the batch.\nWaiting BatchStatusEnumWaiting  Waiting means that all jobs are waiting to start   This status can also be defined with batchStatusRules in radixconfig, which will override the original meaning\nActive BatchStatusEnumActive  Active means that one or more jobs are active   This status can also be defined with batchStatusRules in radixconfig, which will override the original meaning\nCompleted BatchStatusEnumCompleted  Completed means that all jobs have completed (status stopped, succeeded or failed)   This status can also be defined with batchStatusRules in radixconfig, which will override the original meaning\nRunning BatchStatusEnumRunning  Active is a custom status that can only be defined with batchStatusRules in radixconfig\nSucceeded BatchStatusEnumSucceeded  Succeeded is a custom status that can only be defined with batchStatusRules in radixconfig\nFailed BatchStatusEnumFailed  Failed is a custom status that can only be defined with batchStatusRules in radixconfig\nStopping BatchStatusEnumStopping  Stopping is a custom status that can only be defined with batchStatusRules in radixconfig\nStopped BatchStatusEnumStopped  Stopped is a custom status that can only be defined with batchStatusRules in radixconfig",
           "type": "string",
           "enum": [
+            "Waiting",
+            "Active",
+            "Completed",
             "Running",
             "Succeeded",
             "Failed",
-            "Waiting",
             "Stopping",
-            "Stopped",
-            "Active",
-            "Completed"
+            "Stopped"
           ],
+          "x-go-enum-desc": "Waiting BatchStatusEnumWaiting  Waiting means that all jobs are waiting to start   This status can also be defined with batchStatusRules in radixconfig, which will override the original meaning\nActive BatchStatusEnumActive  Active means that one or more jobs are active   This status can also be defined with batchStatusRules in radixconfig, which will override the original meaning\nCompleted BatchStatusEnumCompleted  Completed means that all jobs have completed (status stopped, succeeded or failed)   This status can also be defined with batchStatusRules in radixconfig, which will override the original meaning\nRunning BatchStatusEnumRunning  Active is a custom status that can only be defined with batchStatusRules in radixconfig\nSucceeded BatchStatusEnumSucceeded  Succeeded is a custom status that can only be defined with batchStatusRules in radixconfig\nFailed BatchStatusEnumFailed  Failed is a custom status that can only be defined with batchStatusRules in radixconfig\nStopping BatchStatusEnumStopping  Stopping is a custom status that can only be defined with batchStatusRules in radixconfig\nStopped BatchStatusEnumStopped  Stopped is a custom status that can only be defined with batchStatusRules in radixconfig",
           "x-go-name": "Status",
           "example": "Waiting"
         },
@@ -685,18 +686,19 @@
           "x-go-name": "Started"
         },
         "status": {
-          "description": "Status of the batch.\nWaiting = All jobs are in waiting status\nActive = One or more jobs are active\nCompleted = All jobs are done (failed, succeeded or stopped)\n\nIf batchStatusRules is configured for the job in radixconfig,\nthe following statuses may also be returned (in addition to the three statuses above)\nRunning\nSucceeded\nFailed\nStopping\nStopped\n\nNote that batchStatusRules can override the the meaning of the three standard statuses.",
+          "description": "Status of the batch.\nWaiting BatchStatusEnumWaiting  Waiting means that all jobs are waiting to start   This status can also be defined with batchStatusRules in radixconfig, which will override the original meaning\nActive BatchStatusEnumActive  Active means that one or more jobs are active   This status can also be defined with batchStatusRules in radixconfig, which will override the original meaning\nCompleted BatchStatusEnumCompleted  Completed means that all jobs have completed (status stopped, succeeded or failed)   This status can also be defined with batchStatusRules in radixconfig, which will override the original meaning\nRunning BatchStatusEnumRunning  Active is a custom status that can only be defined with batchStatusRules in radixconfig\nSucceeded BatchStatusEnumSucceeded  Succeeded is a custom status that can only be defined with batchStatusRules in radixconfig\nFailed BatchStatusEnumFailed  Failed is a custom status that can only be defined with batchStatusRules in radixconfig\nStopping BatchStatusEnumStopping  Stopping is a custom status that can only be defined with batchStatusRules in radixconfig\nStopped BatchStatusEnumStopped  Stopped is a custom status that can only be defined with batchStatusRules in radixconfig",
           "type": "string",
           "enum": [
+            "Waiting",
+            "Active",
+            "Completed",
             "Running",
             "Succeeded",
             "Failed",
-            "Waiting",
             "Stopping",
-            "Stopped",
-            "Active",
-            "Completed"
+            "Stopped"
           ],
+          "x-go-enum-desc": "Waiting BatchStatusEnumWaiting  Waiting means that all jobs are waiting to start   This status can also be defined with batchStatusRules in radixconfig, which will override the original meaning\nActive BatchStatusEnumActive  Active means that one or more jobs are active   This status can also be defined with batchStatusRules in radixconfig, which will override the original meaning\nCompleted BatchStatusEnumCompleted  Completed means that all jobs have completed (status stopped, succeeded or failed)   This status can also be defined with batchStatusRules in radixconfig, which will override the original meaning\nRunning BatchStatusEnumRunning  Active is a custom status that can only be defined with batchStatusRules in radixconfig\nSucceeded BatchStatusEnumSucceeded  Succeeded is a custom status that can only be defined with batchStatusRules in radixconfig\nFailed BatchStatusEnumFailed  Failed is a custom status that can only be defined with batchStatusRules in radixconfig\nStopping BatchStatusEnumStopping  Stopping is a custom status that can only be defined with batchStatusRules in radixconfig\nStopped BatchStatusEnumStopped  Stopped is a custom status that can only be defined with batchStatusRules in radixconfig",
           "x-go-name": "Status",
           "example": "Waiting"
         }
@@ -836,16 +838,6 @@
         "name"
       ],
       "properties": {
-        "DeploymentName": {
-          "description": "DeploymentName for this batch",
-          "type": "string"
-        },
-        "batchId": {
-          "description": "Defines a user defined ID of the batch.",
-          "type": "string",
-          "x-go-name": "BatchId",
-          "example": "'batch-id-1'"
-        },
         "batchName": {
           "description": "BatchName Optional Batch ID of a job",
           "type": "string",
@@ -908,18 +900,18 @@
           "x-go-name": "Started"
         },
         "status": {
-          "description": "Status of the job\nRunning = Job is running\nSucceeded = Job has succeeded\nFailed = Job has failed\nWaiting = Job is waiting\nStopping = Job is stopping\nStopped = Job has been stopped\nActive = Job is active\nCompleted = Job is completed",
+          "description": "Status of the job\nWaiting JobStatusEnumWaiting  Waiting means that the job is waiting to start\nActive JobStatusEnumActive  Active means that the job is active, but the container is not yet running\nRunning JobStatusEnumRunning  Active means that the job is active and the container is running\nSucceeded JobStatusEnumSucceeded  Succeeded means that the job has completed without errors\nFailed JobStatusEnumFailed  Failed means that the job has failed\nStopping JobStatusEnumStopping  Stopping means that a request to stop the job is sent, but not yet processed by Radix\nStopped JobStatusEnumStopped  Stopped means that the job has been stopped",
           "type": "string",
           "enum": [
+            "Waiting",
+            "Active",
             "Running",
             "Succeeded",
             "Failed",
-            "Waiting",
             "Stopping",
-            "Stopped",
-            "Active",
-            "Completed"
+            "Stopped"
           ],
+          "x-go-enum-desc": "Waiting JobStatusEnumWaiting  Waiting means that the job is waiting to start\nActive JobStatusEnumActive  Active means that the job is active, but the container is not yet running\nRunning JobStatusEnumRunning  Active means that the job is active and the container is running\nSucceeded JobStatusEnumSucceeded  Succeeded means that the job has completed without errors\nFailed JobStatusEnumFailed  Failed means that the job has failed\nStopping JobStatusEnumStopping  Stopping means that a request to stop the job is sent, but not yet processed by Radix\nStopped JobStatusEnumStopped  Stopped means that the job has been stopped",
           "x-go-name": "Status",
           "example": "Waiting"
         }
