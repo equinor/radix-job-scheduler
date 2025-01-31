@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/equinor/radix-job-scheduler/internal/query"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	"github.com/equinor/radix-operator/pkg/apis/utils/labels"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
@@ -13,7 +14,7 @@ import (
 
 // GetJobComponentPayloadSecretRefNames Get the payload secret ref names for the job components
 func GetJobComponentPayloadSecretRefNames(ctx context.Context, radixClient radixclient.Interface, namespace, radixComponentName string) (map[string]bool, error) {
-	radixBatches, err := ListRadixBatches(ctx, namespace, radixClient, labels.ForComponentName(radixComponentName))
+	radixBatches, err := query.ListRadixBatches(ctx, namespace, radixClient, labels.ForComponentName(radixComponentName))
 	if err != nil {
 		return nil, err
 	}

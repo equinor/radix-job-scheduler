@@ -11,6 +11,7 @@ import (
 	"github.com/equinor/radix-common/utils/slice"
 	apiErrors "github.com/equinor/radix-job-scheduler/api/errors"
 	"github.com/equinor/radix-job-scheduler/internal"
+	"github.com/equinor/radix-job-scheduler/internal/query"
 	modelsv2 "github.com/equinor/radix-job-scheduler/models/v2"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
@@ -56,7 +57,7 @@ func GetRadixBatchStatus(radixBatch *radixv1.RadixBatch, radixDeployJobComponent
 
 // DeleteRadixBatchByName Delete a batch by name
 func DeleteRadixBatchByName(ctx context.Context, radixClient versioned.Interface, namespace, batchName string) error {
-	radixBatch, err := internal.GetRadixBatch(ctx, radixClient, namespace, batchName)
+	radixBatch, err := query.GetRadixBatch(ctx, radixClient, namespace, batchName)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			return nil

@@ -12,6 +12,7 @@ import (
 	"github.com/equinor/radix-common/utils/pointers"
 	apiErrors "github.com/equinor/radix-job-scheduler/api/errors"
 	"github.com/equinor/radix-job-scheduler/internal"
+	"github.com/equinor/radix-job-scheduler/internal/query"
 	"github.com/equinor/radix-job-scheduler/models"
 	"github.com/equinor/radix-job-scheduler/models/common"
 	modelsv2 "github.com/equinor/radix-job-scheduler/models/v2"
@@ -105,7 +106,7 @@ func (h *handler) GetRadixBatchSingleJobs(ctx context.Context) ([]modelsv2.Batch
 func (h *handler) GetRadixBatch(ctx context.Context, batchName string) (*modelsv2.Batch, error) {
 	logger := log.Ctx(ctx)
 	logger.Debug().Msgf("get batch status for the batch %s", batchName)
-	radixBatch, err := internal.GetRadixBatch(ctx, h.kubeUtil.RadixClient(), h.env.RadixDeploymentNamespace, batchName)
+	radixBatch, err := query.GetRadixBatch(ctx, h.kubeUtil.RadixClient(), h.env.RadixDeploymentNamespace, batchName)
 	if err != nil {
 		return nil, err
 	}
@@ -136,7 +137,7 @@ func (h *handler) CreateRadixBatch(ctx context.Context, batchScheduleDescription
 func (h *handler) CopyRadixBatch(ctx context.Context, sourceBatchName, deploymentName string) (*modelsv2.Batch, error) {
 	logger := log.Ctx(ctx)
 	logger.Debug().Msgf("Copy Radix Batch %s for the deployment %s", sourceBatchName, deploymentName)
-	sourceRadixBatch, err := internal.GetRadixBatch(ctx, h.kubeUtil.RadixClient(), h.env.RadixDeploymentNamespace, sourceBatchName)
+	sourceRadixBatch, err := query.GetRadixBatch(ctx, h.kubeUtil.RadixClient(), h.env.RadixDeploymentNamespace, sourceBatchName)
 	if err != nil {
 		return nil, err
 	}
@@ -204,7 +205,7 @@ func (h *handler) CopyRadixBatchJob(ctx context.Context, sourceJobName, deployme
 	if !ok {
 		return nil, fmt.Errorf("copy of this job is not supported or invalid job name")
 	}
-	sourceRadixBatch, err := internal.GetRadixBatch(ctx, h.kubeUtil.RadixClient(), h.env.RadixDeploymentNamespace, batchName)
+	sourceRadixBatch, err := query.GetRadixBatch(ctx, h.kubeUtil.RadixClient(), h.env.RadixDeploymentNamespace, batchName)
 	if err != nil {
 		return nil, err
 	}
@@ -222,7 +223,7 @@ func (h *handler) DeleteRadixBatchJob(ctx context.Context, jobName string) error
 	if !ok {
 		return fmt.Errorf("deleting of this job is not supported or invalid job name")
 	}
-	radixBatch, err := internal.GetRadixBatch(ctx, h.kubeUtil.RadixClient(), h.env.RadixDeploymentNamespace, batchName)
+	radixBatch, err := query.GetRadixBatch(ctx, h.kubeUtil.RadixClient(), h.env.RadixDeploymentNamespace, batchName)
 	if err != nil {
 		return err
 	}
@@ -234,7 +235,7 @@ func (h *handler) DeleteRadixBatchJob(ctx context.Context, jobName string) error
 
 // StopRadixBatch Stop a batch
 func (h *handler) StopRadixBatch(ctx context.Context, batchName string) error {
-	radixBatch, err := internal.GetRadixBatch(ctx, h.kubeUtil.RadixClient(), h.env.RadixDeploymentNamespace, batchName)
+	radixBatch, err := query.GetRadixBatch(ctx, h.kubeUtil.RadixClient(), h.env.RadixDeploymentNamespace, batchName)
 	if err != nil {
 		return apiErrors.NewFromError(err)
 	}
@@ -243,7 +244,7 @@ func (h *handler) StopRadixBatch(ctx context.Context, batchName string) error {
 
 // StopRadixBatchJob Stop a batch job
 func (h *handler) StopRadixBatchJob(ctx context.Context, batchName, jobName string) error {
-	radixBatch, err := internal.GetRadixBatch(ctx, h.kubeUtil.RadixClient(), h.env.RadixDeploymentNamespace, batchName)
+	radixBatch, err := query.GetRadixBatch(ctx, h.kubeUtil.RadixClient(), h.env.RadixDeploymentNamespace, batchName)
 	if err != nil {
 		return err
 	}
@@ -252,7 +253,7 @@ func (h *handler) StopRadixBatchJob(ctx context.Context, batchName, jobName stri
 
 // RestartRadixBatch Restart a batch
 func (h *handler) RestartRadixBatch(ctx context.Context, batchName string) error {
-	radixBatch, err := internal.GetRadixBatch(ctx, h.kubeUtil.RadixClient(), h.env.RadixDeploymentNamespace, batchName)
+	radixBatch, err := query.GetRadixBatch(ctx, h.kubeUtil.RadixClient(), h.env.RadixDeploymentNamespace, batchName)
 	if err != nil {
 		return apiErrors.NewFromError(err)
 	}
@@ -261,7 +262,7 @@ func (h *handler) RestartRadixBatch(ctx context.Context, batchName string) error
 
 // RestartRadixBatchJob Restart a batch job
 func (h *handler) RestartRadixBatchJob(ctx context.Context, batchName, jobName string) error {
-	radixBatch, err := internal.GetRadixBatch(ctx, h.kubeUtil.RadixClient(), h.env.RadixDeploymentNamespace, batchName)
+	radixBatch, err := query.GetRadixBatch(ctx, h.kubeUtil.RadixClient(), h.env.RadixDeploymentNamespace, batchName)
 	if err != nil {
 		return err
 	}
@@ -447,7 +448,7 @@ func buildRadixBatchJob(jobScheduleDescription *common.JobScheduleDescription, d
 
 func (h *handler) getRadixBatchStatuses(ctx context.Context, radixBatchType kube.RadixBatchType) ([]modelsv2.Batch, error) {
 	logger := log.Ctx(ctx)
-	radixBatches, err := internal.ListRadixBatches(ctx, h.env.RadixDeploymentNamespace, h.kubeUtil.RadixClient(),
+	radixBatches, err := query.ListRadixBatches(ctx, h.env.RadixDeploymentNamespace, h.kubeUtil.RadixClient(),
 		radixLabels.ForComponentName(h.radixDeployJobComponent.GetName()),
 		radixLabels.ForBatchType(radixBatchType),
 	)

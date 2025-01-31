@@ -4,7 +4,7 @@ import (
 	"context"
 
 	apiv2 "github.com/equinor/radix-job-scheduler/api/v2"
-	"github.com/equinor/radix-job-scheduler/internal"
+	"github.com/equinor/radix-job-scheduler/internal/query"
 	"github.com/equinor/radix-job-scheduler/models"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
@@ -24,5 +24,5 @@ func (h *Handler) ListRadixBatches(ctx context.Context, radixBatchType kube.Radi
 		labels = append(labels, radixlabels.ForBatchType(radixBatchType))
 	}
 
-	return internal.ListRadixBatches(ctx, h.Config.RadixDeploymentNamespace, h.Kube.RadixClient(), labels...)
+	return query.ListRadixBatches(ctx, h.Config.RadixDeploymentNamespace, h.Kube.RadixClient(), labels...)
 }

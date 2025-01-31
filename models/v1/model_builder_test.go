@@ -1,6 +1,7 @@
 package v1_test
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -9,10 +10,87 @@ import (
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func Test_BuildBatchStatus_BatchStatusEnumFromRadixBatchCondition(t *testing.T) {
+func Test_BuildBatchStatus_BatchStatusProps(t *testing.T) {
+	createdTime, activeTime, completionTime := time.Now(), time.Now().Add(10*time.Second), time.Now().Add(20*time.Second)
+
+	tests := map[string]struct {
+		rb       radixv1.RadixBatch
+		expected v1.BatchStatus
+	}{
+		"all non-nil properties set": {
+			rb: radixv1.RadixBatch{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:              "any-rb-name",
+					CreationTimestamp: metav1.NewTime(createdTime),
+					Labels:            map[string]string{kube.RadixBatchTypeLabel: "any-rb-type"},
+				},
+				Spec: radixv1.RadixBatchSpec{
+					RadixDeploymentJobRef: radixv1.RadixDeploymentJobComponentSelector{
+						LocalObjectReference: radixv1.LocalObjectReference{Name: "any-rd"},
+					},
+					BatchId: "any-batch-id",
+				},
+				Status: radixv1.RadixBatchStatus{
+					Condition: radixv1.RadixBatchCondition{
+						Message: "any-condition-message",
+					},
+				},
+			},
+			expected: v1.BatchStatus{
+				Name:           "any-rb-name",
+				DeploymentName: "any-rd",
+				Created:        createdTime,
+				BatchType:      "any-rb-type",
+				BatchId:        "any-batch-id",
+				Message:        "any-condition-message",
+				JobStatuses:    []v1.JobStatus{},
+				Status:         v1.BatchStatusEnumWaiting,
+			},
+		},
+		"Started set from ActiveTime": {
+			rb: radixv1.RadixBatch{
+				Status: radixv1.RadixBatchStatus{
+					Condition: radixv1.RadixBatchCondition{
+						ActiveTime: pointers.Ptr(metav1.NewTime(activeTime)),
+					},
+				},
+			},
+			expected: v1.BatchStatus{
+				Started:     &activeTime,
+				JobStatuses: []v1.JobStatus{},
+				Status:      v1.BatchStatusEnumWaiting,
+			},
+		},
+		"Ended set from CompletionTime": {
+			rb: radixv1.RadixBatch{
+				Status: radixv1.RadixBatchStatus{
+					Condition: radixv1.RadixBatchCondition{
+						CompletionTime: pointers.Ptr(metav1.NewTime(completionTime)),
+					},
+				},
+			},
+			expected: v1.BatchStatus{
+				Ended:       &completionTime,
+				JobStatuses: []v1.JobStatus{},
+				Status:      v1.BatchStatusEnumWaiting,
+			},
+		},
+	}
+
+	for testName, test := range tests {
+		t.Run(testName, func(t *testing.T) {
+			t.Parallel()
+			actual := v1.BuildBatchStatus(test.rb, nil)
+			assert.Equal(t, test.expected, actual)
+		})
+	}
+}
+
+func Test_BuildBatchStatus_BatchStatusEnum_FromRadixBatchCondition(t *testing.T) {
 	tests := map[string]struct {
 		condition      radixv1.RadixBatchCondition
 		expectedStatus v1.BatchStatusEnum
@@ -45,78 +123,472 @@ func Test_BuildBatchStatus_BatchStatusEnumFromRadixBatchCondition(t *testing.T) 
 	}
 }
 
-func Test_BuildBatchStatus_BatchStatusPropsSetCorrectly(t *testing.T) {
-	createdTime, activeTime, completionTime := time.Now(), time.Now().Add(10*time.Second), time.Now().Add(20*time.Second)
-
+func Test_BuildBatchStatus_BatchStatusEnum_FromRules(t *testing.T) {
 	tests := map[string]struct {
-		sourceRb radixv1.RadixBatch
-		expected v1.BatchStatus
+		conditionType  radixv1.RadixBatchConditionType
+		jobPhases      []radixv1.RadixBatchJobPhase
+		rules          []radixv1.BatchStatusRule
+		expectedStatus v1.BatchStatusEnum
 	}{
-		"all non-nil properties set": {
-			sourceRb: radixv1.RadixBatch{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:              "any-rb-name",
-					CreationTimestamp: metav1.NewTime(createdTime),
-					Labels:            map[string]string{kube.RadixBatchTypeLabel: "any-rb-type"},
-				},
-				Spec: radixv1.RadixBatchSpec{
-					RadixDeploymentJobRef: radixv1.RadixDeploymentJobComponentSelector{
-						LocalObjectReference: radixv1.LocalObjectReference{Name: "any-rd"},
-					},
-					BatchId: "any-batch-id",
-				},
-				Status: radixv1.RadixBatchStatus{
-					Condition: radixv1.RadixBatchCondition{
-						Message: "any-condition-message",
-					},
+		"matching all+in rule": {
+			conditionType: radixv1.BatchConditionTypeActive,
+			jobPhases:     []radixv1.RadixBatchJobPhase{radixv1.BatchJobPhaseActive, radixv1.BatchJobPhaseRunning},
+			rules: []radixv1.BatchStatusRule{
+				{
+					Condition:   radixv1.ConditionAll,
+					Operator:    radixv1.OperatorIn,
+					JobStatuses: []radixv1.RadixBatchJobPhase{radixv1.BatchJobPhaseActive, radixv1.BatchJobPhaseRunning, radixv1.BatchJobPhaseFailed},
+					BatchStatus: radixv1.RadixBatchJobApiStatusSucceeded,
 				},
 			},
-			expected: v1.BatchStatus{
-				Name:           "any-rb-name",
-				DeploymentName: "any-rd",
-				Created:        createdTime,
-				BatchType:      "any-rb-type",
-				BatchId:        "any-batch-id",
-				Message:        "any-condition-message",
-				JobStatuses:    []v1.JobStatus{},
-				Status:         v1.BatchStatusEnumWaiting,
-			},
+			expectedStatus: v1.BatchStatusEnumSucceeded,
 		},
-		"Started set from ActiveTime": {
-			sourceRb: radixv1.RadixBatch{
-				Status: radixv1.RadixBatchStatus{
-					Condition: radixv1.RadixBatchCondition{
-						ActiveTime: pointers.Ptr(metav1.NewTime(activeTime)),
-					},
+		"non-matching all+in rule": {
+			conditionType: radixv1.BatchConditionTypeActive,
+			jobPhases:     []radixv1.RadixBatchJobPhase{radixv1.BatchJobPhaseActive, radixv1.BatchJobPhaseRunning},
+			rules: []radixv1.BatchStatusRule{
+				{
+					Condition:   radixv1.ConditionAll,
+					Operator:    radixv1.OperatorIn,
+					JobStatuses: []radixv1.RadixBatchJobPhase{radixv1.BatchJobPhaseActive, radixv1.BatchJobPhaseFailed},
+					BatchStatus: radixv1.RadixBatchJobApiStatusSucceeded,
 				},
 			},
-			expected: v1.BatchStatus{
-				Started:     &activeTime,
-				JobStatuses: []v1.JobStatus{},
-				Status:      v1.BatchStatusEnumWaiting,
-			},
+			expectedStatus: v1.BatchStatusEnumActive,
 		},
-		"Ended set from CompletionTime": {
-			sourceRb: radixv1.RadixBatch{
-				Status: radixv1.RadixBatchStatus{
-					Condition: radixv1.RadixBatchCondition{
-						CompletionTime: pointers.Ptr(metav1.NewTime(completionTime)),
-					},
+		"matching all+notin rule": {
+			conditionType: radixv1.BatchConditionTypeActive,
+			jobPhases:     []radixv1.RadixBatchJobPhase{radixv1.BatchJobPhaseActive, radixv1.BatchJobPhaseRunning},
+			rules: []radixv1.BatchStatusRule{
+				{
+					Condition:   radixv1.ConditionAll,
+					Operator:    radixv1.OperatorNotIn,
+					JobStatuses: []radixv1.RadixBatchJobPhase{radixv1.BatchJobPhaseFailed, radixv1.BatchJobPhaseSucceeded},
+					BatchStatus: radixv1.RadixBatchJobApiStatusSucceeded,
 				},
 			},
-			expected: v1.BatchStatus{
-				Ended:       &completionTime,
-				JobStatuses: []v1.JobStatus{},
-				Status:      v1.BatchStatusEnumWaiting,
+			expectedStatus: v1.BatchStatusEnumSucceeded,
+		},
+		"non-matching all+notin rule": {
+			conditionType: radixv1.BatchConditionTypeActive,
+			jobPhases:     []radixv1.RadixBatchJobPhase{radixv1.BatchJobPhaseFailed, radixv1.BatchJobPhaseRunning},
+			rules: []radixv1.BatchStatusRule{
+				{
+					Condition:   radixv1.ConditionAll,
+					Operator:    radixv1.OperatorNotIn,
+					JobStatuses: []radixv1.RadixBatchJobPhase{radixv1.BatchJobPhaseFailed, radixv1.BatchJobPhaseSucceeded},
+					BatchStatus: radixv1.RadixBatchJobApiStatusSucceeded,
+				},
 			},
+			expectedStatus: v1.BatchStatusEnumActive,
+		},
+		"matching any+in rule": {
+			conditionType: radixv1.BatchConditionTypeActive,
+			jobPhases:     []radixv1.RadixBatchJobPhase{radixv1.BatchJobPhaseActive, radixv1.BatchJobPhaseRunning},
+			rules: []radixv1.BatchStatusRule{
+				{
+					Condition:   radixv1.ConditionAny,
+					Operator:    radixv1.OperatorIn,
+					JobStatuses: []radixv1.RadixBatchJobPhase{radixv1.BatchJobPhaseActive, radixv1.BatchJobPhaseFailed},
+					BatchStatus: radixv1.RadixBatchJobApiStatusSucceeded,
+				},
+			},
+			expectedStatus: v1.BatchStatusEnumSucceeded,
+		},
+		"non-matching any+in rule": {
+			conditionType: radixv1.BatchConditionTypeActive,
+			jobPhases:     []radixv1.RadixBatchJobPhase{radixv1.BatchJobPhaseActive, radixv1.BatchJobPhaseRunning},
+			rules: []radixv1.BatchStatusRule{
+				{
+					Condition:   radixv1.ConditionAny,
+					Operator:    radixv1.OperatorIn,
+					JobStatuses: []radixv1.RadixBatchJobPhase{radixv1.BatchJobPhaseSucceeded, radixv1.BatchJobPhaseFailed},
+					BatchStatus: radixv1.RadixBatchJobApiStatusSucceeded,
+				},
+			},
+			expectedStatus: v1.BatchStatusEnumActive,
+		},
+		"matching any+notin rule": {
+			conditionType: radixv1.BatchConditionTypeActive,
+			jobPhases:     []radixv1.RadixBatchJobPhase{radixv1.BatchJobPhaseActive, radixv1.BatchJobPhaseFailed},
+			rules: []radixv1.BatchStatusRule{
+				{
+					Condition:   radixv1.ConditionAny,
+					Operator:    radixv1.OperatorNotIn,
+					JobStatuses: []radixv1.RadixBatchJobPhase{radixv1.BatchJobPhaseActive, radixv1.BatchJobPhaseRunning},
+					BatchStatus: radixv1.RadixBatchJobApiStatusSucceeded,
+				},
+			},
+			expectedStatus: v1.BatchStatusEnumSucceeded,
+		},
+		"non-matching any+notin rule": {
+			conditionType: radixv1.BatchConditionTypeActive,
+			jobPhases:     []radixv1.RadixBatchJobPhase{radixv1.BatchJobPhaseActive, radixv1.BatchJobPhaseRunning},
+			rules: []radixv1.BatchStatusRule{
+				{
+					Condition:   radixv1.ConditionAny,
+					Operator:    radixv1.OperatorNotIn,
+					JobStatuses: []radixv1.RadixBatchJobPhase{radixv1.BatchJobPhaseActive, radixv1.BatchJobPhaseRunning},
+					BatchStatus: radixv1.RadixBatchJobApiStatusSucceeded,
+				},
+			},
+			expectedStatus: v1.BatchStatusEnumActive,
+		},
+		"use first matching rule": {
+			conditionType: radixv1.BatchConditionTypeActive,
+			jobPhases:     []radixv1.RadixBatchJobPhase{radixv1.BatchJobPhaseActive},
+			rules: []radixv1.BatchStatusRule{
+				{
+					Condition:   radixv1.ConditionAll,
+					Operator:    radixv1.OperatorIn,
+					JobStatuses: []radixv1.RadixBatchJobPhase{radixv1.BatchJobPhaseRunning},
+					BatchStatus: radixv1.RadixBatchJobApiStatusSucceeded,
+				},
+				{
+					Condition:   radixv1.ConditionAll,
+					Operator:    radixv1.OperatorIn,
+					JobStatuses: []radixv1.RadixBatchJobPhase{radixv1.BatchJobPhaseActive},
+					BatchStatus: radixv1.RadixBatchJobApiStatusFailed,
+				},
+				{
+					Condition:   radixv1.ConditionAll,
+					Operator:    radixv1.OperatorIn,
+					JobStatuses: []radixv1.RadixBatchJobPhase{radixv1.BatchJobPhaseActive},
+					BatchStatus: radixv1.RadixBatchJobApiStatusStopped,
+				},
+			},
+			expectedStatus: v1.BatchStatusEnumFailed,
 		},
 	}
 
 	for testName, test := range tests {
 		t.Run(testName, func(t *testing.T) {
 			t.Parallel()
-			actual := v1.BuildBatchStatus(test.sourceRb, nil)
-			assert.Equal(t, test.expected, actual)
+			var jobs []radixv1.RadixBatchJob
+			var jobStatuses []radixv1.RadixBatchJobStatus
+			for i, phase := range test.jobPhases {
+				jobName := fmt.Sprintf("job%v", i)
+				jobs = append(jobs, radixv1.RadixBatchJob{Name: jobName})
+				jobStatuses = append(jobStatuses, radixv1.RadixBatchJobStatus{Name: jobName, Phase: phase})
+			}
+			rb := radixv1.RadixBatch{
+				Spec: radixv1.RadixBatchSpec{
+					Jobs: jobs,
+				},
+				Status: radixv1.RadixBatchStatus{
+					Condition:   radixv1.RadixBatchCondition{Type: test.conditionType},
+					JobStatuses: jobStatuses,
+				},
+			}
+			actual := v1.BuildBatchStatus(rb, test.rules)
+			assert.Equal(t, test.expectedStatus, actual.Status)
+		})
+	}
+}
+
+func Test_BuildBatchStatus_JobStatusProps(t *testing.T) {
+	anyTime := time.Now()
+	tests := map[string]struct {
+		rb                  radixv1.RadixBatch
+		expectedJobStatuses []v1.JobStatus
+	}{
+		"all non-nil job props set": {
+			rb: radixv1.RadixBatch{
+				ObjectMeta: metav1.ObjectMeta{Name: "batch1"},
+				Spec: radixv1.RadixBatchSpec{
+					Jobs: []radixv1.RadixBatchJob{{
+						Name:  "job1",
+						JobId: "jobid1",
+					}},
+				},
+				Status: radixv1.RadixBatchStatus{
+					JobStatuses: []radixv1.RadixBatchJobStatus{{
+						Name:    "job1",
+						Message: "anymessage",
+						Failed:  4,
+						Restart: "anyrestart",
+					}},
+				},
+			},
+			expectedJobStatuses: []v1.JobStatus{{
+				Name:        "batch1-job1",
+				BatchName:   "batch1",
+				JobId:       "jobid1",
+				Message:     "anymessage",
+				Failed:      4,
+				Restart:     "anyrestart",
+				Status:      v1.JobStatusEnumWaiting,
+				PodStatuses: []v1.PodStatus{},
+			}},
+		},
+		"Created set from CreationTime": {
+			rb: radixv1.RadixBatch{
+				ObjectMeta: metav1.ObjectMeta{Name: "batch1"},
+				Spec: radixv1.RadixBatchSpec{
+					Jobs: []radixv1.RadixBatchJob{{Name: "job1"}},
+				},
+				Status: radixv1.RadixBatchStatus{
+					JobStatuses: []radixv1.RadixBatchJobStatus{{
+						Name:         "job1",
+						CreationTime: pointers.Ptr(metav1.NewTime(anyTime)),
+					}},
+				},
+			},
+			expectedJobStatuses: []v1.JobStatus{{
+				Created:     &anyTime,
+				Name:        "batch1-job1",
+				BatchName:   "batch1",
+				Status:      v1.JobStatusEnumWaiting,
+				PodStatuses: []v1.PodStatus{},
+			}},
+		},
+		"Started set from StartTime": {
+			rb: radixv1.RadixBatch{
+				ObjectMeta: metav1.ObjectMeta{Name: "batch1"},
+				Spec: radixv1.RadixBatchSpec{
+					Jobs: []radixv1.RadixBatchJob{{Name: "job1"}},
+				},
+				Status: radixv1.RadixBatchStatus{
+					JobStatuses: []radixv1.RadixBatchJobStatus{{
+						Name:      "job1",
+						StartTime: pointers.Ptr(metav1.NewTime(anyTime)),
+					}},
+				},
+			},
+			expectedJobStatuses: []v1.JobStatus{{
+				Started:     &anyTime,
+				Name:        "batch1-job1",
+				BatchName:   "batch1",
+				Status:      v1.JobStatusEnumWaiting,
+				PodStatuses: []v1.PodStatus{},
+			}},
+		},
+		"Ended set from EndTime": {
+			rb: radixv1.RadixBatch{
+				ObjectMeta: metav1.ObjectMeta{Name: "batch1"},
+				Spec: radixv1.RadixBatchSpec{
+					Jobs: []radixv1.RadixBatchJob{{Name: "job1"}},
+				},
+				Status: radixv1.RadixBatchStatus{
+					JobStatuses: []radixv1.RadixBatchJobStatus{{
+						Name:    "job1",
+						EndTime: pointers.Ptr(metav1.NewTime(anyTime)),
+					}},
+				},
+			},
+			expectedJobStatuses: []v1.JobStatus{{
+				Ended:       &anyTime,
+				Name:        "batch1-job1",
+				BatchName:   "batch1",
+				Status:      v1.JobStatusEnumWaiting,
+				PodStatuses: []v1.PodStatus{},
+			}},
+		},
+		"BatchName not set when batch type is Job": {
+			rb: radixv1.RadixBatch{
+				ObjectMeta: metav1.ObjectMeta{Name: "batch1", Labels: map[string]string{kube.RadixBatchTypeLabel: string(kube.RadixBatchTypeJob)}},
+				Spec: radixv1.RadixBatchSpec{
+					Jobs: []radixv1.RadixBatchJob{{Name: "job1"}},
+				},
+			},
+			expectedJobStatuses: []v1.JobStatus{{
+				Name:   "batch1-job1",
+				Status: v1.JobStatusEnumWaiting,
+			}},
+		},
+		"all podstatuses mapped": {
+			rb: radixv1.RadixBatch{
+				ObjectMeta: metav1.ObjectMeta{Name: "batch1"},
+				Spec: radixv1.RadixBatchSpec{
+					Jobs: []radixv1.RadixBatchJob{{Name: "job1"}},
+				},
+				Status: radixv1.RadixBatchStatus{
+					JobStatuses: []radixv1.RadixBatchJobStatus{{Name: "job1", RadixBatchJobPodStatuses: []radixv1.RadixBatchJobPodStatus{
+						{Name: "pod1"},
+						{Name: "pod2"},
+					}}},
+				},
+			},
+			expectedJobStatuses: []v1.JobStatus{{
+				Name:        "batch1-job1",
+				BatchName:   "batch1",
+				Status:      v1.JobStatusEnumWaiting,
+				PodStatuses: []v1.PodStatus{{Name: "pod1"}, {Name: "pod2"}},
+			}},
+		},
+		"all jobs mapped": {
+			rb: radixv1.RadixBatch{
+				ObjectMeta: metav1.ObjectMeta{Name: "batch1"},
+				Spec: radixv1.RadixBatchSpec{
+					Jobs: []radixv1.RadixBatchJob{{Name: "job1"}, {Name: "job2"}},
+				},
+			},
+			expectedJobStatuses: []v1.JobStatus{
+				{Name: "batch1-job1", BatchName: "batch1", Status: v1.JobStatusEnumWaiting},
+				{Name: "batch1-job2", BatchName: "batch1", Status: v1.JobStatusEnumWaiting},
+			},
+		},
+	}
+
+	for testName, test := range tests {
+		t.Run(testName, func(t *testing.T) {
+			actual := v1.BuildBatchStatus(test.rb, nil)
+			assert.ElementsMatch(t, test.expectedJobStatuses, actual.JobStatuses)
+		})
+	}
+}
+
+func Test_BuildBatchStatus_JobStatusEnum(t *testing.T) {
+	tests := map[string]struct {
+		stopJob        *bool
+		jobPhase       radixv1.RadixBatchJobPhase
+		expectedStatus v1.JobStatusEnum
+	}{
+		"phase not set and stopJob not set => waiting": {
+			stopJob:        nil,
+			jobPhase:       "",
+			expectedStatus: v1.JobStatusEnumWaiting,
+		},
+		"phase not set and stopJob false => waiting": {
+			stopJob:        pointers.Ptr(false),
+			jobPhase:       "",
+			expectedStatus: v1.JobStatusEnumWaiting,
+		},
+		"phase not set and stopJob true => stopping": {
+			stopJob:        pointers.Ptr(true),
+			jobPhase:       "",
+			expectedStatus: v1.JobStatusEnumStopping,
+		},
+		"waiting and stopJob not set => waiting": {
+			stopJob:        nil,
+			jobPhase:       radixv1.BatchJobPhaseWaiting,
+			expectedStatus: v1.JobStatusEnumWaiting,
+		},
+		"waiting and stopJob false => waiting": {
+			stopJob:        pointers.Ptr(false),
+			jobPhase:       radixv1.BatchJobPhaseWaiting,
+			expectedStatus: v1.JobStatusEnumWaiting,
+		},
+		"waiting and stopJob true => stopping": {
+			stopJob:        pointers.Ptr(true),
+			jobPhase:       radixv1.BatchJobPhaseWaiting,
+			expectedStatus: v1.JobStatusEnumStopping,
+		},
+		"active and stopJob not set => waiting": {
+			stopJob:        nil,
+			jobPhase:       radixv1.BatchJobPhaseActive,
+			expectedStatus: v1.JobStatusEnumActive,
+		},
+		"active and stopJob false => waiting": {
+			stopJob:        pointers.Ptr(false),
+			jobPhase:       radixv1.BatchJobPhaseActive,
+			expectedStatus: v1.JobStatusEnumActive,
+		},
+		"active and stopJob true => stopping": {
+			stopJob:        pointers.Ptr(true),
+			jobPhase:       radixv1.BatchJobPhaseActive,
+			expectedStatus: v1.JobStatusEnumStopping,
+		},
+		"running and stopJob true => stopping": {
+			stopJob:        pointers.Ptr(true),
+			jobPhase:       radixv1.BatchJobPhaseRunning,
+			expectedStatus: v1.JobStatusEnumStopping,
+		},
+		"stopped and stopJob true => stopped": {
+			stopJob:        pointers.Ptr(true),
+			jobPhase:       radixv1.BatchJobPhaseStopped,
+			expectedStatus: v1.JobStatusEnumStopped,
+		},
+		"succeeded and stopJob true => succeeded": {
+			stopJob:        pointers.Ptr(true),
+			jobPhase:       radixv1.BatchJobPhaseSucceeded,
+			expectedStatus: v1.JobStatusEnumSucceeded,
+		},
+		"failed and stopJob true => failed": {
+			stopJob:        pointers.Ptr(true),
+			jobPhase:       radixv1.BatchJobPhaseFailed,
+			expectedStatus: v1.JobStatusEnumFailed,
+		},
+	}
+
+	for testName, test := range tests {
+		t.Run(testName, func(t *testing.T) {
+			t.Parallel()
+			rb := radixv1.RadixBatch{
+				Spec: radixv1.RadixBatchSpec{
+					Jobs: []radixv1.RadixBatchJob{
+						{Name: "job", Stop: test.stopJob},
+					},
+				},
+				Status: radixv1.RadixBatchStatus{
+					JobStatuses: []radixv1.RadixBatchJobStatus{
+						{Name: "job", Phase: test.jobPhase},
+					},
+				},
+			}
+			actual := v1.BuildBatchStatus(rb, nil)
+			assert.Equal(t, test.expectedStatus, actual.JobStatuses[0].Status)
+		})
+	}
+}
+
+func Test_BuildBatchStatus_JobStatus_PodStatusProps(t *testing.T) {
+	anyTime := time.Now()
+	tests := map[string]struct {
+		podStatus radixv1.RadixBatchJobPodStatus
+		expected  v1.PodStatus
+	}{
+		"all non-nil pod props set": {
+			podStatus: radixv1.RadixBatchJobPodStatus{
+				Name:         "pod1",
+				Phase:        "anyphase",
+				Message:      "anymessage",
+				RestartCount: 4,
+				Image:        "anyimage",
+				ImageID:      "anyimageid",
+				PodIndex:     3,
+				ExitCode:     42,
+				Reason:       "anyreason",
+			},
+			expected: v1.PodStatus{
+				Name:          "pod1",
+				Status:        v1.ReplicaStatus{Status: "anyphase"},
+				StatusMessage: "anymessage",
+				RestartCount:  4,
+				Image:         "anyimage",
+				ImageId:       "anyimageid",
+				PodIndex:      3,
+				ExitCode:      42,
+				Reason:        "anyreason",
+			},
+		},
+		"Created set from CreationTime": {
+			podStatus: radixv1.RadixBatchJobPodStatus{CreationTime: pointers.Ptr(metav1.NewTime(anyTime))},
+			expected:  v1.PodStatus{Created: &anyTime},
+		},
+		"StartTime and ContainerStarted set from StartTime": {
+			podStatus: radixv1.RadixBatchJobPodStatus{StartTime: pointers.Ptr(metav1.NewTime(anyTime))},
+			expected:  v1.PodStatus{StartTime: &anyTime, ContainerStarted: &anyTime},
+		},
+		"EndTime set from EndTime": {
+			podStatus: radixv1.RadixBatchJobPodStatus{EndTime: pointers.Ptr(metav1.NewTime(anyTime))},
+			expected:  v1.PodStatus{EndTime: &anyTime},
+		},
+	}
+
+	for testName, test := range tests {
+		t.Run(testName, func(t *testing.T) {
+			rb := radixv1.RadixBatch{
+				Spec: radixv1.RadixBatchSpec{Jobs: []radixv1.RadixBatchJob{{Name: "job1"}}},
+				Status: radixv1.RadixBatchStatus{JobStatuses: []radixv1.RadixBatchJobStatus{{
+					Name:                     "job1",
+					RadixBatchJobPodStatuses: []radixv1.RadixBatchJobPodStatus{test.podStatus},
+				}}},
+			}
+			actual := v1.BuildBatchStatus(rb, nil)
+			require.Len(t, actual.JobStatuses, 1)
+			require.Len(t, actual.JobStatuses[0].PodStatuses, 1)
+			assert.Equal(t, test.expected, actual.JobStatuses[0].PodStatuses[0])
 		})
 	}
 }

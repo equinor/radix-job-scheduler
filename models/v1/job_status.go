@@ -130,7 +130,7 @@ type PodStatus struct {
 	//
 	// required: false
 	// swagger:strfmt date-time
-	ContainerStarted *time.Time `json:"containerStarted,omitempty"`
+	ContainerStarted *time.Time `json:"containerStarted,omitempty"` //TODO: We should deprecate and finally remove this since is has the same value as StartTime
 
 	// Status describes the component container status
 	//
