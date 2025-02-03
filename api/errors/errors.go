@@ -1,27 +1,36 @@
 package errors
 
 import (
-	"errors"
 	"fmt"
 	"net/http"
-
-	"github.com/equinor/radix-job-scheduler/models/common"
-	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type APIStatus interface {
-	Status() *common.Status
-}
-
-type StatusError struct {
-	ErrStatus common.Status
+	Status() *Status
 }
 
 var _ error = &StatusError{}
 
-func NotFoundMessage(kind, name string) string {
-	return fmt.Sprintf("%s %s not found", kind, name)
+type StatusError struct {
+	ErrStatus       Status
+	UnderlyingError error
+}
+
+// Error implements the Error interface.
+func (e *StatusError) Error() string {
+	if e.UnderlyingError == nil {
+		return e.ErrStatus.Message
+	}
+	return fmt.Sprintf("%s: %s", e.ErrStatus.Message, e.UnderlyingError)
+}
+
+// Error implements the Error interface.
+func (e *StatusError) Status() *Status {
+	return &e.ErrStatus
+}
+
+func NotFoundMessage(resourceType, name string) string {
+	return fmt.Sprintf("%s %s not found", resourceType, name)
 }
 
 func InvalidMessage(name, reason string) string {
@@ -36,43 +45,34 @@ func UnknownMessage(err error) string {
 	return err.Error()
 }
 
-// Error implements the Error interface.
-func (e *StatusError) Error() string {
-	return e.ErrStatus.Message
-}
-
-// Error implements the Error interface.
-func (e *StatusError) Status() *common.Status {
-	return &e.ErrStatus
-}
-
-func NewBadRequest(message string) *StatusError {
+func NewBadRequestError(message string) *StatusError {
 	return &StatusError{
-		common.Status{
-			Status:  common.StatusFailure,
-			Reason:  common.StatusReasonBadRequest,
+		ErrStatus: Status{
+			Status:  StatusFailure,
+			Reason:  StatusReasonBadRequest,
 			Code:    http.StatusBadRequest,
 			Message: message,
 		},
 	}
 }
 
-func NewNotFound(kind, name string) *StatusError {
+func NewNotFoundError(resourceType, name string, underlyingError error) *StatusError {
 	return &StatusError{
-		common.Status{
-			Status:  common.StatusFailure,
-			Reason:  common.StatusReasonNotFound,
+		ErrStatus: Status{
+			Status:  StatusFailure,
+			Reason:  StatusReasonNotFound,
 			Code:    http.StatusNotFound,
-			Message: NotFoundMessage(kind, name),
+			Message: NotFoundMessage(resourceType, name),
 		},
+		UnderlyingError: underlyingError,
 	}
 }
 
 func NewInvalidWithReason(name, reason string) *StatusError {
 	return &StatusError{
-		common.Status{
-			Status:  common.StatusFailure,
-			Reason:  common.StatusReasonInvalid,
+		ErrStatus: Status{
+			Status:  StatusFailure,
+			Reason:  StatusReasonInvalid,
 			Code:    http.StatusUnprocessableEntity,
 			Message: InvalidMessage(name, reason),
 		},
@@ -81,23 +81,24 @@ func NewInvalidWithReason(name, reason string) *StatusError {
 
 func NewInvalid(name string) *StatusError {
 	return &StatusError{
-		common.Status{
-			Status:  common.StatusFailure,
-			Reason:  common.StatusReasonInvalid,
+		ErrStatus: Status{
+			Status:  StatusFailure,
+			Reason:  StatusReasonInvalid,
 			Code:    http.StatusUnprocessableEntity,
 			Message: InvalidMessage(name, ""),
 		},
 	}
 }
 
-func NewUnknown(err error) *StatusError {
+func NewInternalError(err error) *StatusError {
 	return &StatusError{
-		common.Status{
-			Status:  common.StatusFailure,
-			Reason:  common.StatusReasonUnknown,
+		ErrStatus: Status{
+			Status:  StatusFailure,
+			Reason:  StatusReasonInternalError,
 			Code:    http.StatusInternalServerError,
-			Message: UnknownMessage(err),
+			Message: "Internal Server Error",
 		},
+		UnderlyingError: err,
 	}
 }
 
@@ -105,31 +106,31 @@ func NewFromError(err error) *StatusError {
 	switch t := err.(type) {
 	case *StatusError:
 		return t
-	case k8sErrors.APIStatus:
-		return NewFromKubernetesAPIStatus(t)
+	// case k8sErrors.APIStatus:
+	// 	return NewFromKubernetesAPIStatus(t)
 	default:
-		return NewUnknown(err)
+		return NewInternalError(err)
 	}
 }
 
-func NewFromKubernetesAPIStatus(apiStatus k8sErrors.APIStatus) *StatusError {
-	switch apiStatus.Status().Reason {
-	case v1.StatusReasonNotFound:
-		return NewNotFound(apiStatus.Status().Details.Kind, apiStatus.Status().Details.Name)
-	case v1.StatusReasonInvalid:
-		return NewInvalid(apiStatus.Status().Details.Name)
-	default:
-		return NewUnknown(errors.New(apiStatus.Status().Message))
-	}
-}
+// func NewFromKubernetesAPIStatus(apiStatus k8sErrors.APIStatus) *StatusError {
+// 	switch apiStatus.Status().Reason {
+// 	case v1.StatusReasonNotFound:
+// 		return NewNotFound(apiStatus.Status().Details.Kind, apiStatus.Status().Details.Name)
+// 	case v1.StatusReasonInvalid:
+// 		return NewInvalid(apiStatus.Status().Details.Name)
+// 	default:
+// 		return NewInternalError(errors.New(apiStatus.Status().Message))
+// 	}
+// }
 
-func ReasonForError(err error) common.StatusReason {
+func ReasonForError(err error) StatusReason {
 	switch t := err.(type) {
 	case APIStatus:
 		return t.Status().Reason
-	case k8sErrors.APIStatus:
-		return NewFromError(err).Status().Reason
+	// case k8sErrors.APIStatus:
+	// 	return NewFromError(err).Status().Reason
 	default:
-		return common.StatusReasonUnknown
+		return NewFromError(err).Status().Reason
 	}
 }

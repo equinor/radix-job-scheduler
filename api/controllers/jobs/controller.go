@@ -7,7 +7,7 @@ import (
 	"net/http"
 
 	"github.com/equinor/radix-job-scheduler/api/controllers"
-	apiErrors "github.com/equinor/radix-job-scheduler/api/errors"
+	apierrors "github.com/equinor/radix-job-scheduler/api/errors"
 	jobApi "github.com/equinor/radix-job-scheduler/api/v1/jobs"
 	apiModels "github.com/equinor/radix-job-scheduler/models/common"
 	"github.com/gin-gonic/gin"
@@ -102,7 +102,7 @@ func (controller *jobController) CreateJob(c *gin.Context) {
 
 		if err := json.Unmarshal(body, &jobScheduleDescription); err != nil {
 			_ = c.Error(err)
-			controller.HandleError(c, apiErrors.NewInvalid("payload"))
+			controller.HandleError(c, apierrors.NewInvalid("payload"))
 			return
 		}
 	}
@@ -212,8 +212,8 @@ func (controller *jobController) DeleteJob(c *gin.Context) {
 	}
 
 	logger.Info().Msgf("Job %s has been deleted", jobName)
-	status := apiModels.Status{
-		Status:  apiModels.StatusSuccess,
+	status := apierrors.Status{
+		Status:  apierrors.StatusSuccess,
 		Code:    http.StatusOK,
 		Message: fmt.Sprintf("job %s successfully deleted", jobName),
 	}
@@ -258,8 +258,8 @@ func (controller *jobController) StopJob(c *gin.Context) {
 	}
 
 	logger.Info().Msgf("Job %s has been stopped", jobName)
-	status := apiModels.Status{
-		Status:  apiModels.StatusSuccess,
+	status := apierrors.Status{
+		Status:  apierrors.StatusSuccess,
 		Code:    http.StatusOK,
 		Message: fmt.Sprintf("job %s was successfully stopped", jobName),
 	}

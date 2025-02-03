@@ -17,7 +17,6 @@ import (
 	"github.com/equinor/radix-job-scheduler/api/controllers"
 	"github.com/equinor/radix-job-scheduler/internal/config"
 	"github.com/equinor/radix-job-scheduler/internal/router"
-	modelsv1 "github.com/equinor/radix-job-scheduler/models/v1"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/equinor/radix-operator/pkg/apis/utils"
@@ -150,15 +149,6 @@ func CreateSecretForTest(appName, secretName, jobName, radixJobComponentName, na
 	if err != nil {
 		panic(err)
 	}
-}
-
-func GetJobStatusByNameForTest(jobs []modelsv1.JobStatus, name string) *modelsv1.JobStatus {
-	for _, job := range jobs {
-		if strings.HasSuffix(job.Name, "-"+name) {
-			return &job
-		}
-	}
-	return nil
 }
 
 func GetSecretByNameForTest(secrets []corev1.Secret, name string) *corev1.Secret {

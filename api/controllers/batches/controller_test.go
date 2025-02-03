@@ -9,12 +9,12 @@ import (
 	"time"
 
 	"github.com/equinor/radix-common/utils/pointers"
-	apiErrors "github.com/equinor/radix-job-scheduler/api/errors"
+	apierrors "github.com/equinor/radix-job-scheduler/api/errors"
 	api "github.com/equinor/radix-job-scheduler/api/v1/batches"
 	"github.com/equinor/radix-job-scheduler/api/v1/batches/mock"
 	"github.com/equinor/radix-job-scheduler/internal/test"
 	models "github.com/equinor/radix-job-scheduler/models/common"
-	modelsV1 "github.com/equinor/radix-job-scheduler/models/v1"
+	modelsv1 "github.com/equinor/radix-job-scheduler/models/v1"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
@@ -33,7 +33,7 @@ func TestGetBatches(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 		batchHandler := mock.NewMockBatchHandler(ctrl)
-		batchState := modelsV1.BatchStatus{
+		batchState := modelsv1.BatchStatus{
 			Name:      "batchname",
 			Started:   pointers.Ptr(time.Now()),
 			Ended:     pointers.Ptr(time.Now().Add(1 * time.Minute)),
@@ -44,7 +44,7 @@ func TestGetBatches(t *testing.T) {
 		batchHandler.
 			EXPECT().
 			GetBatches(test.RequestContextMatcher{}).
-			Return([]modelsV1.BatchStatus{batchState}, nil).
+			Return([]modelsv1.BatchStatus{batchState}, nil).
 			Times(1)
 
 		controllerTestUtils := setupTest(batchHandler)
@@ -54,7 +54,7 @@ func TestGetBatches(t *testing.T) {
 
 		if response != nil {
 			assert.Equal(t, http.StatusOK, response.StatusCode)
-			var returnedBatches []modelsV1.BatchStatus
+			var returnedBatches []modelsv1.BatchStatus
 			err := test.GetResponseBody(response, &returnedBatches)
 			require.NoError(t, err)
 			assert.Len(t, returnedBatches, 1)
@@ -74,7 +74,7 @@ func TestGetBatches(t *testing.T) {
 		batchHandler.
 			EXPECT().
 			GetBatches(test.RequestContextMatcher{}).
-			Return(nil, apiErrors.NewUnknown(fmt.Errorf("unhandled error"))).
+			Return(nil, apierrors.NewInternalError(fmt.Errorf("unhandled error"))).
 			Times(1)
 
 		controllerTestUtils := setupTest(batchHandler)
@@ -84,12 +84,12 @@ func TestGetBatches(t *testing.T) {
 
 		if response != nil {
 			assert.Equal(t, http.StatusInternalServerError, response.StatusCode)
-			var returnedStatus models.Status
+			var returnedStatus apierrors.Status
 			err := test.GetResponseBody(response, &returnedStatus)
 			require.NoError(t, err)
 			assert.Equal(t, http.StatusInternalServerError, returnedStatus.Code)
-			assert.Equal(t, models.StatusFailure, returnedStatus.Status)
-			assert.Equal(t, models.StatusReasonUnknown, returnedStatus.Reason)
+			assert.Equal(t, apierrors.StatusFailure, returnedStatus.Status)
+			assert.Equal(t, apierrors.StatusReasonInternalError, returnedStatus.Reason)
 		}
 	})
 }
@@ -101,7 +101,7 @@ func TestGetBatch(t *testing.T) {
 		defer ctrl.Finish()
 		batchName := "batchname"
 		batchHandler := mock.NewMockBatchHandler(ctrl)
-		batchState := modelsV1.BatchStatus{
+		batchState := modelsv1.BatchStatus{
 			Name:      batchName,
 			Started:   pointers.Ptr(time.Now()),
 			Ended:     pointers.Ptr(time.Now().Add(1 * time.Minute)),
@@ -122,7 +122,7 @@ func TestGetBatch(t *testing.T) {
 
 		if response != nil {
 			assert.Equal(t, http.StatusOK, response.StatusCode)
-			var returnedBatch modelsV1.BatchStatus
+			var returnedBatch modelsv1.BatchStatus
 			err := test.GetResponseBody(response, &returnedBatch)
 			require.NoError(t, err)
 			assert.Equal(t, batchState.Name, returnedBatch.Name)
@@ -142,7 +142,7 @@ func TestGetBatch(t *testing.T) {
 		batchHandler.
 			EXPECT().
 			GetBatch(test.RequestContextMatcher{}, gomock.Any()).
-			Return(nil, apiErrors.NewNotFound(kind, batchName)).
+			Return(nil, apierrors.NewNotFoundError(kind, batchName, nil)).
 			Times(1)
 
 		controllerTestUtils := setupTest(batchHandler)
@@ -152,13 +152,13 @@ func TestGetBatch(t *testing.T) {
 
 		if response != nil {
 			assert.Equal(t, http.StatusNotFound, response.StatusCode)
-			var returnedStatus models.Status
+			var returnedStatus apierrors.Status
 			err := test.GetResponseBody(response, &returnedStatus)
 			require.NoError(t, err)
 			assert.Equal(t, http.StatusNotFound, returnedStatus.Code)
-			assert.Equal(t, models.StatusFailure, returnedStatus.Status)
-			assert.Equal(t, models.StatusReasonNotFound, returnedStatus.Reason)
-			assert.Equal(t, apiErrors.NotFoundMessage(kind, batchName), returnedStatus.Message)
+			assert.Equal(t, apierrors.StatusFailure, returnedStatus.Status)
+			assert.Equal(t, apierrors.StatusReasonNotFound, returnedStatus.Reason)
+			assert.Equal(t, apierrors.NotFoundMessage(kind, batchName), returnedStatus.Message)
 		}
 	})
 
@@ -181,12 +181,12 @@ func TestGetBatch(t *testing.T) {
 
 		if response != nil {
 			assert.Equal(t, http.StatusInternalServerError, response.StatusCode)
-			var returnedStatus models.Status
+			var returnedStatus apierrors.Status
 			err := test.GetResponseBody(response, &returnedStatus)
 			require.NoError(t, err)
 			assert.Equal(t, http.StatusInternalServerError, returnedStatus.Code)
-			assert.Equal(t, models.StatusFailure, returnedStatus.Status)
-			assert.Equal(t, models.StatusReasonUnknown, returnedStatus.Reason)
+			assert.Equal(t, apierrors.StatusFailure, returnedStatus.Status)
+			assert.Equal(t, apierrors.StatusReasonInternalError, returnedStatus.Reason)
 		}
 	})
 }
@@ -197,7 +197,7 @@ func TestCreateBatch(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 		batchScheduleDescription := models.BatchScheduleDescription{}
-		createdBatch := modelsV1.BatchStatus{
+		createdBatch := modelsv1.BatchStatus{
 			Name:      "newbatch",
 			Started:   pointers.Ptr(time.Now()),
 			Ended:     pointers.Ptr(time.Now().Add(1 * time.Minute)),
@@ -218,7 +218,7 @@ func TestCreateBatch(t *testing.T) {
 
 		if response != nil {
 			assert.Equal(t, http.StatusOK, response.StatusCode)
-			var returnedBatch modelsV1.BatchStatus
+			var returnedBatch modelsv1.BatchStatus
 			err := test.GetResponseBody(response, &returnedBatch)
 			require.NoError(t, err)
 			assert.Equal(t, createdBatch.Name, returnedBatch.Name)
@@ -255,7 +255,7 @@ func TestCreateBatch(t *testing.T) {
 				},
 			},
 		}
-		createdBatch := modelsV1.BatchStatus{
+		createdBatch := modelsv1.BatchStatus{
 			Name:      "newbatch",
 			Started:   pointers.Ptr(time.Now()),
 			Ended:     pointers.Ptr(time.Now().Add(1 * time.Minute)),
@@ -276,7 +276,7 @@ func TestCreateBatch(t *testing.T) {
 
 		if response != nil {
 			assert.Equal(t, http.StatusOK, response.StatusCode)
-			var returnedBatch modelsV1.BatchStatus
+			var returnedBatch modelsv1.BatchStatus
 			err := test.GetResponseBody(response, &returnedBatch)
 			require.NoError(t, err)
 			assert.Equal(t, createdBatch.Name, returnedBatch.Name)
@@ -304,13 +304,13 @@ func TestCreateBatch(t *testing.T) {
 
 		if response != nil {
 			assert.Equal(t, http.StatusUnprocessableEntity, response.StatusCode)
-			var returnedStatus models.Status
+			var returnedStatus apierrors.Status
 			err := test.GetResponseBody(response, &returnedStatus)
 			require.NoError(t, err)
 			assert.Equal(t, http.StatusUnprocessableEntity, returnedStatus.Code)
-			assert.Equal(t, models.StatusFailure, returnedStatus.Status)
-			assert.Equal(t, models.StatusReasonInvalid, returnedStatus.Reason)
-			assert.Equal(t, apiErrors.InvalidMessage("BatchScheduleDescription", ""), returnedStatus.Message)
+			assert.Equal(t, apierrors.StatusFailure, returnedStatus.Status)
+			assert.Equal(t, apierrors.StatusReasonInvalid, returnedStatus.Reason)
+			assert.Equal(t, apierrors.InvalidMessage("BatchScheduleDescription", ""), returnedStatus.Message)
 		}
 	})
 
@@ -325,7 +325,7 @@ func TestCreateBatch(t *testing.T) {
 		batchHandler.
 			EXPECT().
 			CreateBatch(test.RequestContextMatcher{}, &batchScheduleDescription).
-			Return(nil, apiErrors.NewNotFound(anyKind, anyName)).
+			Return(nil, apierrors.NewNotFoundError(anyKind, anyName, nil)).
 			Times(1)
 		controllerTestUtils := setupTest(batchHandler)
 		responseChannel := controllerTestUtils.ExecuteRequest(ctx, http.MethodPost, "/api/v1/batches")
@@ -334,13 +334,13 @@ func TestCreateBatch(t *testing.T) {
 
 		if response != nil {
 			assert.Equal(t, http.StatusNotFound, response.StatusCode)
-			var returnedStatus models.Status
+			var returnedStatus apierrors.Status
 			err := test.GetResponseBody(response, &returnedStatus)
 			require.NoError(t, err)
 			assert.Equal(t, http.StatusNotFound, returnedStatus.Code)
-			assert.Equal(t, models.StatusFailure, returnedStatus.Status)
-			assert.Equal(t, models.StatusReasonNotFound, returnedStatus.Reason)
-			assert.Equal(t, apiErrors.NotFoundMessage(anyKind, anyName), returnedStatus.Message)
+			assert.Equal(t, apierrors.StatusFailure, returnedStatus.Status)
+			assert.Equal(t, apierrors.StatusReasonNotFound, returnedStatus.Reason)
+			assert.Equal(t, apierrors.NotFoundMessage(anyKind, anyName), returnedStatus.Message)
 		}
 	})
 
@@ -363,12 +363,12 @@ func TestCreateBatch(t *testing.T) {
 
 		if response != nil {
 			assert.Equal(t, http.StatusInternalServerError, response.StatusCode)
-			var returnedStatus models.Status
+			var returnedStatus apierrors.Status
 			err := test.GetResponseBody(response, &returnedStatus)
 			require.NoError(t, err)
 			assert.Equal(t, http.StatusInternalServerError, returnedStatus.Code)
-			assert.Equal(t, models.StatusFailure, returnedStatus.Status)
-			assert.Equal(t, models.StatusReasonUnknown, returnedStatus.Reason)
+			assert.Equal(t, apierrors.StatusFailure, returnedStatus.Status)
+			assert.Equal(t, apierrors.StatusReasonInternalError, returnedStatus.Reason)
 		}
 	})
 }
@@ -393,11 +393,11 @@ func TestDeleteBatch(t *testing.T) {
 
 		if response != nil {
 			assert.Equal(t, http.StatusOK, response.StatusCode)
-			var returnedStatus models.Status
+			var returnedStatus apierrors.Status
 			err := test.GetResponseBody(response, &returnedStatus)
 			require.NoError(t, err)
 			assert.Equal(t, http.StatusOK, returnedStatus.Code)
-			assert.Equal(t, models.StatusSuccess, returnedStatus.Status)
+			assert.Equal(t, apierrors.StatusSuccess, returnedStatus.Status)
 			assert.Empty(t, returnedStatus.Reason)
 		}
 	})
@@ -412,7 +412,7 @@ func TestDeleteBatch(t *testing.T) {
 		batchHandler.
 			EXPECT().
 			DeleteBatch(test.RequestContextMatcher{}, batchName).
-			Return(apiErrors.NewNotFound("batch", batchName)).
+			Return(apierrors.NewNotFoundError("batch", batchName, nil)).
 			Times(1)
 		controllerTestUtils := setupTest(batchHandler)
 		responseChannel := controllerTestUtils.ExecuteRequest(ctx, http.MethodDelete, fmt.Sprintf("/api/v1/batches/%s", batchName))
@@ -421,13 +421,13 @@ func TestDeleteBatch(t *testing.T) {
 
 		if response != nil {
 			assert.Equal(t, http.StatusNotFound, response.StatusCode)
-			var returnedStatus models.Status
+			var returnedStatus apierrors.Status
 			err := test.GetResponseBody(response, &returnedStatus)
 			require.NoError(t, err)
 			assert.Equal(t, http.StatusNotFound, returnedStatus.Code)
-			assert.Equal(t, models.StatusFailure, returnedStatus.Status)
-			assert.Equal(t, models.StatusReasonNotFound, returnedStatus.Reason)
-			assert.Equal(t, apiErrors.NotFoundMessage("batch", batchName), returnedStatus.Message)
+			assert.Equal(t, apierrors.StatusFailure, returnedStatus.Status)
+			assert.Equal(t, apierrors.StatusReasonNotFound, returnedStatus.Reason)
+			assert.Equal(t, apierrors.NotFoundMessage("batch", batchName), returnedStatus.Message)
 		}
 	})
 
@@ -450,12 +450,12 @@ func TestDeleteBatch(t *testing.T) {
 
 		if response != nil {
 			assert.Equal(t, http.StatusInternalServerError, response.StatusCode)
-			var returnedStatus models.Status
+			var returnedStatus apierrors.Status
 			err := test.GetResponseBody(response, &returnedStatus)
 			require.NoError(t, err)
 			assert.Equal(t, http.StatusInternalServerError, returnedStatus.Code)
-			assert.Equal(t, models.StatusFailure, returnedStatus.Status)
-			assert.Equal(t, models.StatusReasonUnknown, returnedStatus.Reason)
+			assert.Equal(t, apierrors.StatusFailure, returnedStatus.Status)
+			assert.Equal(t, apierrors.StatusReasonInternalError, returnedStatus.Reason)
 		}
 	})
 }
@@ -480,11 +480,11 @@ func TestStopBatch(t *testing.T) {
 
 		if response != nil {
 			assert.Equal(t, http.StatusOK, response.StatusCode)
-			var returnedStatus models.Status
+			var returnedStatus apierrors.Status
 			err := test.GetResponseBody(response, &returnedStatus)
 			require.NoError(t, err)
 			assert.Equal(t, http.StatusOK, returnedStatus.Code)
-			assert.Equal(t, models.StatusSuccess, returnedStatus.Status)
+			assert.Equal(t, apierrors.StatusSuccess, returnedStatus.Status)
 			assert.Empty(t, returnedStatus.Reason)
 		}
 	})
@@ -499,7 +499,7 @@ func TestStopBatch(t *testing.T) {
 		batchHandler.
 			EXPECT().
 			StopBatch(test.RequestContextMatcher{}, batchName).
-			Return(apiErrors.NewNotFound("batch", batchName)).
+			Return(apierrors.NewNotFoundError("batch", batchName, nil)).
 			Times(1)
 		controllerTestUtils := setupTest(batchHandler)
 		responseChannel := controllerTestUtils.ExecuteRequest(ctx, http.MethodPost, fmt.Sprintf("/api/v1/batches/%s/stop", batchName))
@@ -508,13 +508,13 @@ func TestStopBatch(t *testing.T) {
 
 		if response != nil {
 			assert.Equal(t, http.StatusNotFound, response.StatusCode)
-			var returnedStatus models.Status
+			var returnedStatus apierrors.Status
 			err := test.GetResponseBody(response, &returnedStatus)
 			require.NoError(t, err)
 			assert.Equal(t, http.StatusNotFound, returnedStatus.Code)
-			assert.Equal(t, models.StatusFailure, returnedStatus.Status)
-			assert.Equal(t, models.StatusReasonNotFound, returnedStatus.Reason)
-			assert.Equal(t, apiErrors.NotFoundMessage("batch", batchName), returnedStatus.Message)
+			assert.Equal(t, apierrors.StatusFailure, returnedStatus.Status)
+			assert.Equal(t, apierrors.StatusReasonNotFound, returnedStatus.Reason)
+			assert.Equal(t, apierrors.NotFoundMessage("batch", batchName), returnedStatus.Message)
 		}
 	})
 
@@ -537,12 +537,12 @@ func TestStopBatch(t *testing.T) {
 
 		if response != nil {
 			assert.Equal(t, http.StatusInternalServerError, response.StatusCode)
-			var returnedStatus models.Status
+			var returnedStatus apierrors.Status
 			err := test.GetResponseBody(response, &returnedStatus)
 			require.NoError(t, err)
 			assert.Equal(t, http.StatusInternalServerError, returnedStatus.Code)
-			assert.Equal(t, models.StatusFailure, returnedStatus.Status)
-			assert.Equal(t, models.StatusReasonUnknown, returnedStatus.Reason)
+			assert.Equal(t, apierrors.StatusFailure, returnedStatus.Status)
+			assert.Equal(t, apierrors.StatusReasonInternalError, returnedStatus.Reason)
 		}
 	})
 }
@@ -568,11 +568,11 @@ func TestStopBatchJob(t *testing.T) {
 
 		if response != nil {
 			assert.Equal(t, http.StatusOK, response.StatusCode)
-			var returnedStatus models.Status
+			var returnedStatus apierrors.Status
 			err := test.GetResponseBody(response, &returnedStatus)
 			require.NoError(t, err)
 			assert.Equal(t, http.StatusOK, returnedStatus.Code)
-			assert.Equal(t, models.StatusSuccess, returnedStatus.Status)
+			assert.Equal(t, apierrors.StatusSuccess, returnedStatus.Status)
 			assert.Empty(t, returnedStatus.Reason)
 		}
 	})
@@ -588,7 +588,7 @@ func TestStopBatchJob(t *testing.T) {
 		batchHandler.
 			EXPECT().
 			StopBatchJob(test.RequestContextMatcher{}, batchName, jobName).
-			Return(apiErrors.NewNotFound("batch", batchName)).
+			Return(apierrors.NewNotFoundError("batch", batchName, nil)).
 			Times(1)
 		controllerTestUtils := setupTest(batchHandler)
 		responseChannel := controllerTestUtils.ExecuteRequest(ctx, http.MethodPost, fmt.Sprintf("/api/v1/batches/%s/jobs/%s/stop", batchName, jobName))
@@ -597,13 +597,13 @@ func TestStopBatchJob(t *testing.T) {
 
 		if response != nil {
 			assert.Equal(t, http.StatusNotFound, response.StatusCode)
-			var returnedStatus models.Status
+			var returnedStatus apierrors.Status
 			err := test.GetResponseBody(response, &returnedStatus)
 			require.NoError(t, err)
 			assert.Equal(t, http.StatusNotFound, returnedStatus.Code)
-			assert.Equal(t, models.StatusFailure, returnedStatus.Status)
-			assert.Equal(t, models.StatusReasonNotFound, returnedStatus.Reason)
-			assert.Equal(t, apiErrors.NotFoundMessage("batch", batchName), returnedStatus.Message)
+			assert.Equal(t, apierrors.StatusFailure, returnedStatus.Status)
+			assert.Equal(t, apierrors.StatusReasonNotFound, returnedStatus.Reason)
+			assert.Equal(t, apierrors.NotFoundMessage("batch", batchName), returnedStatus.Message)
 		}
 	})
 
@@ -627,12 +627,12 @@ func TestStopBatchJob(t *testing.T) {
 
 		if response != nil {
 			assert.Equal(t, http.StatusInternalServerError, response.StatusCode)
-			var returnedStatus models.Status
+			var returnedStatus apierrors.Status
 			err := test.GetResponseBody(response, &returnedStatus)
 			require.NoError(t, err)
 			assert.Equal(t, http.StatusInternalServerError, returnedStatus.Code)
-			assert.Equal(t, models.StatusFailure, returnedStatus.Status)
-			assert.Equal(t, models.StatusReasonUnknown, returnedStatus.Reason)
+			assert.Equal(t, apierrors.StatusFailure, returnedStatus.Status)
+			assert.Equal(t, apierrors.StatusReasonInternalError, returnedStatus.Reason)
 		}
 	})
 }
@@ -645,7 +645,7 @@ func TestGetBatchJob(t *testing.T) {
 		batchName := "batch-name1"
 		jobName := "jobname"
 		jobHandler := mock.NewMockBatchHandler(ctrl)
-		jobState := modelsV1.JobStatus{
+		jobState := modelsv1.JobStatus{
 			Name:    jobName,
 			Started: pointers.Ptr(time.Now()),
 			Ended:   pointers.Ptr(time.Now().Add(1 * time.Minute)),
@@ -666,7 +666,7 @@ func TestGetBatchJob(t *testing.T) {
 
 		if response != nil {
 			assert.Equal(t, http.StatusOK, response.StatusCode)
-			var returnedJob modelsV1.JobStatus
+			var returnedJob modelsv1.JobStatus
 			err := test.GetResponseBody(response, &returnedJob)
 			require.NoError(t, err)
 			assert.Equal(t, jobState.Name, returnedJob.Name)
@@ -686,7 +686,7 @@ func TestGetBatchJob(t *testing.T) {
 		jobHandler.
 			EXPECT().
 			GetBatchJob(test.RequestContextMatcher{}, gomock.Any(), gomock.Any()).
-			Return(nil, apiErrors.NewNotFound(kind, jobName)).
+			Return(nil, apierrors.NewNotFoundError(kind, jobName, nil)).
 			Times(1)
 
 		controllerTestUtils := setupTest(jobHandler)
@@ -696,13 +696,13 @@ func TestGetBatchJob(t *testing.T) {
 
 		if response != nil {
 			assert.Equal(t, http.StatusNotFound, response.StatusCode)
-			var returnedStatus models.Status
+			var returnedStatus apierrors.Status
 			err := test.GetResponseBody(response, &returnedStatus)
 			require.NoError(t, err)
 			assert.Equal(t, http.StatusNotFound, returnedStatus.Code)
-			assert.Equal(t, models.StatusFailure, returnedStatus.Status)
-			assert.Equal(t, models.StatusReasonNotFound, returnedStatus.Reason)
-			assert.Equal(t, apiErrors.NotFoundMessage(kind, jobName), returnedStatus.Message)
+			assert.Equal(t, apierrors.StatusFailure, returnedStatus.Status)
+			assert.Equal(t, apierrors.StatusReasonNotFound, returnedStatus.Reason)
+			assert.Equal(t, apierrors.NotFoundMessage(kind, jobName), returnedStatus.Message)
 		}
 	})
 
@@ -725,12 +725,12 @@ func TestGetBatchJob(t *testing.T) {
 
 		if response != nil {
 			assert.Equal(t, http.StatusInternalServerError, response.StatusCode)
-			var returnedStatus models.Status
+			var returnedStatus apierrors.Status
 			err := test.GetResponseBody(response, &returnedStatus)
 			require.NoError(t, err)
 			assert.Equal(t, http.StatusInternalServerError, returnedStatus.Code)
-			assert.Equal(t, models.StatusFailure, returnedStatus.Status)
-			assert.Equal(t, models.StatusReasonUnknown, returnedStatus.Reason)
+			assert.Equal(t, apierrors.StatusFailure, returnedStatus.Status)
+			assert.Equal(t, apierrors.StatusReasonInternalError, returnedStatus.Reason)
 		}
 	})
 }

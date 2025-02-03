@@ -6,11 +6,13 @@ import (
 	"time"
 
 	"github.com/equinor/radix-common/utils/pointers"
+	"github.com/equinor/radix-common/utils/slice"
 	v1 "github.com/equinor/radix-job-scheduler/models/v1"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -84,7 +86,7 @@ func Test_BuildBatchStatus_BatchStatusProps(t *testing.T) {
 	for testName, test := range tests {
 		t.Run(testName, func(t *testing.T) {
 			t.Parallel()
-			actual := v1.BuildBatchStatus(test.rb, nil)
+			actual := v1.BuildBatchStatus(test.rb, nil, nil)
 			assert.Equal(t, test.expected, actual)
 		})
 	}
@@ -117,7 +119,7 @@ func Test_BuildBatchStatus_BatchStatusEnum_FromRadixBatchCondition(t *testing.T)
 		t.Run(testName, func(t *testing.T) {
 			t.Parallel()
 			rb := radixv1.RadixBatch{Status: radixv1.RadixBatchStatus{Condition: test.condition}}
-			actual := v1.BuildBatchStatus(rb, nil)
+			actual := v1.BuildBatchStatus(rb, nil, nil)
 			assert.Equal(t, test.expectedStatus, actual.Status)
 		})
 	}
@@ -280,7 +282,7 @@ func Test_BuildBatchStatus_BatchStatusEnum_FromRules(t *testing.T) {
 					JobStatuses: jobStatuses,
 				},
 			}
-			actual := v1.BuildBatchStatus(rb, test.rules)
+			actual := v1.BuildBatchStatus(rb, test.rules, nil)
 			assert.Equal(t, test.expectedStatus, actual.Status)
 		})
 	}
@@ -432,8 +434,116 @@ func Test_BuildBatchStatus_JobStatusProps(t *testing.T) {
 
 	for testName, test := range tests {
 		t.Run(testName, func(t *testing.T) {
-			actual := v1.BuildBatchStatus(test.rb, nil)
+			actual := v1.BuildBatchStatus(test.rb, nil, nil)
 			assert.ElementsMatch(t, test.expectedJobStatuses, actual.JobStatuses)
+		})
+	}
+}
+
+func Test_BuildBatchStatus_JobStatus_MessageFromEvents(t *testing.T) {
+	namespace := "anyns"
+
+	tests := map[string]struct {
+		jobStatusMessage string
+		jobPodNames      []string
+		events           []corev1.Event
+		expectedMessage  string
+	}{
+		"message from event matching pod when jobstatus message is empty": {
+			jobStatusMessage: "",
+			jobPodNames:      []string{"jobpod"},
+			events: []corev1.Event{
+				{
+					InvolvedObject: corev1.ObjectReference{Kind: "Pod", Namespace: namespace, Name: "jobpod"},
+					LastTimestamp:  metav1.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC),
+					Message:        "jobpod first event",
+				},
+			},
+			expectedMessage: "jobpod first event",
+		},
+		"ignore event message when jobstatus message is set": {
+			jobStatusMessage: "existing message",
+			jobPodNames:      []string{"jobpod"},
+			events: []corev1.Event{
+				{
+					InvolvedObject: corev1.ObjectReference{Kind: "Pod", Namespace: namespace, Name: "jobpod"},
+					LastTimestamp:  metav1.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC),
+					Message:        "jobpod first event",
+				},
+			},
+			expectedMessage: "existing message",
+		},
+		"get message from last matching pod event": {
+			jobStatusMessage: "",
+			jobPodNames:      []string{"pod1", "pod2", "pod3"},
+			events: []corev1.Event{
+				{
+					InvolvedObject: corev1.ObjectReference{Kind: "Pod", Namespace: namespace, Name: "pod1"},
+					LastTimestamp:  metav1.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC),
+					Message:        "pod1 first event",
+				},
+				{
+					InvolvedObject: corev1.ObjectReference{Kind: "Pod", Namespace: namespace, Name: "pod1"},
+					LastTimestamp:  metav1.Date(2020, 1, 1, 0, 10, 0, 0, time.UTC),
+					Message:        "pod1 second event",
+				},
+				{
+					InvolvedObject: corev1.ObjectReference{Kind: "Pod", Namespace: namespace, Name: "pod2"},
+					LastTimestamp:  metav1.Date(2020, 1, 1, 0, 1, 0, 0, time.UTC),
+					Message:        "pod2 first event",
+				},
+				{
+					InvolvedObject: corev1.ObjectReference{Kind: "Pod", Namespace: namespace, Name: "pod2"},
+					LastTimestamp:  metav1.Date(2020, 1, 1, 0, 15, 0, 0, time.UTC),
+					Message:        "pod2 second event",
+				},
+				{
+					InvolvedObject: corev1.ObjectReference{Kind: "Pod", Namespace: namespace, Name: "pod3"},
+					LastTimestamp:  metav1.Date(2020, 1, 1, 0, 2, 0, 0, time.UTC),
+					Message:        "pod3 first event",
+				},
+				{
+					InvolvedObject: corev1.ObjectReference{Kind: "Pod", Namespace: namespace, Name: "pod3"},
+					LastTimestamp:  metav1.Date(2020, 1, 1, 0, 14, 0, 0, time.UTC),
+					Message:        "pod3 second event",
+				},
+				{
+					InvolvedObject: corev1.ObjectReference{Kind: "Pod", Namespace: namespace, Name: "otherpod"},
+					LastTimestamp:  metav1.Date(2020, 1, 1, 0, 50, 0, 0, time.UTC),
+					Message:        "otherpod first event",
+				},
+				{
+					InvolvedObject: corev1.ObjectReference{Kind: "Pod", Namespace: "otherns", Name: "pod1"},
+					LastTimestamp:  metav1.Date(2020, 1, 1, 0, 50, 0, 0, time.UTC),
+					Message:        "pod1 in otherns first event",
+				},
+				{
+					InvolvedObject: corev1.ObjectReference{Kind: "OtherKind", Namespace: namespace, Name: "pod1"},
+					LastTimestamp:  metav1.Date(2020, 1, 1, 0, 50, 0, 0, time.UTC),
+					Message:        "pod1 otherkind first event",
+				},
+			},
+			expectedMessage: "pod2 second event",
+		},
+	}
+
+	for testName, test := range tests {
+		t.Run(testName, func(t *testing.T) {
+			t.Parallel()
+			rb := radixv1.RadixBatch{
+				ObjectMeta: metav1.ObjectMeta{Namespace: namespace},
+				Spec:       radixv1.RadixBatchSpec{Jobs: []radixv1.RadixBatchJob{{Name: "anyjob"}}},
+				Status: radixv1.RadixBatchStatus{JobStatuses: []radixv1.RadixBatchJobStatus{
+					{
+						Name:                     "anyjob",
+						Message:                  test.jobStatusMessage,
+						RadixBatchJobPodStatuses: slice.Map(test.jobPodNames, func(n string) radixv1.RadixBatchJobPodStatus { return radixv1.RadixBatchJobPodStatus{Name: n} }),
+					},
+				}},
+			}
+			actual := v1.BuildBatchStatus(rb, nil, test.events)
+			require.Len(t, actual.JobStatuses, 1)
+			assert.Equal(t, test.expectedMessage, actual.JobStatuses[0].Message)
 		})
 	}
 }
@@ -526,7 +636,7 @@ func Test_BuildBatchStatus_JobStatusEnum(t *testing.T) {
 					},
 				},
 			}
-			actual := v1.BuildBatchStatus(rb, nil)
+			actual := v1.BuildBatchStatus(rb, nil, nil)
 			assert.Equal(t, test.expectedStatus, actual.JobStatuses[0].Status)
 		})
 	}
@@ -585,7 +695,7 @@ func Test_BuildBatchStatus_JobStatus_PodStatusProps(t *testing.T) {
 					RadixBatchJobPodStatuses: []radixv1.RadixBatchJobPodStatus{test.podStatus},
 				}}},
 			}
-			actual := v1.BuildBatchStatus(rb, nil)
+			actual := v1.BuildBatchStatus(rb, nil, nil)
 			require.Len(t, actual.JobStatuses, 1)
 			require.Len(t, actual.JobStatuses[0].PodStatuses, 1)
 			assert.Equal(t, test.expected, actual.JobStatuses[0].PodStatuses[0])

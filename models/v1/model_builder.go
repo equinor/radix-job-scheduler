@@ -10,12 +10,13 @@ import (
 	"github.com/equinor/radix-common/utils/slice"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
+	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func BuildBatchStatus(rb radixv1.RadixBatch, batchStatusRules []radixv1.BatchStatusRule) BatchStatus {
+func BuildBatchStatus(rb radixv1.RadixBatch, batchStatusRules []radixv1.BatchStatusRule, events []corev1.Event) BatchStatus {
 	jobStatusMapper := func(job radixv1.RadixBatchJob) JobStatus {
-		return buildJobStatus(rb, job)
+		return buildJobStatus(rb, job, events)
 	}
 
 	status := getBatchStatusEnumFromRadixBatchStatusCondition(rb.Status.Condition)
@@ -39,7 +40,7 @@ func BuildBatchStatus(rb radixv1.RadixBatch, batchStatusRules []radixv1.BatchSta
 	return batchStatus
 }
 
-func buildJobStatus(rb radixv1.RadixBatch, job radixv1.RadixBatchJob) JobStatus {
+func buildJobStatus(rb radixv1.RadixBatch, job radixv1.RadixBatchJob, events []corev1.Event) JobStatus {
 	jobStatus := JobStatus{
 		Name:      fmt.Sprintf("%s-%s", rb.Name, job.Name),
 		JobId:     job.JobId,
@@ -57,9 +58,32 @@ func buildJobStatus(rb radixv1.RadixBatch, job radixv1.RadixBatchJob) JobStatus 
 		jobStatus.Restart = batchJobStatus.Restart
 		jobStatus.Status = getJobStatusEnum(batchJobStatus, pointers.Val(job.Stop))
 		jobStatus.PodStatuses = slice.Map(batchJobStatus.RadixBatchJobPodStatuses, buildPodStatus)
+
+		if len(jobStatus.Message) == 0 {
+			if lastEvent, ok := getLastPodEventForBatchJobStatus(batchJobStatus, events, rb.GetNamespace()); ok {
+				jobStatus.Message = lastEvent.Message
+			}
+		}
 	}
 
 	return jobStatus
+}
+
+func getLastPodEventForBatchJobStatus(batchJobStatus radixv1.RadixBatchJobStatus, events []corev1.Event, namespace string) (foundEvent corev1.Event, ok bool) {
+	podNames := slice.Map(batchJobStatus.RadixBatchJobPodStatuses, func(p radixv1.RadixBatchJobPodStatus) string { return p.Name })
+
+	predicate := func(e corev1.Event) bool {
+		return e.InvolvedObject.Kind == "Pod" && e.InvolvedObject.Namespace == namespace && slices.Contains(podNames, e.InvolvedObject.Name)
+	}
+
+	for _, event := range slice.FindAll(events, predicate) {
+		if !event.LastTimestamp.Before(&foundEvent.LastTimestamp) {
+			foundEvent = event
+			ok = true
+		}
+	}
+
+	return
 }
 
 func buildPodStatus(podStatus radixv1.RadixBatchJobPodStatus) PodStatus {

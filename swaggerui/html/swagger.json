@@ -1124,11 +1124,11 @@
           "example": "Failure"
         }
       },
-      "x-go-package": "github.com/equinor/radix-job-scheduler/models/common"
+      "x-go-package": "github.com/equinor/radix-job-scheduler/api/errors"
     },
     "StatusReason": {
       "type": "string",
-      "x-go-package": "github.com/equinor/radix-job-scheduler/models/common"
+      "x-go-package": "github.com/equinor/radix-job-scheduler/api/errors"
     }
   }
 }

@@ -6,7 +6,7 @@ import (
 
 	"github.com/equinor/radix-common/utils/pointers"
 	"github.com/equinor/radix-common/utils/slice"
-	apiErrors "github.com/equinor/radix-job-scheduler/api/errors"
+	apierrors "github.com/equinor/radix-job-scheduler/api/errors"
 	"github.com/equinor/radix-job-scheduler/internal/config"
 	"github.com/equinor/radix-job-scheduler/internal/test"
 	models "github.com/equinor/radix-job-scheduler/models/common"
@@ -152,7 +152,7 @@ func TestStopBatch(t *testing.T) {
 		handler := New(kubeUtil, config.NewConfigFromEnv(), &radixDeployJobComponent)
 		err := handler.StopBatch(context.TODO(), "test-batch")
 		assert.NotNil(t, err)
-		assert.Equal(t, models.StatusReasonNotFound, apiErrors.ReasonForError(err))
+		assert.Equal(t, apierrors.StatusReasonNotFound, apierrors.ReasonForError(err))
 	})
 
 	t.Run("another job component name", func(t *testing.T) {
@@ -165,7 +165,7 @@ func TestStopBatch(t *testing.T) {
 		handler := New(kubeUtil, config.NewConfigFromEnv(), &radixDeployJobComponent)
 		err := handler.StopBatch(context.TODO(), "test-batch")
 		assert.NotNil(t, err)
-		assert.Equal(t, models.StatusReasonNotFound, apiErrors.ReasonForError(err))
+		assert.Equal(t, apierrors.StatusReasonNotFound, apierrors.ReasonForError(err))
 	})
 
 	t.Run("another job type", func(t *testing.T) {
@@ -178,7 +178,7 @@ func TestStopBatch(t *testing.T) {
 		handler := New(kubeUtil, config.NewConfigFromEnv(), &radixDeployJobComponent)
 		err := handler.StopBatch(context.TODO(), "test-batch")
 		assert.NotNil(t, err)
-		assert.Equal(t, models.StatusReasonNotFound, apiErrors.ReasonForError(err))
+		assert.Equal(t, apierrors.StatusReasonNotFound, apierrors.ReasonForError(err))
 	})
 
 	t.Run("another namespace", func(t *testing.T) {
@@ -190,7 +190,7 @@ func TestStopBatch(t *testing.T) {
 		handler := New(kubeUtil, config.NewConfigFromEnv(), &radixDeployJobComponent)
 		err := handler.StopBatch(context.TODO(), "test-batch")
 		assert.NotNil(t, err)
-		assert.Equal(t, models.StatusReasonNotFound, apiErrors.ReasonForError(err))
+		assert.Equal(t, apierrors.StatusReasonNotFound, apierrors.ReasonForError(err))
 	})
 }
 
@@ -244,7 +244,7 @@ func TestStopBatchJob(t *testing.T) {
 		handler := New(kubeUtil, config.NewConfigFromEnv(), &radixDeployJobComponent)
 		err := handler.StopBatch(context.TODO(), "test-batch")
 		assert.NotNil(t, err)
-		assert.Equal(t, models.StatusReasonNotFound, apiErrors.ReasonForError(err))
+		assert.Equal(t, apierrors.StatusReasonNotFound, apierrors.ReasonForError(err))
 	})
 
 	t.Run("another job component name", func(t *testing.T) {
@@ -257,7 +257,7 @@ func TestStopBatchJob(t *testing.T) {
 		handler := New(kubeUtil, config.NewConfigFromEnv(), &radixDeployJobComponent)
 		err := handler.StopBatch(context.TODO(), "test-batch")
 		assert.NotNil(t, err)
-		assert.Equal(t, models.StatusReasonNotFound, apiErrors.ReasonForError(err))
+		assert.Equal(t, apierrors.StatusReasonNotFound, apierrors.ReasonForError(err))
 	})
 
 	t.Run("another job type", func(t *testing.T) {
@@ -270,7 +270,7 @@ func TestStopBatchJob(t *testing.T) {
 		handler := New(kubeUtil, config.NewConfigFromEnv(), &radixDeployJobComponent)
 		err := handler.StopBatch(context.TODO(), "test-batch")
 		assert.NotNil(t, err)
-		assert.Equal(t, models.StatusReasonNotFound, apiErrors.ReasonForError(err))
+		assert.Equal(t, apierrors.StatusReasonNotFound, apierrors.ReasonForError(err))
 	})
 
 	t.Run("another namespace", func(t *testing.T) {
@@ -282,7 +282,7 @@ func TestStopBatchJob(t *testing.T) {
 		handler := New(kubeUtil, config.NewConfigFromEnv(), &radixDeployJobComponent)
 		err := handler.StopBatch(context.TODO(), "test-batch")
 		assert.NotNil(t, err)
-		assert.Equal(t, models.StatusReasonNotFound, apiErrors.ReasonForError(err))
+		assert.Equal(t, apierrors.StatusReasonNotFound, apierrors.ReasonForError(err))
 	})
 }
 
@@ -315,7 +315,7 @@ func TestGetBatchJob(t *testing.T) {
 		handler := New(kubeUtil, config.NewConfigFromEnv(), &radixDeployJobComponent)
 		job, err := handler.GetBatchJob(context.TODO(), "testbatch1", "testbatch1-job1")
 		assert.NotNil(t, err)
-		assert.Equal(t, models.StatusReasonNotFound, apiErrors.ReasonForError(err))
+		assert.Equal(t, apierrors.StatusReasonNotFound, apierrors.ReasonForError(err))
 		assert.Nil(t, job)
 	})
 }

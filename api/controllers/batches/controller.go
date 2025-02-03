@@ -7,7 +7,7 @@ import (
 	"net/http"
 
 	"github.com/equinor/radix-job-scheduler/api/controllers"
-	apiErrors "github.com/equinor/radix-job-scheduler/api/errors"
+	apierrors "github.com/equinor/radix-job-scheduler/api/errors"
 	batchapi "github.com/equinor/radix-job-scheduler/api/v1/batches"
 	schedulerModels "github.com/equinor/radix-job-scheduler/models/common"
 	"github.com/gin-gonic/gin"
@@ -114,7 +114,7 @@ func (controller *batchController) CreateBatch(c *gin.Context) {
 		logger.Debug().Msgf("Read %d bytes", len(body))
 		if err := json.Unmarshal(body, &batchScheduleDescription); err != nil {
 			_ = c.Error(err)
-			controller.HandleError(c, apiErrors.NewInvalid("BatchScheduleDescription"))
+			controller.HandleError(c, apierrors.NewInvalid("BatchScheduleDescription"))
 			return
 		}
 	}
@@ -263,8 +263,8 @@ func (controller *batchController) DeleteBatch(c *gin.Context) {
 	}
 
 	logger.Info().Msgf("Batch %s has been deleted", batchName)
-	status := schedulerModels.Status{
-		Status:  schedulerModels.StatusSuccess,
+	status := apierrors.Status{
+		Status:  apierrors.StatusSuccess,
 		Code:    http.StatusOK,
 		Message: fmt.Sprintf("batch %s successfully deleted", batchName),
 	}
@@ -308,8 +308,8 @@ func (controller *batchController) StopBatch(c *gin.Context) {
 	}
 
 	logger.Info().Msgf("Batch %s has been stopped", batchName)
-	status := schedulerModels.Status{
-		Status:  schedulerModels.StatusSuccess,
+	status := apierrors.Status{
+		Status:  apierrors.StatusSuccess,
 		Code:    http.StatusOK,
 		Message: fmt.Sprintf("batch %s successfully stopped", batchName),
 	}
@@ -359,8 +359,8 @@ func (controller *batchController) StopBatchJob(c *gin.Context) {
 	}
 
 	logger.Info().Msgf("Job %s in the batch %s has been stopped", jobName, batchName)
-	status := schedulerModels.Status{
-		Status:  schedulerModels.StatusSuccess,
+	status := apierrors.Status{
+		Status:  apierrors.StatusSuccess,
 		Code:    http.StatusOK,
 		Message: fmt.Sprintf("job %s in the batch %s successfully stopped", jobName, batchName),
 	}

@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/equinor/radix-common/utils/pointers"
-	apiErrors "github.com/equinor/radix-job-scheduler/api/errors"
+	apierrors "github.com/equinor/radix-job-scheduler/api/errors"
 	"github.com/equinor/radix-job-scheduler/api/v1/jobs"
 	"github.com/equinor/radix-job-scheduler/api/v1/jobs/mock"
 	"github.com/equinor/radix-job-scheduler/internal/test"
@@ -83,12 +83,12 @@ func TestGetJobs(t *testing.T) {
 
 		if response != nil {
 			assert.Equal(t, http.StatusInternalServerError, response.StatusCode)
-			var returnedStatus models.Status
+			var returnedStatus apierrors.Status
 			err := test.GetResponseBody(response, &returnedStatus)
 			require.NoError(t, err)
 			assert.Equal(t, http.StatusInternalServerError, returnedStatus.Code)
-			assert.Equal(t, models.StatusFailure, returnedStatus.Status)
-			assert.Equal(t, models.StatusReasonUnknown, returnedStatus.Reason)
+			assert.Equal(t, apierrors.StatusFailure, returnedStatus.Status)
+			assert.Equal(t, apierrors.StatusReasonInternalError, returnedStatus.Reason)
 		}
 	})
 }
@@ -141,7 +141,7 @@ func TestGetJob(t *testing.T) {
 		jobHandler.
 			EXPECT().
 			GetJob(test.RequestContextMatcher{}, gomock.Any()).
-			Return(nil, apiErrors.NewNotFound(kind, jobName)).
+			Return(nil, apierrors.NewNotFoundError(kind, jobName, nil)).
 			Times(1)
 
 		controllerTestUtils := setupTest(jobHandler)
@@ -151,13 +151,13 @@ func TestGetJob(t *testing.T) {
 
 		if response != nil {
 			assert.Equal(t, http.StatusNotFound, response.StatusCode)
-			var returnedStatus models.Status
+			var returnedStatus apierrors.Status
 			err := test.GetResponseBody(response, &returnedStatus)
 			require.NoError(t, err)
 			assert.Equal(t, http.StatusNotFound, returnedStatus.Code)
-			assert.Equal(t, models.StatusFailure, returnedStatus.Status)
-			assert.Equal(t, models.StatusReasonNotFound, returnedStatus.Reason)
-			assert.Equal(t, apiErrors.NotFoundMessage(kind, jobName), returnedStatus.Message)
+			assert.Equal(t, apierrors.StatusFailure, returnedStatus.Status)
+			assert.Equal(t, apierrors.StatusReasonNotFound, returnedStatus.Reason)
+			assert.Equal(t, apierrors.NotFoundMessage(kind, jobName), returnedStatus.Message)
 		}
 	})
 
@@ -180,12 +180,12 @@ func TestGetJob(t *testing.T) {
 
 		if response != nil {
 			assert.Equal(t, http.StatusInternalServerError, response.StatusCode)
-			var returnedStatus models.Status
+			var returnedStatus apierrors.Status
 			err := test.GetResponseBody(response, &returnedStatus)
 			require.NoError(t, err)
 			assert.Equal(t, http.StatusInternalServerError, returnedStatus.Code)
-			assert.Equal(t, models.StatusFailure, returnedStatus.Status)
-			assert.Equal(t, models.StatusReasonUnknown, returnedStatus.Reason)
+			assert.Equal(t, apierrors.StatusFailure, returnedStatus.Status)
+			assert.Equal(t, apierrors.StatusReasonInternalError, returnedStatus.Reason)
 		}
 	})
 }
@@ -299,13 +299,13 @@ func TestCreateJob(t *testing.T) {
 
 		if response != nil {
 			assert.Equal(t, http.StatusUnprocessableEntity, response.StatusCode)
-			var returnedStatus models.Status
+			var returnedStatus apierrors.Status
 			err := test.GetResponseBody(response, &returnedStatus)
 			require.NoError(t, err)
 			assert.Equal(t, http.StatusUnprocessableEntity, returnedStatus.Code)
-			assert.Equal(t, models.StatusFailure, returnedStatus.Status)
-			assert.Equal(t, models.StatusReasonInvalid, returnedStatus.Reason)
-			assert.Equal(t, apiErrors.InvalidMessage("payload", ""), returnedStatus.Message)
+			assert.Equal(t, apierrors.StatusFailure, returnedStatus.Status)
+			assert.Equal(t, apierrors.StatusReasonInvalid, returnedStatus.Reason)
+			assert.Equal(t, apierrors.InvalidMessage("payload", ""), returnedStatus.Message)
 		}
 	})
 
@@ -320,7 +320,7 @@ func TestCreateJob(t *testing.T) {
 		jobHandler.
 			EXPECT().
 			CreateJob(test.RequestContextMatcher{}, &jobScheduleDescription).
-			Return(nil, apiErrors.NewNotFound(anyKind, anyName)).
+			Return(nil, apierrors.NewNotFoundError(anyKind, anyName, nil)).
 			Times(1)
 		controllerTestUtils := setupTest(jobHandler)
 		responseChannel := controllerTestUtils.ExecuteRequest(ctx, http.MethodPost, "/api/v1/jobs")
@@ -329,13 +329,13 @@ func TestCreateJob(t *testing.T) {
 
 		if response != nil {
 			assert.Equal(t, http.StatusNotFound, response.StatusCode)
-			var returnedStatus models.Status
+			var returnedStatus apierrors.Status
 			err := test.GetResponseBody(response, &returnedStatus)
 			require.NoError(t, err)
 			assert.Equal(t, http.StatusNotFound, returnedStatus.Code)
-			assert.Equal(t, models.StatusFailure, returnedStatus.Status)
-			assert.Equal(t, models.StatusReasonNotFound, returnedStatus.Reason)
-			assert.Equal(t, apiErrors.NotFoundMessage(anyKind, anyName), returnedStatus.Message)
+			assert.Equal(t, apierrors.StatusFailure, returnedStatus.Status)
+			assert.Equal(t, apierrors.StatusReasonNotFound, returnedStatus.Reason)
+			assert.Equal(t, apierrors.NotFoundMessage(anyKind, anyName), returnedStatus.Message)
 		}
 	})
 
@@ -358,12 +358,12 @@ func TestCreateJob(t *testing.T) {
 
 		if response != nil {
 			assert.Equal(t, http.StatusInternalServerError, response.StatusCode)
-			var returnedStatus models.Status
+			var returnedStatus apierrors.Status
 			err := test.GetResponseBody(response, &returnedStatus)
 			require.NoError(t, err)
 			assert.Equal(t, http.StatusInternalServerError, returnedStatus.Code)
-			assert.Equal(t, models.StatusFailure, returnedStatus.Status)
-			assert.Equal(t, models.StatusReasonUnknown, returnedStatus.Reason)
+			assert.Equal(t, apierrors.StatusFailure, returnedStatus.Status)
+			assert.Equal(t, apierrors.StatusReasonInternalError, returnedStatus.Reason)
 		}
 	})
 }
@@ -388,11 +388,11 @@ func TestDeleteJob(t *testing.T) {
 
 		if response != nil {
 			assert.Equal(t, http.StatusOK, response.StatusCode)
-			var returnedStatus models.Status
+			var returnedStatus apierrors.Status
 			err := test.GetResponseBody(response, &returnedStatus)
 			require.NoError(t, err)
 			assert.Equal(t, http.StatusOK, returnedStatus.Code)
-			assert.Equal(t, models.StatusSuccess, returnedStatus.Status)
+			assert.Equal(t, apierrors.StatusSuccess, returnedStatus.Status)
 			assert.Empty(t, returnedStatus.Reason)
 		}
 	})
@@ -407,7 +407,7 @@ func TestDeleteJob(t *testing.T) {
 		jobHandler.
 			EXPECT().
 			DeleteJob(test.RequestContextMatcher{}, jobName).
-			Return(apiErrors.NewNotFound("job", jobName)).
+			Return(apierrors.NewNotFoundError("job", jobName, nil)).
 			Times(1)
 		controllerTestUtils := setupTest(jobHandler)
 		responseChannel := controllerTestUtils.ExecuteRequest(ctx, http.MethodDelete, fmt.Sprintf("/api/v1/jobs/%s", jobName))
@@ -416,13 +416,13 @@ func TestDeleteJob(t *testing.T) {
 
 		if response != nil {
 			assert.Equal(t, http.StatusNotFound, response.StatusCode)
-			var returnedStatus models.Status
+			var returnedStatus apierrors.Status
 			err := test.GetResponseBody(response, &returnedStatus)
 			require.NoError(t, err)
 			assert.Equal(t, http.StatusNotFound, returnedStatus.Code)
-			assert.Equal(t, models.StatusFailure, returnedStatus.Status)
-			assert.Equal(t, models.StatusReasonNotFound, returnedStatus.Reason)
-			assert.Equal(t, apiErrors.NotFoundMessage("job", jobName), returnedStatus.Message)
+			assert.Equal(t, apierrors.StatusFailure, returnedStatus.Status)
+			assert.Equal(t, apierrors.StatusReasonNotFound, returnedStatus.Reason)
+			assert.Equal(t, apierrors.NotFoundMessage("job", jobName), returnedStatus.Message)
 		}
 	})
 
@@ -445,12 +445,12 @@ func TestDeleteJob(t *testing.T) {
 
 		if response != nil {
 			assert.Equal(t, http.StatusInternalServerError, response.StatusCode)
-			var returnedStatus models.Status
+			var returnedStatus apierrors.Status
 			err := test.GetResponseBody(response, &returnedStatus)
 			require.NoError(t, err)
 			assert.Equal(t, http.StatusInternalServerError, returnedStatus.Code)
-			assert.Equal(t, models.StatusFailure, returnedStatus.Status)
-			assert.Equal(t, models.StatusReasonUnknown, returnedStatus.Reason)
+			assert.Equal(t, apierrors.StatusFailure, returnedStatus.Status)
+			assert.Equal(t, apierrors.StatusReasonInternalError, returnedStatus.Reason)
 		}
 	})
 }
@@ -475,11 +475,11 @@ func TestStopJob(t *testing.T) {
 
 		if response != nil {
 			assert.Equal(t, http.StatusOK, response.StatusCode)
-			var returnedStatus models.Status
+			var returnedStatus apierrors.Status
 			err := test.GetResponseBody(response, &returnedStatus)
 			require.NoError(t, err)
 			assert.Equal(t, http.StatusOK, returnedStatus.Code)
-			assert.Equal(t, models.StatusSuccess, returnedStatus.Status)
+			assert.Equal(t, apierrors.StatusSuccess, returnedStatus.Status)
 			assert.Empty(t, returnedStatus.Reason)
 		}
 	})
@@ -494,7 +494,7 @@ func TestStopJob(t *testing.T) {
 		jobHandler.
 			EXPECT().
 			StopJob(test.RequestContextMatcher{}, jobName).
-			Return(apiErrors.NewNotFound("job", jobName)).
+			Return(apierrors.NewNotFoundError("job", jobName, nil)).
 			Times(1)
 		controllerTestUtils := setupTest(jobHandler)
 		responseChannel := controllerTestUtils.ExecuteRequest(ctx, http.MethodPost, fmt.Sprintf("/api/v1/jobs/%s/stop", jobName))
@@ -503,13 +503,13 @@ func TestStopJob(t *testing.T) {
 
 		if response != nil {
 			assert.Equal(t, http.StatusNotFound, response.StatusCode)
-			var returnedStatus models.Status
+			var returnedStatus apierrors.Status
 			err := test.GetResponseBody(response, &returnedStatus)
 			require.NoError(t, err)
 			assert.Equal(t, http.StatusNotFound, returnedStatus.Code)
-			assert.Equal(t, models.StatusFailure, returnedStatus.Status)
-			assert.Equal(t, models.StatusReasonNotFound, returnedStatus.Reason)
-			assert.Equal(t, apiErrors.NotFoundMessage("job", jobName), returnedStatus.Message)
+			assert.Equal(t, apierrors.StatusFailure, returnedStatus.Status)
+			assert.Equal(t, apierrors.StatusReasonNotFound, returnedStatus.Reason)
+			assert.Equal(t, apierrors.NotFoundMessage("job", jobName), returnedStatus.Message)
 		}
 	})
 
@@ -532,12 +532,12 @@ func TestStopJob(t *testing.T) {
 
 		if response != nil {
 			assert.Equal(t, http.StatusInternalServerError, response.StatusCode)
-			var returnedStatus models.Status
+			var returnedStatus apierrors.Status
 			err := test.GetResponseBody(response, &returnedStatus)
 			require.NoError(t, err)
 			assert.Equal(t, http.StatusInternalServerError, returnedStatus.Code)
-			assert.Equal(t, models.StatusFailure, returnedStatus.Status)
-			assert.Equal(t, models.StatusReasonUnknown, returnedStatus.Reason)
+			assert.Equal(t, apierrors.StatusFailure, returnedStatus.Status)
+			assert.Equal(t, apierrors.StatusReasonInternalError, returnedStatus.Reason)
 		}
 	})
 }
