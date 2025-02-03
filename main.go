@@ -17,11 +17,11 @@ import (
 	batchApi "github.com/equinor/radix-job-scheduler/api/v1/batches"
 	jobApi "github.com/equinor/radix-job-scheduler/api/v1/jobs"
 	"github.com/equinor/radix-job-scheduler/internal"
-	"github.com/equinor/radix-job-scheduler/models"
+	"github.com/equinor/radix-job-scheduler/internal/config"
+	"github.com/equinor/radix-job-scheduler/internal/notifications"
+	"github.com/equinor/radix-job-scheduler/internal/router"
+	"github.com/equinor/radix-job-scheduler/internal/watcher"
 	"github.com/equinor/radix-job-scheduler/pkg/batch"
-	"github.com/equinor/radix-job-scheduler/pkg/notifications"
-	"github.com/equinor/radix-job-scheduler/pkg/watcher"
-	"github.com/equinor/radix-job-scheduler/router"
 	_ "github.com/equinor/radix-job-scheduler/swaggerui"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
@@ -33,7 +33,7 @@ import (
 
 func main() {
 	ctx := context.Background()
-	cfg := models.NewConfigFromEnv()
+	cfg := config.NewConfigFromEnv()
 	initLogger(cfg)
 
 	kubeUtil := getKubeUtil(ctx)
@@ -54,8 +54,8 @@ func main() {
 	runApiServer(ctx, kubeUtil, cfg, radixDeployJobComponent)
 }
 
-func initLogger(env *models.Config) {
-	logLevelStr := env.LogLevel
+func initLogger(cfg *config.Config) {
+	logLevelStr := cfg.LogLevel
 	if len(logLevelStr) == 0 {
 		logLevelStr = zerolog.LevelInfoValue
 	}
@@ -70,17 +70,17 @@ func initLogger(env *models.Config) {
 	zerolog.DefaultContextLogger = &log.Logger
 }
 
-func runApiServer(ctx context.Context, kubeUtil *kube.Kube, env *models.Config, radixDeployJobComponent *radixv1.RadixDeployJobComponent) {
+func runApiServer(ctx context.Context, kubeUtil *kube.Kube, cfg *config.Config, radixDeployJobComponent *radixv1.RadixDeployJobComponent) {
 	ctx, stop := signal.NotifyContext(ctx, syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
 	fs := initializeFlagSet()
-	port := fs.StringP("port", "p", env.RadixPort, "Port where API will be served")
+	port := fs.StringP("port", "p", cfg.RadixPort, "Port where API will be served")
 	parseFlagsFromArgs(fs)
 
 	srv := &http.Server{
 		Addr:        fmt.Sprintf(":%s", *port),
-		Handler:     router.NewServer(env, getControllers(kubeUtil, env, radixDeployJobComponent)...),
+		Handler:     router.NewServer(cfg, getControllers(kubeUtil, cfg, radixDeployJobComponent)...),
 		BaseContext: func(_ net.Listener) context.Context { return ctx },
 	}
 
@@ -105,10 +105,10 @@ func getKubeUtil(ctx context.Context) *kube.Kube {
 	return kubeUtil
 }
 
-func getControllers(kubeUtil *kube.Kube, env *models.Config, radixDeployJobComponent *radixv1.RadixDeployJobComponent) []controllers.Controller {
+func getControllers(kubeUtil *kube.Kube, cfg *config.Config, radixDeployJobComponent *radixv1.RadixDeployJobComponent) []controllers.Controller {
 	return []controllers.Controller{
-		jobcontrollers.New(jobApi.New(kubeUtil, env, radixDeployJobComponent)),
-		batchcontroller.New(batchApi.New(kubeUtil, env, radixDeployJobComponent)),
+		jobcontrollers.New(jobApi.New(kubeUtil, cfg, radixDeployJobComponent)),
+		batchcontroller.New(batchApi.New(kubeUtil, cfg, radixDeployJobComponent)),
 	}
 }
 

@@ -8,7 +8,7 @@ import (
 	apiv1 "github.com/equinor/radix-job-scheduler/api/v1"
 	apiv2 "github.com/equinor/radix-job-scheduler/api/v2"
 	"github.com/equinor/radix-job-scheduler/internal"
-	"github.com/equinor/radix-job-scheduler/models"
+	"github.com/equinor/radix-job-scheduler/internal/config"
 	"github.com/equinor/radix-job-scheduler/models/common"
 	modelsv1 "github.com/equinor/radix-job-scheduler/models/v1"
 	modelsv2 "github.com/equinor/radix-job-scheduler/models/v2"
@@ -39,7 +39,7 @@ type JobHandler interface {
 }
 
 // New Constructor for job handler
-func New(kube *kube.Kube, config *models.Config, radixDeployJobComponent *radixv1.RadixDeployJobComponent) JobHandler {
+func New(kube *kube.Kube, config *config.Config, radixDeployJobComponent *radixv1.RadixDeployJobComponent) JobHandler {
 	return &jobHandler{
 		apiv1.Handler{
 			Kube:                    kube,

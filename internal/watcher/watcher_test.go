@@ -6,9 +6,9 @@ import (
 	"time"
 
 	commonUtils "github.com/equinor/radix-common/utils"
+	notifications2 "github.com/equinor/radix-job-scheduler/internal/notifications"
 	"github.com/equinor/radix-job-scheduler/models/v1/events"
 	"github.com/equinor/radix-job-scheduler/pkg/batch"
-	notifications2 "github.com/equinor/radix-job-scheduler/pkg/notifications"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/equinor/radix-operator/pkg/apis/utils/labels"

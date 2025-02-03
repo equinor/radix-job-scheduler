@@ -12,8 +12,8 @@ import (
 	"github.com/equinor/radix-common/utils/pointers"
 	apiErrors "github.com/equinor/radix-job-scheduler/api/errors"
 	"github.com/equinor/radix-job-scheduler/internal"
+	"github.com/equinor/radix-job-scheduler/internal/config"
 	"github.com/equinor/radix-job-scheduler/internal/query"
-	"github.com/equinor/radix-job-scheduler/models"
 	"github.com/equinor/radix-job-scheduler/models/common"
 	modelsv2 "github.com/equinor/radix-job-scheduler/models/v2"
 	"github.com/equinor/radix-job-scheduler/pkg/batch"
@@ -41,7 +41,7 @@ var (
 
 type handler struct {
 	kubeUtil                *kube.Kube
-	env                     *models.Config
+	cfg                     *config.Config
 	radixDeployJobComponent *radixv1.RadixDeployJobComponent
 	jobHistory              batch.History
 }
@@ -74,12 +74,12 @@ type Handler interface {
 }
 
 // New Constructor of the batch handler
-func New(kubeUtil *kube.Kube, env *models.Config, radixDeployJobComponent *radixv1.RadixDeployJobComponent) Handler {
+func New(kubeUtil *kube.Kube, cfg *config.Config, radixDeployJobComponent *radixv1.RadixDeployJobComponent) Handler {
 	return &handler{
 		kubeUtil:                kubeUtil,
-		env:                     env,
+		cfg:                     cfg,
 		radixDeployJobComponent: radixDeployJobComponent,
-		jobHistory:              batch.NewHistory(kubeUtil, env, radixDeployJobComponent),
+		jobHistory:              batch.NewHistory(kubeUtil, cfg, radixDeployJobComponent),
 	}
 }
 
@@ -91,14 +91,14 @@ type radixBatchJobWithDescription struct {
 // GetRadixBatches Get statuses of all batches
 func (h *handler) GetRadixBatches(ctx context.Context) ([]modelsv2.Batch, error) {
 	logger := log.Ctx(ctx)
-	logger.Debug().Msgf("Get batches for the namespace: %s", h.env.RadixDeploymentNamespace)
+	logger.Debug().Msgf("Get batches for the namespace: %s", h.cfg.RadixDeploymentNamespace)
 	return h.getRadixBatchStatuses(ctx, kube.RadixBatchTypeBatch)
 }
 
 // GetRadixBatchSingleJobs Get statuses of all single jobs
 func (h *handler) GetRadixBatchSingleJobs(ctx context.Context) ([]modelsv2.Batch, error) {
 	logger := log.Ctx(ctx)
-	logger.Debug().Msgf("Get sigle jobs for the namespace: %s", h.env.RadixDeploymentNamespace)
+	logger.Debug().Msgf("Get sigle jobs for the namespace: %s", h.cfg.RadixDeploymentNamespace)
 	return h.getRadixBatchStatuses(ctx, kube.RadixBatchTypeJob)
 }
 
@@ -106,7 +106,7 @@ func (h *handler) GetRadixBatchSingleJobs(ctx context.Context) ([]modelsv2.Batch
 func (h *handler) GetRadixBatch(ctx context.Context, batchName string) (*modelsv2.Batch, error) {
 	logger := log.Ctx(ctx)
 	logger.Debug().Msgf("get batch status for the batch %s", batchName)
-	radixBatch, err := query.GetRadixBatch(ctx, h.kubeUtil.RadixClient(), h.env.RadixDeploymentNamespace, batchName)
+	radixBatch, err := query.GetRadixBatch(ctx, h.kubeUtil.RadixClient(), h.cfg.RadixDeploymentNamespace, batchName)
 	if err != nil {
 		return nil, err
 	}
@@ -137,7 +137,7 @@ func (h *handler) CreateRadixBatch(ctx context.Context, batchScheduleDescription
 func (h *handler) CopyRadixBatch(ctx context.Context, sourceBatchName, deploymentName string) (*modelsv2.Batch, error) {
 	logger := log.Ctx(ctx)
 	logger.Debug().Msgf("Copy Radix Batch %s for the deployment %s", sourceBatchName, deploymentName)
-	sourceRadixBatch, err := query.GetRadixBatch(ctx, h.kubeUtil.RadixClient(), h.env.RadixDeploymentNamespace, sourceBatchName)
+	sourceRadixBatch, err := query.GetRadixBatch(ctx, h.kubeUtil.RadixClient(), h.cfg.RadixDeploymentNamespace, sourceBatchName)
 	if err != nil {
 		return nil, err
 	}
@@ -151,9 +151,9 @@ func (h *handler) CopyRadixBatch(ctx context.Context, sourceBatchName, deploymen
 
 func (h *handler) createRadixBatchOrJob(ctx context.Context, batchScheduleDescription common.BatchScheduleDescription, radixBatchType kube.RadixBatchType) (*modelsv2.Batch, error) {
 	logger := log.Ctx(ctx)
-	namespace := h.env.RadixDeploymentNamespace
-	radixComponentName := h.env.RadixComponentName
-	radixDeploymentName := h.env.RadixDeploymentName
+	namespace := h.cfg.RadixDeploymentNamespace
+	radixComponentName := h.cfg.RadixComponentName
+	radixDeploymentName := h.cfg.RadixDeploymentName
 	logger.Info().Msgf("Create batch for namespace %s, component %s, deployment %s", namespace, radixComponentName, radixDeploymentName)
 
 	radixDeployment, err := h.kubeUtil.RadixClient().RadixV1().RadixDeployments(namespace).Get(ctx, radixDeploymentName, metav1.GetOptions{})
@@ -205,7 +205,7 @@ func (h *handler) CopyRadixBatchJob(ctx context.Context, sourceJobName, deployme
 	if !ok {
 		return nil, fmt.Errorf("copy of this job is not supported or invalid job name")
 	}
-	sourceRadixBatch, err := query.GetRadixBatch(ctx, h.kubeUtil.RadixClient(), h.env.RadixDeploymentNamespace, batchName)
+	sourceRadixBatch, err := query.GetRadixBatch(ctx, h.kubeUtil.RadixClient(), h.cfg.RadixDeploymentNamespace, batchName)
 	if err != nil {
 		return nil, err
 	}
@@ -223,7 +223,7 @@ func (h *handler) DeleteRadixBatchJob(ctx context.Context, jobName string) error
 	if !ok {
 		return fmt.Errorf("deleting of this job is not supported or invalid job name")
 	}
-	radixBatch, err := query.GetRadixBatch(ctx, h.kubeUtil.RadixClient(), h.env.RadixDeploymentNamespace, batchName)
+	radixBatch, err := query.GetRadixBatch(ctx, h.kubeUtil.RadixClient(), h.cfg.RadixDeploymentNamespace, batchName)
 	if err != nil {
 		return err
 	}
@@ -235,7 +235,7 @@ func (h *handler) DeleteRadixBatchJob(ctx context.Context, jobName string) error
 
 // StopRadixBatch Stop a batch
 func (h *handler) StopRadixBatch(ctx context.Context, batchName string) error {
-	radixBatch, err := query.GetRadixBatch(ctx, h.kubeUtil.RadixClient(), h.env.RadixDeploymentNamespace, batchName)
+	radixBatch, err := query.GetRadixBatch(ctx, h.kubeUtil.RadixClient(), h.cfg.RadixDeploymentNamespace, batchName)
 	if err != nil {
 		return apiErrors.NewFromError(err)
 	}
@@ -244,7 +244,7 @@ func (h *handler) StopRadixBatch(ctx context.Context, batchName string) error {
 
 // StopRadixBatchJob Stop a batch job
 func (h *handler) StopRadixBatchJob(ctx context.Context, batchName, jobName string) error {
-	radixBatch, err := query.GetRadixBatch(ctx, h.kubeUtil.RadixClient(), h.env.RadixDeploymentNamespace, batchName)
+	radixBatch, err := query.GetRadixBatch(ctx, h.kubeUtil.RadixClient(), h.cfg.RadixDeploymentNamespace, batchName)
 	if err != nil {
 		return err
 	}
@@ -253,7 +253,7 @@ func (h *handler) StopRadixBatchJob(ctx context.Context, batchName, jobName stri
 
 // RestartRadixBatch Restart a batch
 func (h *handler) RestartRadixBatch(ctx context.Context, batchName string) error {
-	radixBatch, err := query.GetRadixBatch(ctx, h.kubeUtil.RadixClient(), h.env.RadixDeploymentNamespace, batchName)
+	radixBatch, err := query.GetRadixBatch(ctx, h.kubeUtil.RadixClient(), h.cfg.RadixDeploymentNamespace, batchName)
 	if err != nil {
 		return apiErrors.NewFromError(err)
 	}
@@ -262,7 +262,7 @@ func (h *handler) RestartRadixBatch(ctx context.Context, batchName string) error
 
 // RestartRadixBatchJob Restart a batch job
 func (h *handler) RestartRadixBatchJob(ctx context.Context, batchName, jobName string) error {
-	radixBatch, err := query.GetRadixBatch(ctx, h.kubeUtil.RadixClient(), h.env.RadixDeploymentNamespace, batchName)
+	radixBatch, err := query.GetRadixBatch(ctx, h.kubeUtil.RadixClient(), h.cfg.RadixDeploymentNamespace, batchName)
 	if err != nil {
 		return err
 	}
@@ -448,7 +448,7 @@ func buildRadixBatchJob(jobScheduleDescription *common.JobScheduleDescription, d
 
 func (h *handler) getRadixBatchStatuses(ctx context.Context, radixBatchType kube.RadixBatchType) ([]modelsv2.Batch, error) {
 	logger := log.Ctx(ctx)
-	radixBatches, err := query.ListRadixBatches(ctx, h.env.RadixDeploymentNamespace, h.kubeUtil.RadixClient(),
+	radixBatches, err := query.ListRadixBatches(ctx, h.cfg.RadixDeploymentNamespace, h.kubeUtil.RadixClient(),
 		radixLabels.ForComponentName(h.radixDeployJobComponent.GetName()),
 		radixLabels.ForBatchType(radixBatchType),
 	)

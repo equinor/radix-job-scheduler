@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/equinor/radix-job-scheduler/internal/notifications"
 	"github.com/equinor/radix-job-scheduler/models/v1/events"
 	"github.com/equinor/radix-job-scheduler/pkg/batch"
-	"github.com/equinor/radix-job-scheduler/pkg/notifications"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 	radixinformers "github.com/equinor/radix-operator/pkg/client/informers/externalversions"

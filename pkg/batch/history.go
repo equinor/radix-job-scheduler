@@ -9,8 +9,8 @@ import (
 	"github.com/equinor/radix-common/utils/pointers"
 	"github.com/equinor/radix-common/utils/slice"
 	"github.com/equinor/radix-job-scheduler/internal"
+	"github.com/equinor/radix-job-scheduler/internal/config"
 	"github.com/equinor/radix-job-scheduler/internal/query"
-	"github.com/equinor/radix-job-scheduler/models"
 	modelsv2 "github.com/equinor/radix-job-scheduler/models/v2"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
@@ -18,6 +18,14 @@ import (
 	"github.com/rs/zerolog/log"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
+// CompletedRadixBatches Completed RadixBatch lists
+type CompletedRadixBatches struct {
+	SucceededRadixBatches    []*modelsv2.Batch
+	NotSucceededRadixBatches []*modelsv2.Batch
+	SucceededSingleJobs      []*modelsv2.Batch
+	NotSucceededSingleJobs   []*modelsv2.Batch
+}
 
 // History Interface for job History
 type History interface {
@@ -27,15 +35,15 @@ type History interface {
 
 type history struct {
 	kubeUtil                *kube.Kube
-	env                     *models.Config
+	cfg                     *config.Config
 	radixDeployJobComponent *radixv1.RadixDeployJobComponent
 }
 
 // NewHistory Constructor for job History
-func NewHistory(kubeUtil *kube.Kube, env *models.Config, radixDeployJobComponent *radixv1.RadixDeployJobComponent) History {
+func NewHistory(kubeUtil *kube.Kube, cfg *config.Config, radixDeployJobComponent *radixv1.RadixDeployJobComponent) History {
 	return &history{
 		kubeUtil:                kubeUtil,
-		env:                     env,
+		cfg:                     cfg,
 		radixDeployJobComponent: radixDeployJobComponent,
 	}
 }
@@ -52,7 +60,7 @@ func (h *history) Cleanup(ctx context.Context) error {
 
 	logger.Debug().Msg("cleanup RadixBatch history for succeeded batches")
 	var errs []error
-	historyLimit := h.env.RadixJobSchedulersPerEnvironmentHistoryLimit
+	historyLimit := h.cfg.RadixJobSchedulersPerEnvironmentHistoryLimit
 	if err := h.cleanupRadixBatchHistory(ctx, completedRadixBatches.SucceededRadixBatches, historyLimit); err != nil {
 		errs = append(errs, err)
 	}
@@ -69,14 +77,14 @@ func (h *history) Cleanup(ctx context.Context) error {
 		errs = append(errs, err)
 	}
 	logger.Debug().Msg("delete orphaned payload secrets")
-	if err = internal.GarbageCollectPayloadSecrets(ctx, h.kubeUtil, h.env.RadixDeploymentNamespace, h.env.RadixComponentName); err != nil {
+	if err = internal.GarbageCollectPayloadSecrets(ctx, h.kubeUtil, h.cfg.RadixDeploymentNamespace, h.cfg.RadixComponentName); err != nil {
 		errs = append(errs, err)
 	}
 	return errors.Join(errs...)
 }
 
 func (h *history) getCompletedRadixBatchesSortedByCompletionTimeAsc(ctx context.Context, completedBefore time.Time) (*CompletedRadixBatches, error) {
-	radixBatches, err := query.ListRadixBatches(ctx, h.env.RadixDeploymentNamespace, h.kubeUtil.RadixClient(), radixLabels.ForComponentName(h.env.RadixComponentName))
+	radixBatches, err := query.ListRadixBatches(ctx, h.cfg.RadixDeploymentNamespace, h.kubeUtil.RadixClient(), radixLabels.ForComponentName(h.cfg.RadixComponentName))
 	if err != nil {
 		return nil, err
 	}
@@ -134,7 +142,7 @@ func (h *history) cleanupRadixBatchHistory(ctx context.Context, radixBatchesSort
 	for i := 0; i < numToDelete; i++ {
 		radixBatch := radixBatchesSortedByCompletionTimeAsc[i]
 		logger.Debug().Msgf("deleting batch %s", radixBatch.Name)
-		if err := DeleteRadixBatchByName(ctx, h.kubeUtil.RadixClient(), h.env.RadixDeploymentNamespace, radixBatch.Name); err != nil {
+		if err := DeleteRadixBatchByName(ctx, h.kubeUtil.RadixClient(), h.cfg.RadixDeploymentNamespace, radixBatch.Name); err != nil {
 			return err
 		}
 	}

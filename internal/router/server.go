@@ -5,7 +5,7 @@ import (
 
 	commongin "github.com/equinor/radix-common/pkg/gin"
 	"github.com/equinor/radix-job-scheduler/api/controllers"
-	"github.com/equinor/radix-job-scheduler/models"
+	"github.com/equinor/radix-job-scheduler/internal/config"
 	"github.com/equinor/radix-job-scheduler/swaggerui"
 	"github.com/gin-gonic/gin"
 )
@@ -16,14 +16,14 @@ const (
 )
 
 // NewServer creates a new Radix job scheduler REST service
-func NewServer(env *models.Config, controllers ...controllers.Controller) http.Handler {
+func NewServer(cfg *config.Config, controllers ...controllers.Controller) http.Handler {
 	gin.SetMode(gin.ReleaseMode)
 	engine := gin.New()
 	engine.RemoveExtraSlash = true
 	engine.Use(commongin.SetZerologLogger(commongin.ZerologLoggerWithRequestId))
 	engine.Use(commongin.ZerologRequestLogger(), gin.Recovery())
 
-	if env.UseSwagger {
+	if cfg.UseSwagger {
 		initializeSwaggerUI(engine)
 	}
 

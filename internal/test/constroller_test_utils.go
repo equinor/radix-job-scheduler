@@ -15,9 +15,9 @@ import (
 	radixUtils "github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-common/utils/numbers"
 	"github.com/equinor/radix-job-scheduler/api/controllers"
-	"github.com/equinor/radix-job-scheduler/models"
+	"github.com/equinor/radix-job-scheduler/internal/config"
+	"github.com/equinor/radix-job-scheduler/internal/router"
 	modelsv1 "github.com/equinor/radix-job-scheduler/models/v1"
-	"github.com/equinor/radix-job-scheduler/router"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/equinor/radix-operator/pkg/apis/utils"
@@ -55,7 +55,7 @@ func (ctrl *ControllerTestUtils) ExecuteRequestWithBody(ctx context.Context, met
 			reader = bytes.NewReader(payload)
 		}
 
-		serverRouter := router.NewServer(models.NewConfigFromEnv(), ctrl.controllers...)
+		serverRouter := router.NewServer(config.NewConfigFromEnv(), ctrl.controllers...)
 		server := httptest.NewServer(serverRouter)
 		defer server.Close()
 		serverUrl := buildURLFromServer(server, path)

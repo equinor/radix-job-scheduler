@@ -4,8 +4,8 @@ import (
 	"context"
 
 	apiv2 "github.com/equinor/radix-job-scheduler/api/v2"
+	"github.com/equinor/radix-job-scheduler/internal/config"
 	"github.com/equinor/radix-job-scheduler/internal/query"
-	"github.com/equinor/radix-job-scheduler/models"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	radixlabels "github.com/equinor/radix-operator/pkg/apis/utils/labels"
@@ -13,7 +13,7 @@ import (
 
 type Handler struct {
 	Kube                    *kube.Kube
-	Config                  *models.Config
+	Config                  *config.Config
 	HandlerApiV2            apiv2.Handler
 	RadixDeployJobComponent *radixv1.RadixDeployJobComponent
 }
