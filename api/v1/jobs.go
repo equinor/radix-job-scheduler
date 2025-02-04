@@ -8,7 +8,6 @@ import (
 	"github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-common/utils/slice"
 	apiv2 "github.com/equinor/radix-job-scheduler/api/v2"
-	"github.com/equinor/radix-job-scheduler/internal/names"
 	modelsv1 "github.com/equinor/radix-job-scheduler/models/v1"
 	modelsv2 "github.com/equinor/radix-job-scheduler/models/v2"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
@@ -40,19 +39,6 @@ func GetJobStatusFromRadixBatchJobsStatuses(radixBatches ...modelsv2.Batch) []mo
 		}
 	}
 	return jobStatuses
-}
-
-// CopyJob Copy a job
-func CopyJob(ctx context.Context, handlerApiV2 apiv2.Handler, jobName, deploymentName string) (*modelsv2.Batch, error) {
-	return handlerApiV2.CopyRadixBatchJob(ctx, jobName, deploymentName)
-}
-
-// StopJob Stop a job
-func StopJob(ctx context.Context, handlerApiV2 apiv2.Handler, jobName string) error {
-	if batchName, batchJobName, ok := names.ParseRadixBatchAndJobNameFromJobStatusName(jobName); ok {
-		return handlerApiV2.StopRadixBatchJob(ctx, batchName, batchJobName)
-	}
-	return fmt.Errorf("stop of this job is not supported")
 }
 
 // GetBatchJob Get batch job

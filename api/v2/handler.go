@@ -43,7 +43,6 @@ type handler struct {
 	kubeUtil                *kube.Kube
 	cfg                     *config.Config
 	radixDeployJobComponent *radixv1.RadixDeployJobComponent
-	jobHistory              batch.History
 }
 
 type Handler interface {
@@ -59,8 +58,6 @@ type Handler interface {
 	CopyRadixBatch(ctx context.Context, batchName, deploymentName string) (*modelsv2.Batch, error)
 	// CreateRadixBatchSingleJob Create a batch with single job parameters
 	CreateRadixBatchSingleJob(ctx context.Context, jobScheduleDescription *common.JobScheduleDescription) (*modelsv2.Batch, error)
-	// CopyRadixBatchJob Copy a batch job parameter
-	CopyRadixBatchJob(ctx context.Context, jobName, deploymentName string) (*modelsv2.Batch, error)
 	// DeleteRadixBatchJob Delete a single job
 	DeleteRadixBatchJob(ctx context.Context, jobName string) error
 	// StopRadixBatch Stop a batch
@@ -79,7 +76,6 @@ func New(kubeUtil *kube.Kube, cfg *config.Config, radixDeployJobComponent *radix
 		kubeUtil:                kubeUtil,
 		cfg:                     cfg,
 		radixDeployJobComponent: radixDeployJobComponent,
-		jobHistory:              batch.NewHistory(kubeUtil, cfg, radixDeployJobComponent),
 	}
 }
 
@@ -199,27 +195,9 @@ func (h *handler) CreateRadixBatchSingleJob(ctx context.Context, jobScheduleDesc
 	return radixBatchJob, err
 }
 
-// CopyRadixBatchJob Copy a batch job
-func (h *handler) CopyRadixBatchJob(ctx context.Context, sourceJobName, deploymentName string) (*modelsv2.Batch, error) {
-	batchName, jobName, ok := names.ParseRadixBatchAndJobNameFromJobStatusName(sourceJobName)
-	if !ok {
-		return nil, fmt.Errorf("copy of this job is not supported or invalid job name")
-	}
-	sourceRadixBatch, err := query.GetRadixBatch(ctx, h.kubeUtil.RadixClient(), h.cfg.RadixDeploymentNamespace, batchName)
-	if err != nil {
-		return nil, err
-	}
-	rb, err := batch.CopyRadixBatchOrJob(ctx, h.kubeUtil.RadixClient(), sourceRadixBatch, jobName, deploymentName)
-	if err != nil {
-		return nil, err
-	}
-	batchStatus := batch.GetRadixBatchStatus(rb, h.radixDeployJobComponent)
-	return &batchStatus, nil
-}
-
 // DeleteRadixBatchJob Delete a batch job
 func (h *handler) DeleteRadixBatchJob(ctx context.Context, jobName string) error {
-	batchName, _, ok := names.ParseRadixBatchAndJobNameFromJobStatusName(jobName)
+	batchName, _, ok := names.ParseRadixBatchAndJobNameFromFullyQualifiedJobName(jobName)
 	if !ok {
 		return fmt.Errorf("deleting of this job is not supported or invalid job name")
 	}

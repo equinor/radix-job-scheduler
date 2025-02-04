@@ -2,6 +2,7 @@ package batchesv1
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/equinor/radix-common/utils"
@@ -11,14 +12,17 @@ import (
 	apiv2 "github.com/equinor/radix-job-scheduler/api/v2"
 	"github.com/equinor/radix-job-scheduler/internal"
 	"github.com/equinor/radix-job-scheduler/internal/config"
+	"github.com/equinor/radix-job-scheduler/internal/names"
 	"github.com/equinor/radix-job-scheduler/internal/predicates"
 	"github.com/equinor/radix-job-scheduler/models/common"
 	modelsv1 "github.com/equinor/radix-job-scheduler/models/v1"
 	modelsv2 "github.com/equinor/radix-job-scheduler/models/v2"
+	"github.com/equinor/radix-job-scheduler/pkg/actions"
 	"github.com/equinor/radix-job-scheduler/pkg/batch"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/rs/zerolog/log"
+	kubeerrors "k8s.io/apimachinery/pkg/api/errors"
 )
 
 type batchHandler struct {
@@ -34,8 +38,6 @@ type BatchHandler interface {
 	GetBatchJob(ctx context.Context, batchName string, jobName string) (*modelsv1.JobStatus, error)
 	// CreateBatch Create a batch with parameters
 	CreateBatch(ctx context.Context, batchScheduleDescription *common.BatchScheduleDescription) (*modelsv1.BatchStatus, error)
-	// CopyBatch creates a copy of an existing batch with deploymentName as value for radixDeploymentJobRef.name
-	CopyBatch(ctx context.Context, batchName string, deploymentName string) (*modelsv1.BatchStatus, error)
 	// DeleteBatch Delete a batch
 	DeleteBatch(ctx context.Context, batchName string) error
 	// StopBatch Stop a batch
@@ -113,15 +115,6 @@ func (h *batchHandler) CreateBatch(ctx context.Context, batchScheduleDescription
 	return h.getBatchStatusFromRadixBatch(radixBatch), nil
 }
 
-// CopyBatch Copy a batch with  deployment and optional parameters
-func (h *batchHandler) CopyBatch(ctx context.Context, batchName string, deploymentName string) (*modelsv1.BatchStatus, error) {
-	radixBatch, err := h.HandlerApiV2.CopyRadixBatch(ctx, batchName, deploymentName)
-	if err != nil {
-		return nil, err
-	}
-	return h.getBatchStatusFromRadixBatch(radixBatch), nil
-}
-
 // DeleteBatch Delete a batch
 func (h *batchHandler) DeleteBatch(ctx context.Context, batchName string) error {
 	logger := log.Ctx(ctx)
@@ -130,21 +123,70 @@ func (h *batchHandler) DeleteBatch(ctx context.Context, batchName string) error 
 	if err != nil {
 		return err
 	}
+	// TODO: Remove call to GarbageCollectPayloadSecrets
 	return internal.GarbageCollectPayloadSecrets(ctx, h.Kube, h.Config.RadixDeploymentNamespace, h.Config.RadixComponentName)
 }
 
 // StopBatch Stop a batch
 func (h *batchHandler) StopBatch(ctx context.Context, batchName string) error {
-	logger := log.Ctx(ctx)
-	logger.Debug().Msgf("delete batch %s for namespace: %s", batchName, h.Config.RadixDeploymentNamespace)
-	return h.HandlerApiV2.StopRadixBatch(ctx, batchName)
+	rb, err := h.GetRadixBatch(ctx, batchName)
+	if err != nil {
+		if kubeerrors.IsNotFound(err) {
+			return apierrors.NewNotFoundError("batch", batchName, err)
+		}
+		return fmt.Errorf("failed to get batch: %w", err)
+	}
+
+	stoppedRb, err := actions.StopAllRadixBatchJobs(rb)
+	if err != nil {
+		if errors.Is(err, actions.ErrStopCompletedRadixBatch) {
+			return apierrors.NewBadRequestError("cannot stop completed batch")
+		}
+		return fmt.Errorf("failed to stop batch: %w", err)
+	}
+
+	if _, err = h.UpdateRadixBatch(ctx, stoppedRb); err != nil {
+		return apierrors.NewInternalError(fmt.Errorf("failed to update batch: %w", err))
+	}
+
+	return nil
 }
 
 // StopBatchJob Stop a batch job
 func (h *batchHandler) StopBatchJob(ctx context.Context, batchName string, jobName string) error {
-	logger := log.Ctx(ctx)
-	logger.Debug().Msgf("delete the job %s in the batch %s for namespace: %s", jobName, batchName, h.Config.RadixDeploymentNamespace)
-	return apiv1.StopJob(ctx, h.HandlerApiV2, jobName)
+	parsedBatchName, parsedJobName, ok := names.ParseRadixBatchAndJobNameFromFullyQualifiedJobName(jobName)
+	if !ok {
+		return apierrors.NewNotFoundError("job", jobName, fmt.Errorf("failed to parse job name %s", jobName))
+	}
+	if batchName != parsedBatchName {
+		return apierrors.NewNotFoundError("job", jobName, nil)
+	}
+
+	rb, err := h.GetRadixBatch(ctx, batchName)
+	if err != nil {
+		if kubeerrors.IsNotFound(err) {
+			return apierrors.NewNotFoundError("job", jobName, err)
+		}
+		return fmt.Errorf("failed to get batch: %w", err)
+	}
+
+	stoppedRb, err := actions.StopNamedRadixBatchJob(rb, parsedJobName)
+	if err != nil {
+		switch {
+		case errors.Is(err, actions.ErrStopCompletedRadixBatch):
+			return apierrors.NewBadRequestError("cannot stop completed batch")
+		case errors.Is(err, actions.ErrStopJobNotFound):
+			return apierrors.NewNotFoundError("job", jobName, err)
+		default:
+			return fmt.Errorf("failed to stop job: %w", err)
+		}
+	}
+
+	if _, err = h.UpdateRadixBatch(ctx, stoppedRb); err != nil {
+		return apierrors.NewInternalError(fmt.Errorf("failed to update batch: %w", err))
+	}
+
+	return nil
 }
 
 func (h *batchHandler) getBatchStatusFromRadixBatch(radixBatch *modelsv2.Batch) *modelsv1.BatchStatus {

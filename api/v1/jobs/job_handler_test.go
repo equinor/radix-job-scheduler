@@ -118,7 +118,7 @@ func TestCreateJob(t *testing.T) {
 		jobStatus, err := handler.CreateJob(context.TODO(), &models.JobScheduleDescription{})
 		require.Nil(t, err)
 		assert.NotNil(t, jobStatus)
-		batchName, batchJobName, ok := names.ParseRadixBatchAndJobNameFromJobStatusName(jobStatus.Name)
+		batchName, batchJobName, ok := names.ParseRadixBatchAndJobNameFromFullyQualifiedJobName(jobStatus.Name)
 		require.True(t, ok)
 		assert.Equal(t, "", jobStatus.BatchName)
 		radixBatch, err := radixClient.RadixV1().RadixBatches(envNamespace).Get(context.TODO(), batchName, metav1.GetOptions{})
@@ -153,7 +153,7 @@ func TestCreateJob(t *testing.T) {
 		require.Nil(t, err)
 		assert.NotNil(t, jobStatus)
 		// Test secret spec
-		batchName, jobName, ok := names.ParseRadixBatchAndJobNameFromJobStatusName(jobStatus.Name)
+		batchName, jobName, ok := names.ParseRadixBatchAndJobNameFromFullyQualifiedJobName(jobStatus.Name)
 		require.True(t, ok)
 		radixBatch, err := radixClient.RadixV1().RadixBatches(env.RadixDeploymentNamespace).Get(context.TODO(), batchName, metav1.GetOptions{})
 		require.NoError(t, err)
@@ -241,7 +241,7 @@ func TestCreateJob(t *testing.T) {
 		assert.NotNil(t, jobStatus)
 
 		// Test resources defined
-		batchName, jobName, ok := names.ParseRadixBatchAndJobNameFromJobStatusName(jobStatus.Name)
+		batchName, jobName, ok := names.ParseRadixBatchAndJobNameFromFullyQualifiedJobName(jobStatus.Name)
 		require.True(t, ok)
 		radixBatch, err := radixClient.RadixV1().RadixBatches(env.RadixDeploymentNamespace).Get(context.TODO(), batchName, metav1.GetOptions{})
 		require.NoError(t, err)
@@ -332,7 +332,7 @@ func TestCreateJob(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		batchName, jobName, ok := names.ParseRadixBatchAndJobNameFromJobStatusName(jobStatus.Name)
+		batchName, jobName, ok := names.ParseRadixBatchAndJobNameFromFullyQualifiedJobName(jobStatus.Name)
 		require.True(t, ok)
 		radixBatch, err := radixClient.RadixV1().RadixBatches(envNamespace).Get(context.TODO(), batchName, metav1.GetOptions{})
 		require.NoError(t, err)
@@ -381,7 +381,7 @@ func TestCreateJob(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		batchName, jobName, ok := names.ParseRadixBatchAndJobNameFromJobStatusName(jobStatus.Name)
+		batchName, jobName, ok := names.ParseRadixBatchAndJobNameFromFullyQualifiedJobName(jobStatus.Name)
 		require.True(t, ok)
 		radixBatch, err := radixClient.RadixV1().RadixBatches(envNamespace).Get(context.TODO(), batchName, metav1.GetOptions{})
 		require.NoError(t, err)
@@ -420,7 +420,6 @@ func TestDeleteJob(t *testing.T) {
 		test.CreateSecretForTest(appName, "secret3", "test-batch3-job1", appJobComponent, envNamespace, kubeClient)
 		test.CreateSecretForTest(appName, "secret4", "test-batch4-job1", "other-job-component", envNamespace, kubeClient)
 		test.CreateSecretForTest(appName, "secret5", "test-batch5-job1", appJobComponent, "other-ns", kubeClient)
-
 		handler := New(kubeUtil, config.NewConfigFromEnv(), &radixDeployJobComponent)
 		err := handler.DeleteJob(context.TODO(), "test-batch1-job1")
 		assert.Nil(t, err)
@@ -488,6 +487,7 @@ func TestDeleteJob(t *testing.T) {
 func TestStopJob(t *testing.T) {
 	appJobComponent := "compute"
 	radixDeployJobComponent := utils.NewDeployJobComponentBuilder().WithName(appJobComponent).BuildJobComponent()
+
 	t.Run("stop job - cleanup resources for job", func(t *testing.T) {
 		t.Parallel()
 		appName, appEnvironment, appJobComponent, appDeployment := "app", "qa", appJobComponent, "app-deploy-1"
