@@ -6,9 +6,9 @@ import (
 	"time"
 
 	commonUtils "github.com/equinor/radix-common/utils"
+	"github.com/equinor/radix-job-scheduler/internal/history"
 	notifications2 "github.com/equinor/radix-job-scheduler/internal/notifications"
 	"github.com/equinor/radix-job-scheduler/models/v1/events"
-	"github.com/equinor/radix-job-scheduler/pkg/batch"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/equinor/radix-operator/pkg/apis/utils/labels"
@@ -206,7 +206,7 @@ func Test_RadixBatchWatcher(t *testing.T) {
 			}
 
 			ctrl := gomock.NewController(t)
-			history := batch.NewMockHistory(ctrl)
+			history := history.NewMockHistory(ctrl)
 			batchWatcher, err := NewRadixBatchWatcher(context.Background(), radixClient, namespace, history, tt.args.getNotifier(ctrl))
 			defer batchWatcher.Stop()
 			if err != nil {

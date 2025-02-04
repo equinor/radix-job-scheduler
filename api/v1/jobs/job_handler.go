@@ -10,7 +10,6 @@ import (
 	apierrors "github.com/equinor/radix-job-scheduler/api/errors"
 	apiv1 "github.com/equinor/radix-job-scheduler/api/v1"
 	apiv2 "github.com/equinor/radix-job-scheduler/api/v2"
-	"github.com/equinor/radix-job-scheduler/internal"
 	"github.com/equinor/radix-job-scheduler/internal/config"
 	"github.com/equinor/radix-job-scheduler/internal/names"
 	"github.com/equinor/radix-job-scheduler/internal/predicates"
@@ -133,8 +132,7 @@ func (h *jobHandler) DeleteJob(ctx context.Context, jobName string) error {
 		}
 		return apierrors.NewFromError(err)
 	}
-	// TODO: Remove call to GarbageCollectPayloadSecrets
-	return internal.GarbageCollectPayloadSecrets(ctx, h.Kube, h.Config.RadixDeploymentNamespace, h.Config.RadixComponentName)
+	return nil
 }
 
 // StopJob Stop a job

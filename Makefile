@@ -56,7 +56,7 @@ mocks: bootstrap
 	mockgen -source ./api/v1/jobs/job_handler.go -destination ./api/v1/jobs/mock/job_mock.go -package mock
 	mockgen -source ./api/v1/batches/batch_handler.go -destination ./api/v1/batches/mock/batch_mock.go -package mock
 	mockgen -source ./internal/notifications/notifier.go -destination ./internal/notifications/notifier_mock.go -package notifications
-	mockgen -source ./pkg/batch/history.go -destination ./pkg/batch/history_mock.go -package batch
+	mockgen -source ./internal/history/history.go -destination ./internal/history/history_mock.go -package history
 
 .PHONY: generate
 generate: swagger mocks

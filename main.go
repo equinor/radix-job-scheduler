@@ -18,10 +18,10 @@ import (
 	jobApi "github.com/equinor/radix-job-scheduler/api/v1/jobs"
 	"github.com/equinor/radix-job-scheduler/internal"
 	"github.com/equinor/radix-job-scheduler/internal/config"
+	"github.com/equinor/radix-job-scheduler/internal/history"
 	"github.com/equinor/radix-job-scheduler/internal/notifications"
 	"github.com/equinor/radix-job-scheduler/internal/router"
 	"github.com/equinor/radix-job-scheduler/internal/watcher"
-	"github.com/equinor/radix-job-scheduler/pkg/batch"
 	_ "github.com/equinor/radix-job-scheduler/swaggerui"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
@@ -43,7 +43,7 @@ func main() {
 		log.Fatal().Err(err).Msg("failed to get job specification")
 	}
 
-	jobHistory := batch.NewHistory(kubeUtil, cfg, radixDeployJobComponent)
+	jobHistory := history.NewHistory(kubeUtil, cfg, radixDeployJobComponent)
 	notifier := notifications.NewWebhookNotifier(radixDeployJobComponent)
 	radixBatchWatcher, err := watcher.NewRadixBatchWatcher(ctx, kubeUtil.RadixClient(), cfg.RadixDeploymentNamespace, jobHistory, notifier)
 	if err != nil {

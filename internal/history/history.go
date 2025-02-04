@@ -1,4 +1,4 @@
-package batch
+package history
 
 import (
 	"context"
@@ -12,15 +12,18 @@ import (
 	"github.com/equinor/radix-job-scheduler/internal/config"
 	"github.com/equinor/radix-job-scheduler/internal/query"
 	modelsv2 "github.com/equinor/radix-job-scheduler/models/v2"
+	"github.com/equinor/radix-job-scheduler/pkg/batch"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
-	radixLabels "github.com/equinor/radix-operator/pkg/apis/utils/labels"
+	radixlabels "github.com/equinor/radix-operator/pkg/apis/utils/labels"
+	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 	"github.com/rs/zerolog/log"
+	kubeerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// CompletedRadixBatches Completed RadixBatch lists
-type CompletedRadixBatches struct {
+// completedRadixBatches Completed RadixBatch lists
+type completedRadixBatches struct {
 	SucceededRadixBatches    []*modelsv2.Batch
 	NotSucceededRadixBatches []*modelsv2.Batch
 	SucceededSingleJobs      []*modelsv2.Batch
@@ -77,19 +80,19 @@ func (h *history) Cleanup(ctx context.Context) error {
 		errs = append(errs, err)
 	}
 	logger.Debug().Msg("delete orphaned payload secrets")
-	if err = internal.GarbageCollectPayloadSecrets(ctx, h.kubeUtil, h.cfg.RadixDeploymentNamespace, h.cfg.RadixComponentName); err != nil {
+	if err = garbageCollectPayloadSecrets(ctx, h.kubeUtil, h.cfg.RadixDeploymentNamespace, h.cfg.RadixComponentName); err != nil {
 		errs = append(errs, err)
 	}
 	return errors.Join(errs...)
 }
 
-func (h *history) getCompletedRadixBatchesSortedByCompletionTimeAsc(ctx context.Context, completedBefore time.Time) (*CompletedRadixBatches, error) {
-	radixBatches, err := query.ListRadixBatches(ctx, h.cfg.RadixDeploymentNamespace, h.kubeUtil.RadixClient(), radixLabels.ForComponentName(h.cfg.RadixComponentName).AsSelector())
+func (h *history) getCompletedRadixBatchesSortedByCompletionTimeAsc(ctx context.Context, completedBefore time.Time) (*completedRadixBatches, error) {
+	radixBatches, err := query.ListRadixBatches(ctx, h.cfg.RadixDeploymentNamespace, h.kubeUtil.RadixClient(), radixlabels.ForComponentName(h.cfg.RadixComponentName).AsSelector())
 	if err != nil {
 		return nil, err
 	}
 	radixBatches = sortRJSchByCompletionTimeAsc(radixBatches)
-	return &CompletedRadixBatches{
+	return &completedRadixBatches{
 		SucceededRadixBatches:    h.getSucceededRadixBatches(radixBatches, completedBefore),
 		NotSucceededRadixBatches: h.getNotSucceededRadixBatches(radixBatches, completedBefore),
 		SucceededSingleJobs:      h.getSucceededSingleJobs(radixBatches, completedBefore),
@@ -142,7 +145,7 @@ func (h *history) cleanupRadixBatchHistory(ctx context.Context, radixBatchesSort
 	for i := 0; i < numToDelete; i++ {
 		radixBatch := radixBatchesSortedByCompletionTimeAsc[i]
 		logger.Debug().Msgf("deleting batch %s", radixBatch.Name)
-		if err := DeleteRadixBatchByName(ctx, h.kubeUtil.RadixClient(), h.cfg.RadixDeploymentNamespace, radixBatch.Name); err != nil {
+		if err := batch.DeleteRadixBatchByName(ctx, h.kubeUtil.RadixClient(), h.cfg.RadixDeploymentNamespace, radixBatch.Name); err != nil {
 			return err
 		}
 	}
@@ -175,7 +178,54 @@ func getCompletionTimeFrom(radixBatch *radixv1.RadixBatch) *metav1.Time {
 func convertToRadixBatchStatuses(radixBatches []radixv1.RadixBatch, radixDeployJobComponent *radixv1.RadixDeployJobComponent) []*modelsv2.Batch {
 	batches := make([]*modelsv2.Batch, 0, len(radixBatches))
 	for _, radixBatch := range radixBatches {
-		batches = append(batches, pointers.Ptr(GetRadixBatchStatus(&radixBatch, radixDeployJobComponent)))
+		batches = append(batches, pointers.Ptr(batch.GetRadixBatchStatus(&radixBatch, radixDeployJobComponent)))
 	}
 	return batches
+}
+
+// GetJobComponentPayloadSecretRefNames Get the payload secret ref names for the job components
+func getJobComponentPayloadSecretRefNames(ctx context.Context, radixClient radixclient.Interface, namespace, radixComponentName string) (map[string]bool, error) {
+	radixBatches, err := query.ListRadixBatches(ctx, namespace, radixClient, radixlabels.ForComponentName(radixComponentName).AsSelector())
+	if err != nil {
+		return nil, err
+	}
+	payloadSecretRefNames := make(map[string]bool)
+	for _, radixBatch := range radixBatches {
+		for _, job := range radixBatch.Spec.Jobs {
+			if job.PayloadSecretRef != nil {
+				payloadSecretRefNames[job.PayloadSecretRef.Name] = true
+			}
+		}
+	}
+	return payloadSecretRefNames, nil
+}
+
+// GarbageCollectPayloadSecrets Delete orphaned payload secrets
+func garbageCollectPayloadSecrets(ctx context.Context, kubeUtil *kube.Kube, namespace, radixComponentName string) error {
+	logger := log.Ctx(ctx)
+	logger.Debug().Msgf("Garbage collecting payload secrets")
+	payloadSecretRefNames, err := getJobComponentPayloadSecretRefNames(ctx, kubeUtil.RadixClient(), namespace, radixComponentName)
+	if err != nil {
+		return err
+	}
+	payloadSecrets, err := kubeUtil.ListSecretsWithSelector(ctx, namespace, radixlabels.GetRadixBatchDescendantsSelector(radixComponentName).String())
+	if err != nil {
+		return err
+	}
+	logger.Debug().Msgf("%d payload secrets, %d secret reference unique names", len(payloadSecrets), len(payloadSecretRefNames))
+	yesterday := time.Now().Add(time.Hour * -24)
+	for _, payloadSecret := range payloadSecrets {
+		if _, ok := payloadSecretRefNames[payloadSecret.GetName()]; !ok {
+			if payloadSecret.GetCreationTimestamp().After(yesterday) {
+				logger.Debug().Msgf("skipping deletion of an orphaned payload secret %s, created within 24 hours", payloadSecret.GetName())
+				continue
+			}
+			if err := kubeUtil.DeleteSecret(ctx, payloadSecret.GetNamespace(), payloadSecret.GetName()); err != nil && !kubeerrors.IsNotFound(err) {
+				logger.Error().Err(err).Msgf("failed deleting of an orphaned payload secret %s", payloadSecret.GetName())
+			} else {
+				logger.Debug().Msgf("deleted an orphaned payload secret %s", payloadSecret.GetName())
+			}
+		}
+	}
+	return nil
 }

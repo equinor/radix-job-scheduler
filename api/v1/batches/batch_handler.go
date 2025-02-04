@@ -119,12 +119,7 @@ func (h *batchHandler) CreateBatch(ctx context.Context, batchScheduleDescription
 func (h *batchHandler) DeleteBatch(ctx context.Context, batchName string) error {
 	logger := log.Ctx(ctx)
 	logger.Debug().Msgf("delete batch %s for namespace: %s", batchName, h.Config.RadixDeploymentNamespace)
-	err := batch.DeleteRadixBatchByName(ctx, h.Kube.RadixClient(), h.Config.RadixDeploymentNamespace, batchName)
-	if err != nil {
-		return err
-	}
-	// TODO: Remove call to GarbageCollectPayloadSecrets
-	return internal.GarbageCollectPayloadSecrets(ctx, h.Kube, h.Config.RadixDeploymentNamespace, h.Config.RadixComponentName)
+	return batch.DeleteRadixBatchByName(ctx, h.Kube.RadixClient(), h.Config.RadixDeploymentNamespace, batchName)
 }
 
 // StopBatch Stop a batch

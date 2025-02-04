@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/equinor/radix-job-scheduler/internal/history"
 	"github.com/equinor/radix-job-scheduler/internal/notifications"
 	"github.com/equinor/radix-job-scheduler/models/v1/events"
-	"github.com/equinor/radix-job-scheduler/pkg/batch"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 	radixinformers "github.com/equinor/radix-operator/pkg/client/informers/externalversions"
@@ -32,7 +32,7 @@ type watcher struct {
 	batchInformer        v1.RadixBatchInformer
 	stop                 chan struct{}
 	logger               zerolog.Logger
-	jobHistory           batch.History
+	jobHistory           history.History
 }
 
 // Stop Stops the watcher
@@ -41,7 +41,7 @@ func (w *watcher) Stop() {
 }
 
 // NewRadixBatchWatcher New RadixBatch watcher, notifying on adding and changing of RadixBatches and their jobs
-func NewRadixBatchWatcher(ctx context.Context, radixClient radixclient.Interface, namespace string, jobHistory batch.History, notifier notifications.Notifier) (Watcher, error) {
+func NewRadixBatchWatcher(ctx context.Context, radixClient radixclient.Interface, namespace string, jobHistory history.History, notifier notifications.Notifier) (Watcher, error) {
 	watcher := watcher{
 		stop:                 make(chan struct{}),
 		radixInformerFactory: radixinformers.NewSharedInformerFactoryWithOptions(radixClient, resyncPeriod, radixinformers.WithNamespace(namespace)),
