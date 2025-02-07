@@ -208,7 +208,7 @@ func (h *handler) DeleteRadixBatchJob(ctx context.Context, jobName string) error
 	if radixBatch.Labels[kube.RadixBatchTypeLabel] != string(kube.RadixBatchTypeJob) {
 		return errors.New("not a single job")
 	}
-	return batch.DeleteRadixBatch(ctx, h.kubeUtil.RadixClient(), radixBatch)
+	return h.kubeUtil.RadixClient().RadixV1().RadixBatches(radixBatch.Namespace).Delete(ctx, radixBatch.Namespace, metav1.DeleteOptions{})
 }
 
 // StopRadixBatch Stop a batch
@@ -449,5 +449,6 @@ func applyDefaultJobDescriptionProperties(jobScheduleDescription *common.JobSche
 	if jobScheduleDescription == nil || defaultRadixJobComponentConfig == nil {
 		return nil
 	}
+
 	return mergo.Merge(&jobScheduleDescription.RadixJobComponentConfig, defaultRadixJobComponentConfig, mergo.WithTransformers(authTransformer))
 }

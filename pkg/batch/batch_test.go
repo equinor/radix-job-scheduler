@@ -503,40 +503,6 @@ func TestGetRadixBatchStatuses(t *testing.T) {
 	}
 }
 
-func TestDeleteRadixBatch(t *testing.T) {
-	type deletionTestArgs struct {
-		name               string
-		existingRadixBatch *radixv1.RadixBatch
-		radixBatchToDelete string
-		expectedError      error
-	}
-	tests := []deletionTestArgs{
-		{
-			name:               "Radix batch exists",
-			existingRadixBatch: createRadixBatch(batchName1, batchId1, props, kube.RadixBatchTypeBatch, radixDeploymentName1, []string{jobName1, jobName2}, radixv1.BatchConditionTypeWaiting, nil),
-			radixBatchToDelete: batchName1,
-		},
-		{
-			name:               "Radix batch does not exist, no error",
-			existingRadixBatch: createRadixBatch(batchName1, batchId1, props, kube.RadixBatchTypeBatch, radixDeploymentName1, []string{jobName1, jobName2}, radixv1.BatchConditionTypeWaiting, nil),
-			radixBatchToDelete: batchName2,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			radixClient, _, _, _ := testutil.SetupTest(props.appName, props.envName, props.radixJobComponentName, radixDeploymentName1, 1)
-			_, err := radixClient.RadixV1().RadixBatches(operatorutils.GetEnvironmentNamespace(props.appName, props.envName)).Create(context.Background(), tt.existingRadixBatch, metav1.CreateOptions{})
-			require.NoError(t, err)
-			err = DeleteRadixBatch(context.Background(), radixClient, &radixv1.RadixBatch{ObjectMeta: metav1.ObjectMeta{Name: tt.radixBatchToDelete, Namespace: operatorutils.GetEnvironmentNamespace(props.appName, props.envName)}})
-			if tt.expectedError != nil {
-				assert.EqualError(t, err, tt.expectedError.Error())
-			} else {
-				assert.NoError(t, err)
-			}
-		})
-	}
-}
-
 func TestRestartRadixBatch(t *testing.T) {
 	type deletionTestArgs struct {
 		name                string

@@ -18,11 +18,11 @@ import (
 	modelsv1 "github.com/equinor/radix-job-scheduler/models/v1"
 	modelsv2 "github.com/equinor/radix-job-scheduler/models/v2"
 	"github.com/equinor/radix-job-scheduler/pkg/actions"
-	"github.com/equinor/radix-job-scheduler/pkg/batch"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/rs/zerolog/log"
 	kubeerrors "k8s.io/apimachinery/pkg/api/errors"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type batchHandler struct {
@@ -117,9 +117,13 @@ func (h *batchHandler) CreateBatch(ctx context.Context, batchScheduleDescription
 
 // DeleteBatch Delete a batch
 func (h *batchHandler) DeleteBatch(ctx context.Context, batchName string) error {
-	logger := log.Ctx(ctx)
-	logger.Debug().Msgf("delete batch %s for namespace: %s", batchName, h.Config.RadixDeploymentNamespace)
-	return batch.DeleteRadixBatchByName(ctx, h.Kube.RadixClient(), h.Config.RadixDeploymentNamespace, batchName)
+	if err := h.Kube.RadixClient().RadixV1().RadixBatches(h.Config.RadixDeploymentNamespace).Delete(ctx, batchName, v1.DeleteOptions{}); err != nil {
+		if kubeerrors.IsNotFound(err) {
+			return apierrors.NewNotFoundError("batch", batchName, err)
+		}
+		return fmt.Errorf("failed to delete batch: %w", err)
+	}
+	return nil
 }
 
 // StopBatch Stop a batch

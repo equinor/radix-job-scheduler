@@ -12,13 +12,13 @@ import (
 	"strings"
 	"time"
 
-	radixUtils "github.com/equinor/radix-common/utils"
+	radixutils "github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-common/utils/numbers"
 	"github.com/equinor/radix-job-scheduler/api/controllers"
 	"github.com/equinor/radix-job-scheduler/internal/config"
 	"github.com/equinor/radix-job-scheduler/internal/router"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
-	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
+	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/equinor/radix-operator/pkg/apis/utils"
 	radixLabels "github.com/equinor/radix-operator/pkg/apis/utils/labels"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
@@ -86,7 +86,7 @@ func buildURLFromServer(server *httptest.Server, path string) string {
 	return serverUrl.String()
 }
 
-func AddRadixBatch(radixClient radixclient.Interface, jobName, componentName string, batchJobType kube.RadixBatchType, namespace string) *v1.RadixBatch {
+func AddRadixBatch(radixClient radixclient.Interface, jobName, componentName string, batchJobType kube.RadixBatchType, namespace string) *radixv1.RadixBatch {
 	labels := make(map[string]string)
 
 	if len(strings.TrimSpace(componentName)) > 0 {
@@ -100,17 +100,17 @@ func AddRadixBatch(radixClient radixclient.Interface, jobName, componentName str
 	}
 	radixBatch, err := radixClient.RadixV1().RadixBatches(namespace).Create(
 		context.TODO(),
-		&v1.RadixBatch{
+		&radixv1.RadixBatch{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:   batchName,
 				Labels: labels,
 			},
-			Spec: v1.RadixBatchSpec{
-				Jobs: []v1.RadixBatchJob{
+			Spec: radixv1.RadixBatchSpec{
+				Jobs: []radixv1.RadixBatchJob{
 					{
 						Name: batchJobName,
-						PayloadSecretRef: &v1.PayloadSecretKeySelector{
-							LocalObjectReference: v1.LocalObjectReference{Name: jobName},
+						PayloadSecretRef: &radixv1.PayloadSecretKeySelector{
+							LocalObjectReference: radixv1.LocalObjectReference{Name: jobName},
 							Key:                  jobName,
 						},
 					},
@@ -160,7 +160,7 @@ func GetSecretByNameForTest(secrets []corev1.Secret, name string) *corev1.Secret
 	return nil
 }
 
-func GetRadixBatchByNameForTest(radixBatches []v1.RadixBatch, jobName string) *v1.RadixBatch {
+func GetRadixBatchByNameForTest(radixBatches []radixv1.RadixBatch, jobName string) *radixv1.RadixBatch {
 	batchName, _, _ := ParseBatchAndJobNameFromScheduledJobName(jobName)
 	for _, radixBatch := range radixBatches {
 		if radixBatch.Name == batchName {
@@ -170,7 +170,7 @@ func GetRadixBatchByNameForTest(radixBatches []v1.RadixBatch, jobName string) *v
 	return nil
 }
 
-func (params *TestParams) ApplyRd(kubeUtil *kube.Kube) *v1.RadixDeployment {
+func (params *TestParams) ApplyRd(kubeUtil *kube.Kube) *radixv1.RadixDeployment {
 	envVarsConfigMap, envVarsMetadataConfigMap, _ := kubeUtil.GetOrCreateEnvVarsConfigMapAndMetadataMap(context.Background(), params.Namespace, params.AppName, params.JobComponentName)
 	envVarsConfigMap.Data = params.EnvVarsConfigMapData
 	metadataMap := make(map[string]kube.EnvVarMetadata)
@@ -192,7 +192,7 @@ func (params *TestParams) ApplyRd(kubeUtil *kube.Kube) *v1.RadixDeployment {
 			utils.NewDeployJobComponentBuilder().
 				WithName(params.JobComponentName).
 				WithTimeLimitSeconds(numbers.Int64Ptr(10)).
-				WithPayloadPath(radixUtils.StringPtr("payload-path")).
+				WithPayloadPath(radixutils.StringPtr("payload-path")).
 				WithEnvironmentVariables(params.RadixConfigEnvVarsMap),
 		).
 		BuildRD()

@@ -13,15 +13,16 @@ import (
 	"github.com/equinor/radix-job-scheduler/internal/config"
 	"github.com/equinor/radix-job-scheduler/internal/names"
 	"github.com/equinor/radix-job-scheduler/internal/predicates"
+	"github.com/equinor/radix-job-scheduler/internal/query"
 	"github.com/equinor/radix-job-scheduler/models/common"
 	modelsv1 "github.com/equinor/radix-job-scheduler/models/v1"
 	modelsv2 "github.com/equinor/radix-job-scheduler/models/v2"
 	"github.com/equinor/radix-job-scheduler/pkg/actions"
-	"github.com/equinor/radix-job-scheduler/pkg/batch"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/rs/zerolog/log"
 	kubeerrors "k8s.io/apimachinery/pkg/api/errors"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type jobHandler struct {
@@ -108,27 +109,26 @@ func (h *jobHandler) CreateJob(ctx context.Context, jobScheduleDescription *comm
 func (h *jobHandler) DeleteJob(ctx context.Context, jobName string) error {
 	logger := log.Ctx(ctx)
 	logger.Debug().Msgf("delete job %s for namespace: %s", jobName, h.Config.RadixDeploymentNamespace)
-	batchName, _, ok := names.ParseRadixBatchAndJobNameFromFullyQualifiedJobName(jobName)
+	parsedBatchName, parsedJobName, ok := names.ParseRadixBatchAndJobNameFromFullyQualifiedJobName(jobName)
 	if !ok {
 		return apierrors.NewInvalidWithReason(jobName, "is not a valid job name")
 	}
-	radixBatchStatus, err := h.HandlerApiV2.GetRadixBatch(ctx, batchName)
+	rb, err := query.GetRadixBatch(ctx, h.Kube.RadixClient(), h.Config.RadixDeploymentNamespace, parsedBatchName)
 	if err != nil {
 		if kubeerrors.IsNotFound(err) {
-			return apierrors.NewNotFoundError("batch job", jobName, nil)
+			return apierrors.NewNotFoundError("job", jobName, nil)
 		}
 		return apierrors.NewFromError(err)
 	}
-	if radixBatchStatus.BatchType != string(kube.RadixBatchTypeJob) {
+	if rb.Labels[kube.RadixBatchTypeLabel] != string(kube.RadixBatchTypeJob) {
 		return apierrors.NewInvalidWithReason(jobName, "not a single job")
 	}
-	if !jobExistInBatch(radixBatchStatus, jobName) {
-		return apierrors.NewNotFoundError("batch job", jobName, nil)
+	if !slice.Any(rb.Spec.Jobs, predicates.IsRadixBatchJobWithName(parsedJobName)) {
+		return apierrors.NewNotFoundError("job", jobName, nil)
 	}
-	err = batch.DeleteRadixBatchByName(ctx, h.Kube.RadixClient(), h.Config.RadixDeploymentNamespace, batchName)
-	if err != nil {
+	if err := h.Kube.RadixClient().RadixV1().RadixBatches(h.Config.RadixDeploymentNamespace).Delete(ctx, parsedBatchName, v1.DeleteOptions{}); err != nil {
 		if kubeerrors.IsNotFound(err) {
-			return apierrors.NewNotFoundError("batch job", jobName, nil)
+			return apierrors.NewNotFoundError("job", jobName, nil)
 		}
 		return apierrors.NewFromError(err)
 	}
@@ -187,13 +187,4 @@ func getSingleJobStatusFromRadixBatchJob(radixBatch *modelsv2.Batch) (*modelsv1.
 		PodStatuses: apiv1.GetPodStatus(radixBatchJobStatus.PodStatuses),
 	}
 	return &jobStatus, nil
-}
-
-func jobExistInBatch(radixBatch *modelsv2.Batch, jobName string) bool {
-	for _, jobStatus := range radixBatch.JobStatuses {
-		if jobStatus.Name == jobName {
-			return true
-		}
-	}
-	return false
 }

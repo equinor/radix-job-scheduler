@@ -134,12 +134,7 @@ func TestStopBatch(t *testing.T) {
 			assert.Equal(t, pointers.Ptr(true), job.Stop)
 		}
 		secrets, _ := kubeClient.CoreV1().Secrets("").List(context.TODO(), metav1.ListOptions{})
-		assert.Len(t, secrets.Items, 5)
-		assert.NotNil(t, test.GetSecretByNameForTest(secrets.Items, radixBatch1.Spec.Jobs[0].PayloadSecretRef.Name))
-		assert.NotNil(t, test.GetSecretByNameForTest(secrets.Items, radixBatch2.Spec.Jobs[0].PayloadSecretRef.Name))
-		assert.NotNil(t, test.GetSecretByNameForTest(secrets.Items, "secret3"))
-		assert.NotNil(t, test.GetSecretByNameForTest(secrets.Items, "secret4"))
-		assert.NotNil(t, test.GetSecretByNameForTest(secrets.Items, "secret5"))
+		assert.Len(t, secrets.Items, 5) // Secrets are cleaned up in another routine
 	})
 
 	t.Run("job name does not exist", func(t *testing.T) {

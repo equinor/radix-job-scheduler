@@ -12,13 +12,12 @@ import (
 	apierrors "github.com/equinor/radix-job-scheduler/api/errors"
 	"github.com/equinor/radix-job-scheduler/internal"
 	"github.com/equinor/radix-job-scheduler/internal/names"
-	"github.com/equinor/radix-job-scheduler/internal/query"
+	"github.com/equinor/radix-job-scheduler/internal/predicates"
 	modelsv2 "github.com/equinor/radix-job-scheduler/models/v2"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 	"github.com/rs/zerolog/log"
-	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/util/retry"
 )
@@ -46,18 +45,6 @@ func GetRadixBatchStatus(radixBatch *radixv1.RadixBatch, radixDeployJobComponent
 		JobStatuses:    getRadixBatchJobStatusesFromRadixBatch(radixBatch, radixBatch.Status.JobStatuses),
 		DeploymentName: radixBatch.Spec.RadixDeploymentJobRef.Name,
 	}
-}
-
-// DeleteRadixBatchByName Delete a batch by name
-func DeleteRadixBatchByName(ctx context.Context, radixClient versioned.Interface, namespace, batchName string) error {
-	radixBatch, err := query.GetRadixBatch(ctx, radixClient, namespace, batchName)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			return nil
-		}
-		return err
-	}
-	return DeleteRadixBatch(ctx, radixClient, radixBatch)
 }
 
 func getRadixBatchJobStatusesFromRadixBatch(radixBatch *radixv1.RadixBatch, radixBatchJobStatuses []radixv1.RadixBatchJobStatus) []modelsv2.Job {
@@ -227,22 +214,12 @@ func RestartRadixBatch(ctx context.Context, radixClient versioned.Interface, rad
 func RestartRadixBatchJob(ctx context.Context, radixClient versioned.Interface, radixBatch *radixv1.RadixBatch, jobName string) error {
 	logger := log.Ctx(ctx)
 	logger.Info().Msgf("restart a job %s in the batch %s", jobName, radixBatch.GetName())
-	jobIdx := slice.FindIndex(radixBatch.Spec.Jobs, func(job radixv1.RadixBatchJob) bool { return job.Name == jobName })
+	jobIdx := slice.FindIndex(radixBatch.Spec.Jobs, predicates.IsRadixBatchJobWithName(jobName))
 	if jobIdx == -1 {
 		return fmt.Errorf("job %s not found", jobName)
 	}
 	setRestartJobTimeout(radixBatch, jobIdx, utils.FormatTimestamp(time.Now()))
 	if _, err := radixClient.RadixV1().RadixBatches(radixBatch.GetNamespace()).Update(ctx, radixBatch, metav1.UpdateOptions{}); err != nil {
-		return err
-	}
-	return nil
-}
-
-// DeleteRadixBatch Delete a batch
-func DeleteRadixBatch(ctx context.Context, radixClient versioned.Interface, radixBatch *radixv1.RadixBatch) error {
-	logger := log.Ctx(ctx)
-	logger.Debug().Msgf("delete batch %s", radixBatch.GetName())
-	if err := radixClient.RadixV1().RadixBatches(radixBatch.GetNamespace()).Delete(ctx, radixBatch.GetName(), metav1.DeleteOptions{PropagationPolicy: pointers.Ptr(metav1.DeletePropagationBackground)}); err != nil && !errors.IsNotFound(err) {
 		return err
 	}
 	return nil

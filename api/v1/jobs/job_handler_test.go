@@ -427,10 +427,7 @@ func TestDeleteJob(t *testing.T) {
 		assert.Len(t, radixBatchList.Items, 1)
 		assert.NotNil(t, test.GetRadixBatchByNameForTest(radixBatchList.Items, "test-batch2-job1"))
 		secrets, _ := kubeClient.CoreV1().Secrets("").List(context.TODO(), metav1.ListOptions{})
-		assert.Len(t, secrets.Items, 3)
-		assert.NotNil(t, test.GetSecretByNameForTest(secrets.Items, radixBatch2.Spec.Jobs[0].PayloadSecretRef.Name), "remaining test-batch2-job1")
-		assert.NotNil(t, test.GetSecretByNameForTest(secrets.Items, "secret4"), "other-job-component")
-		assert.NotNil(t, test.GetSecretByNameForTest(secrets.Items, "secret5"), "other-ns")
+		assert.Len(t, secrets.Items, 5) // Secrets are cleaned up in another routine
 	})
 
 	t.Run("delete job - job name does not exist", func(t *testing.T) {

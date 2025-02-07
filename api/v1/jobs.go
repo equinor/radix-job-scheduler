@@ -1,13 +1,8 @@
 package v1
 
 import (
-	"context"
-	"fmt"
-	"strings"
-
 	"github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-common/utils/slice"
-	apiv2 "github.com/equinor/radix-job-scheduler/api/v2"
 	modelsv1 "github.com/equinor/radix-job-scheduler/models/v1"
 	modelsv2 "github.com/equinor/radix-job-scheduler/models/v2"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
@@ -39,22 +34,6 @@ func GetJobStatusFromRadixBatchJobsStatuses(radixBatches ...modelsv2.Batch) []mo
 		}
 	}
 	return jobStatuses
-}
-
-// GetBatchJob Get batch job
-func GetBatchJob(ctx context.Context, handlerApiV2 apiv2.Handler, batchName, jobName string) (*modelsv1.JobStatus, error) {
-	radixBatch, err := handlerApiV2.GetRadixBatch(ctx, batchName)
-	if err != nil {
-		return nil, err
-	}
-	for _, jobStatus := range radixBatch.JobStatuses {
-		if !strings.EqualFold(jobStatus.Name, jobName) {
-			continue
-		}
-		jobsStatus := GetJobStatusFromRadixBatchJobsStatus(radixBatch, jobStatus)
-		return &jobsStatus, nil
-	}
-	return nil, fmt.Errorf("not found")
 }
 
 // GetPodStatus Converts RadixBatchJobPodStatuses to PodStatuses

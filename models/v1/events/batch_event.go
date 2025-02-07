@@ -3,14 +3,14 @@ package events
 import (
 	"time"
 
-	v1 "github.com/equinor/radix-job-scheduler/models/v1"
+	modelsv1 "github.com/equinor/radix-job-scheduler/models/v1"
 )
 
 // BatchEvent holds general information about batch event on change of status
 // swagger:model BatchEvent
 type BatchEvent struct {
 	// BatchStatus Batch job status
-	v1.BatchStatus
+	modelsv1.BatchStatus
 
 	// Event Event type
 	//

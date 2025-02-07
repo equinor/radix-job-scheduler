@@ -10,7 +10,7 @@ import (
 	"github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-common/utils/slice"
 	"github.com/equinor/radix-job-scheduler/internal"
-	v1 "github.com/equinor/radix-job-scheduler/models/v1"
+	modelsv1 "github.com/equinor/radix-job-scheduler/models/v1"
 	"github.com/equinor/radix-job-scheduler/models/v1/events"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
@@ -90,13 +90,13 @@ func getRadixBatchEventFromRadixBatch(event events.Event, radixBatch *radixv1.Ra
 	return events.BatchEvent{
 		Event:   event,
 		Updated: time.Now(),
-		BatchStatus: v1.BatchStatus{
+		BatchStatus: modelsv1.BatchStatus{
 			Name:        radixBatch.GetName(),
 			BatchId:     getBatchId(radixBatch),
 			Created:     radixBatch.GetCreationTimestamp().Time,
 			Started:     startedTime,
 			Ended:       endedTime,
-			Status:      v1.BatchStatusEnum(internal.GetRadixBatchJobApiStatus(radixBatch, radixDeployJobComponent)),
+			Status:      modelsv1.BatchStatusEnum(internal.GetRadixBatchJobApiStatus(radixBatch, radixDeployJobComponent)),
 			Message:     radixBatch.Status.Condition.Message,
 			BatchType:   batchType,
 			JobStatuses: jobStatuses,
@@ -104,10 +104,10 @@ func getRadixBatchEventFromRadixBatch(event events.Event, radixBatch *radixv1.Ra
 	}
 }
 
-func getRadixBatchJobStatusesFromRadixBatch(radixBatch *radixv1.RadixBatch, radixBatchJobStatuses []radixv1.RadixBatchJobStatus) []v1.JobStatus {
+func getRadixBatchJobStatusesFromRadixBatch(radixBatch *radixv1.RadixBatch, radixBatchJobStatuses []radixv1.RadixBatchJobStatus) []modelsv1.JobStatus {
 	batchName := getBatchName(radixBatch)
 	radixBatchJobsMap := getRadixBatchJobsMap(radixBatch.Spec.Jobs)
-	jobStatuses := make([]v1.JobStatus, 0, len(radixBatchJobStatuses))
+	jobStatuses := make([]modelsv1.JobStatus, 0, len(radixBatchJobStatuses))
 	for _, radixBatchJobStatus := range radixBatchJobStatuses {
 		var started, ended, created *time.Time
 		if radixBatchJobStatus.CreationTime != nil {
@@ -127,14 +127,14 @@ func getRadixBatchJobStatusesFromRadixBatch(radixBatch *radixv1.RadixBatch, radi
 		}
 		stopJob := radixBatchJob.Stop != nil && *radixBatchJob.Stop
 		jobName := fmt.Sprintf("%s-%s", radixBatch.Name, radixBatchJobStatus.Name) // composed name in models are always consist of a batchName and original jobName
-		jobStatus := v1.JobStatus{
+		jobStatus := modelsv1.JobStatus{
 			BatchName:   batchName,
 			Name:        jobName,
 			JobId:       radixBatchJob.JobId,
 			Created:     created,
 			Started:     started,
 			Ended:       ended,
-			Status:      v1.JobStatusEnum(internal.GetScheduledJobStatus(radixBatchJobStatus, stopJob)),
+			Status:      modelsv1.JobStatusEnum(internal.GetScheduledJobStatus(radixBatchJobStatus, stopJob)),
 			Failed:      radixBatchJobStatus.Failed,
 			Restart:     radixBatchJobStatus.Restart,
 			Message:     radixBatchJobStatus.Message,
@@ -153,8 +153,8 @@ func getRadixBatchJobsMap(radixBatchJobs []radixv1.RadixBatchJob) map[string]rad
 	return jobMap
 }
 
-func getPodStatusByRadixBatchJobPodStatus(podStatuses []radixv1.RadixBatchJobPodStatus) []v1.PodStatus {
-	return slice.Map(podStatuses, func(status radixv1.RadixBatchJobPodStatus) v1.PodStatus {
+func getPodStatusByRadixBatchJobPodStatus(podStatuses []radixv1.RadixBatchJobPodStatus) []modelsv1.PodStatus {
+	return slice.Map(podStatuses, func(status radixv1.RadixBatchJobPodStatus) modelsv1.PodStatus {
 		var started, ended, created *time.Time
 		if status.CreationTime != nil {
 			created = &status.CreationTime.Time
@@ -167,13 +167,13 @@ func getPodStatusByRadixBatchJobPodStatus(podStatuses []radixv1.RadixBatchJobPod
 			ended = &status.EndTime.Time
 		}
 
-		return v1.PodStatus{
+		return modelsv1.PodStatus{
 			Name:             status.Name,
 			Created:          created,
 			StartTime:        started,
 			EndTime:          ended,
 			ContainerStarted: started,
-			Status:           v1.ReplicaStatus{Status: string(status.Phase)},
+			Status:           modelsv1.ReplicaStatus{Status: string(status.Phase)},
 			StatusMessage:    status.Message,
 			RestartCount:     status.RestartCount,
 			Image:            status.Image,

@@ -145,7 +145,7 @@ func (h *history) cleanupRadixBatchHistory(ctx context.Context, radixBatchesSort
 	for i := 0; i < numToDelete; i++ {
 		radixBatch := radixBatchesSortedByCompletionTimeAsc[i]
 		logger.Debug().Msgf("deleting batch %s", radixBatch.Name)
-		if err := batch.DeleteRadixBatchByName(ctx, h.kubeUtil.RadixClient(), h.cfg.RadixDeploymentNamespace, radixBatch.Name); err != nil {
+		if err := h.kubeUtil.RadixClient().RadixV1().RadixBatches(h.cfg.RadixDeploymentNamespace).Delete(ctx, radixBatch.Name, metav1.DeleteOptions{}); err != nil {
 			return err
 		}
 	}
