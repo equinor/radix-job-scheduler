@@ -115,7 +115,7 @@ func TestCreateJob(t *testing.T) {
 		_, err := radixClient.RadixV1().RadixDeployments(envNamespace).Create(context.TODO(), rd, metav1.CreateOptions{})
 		require.NoError(t, err)
 		handler := New(kubeUtil, config.NewConfigFromEnv(), &radixDeployJobComponent)
-		jobStatus, err := handler.CreateJob(context.TODO(), &models.JobScheduleDescription{})
+		jobStatus, err := handler.CreateJob(context.TODO(), models.JobScheduleDescription{})
 		require.Nil(t, err)
 		assert.NotNil(t, jobStatus)
 		batchName, batchJobName, ok := names.ParseRadixBatchAndJobNameFromFullyQualifiedJobName(jobStatus.Name)
@@ -149,7 +149,7 @@ func TestCreateJob(t *testing.T) {
 		require.NoError(t, err)
 		env := config.NewConfigFromEnv()
 		handler := New(kubeUtil, env, &radixDeployJobComponent)
-		jobStatus, err := handler.CreateJob(context.TODO(), &models.JobScheduleDescription{Payload: payloadString})
+		jobStatus, err := handler.CreateJob(context.TODO(), models.JobScheduleDescription{Payload: payloadString})
 		require.Nil(t, err)
 		assert.NotNil(t, jobStatus)
 		// Test secret spec
@@ -198,7 +198,7 @@ func TestCreateJob(t *testing.T) {
 		require.NoError(t, err)
 		env := config.NewConfigFromEnv()
 		handler := New(kubeUtil, env, &radixDeployJobComponent)
-		_, err = handler.CreateJob(context.TODO(), &models.JobScheduleDescription{Payload: payloadString})
+		_, err = handler.CreateJob(context.TODO(), models.JobScheduleDescription{Payload: payloadString})
 		assert.Error(t, err)
 		assert.Equal(t, apierrors.StatusReasonInternalError, apierrors.ReasonForError(err))
 		assert.Contains(t, err.Error(), "missing an expected payload path, but there is a payload in the job")
@@ -236,7 +236,7 @@ func TestCreateJob(t *testing.T) {
 				},
 			},
 		}
-		jobStatus, err := handler.CreateJob(context.TODO(), &jobRequestConfig)
+		jobStatus, err := handler.CreateJob(context.TODO(), jobRequestConfig)
 		require.NoError(t, err)
 		assert.NotNil(t, jobStatus)
 
@@ -279,7 +279,7 @@ func TestCreateJob(t *testing.T) {
 		_, err := radixClient.RadixV1().RadixDeployments(envNamespace).Create(context.TODO(), rd, metav1.CreateOptions{})
 		require.NoError(t, err)
 		handler := New(kubeUtil, config.NewConfigFromEnv(), &radixDeployJobComponent)
-		_, err = handler.CreateJob(context.TODO(), &models.JobScheduleDescription{})
+		_, err = handler.CreateJob(context.TODO(), models.JobScheduleDescription{})
 		require.Error(t, err)
 		assert.Equal(t, apierrors.StatusReasonNotFound, apierrors.ReasonForError(err))
 		assert.Equal(t, apierrors.NotFoundMessage("job component", appJobComponent), err.Error())
@@ -300,7 +300,7 @@ func TestCreateJob(t *testing.T) {
 		_, err := radixClient.RadixV1().RadixDeployments(envNamespace).Create(context.TODO(), rd, metav1.CreateOptions{})
 		require.NoError(t, err)
 		handler := New(kubeUtil, config.NewConfigFromEnv(), &radixDeployJobComponent)
-		_, err = handler.CreateJob(context.TODO(), &models.JobScheduleDescription{})
+		_, err = handler.CreateJob(context.TODO(), models.JobScheduleDescription{})
 		require.Error(t, err)
 		assert.Equal(t, apierrors.StatusReasonNotFound, apierrors.ReasonForError(err))
 		assert.Equal(t, apierrors.NotFoundMessage("radix deployment", appDeployment), err.Error())
@@ -322,7 +322,7 @@ func TestCreateJob(t *testing.T) {
 		_, err := radixClient.RadixV1().RadixDeployments(envNamespace).Create(context.TODO(), rd, metav1.CreateOptions{})
 		require.NoError(t, err)
 		handler := New(kubeUtil, config.NewConfigFromEnv(), &radixDeployJobComponent)
-		jobStatus, err := handler.CreateJob(context.TODO(), &models.JobScheduleDescription{
+		jobStatus, err := handler.CreateJob(context.TODO(), models.JobScheduleDescription{
 			RadixJobComponentConfig: models.RadixJobComponentConfig{
 				Node: &models.Node{
 					Gpu:      "gpu1, gpu2",
@@ -364,7 +364,7 @@ func TestCreateJob(t *testing.T) {
 		_, err := radixClient.RadixV1().RadixDeployments(envNamespace).Create(context.TODO(), rd, metav1.CreateOptions{})
 		require.NoError(t, err)
 		handler := New(kubeUtil, config.NewConfigFromEnv(), &radixDeployJobComponent)
-		jobStatus, err := handler.CreateJob(context.TODO(), &models.JobScheduleDescription{
+		jobStatus, err := handler.CreateJob(context.TODO(), models.JobScheduleDescription{
 			RadixJobComponentConfig: models.RadixJobComponentConfig{
 				FailurePolicy: &models.FailurePolicy{
 					Rules: []models.FailurePolicyRule{

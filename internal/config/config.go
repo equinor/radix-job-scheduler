@@ -13,6 +13,7 @@ import (
 // Config instance variables
 type Config struct {
 	UseSwagger                                   bool
+	RadixAppName                                 string
 	RadixComponentName                           string
 	RadixDeploymentName                          string
 	RadixDeploymentNamespace                     string
@@ -34,6 +35,7 @@ func NewConfigFromEnv() *Config {
 		logLevel                                     = os.Getenv("LOG_LEVEL")
 	)
 	cfg := Config{
+		RadixAppName:             radixAppName,
 		RadixComponentName:       radixComponentName,
 		RadixDeploymentName:      radixDeployment,
 		RadixDeploymentNamespace: utils.GetEnvironmentNamespace(radixAppName, radixEnv),

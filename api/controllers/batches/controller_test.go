@@ -208,7 +208,7 @@ func TestCreateBatch(t *testing.T) {
 		ctx := context.Background()
 		batchHandler.
 			EXPECT().
-			CreateBatch(test.RequestContextMatcher{}, &batchScheduleDescription).
+			CreateBatch(test.RequestContextMatcher{}, batchScheduleDescription).
 			Return(&createdBatch, nil).
 			Times(1)
 		controllerTestUtils := setupTest(batchHandler)
@@ -266,7 +266,7 @@ func TestCreateBatch(t *testing.T) {
 		ctx := context.Background()
 		batchHandler.
 			EXPECT().
-			CreateBatch(test.RequestContextMatcher{}, &batchScheduleDescription).
+			CreateBatch(test.RequestContextMatcher{}, batchScheduleDescription).
 			Return(&createdBatch, nil).
 			Times(1)
 		controllerTestUtils := setupTest(batchHandler)
@@ -324,7 +324,7 @@ func TestCreateBatch(t *testing.T) {
 		ctx := context.Background()
 		batchHandler.
 			EXPECT().
-			CreateBatch(test.RequestContextMatcher{}, &batchScheduleDescription).
+			CreateBatch(test.RequestContextMatcher{}, batchScheduleDescription).
 			Return(nil, apierrors.NewNotFoundError(anyKind, anyName, nil)).
 			Times(1)
 		controllerTestUtils := setupTest(batchHandler)
@@ -353,7 +353,7 @@ func TestCreateBatch(t *testing.T) {
 		ctx := context.Background()
 		batchHandler.
 			EXPECT().
-			CreateBatch(test.RequestContextMatcher{}, &batchScheduleDescription).
+			CreateBatch(test.RequestContextMatcher{}, batchScheduleDescription).
 			Return(nil, errors.New("any error")).
 			Times(1)
 		controllerTestUtils := setupTest(batchHandler)

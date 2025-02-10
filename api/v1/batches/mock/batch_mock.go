@@ -37,7 +37,7 @@ func (m *MockBatchHandler) EXPECT() *MockBatchHandlerMockRecorder {
 }
 
 // CreateBatch mocks base method.
-func (m *MockBatchHandler) CreateBatch(ctx context.Context, batchScheduleDescription *common.BatchScheduleDescription) (*v1.BatchStatus, error) {
+func (m *MockBatchHandler) CreateBatch(ctx context.Context, batchScheduleDescription common.BatchScheduleDescription) (*v1.BatchStatus, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateBatch", ctx, batchScheduleDescription)
 	ret0, _ := ret[0].(*v1.BatchStatus)

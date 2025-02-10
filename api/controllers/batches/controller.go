@@ -119,7 +119,7 @@ func (controller *batchController) CreateBatch(c *gin.Context) {
 		}
 	}
 
-	batchState, err := controller.handler.CreateBatch(c.Request.Context(), &batchScheduleDescription)
+	batchState, err := controller.handler.CreateBatch(c.Request.Context(), batchScheduleDescription)
 	if err != nil {
 		controller.HandleError(c, err)
 		return

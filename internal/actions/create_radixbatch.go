@@ -1,6 +1,7 @@
 package actions
 
 import (
+	"errors"
 	"fmt"
 
 	"dario.cat/mergo"
@@ -13,37 +14,43 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-const (
-	// Max size of the secret description, including description, metadata, base64 encodes secret values, etc.
-	maxPayloadSecretSize = 1024 * 512 // 0.5MB
-	// Standard secret description, metadata, etc.
-	payloadSecretHeaderSize = 600
-	// Each entry in a secret Data has name, etc.
-	payloadSecretDataHeaderSize = 128
+var (
+	ErrPayloadPathNotConfiguredForJob = errors.New("payload path is not configured for job")
 )
 
-func BuildRadixBatchResources(batchScheduleDescription common.BatchScheduleDescription, radixBatchType kube.RadixBatchType, rd radixv1.RadixDeployment, jobComponentName string) (*radixv1.RadixBatch, []corev1.Secret, error) {
+func BuildRadixBatchResources(batchScheduleDescription common.BatchScheduleDescription, radixBatchType kube.RadixBatchType, appName, radixDeploymentName string, jobComponent radixv1.RadixDeployJobComponent) (*radixv1.RadixBatch, []corev1.Secret, error) {
+	batchName := names.NewRadixBatchName(jobComponent.Name)
 	builder := radixBatchBuilder{
-		batchName:        names.NewRadixBatchName(jobComponentName),
-		batchType:        radixBatchType,
-		rd:               rd,
-		jobComponentName: jobComponentName,
+		batchName:           batchName,
+		batchType:           radixBatchType,
+		appName:             appName,
+		radixDeploymentName: radixDeploymentName,
+		jobComponent:        jobComponent,
+		payloadSecrets: payloadSecrets{
+			secretNamePrefix: batchName,
+			secretLabels: radixLabels.Merge(
+				radixLabels.ForApplicationName(appName),
+				radixLabels.ForComponentName(jobComponent.Name),
+				radixLabels.ForBatchName(batchName),
+				radixLabels.ForJobScheduleJobType(),
+				radixLabels.ForRadixSecretType(kube.RadixSecretJobPayload),
+			),
+		},
 	}
 	return builder.build(batchScheduleDescription)
 }
 
-type jobIndexPayloadSecretRefMap map[int]*radixv1.PayloadSecretKeySelector
-
 type radixBatchBuilder struct {
-	batchName        string
-	batchType        kube.RadixBatchType
-	rd               radixv1.RadixDeployment
-	jobComponentName string
+	appName             string
+	radixDeploymentName string
+	batchName           string
+	batchType           kube.RadixBatchType
+	jobComponent        radixv1.RadixDeployJobComponent
+	payloadSecrets      payloadSecrets
 }
 
 func (b *radixBatchBuilder) build(batchSpec common.BatchScheduleDescription) (*radixv1.RadixBatch, []corev1.Secret, error) {
-
-	jobs, secrets, err := b.buildBatchJobs(batchSpec.JobScheduleDescriptions, batchSpec.DefaultRadixJobComponentConfig)
+	jobs, err := b.buildBatchJobs(batchSpec.JobScheduleDescriptions, batchSpec.DefaultRadixJobComponentConfig)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to build jobs: %w", err)
 	}
@@ -52,39 +59,38 @@ func (b *radixBatchBuilder) build(batchSpec common.BatchScheduleDescription) (*r
 		ObjectMeta: metav1.ObjectMeta{
 			Name: b.batchName,
 			Labels: radixLabels.Merge(
-				radixLabels.ForApplicationName(b.rd.Spec.AppName),
-				radixLabels.ForComponentName(b.jobComponentName),
+				radixLabels.ForApplicationName(b.appName),
+				radixLabels.ForComponentName(b.jobComponent.Name),
 				radixLabels.ForBatchType(b.batchType),
 			),
 		},
 		Spec: radixv1.RadixBatchSpec{
 			BatchId: batchSpec.BatchId,
 			RadixDeploymentJobRef: radixv1.RadixDeploymentJobComponentSelector{
-				LocalObjectReference: radixv1.LocalObjectReference{Name: b.rd.Name},
-				Job:                  b.jobComponentName,
+				LocalObjectReference: radixv1.LocalObjectReference{Name: b.radixDeploymentName},
+				Job:                  b.jobComponent.Name,
 			},
 			Jobs: jobs,
 		},
 	}
 
-	return &rb, secrets, nil
+	return &rb, b.payloadSecrets.Secrets(), nil
 }
 
-func (b *radixBatchBuilder) buildBatchJobs(jobSpecList []common.JobScheduleDescription, commonJobConfig *common.RadixJobComponentConfig) ([]radixv1.RadixBatchJob, []corev1.Secret, error) {
+func (b *radixBatchBuilder) buildBatchJobs(jobSpecList []common.JobScheduleDescription, commonJobConfig *common.RadixJobComponentConfig) ([]radixv1.RadixBatchJob, error) {
 	jobs := make([]radixv1.RadixBatchJob, 0, len(jobSpecList))
-	secrets, payloadSecretRefMap := b.buildPayloadSecrets(jobSpecList)
 
 	for idx, jobSpec := range jobSpecList {
-		job, err := b.buildBatchJob(jobSpec, commonJobConfig, payloadSecretRefMap[idx])
+		job, err := b.buildBatchJob(jobSpec, commonJobConfig)
 		if err != nil {
-			return nil, nil, fmt.Errorf("failed to build job: %w", err)
+			return nil, fmt.Errorf("failed to build job #%d: %w", idx, err)
 		}
 		jobs = append(jobs, *job)
 	}
-	return jobs, secrets, nil
+	return jobs, nil
 }
 
-func (b *radixBatchBuilder) buildBatchJob(jobSpec common.JobScheduleDescription, commonJobConfig *common.RadixJobComponentConfig, payloadSecretRef *radixv1.PayloadSecretKeySelector) (*radixv1.RadixBatchJob, error) {
+func (b *radixBatchBuilder) buildBatchJob(jobSpec common.JobScheduleDescription, commonJobConfig *common.RadixJobComponentConfig) (*radixv1.RadixBatchJob, error) {
 	if commonJobConfig != nil {
 		if err := mergo.Merge(&jobSpec.RadixJobComponentConfig, commonJobConfig); err != nil {
 			return nil, fmt.Errorf("failed to apply common config: %w", err)
@@ -100,39 +106,25 @@ func (b *radixBatchBuilder) buildBatchJob(jobSpec common.JobScheduleDescription,
 		BackoffLimit:     jobSpec.BackoffLimit,
 		ImageTagName:     jobSpec.ImageTagName,
 		FailurePolicy:    jobSpec.FailurePolicy.MapToRadixFailurePolicy(),
-		PayloadSecretRef: payloadSecretRef,
+	}
+
+	if len(jobSpec.Payload) > 0 {
+		if !b.isPayloadPathConfigured() {
+			return nil, ErrPayloadPathNotConfiguredForJob
+		}
+		payloadSecretName, payloadSecretKey, err := b.payloadSecrets.AddPayload(jobSpec.Payload)
+		if err != nil {
+			return nil, fmt.Errorf("faIled to store payload: %w", err)
+		}
+		job.PayloadSecretRef = &radixv1.PayloadSecretKeySelector{
+			LocalObjectReference: radixv1.LocalObjectReference{Name: payloadSecretName},
+			Key:                  payloadSecretKey,
+		}
 	}
 
 	return &job, nil
 }
 
-func (b *radixBatchBuilder) buildPayloadSecrets(jobSpecList []common.JobScheduleDescription) ([]corev1.Secret, jobIndexPayloadSecretRefMap) {
-	payloadRef := make(jobIndexPayloadSecretRefMap, len(jobSpecList))
-	var secrets []corev1.Secret
-
-	for idx, jobSpec := range jobSpecList {
-		payloadRef[idx] = &radixv1.PayloadSecretKeySelector{
-			LocalObjectReference: radixv1.LocalObjectReference{
-				Name: "",
-			},
-			Key: "",
-		}
-	}
-	return secrets, payloadRef
-}
-
-func (b *radixBatchBuilder) newPayloadSecret(suffix string) corev1.Secret {
-	return corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: fmt.Sprintf("%s-payloads-%s", b.batchName, suffix),
-			Labels: radixLabels.Merge(
-				radixLabels.ForApplicationName(b.rd.Spec.AppName),
-				radixLabels.ForComponentName(b.jobComponentName),
-				radixLabels.ForBatchName(b.batchName),
-				radixLabels.ForJobScheduleJobType(),
-				radixLabels.ForRadixSecretType(kube.RadixSecretJobPayload),
-			),
-		},
-		StringData: make(map[string]string),
-	}
+func (b *radixBatchBuilder) isPayloadPathConfigured() bool {
+	return b.jobComponent.Payload != nil && len(b.jobComponent.Payload.Path) > 0
 }

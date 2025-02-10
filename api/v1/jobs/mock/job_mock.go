@@ -37,7 +37,7 @@ func (m *MockJobHandler) EXPECT() *MockJobHandlerMockRecorder {
 }
 
 // CreateJob mocks base method.
-func (m *MockJobHandler) CreateJob(ctx context.Context, jobScheduleDescription *common.JobScheduleDescription) (*v1.JobStatus, error) {
+func (m *MockJobHandler) CreateJob(ctx context.Context, jobScheduleDescription common.JobScheduleDescription) (*v1.JobStatus, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateJob", ctx, jobScheduleDescription)
 	ret0, _ := ret[0].(*v1.JobStatus)

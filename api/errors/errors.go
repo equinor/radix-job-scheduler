@@ -21,7 +21,7 @@ func (e *StatusError) Error() string {
 	if e.UnderlyingError == nil {
 		return e.ErrStatus.Message
 	}
-	return fmt.Sprintf("%s: %s", e.ErrStatus.Message, e.UnderlyingError)
+	return e.UnderlyingError.Error()
 }
 
 // Error implements the Error interface.
@@ -45,7 +45,7 @@ func UnknownMessage(err error) string {
 	return err.Error()
 }
 
-func NewBadRequestError(message string) *StatusError {
+func NewBadRequestError(message string, underlyingError error) *StatusError {
 	return &StatusError{
 		ErrStatus: Status{
 			Status:  StatusFailure,
@@ -53,6 +53,7 @@ func NewBadRequestError(message string) *StatusError {
 			Code:    http.StatusBadRequest,
 			Message: message,
 		},
+		UnderlyingError: underlyingError,
 	}
 }
 

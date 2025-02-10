@@ -43,7 +43,7 @@ func TestCreateBatch(t *testing.T) {
 				RadixJobComponentConfig: models.RadixJobComponentConfig{},
 			},
 		}}
-		createdBatch, err := h.CreateBatch(context.TODO(), &scheduleDescription)
+		createdBatch, err := h.CreateBatch(context.TODO(), scheduleDescription)
 
 		assert.NoError(t, err)
 		scheduledBatch, err := radixClient.RadixV1().RadixBatches(rd.Namespace).Get(context.TODO(), createdBatch.Name,

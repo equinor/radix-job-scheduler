@@ -9,14 +9,12 @@ import (
 	"github.com/equinor/radix-common/utils/slice"
 	apierrors "github.com/equinor/radix-job-scheduler/api/errors"
 	apiv1 "github.com/equinor/radix-job-scheduler/api/v1"
-	apiv2 "github.com/equinor/radix-job-scheduler/api/v2"
 	"github.com/equinor/radix-job-scheduler/internal/config"
 	"github.com/equinor/radix-job-scheduler/internal/names"
 	"github.com/equinor/radix-job-scheduler/internal/predicates"
 	"github.com/equinor/radix-job-scheduler/internal/query"
 	"github.com/equinor/radix-job-scheduler/models/common"
 	modelsv1 "github.com/equinor/radix-job-scheduler/models/v1"
-	modelsv2 "github.com/equinor/radix-job-scheduler/models/v2"
 	"github.com/equinor/radix-job-scheduler/pkg/actions"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
@@ -35,7 +33,7 @@ type JobHandler interface {
 	// GetJob Get status of a job
 	GetJob(ctx context.Context, jobName string) (*modelsv1.JobStatus, error)
 	// CreateJob Create a job with parameters
-	CreateJob(ctx context.Context, jobScheduleDescription *common.JobScheduleDescription) (*modelsv1.JobStatus, error)
+	CreateJob(ctx context.Context, jobScheduleDescription common.JobScheduleDescription) (*modelsv1.JobStatus, error)
 	// DeleteJob Delete a job
 	DeleteJob(ctx context.Context, jobName string) error
 	// StopJob Stop a job
@@ -48,7 +46,6 @@ func New(kube *kube.Kube, config *config.Config, radixDeployJobComponent *radixv
 		apiv1.Handler{
 			Kube:                    kube,
 			Config:                  config,
-			HandlerApiV2:            apiv2.New(kube, config, radixDeployJobComponent),
 			RadixDeployJobComponent: radixDeployJobComponent,
 		},
 	}
@@ -95,14 +92,20 @@ func (h *jobHandler) GetJob(ctx context.Context, jobName string) (*modelsv1.JobS
 }
 
 // CreateJob Create a job with parameters
-func (h *jobHandler) CreateJob(ctx context.Context, jobScheduleDescription *common.JobScheduleDescription) (*modelsv1.JobStatus, error) {
+func (h *jobHandler) CreateJob(ctx context.Context, jobScheduleDescription common.JobScheduleDescription) (*modelsv1.JobStatus, error) {
 	logger := log.Ctx(ctx)
 	logger.Debug().Msgf("Create job for namespace: %s", h.Config.RadixDeploymentNamespace)
-	radixBatch, err := h.HandlerApiV2.CreateRadixBatchSingleJob(ctx, jobScheduleDescription)
+
+	batchStatus, err := h.CreateNewBatchFromRequest(
+		ctx,
+		common.BatchScheduleDescription{JobScheduleDescriptions: []common.JobScheduleDescription{jobScheduleDescription}},
+		kube.RadixBatchTypeJob,
+	)
 	if err != nil {
-		return nil, err
+		return nil, apierrors.NewFromError(err)
 	}
-	return getSingleJobStatusFromRadixBatchJob(radixBatch)
+
+	return &batchStatus.JobStatuses[0], nil
 }
 
 // DeleteJob Delete a job
@@ -153,7 +156,7 @@ func (h *jobHandler) StopJob(ctx context.Context, jobName string) error {
 	if err != nil {
 		switch {
 		case errors.Is(err, actions.ErrStopCompletedRadixBatch):
-			return apierrors.NewBadRequestError("cannot stop completed batch")
+			return apierrors.NewBadRequestError("cannot stop completed batch", err)
 		case errors.Is(err, actions.ErrStopJobNotFound):
 			return apierrors.NewNotFoundError("job", jobName, err)
 		default:
@@ -166,25 +169,4 @@ func (h *jobHandler) StopJob(ctx context.Context, jobName string) error {
 	}
 
 	return nil
-}
-
-func getSingleJobStatusFromRadixBatchJob(radixBatch *modelsv2.Batch) (*modelsv1.JobStatus, error) {
-	if len(radixBatch.JobStatuses) != 1 {
-		return nil, fmt.Errorf("batch should have only one job")
-	}
-	radixBatchJobStatus := radixBatch.JobStatuses[0]
-
-	jobStatus := modelsv1.JobStatus{
-		JobId:       radixBatchJobStatus.JobId,
-		Name:        radixBatchJobStatus.Name,
-		Created:     radixBatchJobStatus.CreationTime,
-		Started:     radixBatchJobStatus.Started,
-		Ended:       radixBatchJobStatus.Ended,
-		Status:      modelsv1.JobStatusEnum(radixBatchJobStatus.Status),
-		Message:     radixBatchJobStatus.Message,
-		Failed:      radixBatchJobStatus.Failed,
-		Restart:     radixBatchJobStatus.Restart,
-		PodStatuses: apiv1.GetPodStatus(radixBatchJobStatus.PodStatuses),
-	}
-	return &jobStatus, nil
 }
