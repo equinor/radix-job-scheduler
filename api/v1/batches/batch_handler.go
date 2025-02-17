@@ -39,8 +39,12 @@ type BatchHandler interface {
 	DeleteBatch(ctx context.Context, batchName string) error
 	// StopBatch Stop a batch
 	StopBatch(ctx context.Context, batchName string) error
+	// StopAllBatches Stop all batches
+	StopAllBatches(ctx context.Context) error
 	// StopBatchJob Stop a batch job
-	StopBatchJob(ctx context.Context, batchName string, jobName string) error
+	StopBatchJob(ctx context.Context, batchName, jobName string) error
+	// StopAllBatchJobs Stop all batch jobs
+	StopAllBatchJobs(ctx context.Context, batchName string) error
 }
 
 // New Constructor of the batch handler
@@ -145,11 +149,25 @@ func (handler *batchHandler) StopBatch(ctx context.Context, batchName string) er
 	return handler.common.HandlerApiV2.StopRadixBatch(ctx, batchName)
 }
 
+// StopAllBatches Stop all batches
+func (handler *batchHandler) StopAllBatches(ctx context.Context) error {
+	logger := log.Ctx(ctx)
+	logger.Debug().Msgf("delete all batches for namespace: %s", handler.common.Env.RadixDeploymentNamespace)
+	return handler.common.HandlerApiV2.StopAllRadixBatches(ctx)
+}
+
 // StopBatchJob Stop a batch job
 func (handler *batchHandler) StopBatchJob(ctx context.Context, batchName string, jobName string) error {
 	logger := log.Ctx(ctx)
 	logger.Debug().Msgf("delete the job %s in the batch %s for namespace: %s", jobName, batchName, handler.common.Env.RadixDeploymentNamespace)
 	return apiv1.StopJob(ctx, handler.common.HandlerApiV2, jobName)
+}
+
+// StopAllBatchJobs Stop all batch jobs
+func (handler *batchHandler) StopAllBatchJobs(ctx context.Context, batchName string) error {
+	logger := log.Ctx(ctx)
+	logger.Debug().Msgf("delete all jobs in the batch %s for namespace: %s", batchName, handler.common.Env.RadixDeploymentNamespace)
+	return apiv1.StopAllJob(ctx, handler.common.HandlerApiV2)
 }
 
 func setBatchJobEventMessages(radixBatchStatus *modelsv1.BatchStatus, batchJobPodsMap map[string]corev1.Pod, eventMessageForPods map[string]string) {

@@ -2,6 +2,7 @@ package batch
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -15,9 +16,10 @@ import (
 	"github.com/equinor/radix-job-scheduler/utils/radix/jobs"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
+	radixLabels "github.com/equinor/radix-operator/pkg/apis/utils/labels"
 	"github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 	"github.com/rs/zerolog/log"
-	"k8s.io/apimachinery/pkg/api/errors"
+	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/util/retry"
 )
@@ -59,7 +61,7 @@ func GetRadixBatchStatus(radixBatch *radixv1.RadixBatch, radixDeployJobComponent
 func DeleteRadixBatchByName(ctx context.Context, radixClient versioned.Interface, namespace, batchName string) error {
 	radixBatch, err := internal.GetRadixBatch(ctx, radixClient, namespace, batchName)
 	if err != nil {
-		if errors.IsNotFound(err) {
+		if k8sErrors.IsNotFound(err) {
 			return nil
 		}
 		return err
@@ -179,7 +181,10 @@ func StopRadixBatch(ctx context.Context, radixClient versioned.Interface, radixB
 	if !isBatchStoppable(radixBatch.Status.Condition) {
 		return apiErrors.NewBadRequest(fmt.Sprintf("cannot stop completed batch %s", radixBatch.GetName()))
 	}
+	return stopRadixBatch(ctx, radixClient, radixBatch)
+}
 
+func stopRadixBatch(ctx context.Context, radixClient versioned.Interface, radixBatch *radixv1.RadixBatch) error {
 	newRadixBatch := radixBatch.DeepCopy()
 	radixBatchJobsStatusMap := internal.GetRadixBatchJobsStatusesMap(newRadixBatch.Status.JobStatuses)
 	for jobIndex, radixBatchJob := range newRadixBatch.Spec.Jobs {
@@ -190,6 +195,36 @@ func StopRadixBatch(ctx context.Context, radixClient versioned.Interface, radixB
 		newRadixBatch.Spec.Jobs[jobIndex].Stop = pointers.Ptr(true)
 	}
 	return updateRadixBatch(ctx, radixClient, radixBatch.GetNamespace(), newRadixBatch)
+}
+
+// StopAllRadixBatches Stop all batches
+func StopAllRadixBatches(ctx context.Context, radixClient versioned.Interface, namespace string, batchType kube.RadixBatchType) error {
+	logger := log.Ctx(ctx)
+	logger.Info().Msgf("stop all %s-s for namespace: %s", batchType, namespace)
+	radixBatches, err := internal.GetRadixBatches(ctx, namespace, radixClient, radixLabels.ForComponentName(namespace))
+	if err != nil {
+		return err
+	}
+	radixBatchesToStop := slice.Reduce(radixBatches, []*radixv1.RadixBatch{}, func(acc []*radixv1.RadixBatch, radixBatch *radixv1.RadixBatch) []*radixv1.RadixBatch {
+		if isBatchStoppable(radixBatch.Status.Condition) {
+			return append(acc, radixBatch)
+		}
+		return acc
+	})
+	if len(radixBatchesToStop) == 0 {
+		logger.Info().Msgf("no %s-s to stop", batchType)
+		return nil
+	}
+	var errs []error
+	for _, radixBatch := range radixBatchesToStop {
+		if err := stopRadixBatch(ctx, radixClient, radixBatch); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	if len(errs) > 0 {
+		return fmt.Errorf("failed to stop %d of %d %s-s: %w", len(errs), len(radixBatchesToStop), batchType, errors.Join(errs...))
+	}
+	return nil
 }
 
 // StopRadixBatchJob Stop a job
@@ -249,7 +284,7 @@ func RestartRadixBatchJob(ctx context.Context, radixClient versioned.Interface, 
 func DeleteRadixBatch(ctx context.Context, radixClient versioned.Interface, radixBatch *radixv1.RadixBatch) error {
 	logger := log.Ctx(ctx)
 	logger.Debug().Msgf("delete batch %s", radixBatch.GetName())
-	if err := radixClient.RadixV1().RadixBatches(radixBatch.GetNamespace()).Delete(ctx, radixBatch.GetName(), metav1.DeleteOptions{PropagationPolicy: pointers.Ptr(metav1.DeletePropagationBackground)}); err != nil && !errors.IsNotFound(err) {
+	if err := radixClient.RadixV1().RadixBatches(radixBatch.GetNamespace()).Delete(ctx, radixBatch.GetName(), metav1.DeleteOptions{PropagationPolicy: pointers.Ptr(metav1.DeletePropagationBackground)}); err != nil && !k8sErrors.IsNotFound(err) {
 		return err
 	}
 	return nil

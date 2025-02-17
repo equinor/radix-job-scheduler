@@ -6,7 +6,7 @@ on:
 jobs:
   build:
     name: pull-request-check
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     steps:
     - uses: actions/checkout@v4
     - name: Set up Docker Buildx
@@ -46,7 +46,7 @@ jobs:
     - name: golangci-lint
       uses: golangci/golangci-lint-action@v6
       with:
-        version: v1.58.2
+        version: v1.60.3
 
   verify-code-generation:
     name: Verify Code Generation
