@@ -229,6 +229,11 @@ func stopRadixBatchJob(ctx context.Context, radixClient versioned.Interface, app
 				newRadixBatch.Spec.Jobs[jobIndex].Stop = pointers.Ptr(true)
 			}
 			_, err = radixClient.RadixV1().RadixBatches(namespace).Update(ctx, radixBatch, metav1.UpdateOptions{})
+			if err != nil {
+				log.Debug().Msgf("failed to update the batch %s: %v", radixBatch.GetName(), err)
+			} else {
+				log.Debug().Msgf("updated the batch %s", radixBatch.GetName())
+			}
 			return err
 		}
 		if len(batchName) > 0 && !foundBatch {
