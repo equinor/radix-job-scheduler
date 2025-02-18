@@ -198,11 +198,11 @@ func stopRadixBatch(ctx context.Context, radixClient versioned.Interface, radixB
 }
 
 // StopAllRadixBatches Stop all batches
-func StopAllRadixBatches(ctx context.Context, radixClient versioned.Interface, namespace string, batchType kube.RadixBatchType) error {
+func StopAllRadixBatches(ctx context.Context, radixClient versioned.Interface, namespace string, componentName string, batchType kube.RadixBatchType) error {
 	logger := log.Ctx(ctx)
 	batchTypePluralName := getBatchTypePluralName(batchType)
 	logger.Info().Msgf("stop all %s for namespace: %s", batchTypePluralName, namespace)
-	radixBatches, err := internal.GetRadixBatches(ctx, namespace, radixClient, radixLabels.ForComponentName(namespace))
+	radixBatches, err := internal.GetRadixBatches(ctx, namespace, radixClient, radixLabels.ForComponentName(componentName))
 	if err != nil {
 		return err
 	}

@@ -149,7 +149,7 @@ func (handler *batchHandler) StopBatch(ctx context.Context, batchName string) er
 
 // StopAllBatches Stop all batches
 func (handler *batchHandler) StopAllBatches(ctx context.Context) error {
-	return handler.common.HandlerApiV2.StopAllRadixBatches(ctx)
+	return handler.common.HandlerApiV2.StopAllRadixBatches(ctx, handler.common.Env.RadixComponentName)
 }
 
 // StopBatchJob Stop a batch job

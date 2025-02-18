@@ -65,11 +65,11 @@ type Handler interface {
 	// StopRadixBatch Stop a batch
 	StopRadixBatch(ctx context.Context, batchName string) error
 	// StopAllRadixBatches Stop all batches
-	StopAllRadixBatches(ctx context.Context) error
+	StopAllRadixBatches(ctx context.Context, componentName string) error
 	// StopRadixBatchJob Stop a batch job
 	StopRadixBatchJob(ctx context.Context, batchName, jobName string) error
 	// StopAllSingleRadixJobs Stop all single jobs
-	StopAllSingleRadixJobs(ctx context.Context) error
+	StopAllSingleRadixJobs(ctx context.Context, componentName string) error
 	// RestartRadixBatch Restart a batch
 	RestartRadixBatch(ctx context.Context, batchName string) error
 	// RestartRadixBatchJob Restart a batch job
@@ -236,8 +236,8 @@ func (h *handler) StopRadixBatch(ctx context.Context, batchName string) error {
 }
 
 // StopAllRadixBatches Stop all batches
-func (h *handler) StopAllRadixBatches(ctx context.Context) error {
-	return batch.StopAllRadixBatches(ctx, h.kubeUtil.RadixClient(), h.env.RadixDeploymentNamespace, kube.RadixBatchTypeBatch)
+func (h *handler) StopAllRadixBatches(ctx context.Context, componentName string) error {
+	return batch.StopAllRadixBatches(ctx, h.kubeUtil.RadixClient(), h.env.RadixDeploymentNamespace, componentName, kube.RadixBatchTypeBatch)
 }
 
 // StopRadixBatchJob Stop a batch job
@@ -250,8 +250,8 @@ func (h *handler) StopRadixBatchJob(ctx context.Context, batchName, jobName stri
 }
 
 // StopAllSingleRadixJobs Stop all single jobs
-func (h *handler) StopAllSingleRadixJobs(ctx context.Context) error {
-	return batch.StopAllRadixBatches(ctx, h.kubeUtil.RadixClient(), h.env.RadixDeploymentNamespace, kube.RadixBatchTypeJob)
+func (h *handler) StopAllSingleRadixJobs(ctx context.Context, componentName string) error {
+	return batch.StopAllRadixBatches(ctx, h.kubeUtil.RadixClient(), h.env.RadixDeploymentNamespace, componentName, kube.RadixBatchTypeJob)
 }
 
 // RestartRadixBatch Restart a batch
