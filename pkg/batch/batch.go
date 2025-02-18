@@ -2,7 +2,6 @@ package batch
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -229,14 +228,7 @@ func stopRadixBatchJob(ctx context.Context, radixClient versioned.Interface, app
 				}
 				newRadixBatch.Spec.Jobs[jobIndex].Stop = pointers.Ptr(true)
 			}
-			updatedRb, err := radixClient.RadixV1().RadixBatches(namespace).Update(ctx, radixBatch, metav1.UpdateOptions{})
-			if err != nil {
-				log.Debug().Msgf("failed to update the batch %s: %v", radixBatch.GetName(), err)
-			} else {
-				log.Debug().Msgf("updated the batch %s", radixBatch.GetName())
-				marshal, _ := json.Marshal(updatedRb.Spec)
-				log.Debug().Msgf("updated the batch %s", marshal)
-			}
+			_, err = radixClient.RadixV1().RadixBatches(namespace).Update(ctx, newRadixBatch, metav1.UpdateOptions{})
 			return err
 		}
 		if len(batchName) > 0 && !foundBatch {
