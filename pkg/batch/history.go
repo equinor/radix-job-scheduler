@@ -83,7 +83,7 @@ func (h *history) Cleanup(ctx context.Context, existingRadixBatchNamesMap map[st
 }
 
 func (h *history) getCompletedRadixBatchesSortedByCompletionTimeAsc(ctx context.Context, completedBefore time.Time) (*CompletedRadixBatchNames, error) {
-	radixBatches, err := internal.GetRadixBatches(ctx, h.env.RadixDeploymentNamespace, h.kubeUtil.RadixClient(), radixLabels.ForComponentName(h.env.RadixComponentName))
+	radixBatches, err := internal.GetRadixBatches(ctx, h.kubeUtil.RadixClient(), h.env.RadixDeploymentNamespace, radixLabels.ForComponentName(h.env.RadixComponentName))
 	if err != nil {
 		return nil, err
 	}

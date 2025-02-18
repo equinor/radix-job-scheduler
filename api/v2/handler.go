@@ -65,11 +65,11 @@ type Handler interface {
 	// StopRadixBatch Stop a batch
 	StopRadixBatch(ctx context.Context, batchName string) error
 	// StopAllRadixBatches Stop all batches
-	StopAllRadixBatches(ctx context.Context, componentName string) error
+	StopAllRadixBatches(ctx context.Context) error
 	// StopRadixBatchJob Stop a batch job
 	StopRadixBatchJob(ctx context.Context, batchName, jobName string) error
 	// StopAllSingleRadixJobs Stop all single jobs
-	StopAllSingleRadixJobs(ctx context.Context, componentName string) error
+	StopAllSingleRadixJobs(ctx context.Context) error
 	// RestartRadixBatch Restart a batch
 	RestartRadixBatch(ctx context.Context, batchName string) error
 	// RestartRadixBatchJob Restart a batch job
@@ -228,30 +228,22 @@ func (h *handler) DeleteRadixBatchJob(ctx context.Context, jobName string) error
 
 // StopRadixBatch Stop a batch
 func (h *handler) StopRadixBatch(ctx context.Context, batchName string) error {
-	radixBatch, err := internal.GetRadixBatch(ctx, h.kubeUtil.RadixClient(), h.env.RadixDeploymentNamespace, batchName)
-	if err != nil {
-		return apiErrors.NewFromError(err)
-	}
-	return batch.StopRadixBatch(ctx, h.kubeUtil.RadixClient(), radixBatch)
+	return batch.StopRadixBatch(ctx, h.kubeUtil.RadixClient(), h.env.RadixAppName, h.env.RadixEnvironmentName, h.env.RadixComponentName, batchName)
 }
 
 // StopAllRadixBatches Stop all batches
-func (h *handler) StopAllRadixBatches(ctx context.Context, componentName string) error {
-	return batch.StopAllRadixBatches(ctx, h.kubeUtil.RadixClient(), h.env.RadixDeploymentNamespace, componentName, kube.RadixBatchTypeBatch)
+func (h *handler) StopAllRadixBatches(ctx context.Context) error {
+	return batch.StopAllRadixBatches(ctx, h.kubeUtil.RadixClient(), h.env.RadixAppName, h.env.RadixEnvironmentName, h.env.RadixComponentName, kube.RadixBatchTypeBatch)
 }
 
 // StopRadixBatchJob Stop a batch job
 func (h *handler) StopRadixBatchJob(ctx context.Context, batchName, jobName string) error {
-	radixBatch, err := internal.GetRadixBatch(ctx, h.kubeUtil.RadixClient(), h.env.RadixDeploymentNamespace, batchName)
-	if err != nil {
-		return err
-	}
-	return batch.StopRadixBatchJob(ctx, h.kubeUtil.RadixClient(), radixBatch, jobName)
+	return batch.StopRadixBatchJob(ctx, h.kubeUtil.RadixClient(), h.env.RadixAppName, h.env.RadixEnvironmentName, h.env.RadixComponentName, batchName, jobName)
 }
 
 // StopAllSingleRadixJobs Stop all single jobs
-func (h *handler) StopAllSingleRadixJobs(ctx context.Context, componentName string) error {
-	return batch.StopAllRadixBatches(ctx, h.kubeUtil.RadixClient(), h.env.RadixDeploymentNamespace, componentName, kube.RadixBatchTypeJob)
+func (h *handler) StopAllSingleRadixJobs(ctx context.Context) error {
+	return batch.StopAllRadixBatches(ctx, h.kubeUtil.RadixClient(), h.env.RadixAppName, h.env.RadixEnvironmentName, h.env.RadixComponentName, kube.RadixBatchTypeJob)
 }
 
 // RestartRadixBatch Restart a batch
@@ -451,10 +443,7 @@ func buildRadixBatchJob(jobScheduleDescription *common.JobScheduleDescription, d
 
 func (h *handler) getRadixBatchStatuses(ctx context.Context, radixBatchType kube.RadixBatchType) ([]modelsv2.RadixBatch, error) {
 	logger := log.Ctx(ctx)
-	radixBatches, err := internal.GetRadixBatches(ctx, h.env.RadixDeploymentNamespace, h.kubeUtil.RadixClient(),
-		radixLabels.ForComponentName(h.radixDeployJobComponent.GetName()),
-		radixLabels.ForBatchType(radixBatchType),
-	)
+	radixBatches, err := internal.GetRadixBatches(ctx, h.kubeUtil.RadixClient(), h.env.RadixDeploymentNamespace, radixLabels.ForComponentName(h.radixDeployJobComponent.GetName()), radixLabels.ForBatchType(radixBatchType))
 	if err != nil {
 		return nil, err
 	}

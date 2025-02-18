@@ -648,7 +648,7 @@ func TestStopRadixBatch(t *testing.T) {
 			radixClient, _, _, _ := testUtil.SetupTest(props.appName, props.envName, props.radixJobComponentName, radixDeploymentName1, 1)
 			_, err := radixClient.RadixV1().RadixBatches(utils.GetEnvironmentNamespace(props.appName, props.envName)).Create(context.Background(), tt.existingRadixBatch, metav1.CreateOptions{})
 			require.NoError(t, err)
-			err = StopRadixBatch(context.Background(), radixClient, tt.radixBatchToStop)
+			err = StopRadixBatch(context.Background(), radixClient, props.appName, props.envName, props.radixJobComponentName, tt.radixBatchToStop.GetName())
 			if tt.expectedError != nil {
 				assert.EqualError(t, err, tt.expectedError.Error())
 			} else {
@@ -719,7 +719,7 @@ func TestStopRadixBatchJob(t *testing.T) {
 			radixClient, _, _, _ := testUtil.SetupTest(props.appName, props.envName, props.radixJobComponentName, radixDeploymentName1, 1)
 			_, err := radixClient.RadixV1().RadixBatches(utils.GetEnvironmentNamespace(props.appName, props.envName)).Create(context.Background(), tt.existingRadixBatch, metav1.CreateOptions{})
 			require.NoError(t, err)
-			err = StopRadixBatchJob(context.Background(), radixClient, tt.radixBatchToStop, tt.radixBatchJobToStop)
+			err = StopRadixBatchJob(context.Background(), radixClient, props.appName, props.envName, props.radixJobComponentName, tt.radixBatchToStop.GetName(), tt.radixBatchJobToStop)
 			if tt.expectedError != nil {
 				assert.EqualError(t, err, tt.expectedError.Error())
 			} else {
