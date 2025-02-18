@@ -177,9 +177,7 @@ func (handler *jobHandler) StopJob(ctx context.Context, jobName string) error {
 
 // StopAllJobs Stop all jobs
 func (handler *jobHandler) StopAllJobs(ctx context.Context) error {
-	logger := log.Ctx(ctx)
-	logger.Debug().Msgf("stop all jobs for namespace: %s", handler.common.Env.RadixDeploymentNamespace)
-	return apiv1.StopAllJobs(ctx, handler.common.HandlerApiV2)
+	return apiv1.StopAllSingleJobs(ctx, handler.common.HandlerApiV2)
 }
 
 func getSingleJobStatusFromRadixBatchJob(radixBatch *modelsv2.RadixBatch) (*modelsv1.JobStatus, error) {

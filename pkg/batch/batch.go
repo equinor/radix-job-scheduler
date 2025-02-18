@@ -200,7 +200,8 @@ func stopRadixBatch(ctx context.Context, radixClient versioned.Interface, radixB
 // StopAllRadixBatches Stop all batches
 func StopAllRadixBatches(ctx context.Context, radixClient versioned.Interface, namespace string, batchType kube.RadixBatchType) error {
 	logger := log.Ctx(ctx)
-	logger.Info().Msgf("stop all %s-s for namespace: %s", batchType, namespace)
+	batchTypePluralName := getBatchTypePluralName(batchType)
+	logger.Info().Msgf("stop all %s for namespace: %s", batchTypePluralName, namespace)
 	radixBatches, err := internal.GetRadixBatches(ctx, namespace, radixClient, radixLabels.ForComponentName(namespace))
 	if err != nil {
 		return err
@@ -212,7 +213,7 @@ func StopAllRadixBatches(ctx context.Context, radixClient versioned.Interface, n
 		return acc
 	})
 	if len(radixBatchesToStop) == 0 {
-		logger.Info().Msgf("no %s-s to stop", batchType)
+		logger.Info().Msgf("no %s to stop", batchTypePluralName)
 		return nil
 	}
 	var errs []error
@@ -222,9 +223,16 @@ func StopAllRadixBatches(ctx context.Context, radixClient versioned.Interface, n
 		}
 	}
 	if len(errs) > 0 {
-		return fmt.Errorf("failed to stop %d of %d %s-s: %w", len(errs), len(radixBatchesToStop), batchType, errors.Join(errs...))
+		return fmt.Errorf("failed to stop %d of %d %s: %w", len(errs), len(radixBatchesToStop), batchTypePluralName, errors.Join(errs...))
 	}
 	return nil
+}
+
+func getBatchTypePluralName(batchType kube.RadixBatchType) string {
+	if batchType == kube.RadixBatchTypeJob {
+		return "jobs"
+	}
+	return "batches"
 }
 
 // StopRadixBatchJob Stop a job

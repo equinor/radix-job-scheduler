@@ -75,11 +75,6 @@ func (controller *batchController) GetRoutes() []api.Route {
 			Method:  http.MethodPost,
 			Handler: controller.StopBatchJob,
 		},
-		{
-			Path:    fmt.Sprintf("/batches/:%s/jobs/stop", batchNameParam),
-			Method:  http.MethodPost,
-			Handler: controller.StopAllBatchJobs,
-		},
 	}
 	return routes
 }
@@ -369,7 +364,7 @@ func (controller *batchController) StopAllBatches(c *gin.Context) {
 		return
 	}
 
-	logger.Info().Msg("Batches has been stopped")
+	logger.Info().Msg("Batches have been stopped")
 	status := schedulerModels.Status{
 		Status:  schedulerModels.StatusSuccess,
 		Code:    http.StatusOK,

@@ -55,8 +55,8 @@ func StopJob(ctx context.Context, handlerApiV2 apiv2.Handler, jobName string) er
 	return fmt.Errorf("stop of this job is not supported")
 }
 
-// StopAllJobs Stop alls jobs
-func StopAllJobs(ctx context.Context, handlerApiV2 apiv2.Handler) error {
+// StopAllSingleJobs Stop alls jobs
+func StopAllSingleJobs(ctx context.Context, handlerApiV2 apiv2.Handler) error {
 	return handlerApiV2.StopAllSingleRadixJobs(ctx)
 }
 
