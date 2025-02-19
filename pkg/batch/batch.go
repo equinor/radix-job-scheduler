@@ -202,7 +202,7 @@ func stopRadixBatchJob(ctx context.Context, radixClient versioned.Interface, app
 			return err
 		}
 		var foundBatch, foundJob bool
-		foundBatch, foundJob, externalError, err = stopJobsInBatches(radixBatches, batchName, err, jobName, radixClient, namespace, ctx)
+		foundBatch, foundJob, externalError, err = stopJobsInBatches(radixBatches, batchName, jobName, radixClient, namespace, ctx)
 		if err != nil {
 			return err
 		}
@@ -210,9 +210,9 @@ func stopRadixBatchJob(ctx context.Context, radixClient versioned.Interface, app
 			return nil
 		}
 		if len(batchName) > 0 && !foundBatch {
-			externalError = apiErrors.NewNotFound("batch", batchName)
+			externalError = k8sErrors.NewNotFound(radixv1.Resource("radixbatches"), batchName)
 		} else if len(jobName) > 0 && !foundJob {
-			externalError = apiErrors.NewNotFound("job", jobName)
+			externalError = k8sErrors.NewNotFound(radixv1.Resource("radixbatches.job"), jobName)
 		}
 		return nil
 	})
@@ -226,7 +226,7 @@ func stopRadixBatchJob(ctx context.Context, radixClient versioned.Interface, app
 	return nil
 }
 
-func stopJobsInBatches(radixBatches []*radixv1.RadixBatch, batchName string, err error, jobName string, radixClient versioned.Interface, namespace string, ctx context.Context) (bool, bool, error, error) {
+func stopJobsInBatches(radixBatches []*radixv1.RadixBatch, batchName string, jobName string, radixClient versioned.Interface, namespace string, ctx context.Context) (bool, bool, error, error) {
 	var foundBatch, foundJob, appliedChanges bool
 	var updateJobErrors []error
 	for _, radixBatch := range radixBatches {
@@ -247,7 +247,8 @@ func stopJobsInBatches(radixBatches []*radixv1.RadixBatch, batchName string, err
 			return false, false, apiErrors.NewBadRequest(fmt.Sprintf("cannot stop the batch %s with the status %s", batchName, radixBatch.Status.Condition.Type)), nil
 		}
 		newRadixBatch := radixBatch.DeepCopy()
-		foundJob, appliedChanges, err = stopJobsInBatch(newRadixBatch, jobName, foundJob, batchName, appliedChanges)
+		var err error
+		foundJob, appliedChanges, err = stopJobsInBatch(newRadixBatch, batchName, jobName, foundJob)
 		if err != nil {
 			return false, false, err, nil
 		}
@@ -264,7 +265,8 @@ func stopJobsInBatches(radixBatches []*radixv1.RadixBatch, batchName string, err
 	return foundBatch, foundJob, nil, nil
 }
 
-func stopJobsInBatch(radixBatch *radixv1.RadixBatch, jobName string, foundJob bool, batchName string, appliedChanges bool) (bool, bool, error) {
+func stopJobsInBatch(radixBatch *radixv1.RadixBatch, batchName string, jobName string, foundJob bool) (bool, bool, error) {
+	var appliedChanges bool
 	for jobIndex, radixBatchJob := range radixBatch.Spec.Jobs {
 		if len(jobName) > 0 {
 			if strings.EqualFold(radixBatchJob.Name, jobName) {
