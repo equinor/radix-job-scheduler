@@ -2,6 +2,7 @@ package batch
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -201,6 +202,7 @@ func stopRadixBatchJob(ctx context.Context, radixClient versioned.Interface, app
 		if err != nil {
 			return err
 		}
+		var errs []error
 		for _, radixBatch := range radixBatches {
 			if len(batchName) > 0 {
 				if strings.EqualFold(radixBatch.GetName(), batchName) {
@@ -209,8 +211,16 @@ func stopRadixBatchJob(ctx context.Context, radixClient versioned.Interface, app
 					continue
 				}
 			}
+			batchIsForSingleJob := radixBatch.GetLabels()[kube.RadixBatchTypeLabel] == string(kube.RadixBatchTypeJob)
 			if !isBatchStoppable(radixBatch.Status.Condition) {
-				externalError = apiErrors.NewBadRequest(fmt.Sprintf("cannot stop completed batch %s", batchName))
+				if len(batchName) == 0 {
+					continue
+				}
+				if batchIsForSingleJob {
+					externalError = apiErrors.NewBadRequest(fmt.Sprintf("cannot stop the job %s with the status %s", radixBatch.GetName(), radixBatch.Status.Condition.Type))
+				} else {
+					externalError = apiErrors.NewBadRequest(fmt.Sprintf("cannot stop the batch %s with the status %s", batchName, radixBatch.Status.Condition.Type))
+				}
 				return nil
 			}
 			newRadixBatch := radixBatch.DeepCopy()
@@ -226,7 +236,7 @@ func stopRadixBatchJob(ctx context.Context, radixClient versioned.Interface, app
 					return status.Name == radixBatchJob.Name
 				}); ok &&
 					(internal.IsRadixBatchJobSucceeded(jobStatus) || internal.IsRadixBatchJobFailed(jobStatus)) {
-					if len(batchName) > 0 && radixBatch.GetLabels()[kube.RadixBatchTypeLabel] == string(kube.RadixBatchTypeJob) {
+					if len(batchName) > 0 && batchIsForSingleJob {
 						externalError = apiErrors.NewBadRequest(fmt.Sprintf("cannot stop the job %s with the status %s", radixBatch.GetName(), jobStatus.Phase))
 						return nil
 					}
@@ -244,16 +254,18 @@ func stopRadixBatchJob(ctx context.Context, radixClient versioned.Interface, app
 			}
 			if appliedChanges {
 				_, err = radixClient.RadixV1().RadixBatches(namespace).Update(ctx, newRadixBatch, metav1.UpdateOptions{})
-				return err
+				if err != nil {
+					errs = append(errs, err)
+				}
 			}
+		}
+		if len(errs) > 0 {
+			return errors.Join(errs...)
 		}
 		if len(batchName) > 0 && !foundBatch {
 			externalError = apiErrors.NewNotFound("batch", batchName)
-			return nil
-		}
-		if len(jobName) > 0 && !foundJob {
+		} else if len(jobName) > 0 && !foundJob {
 			externalError = apiErrors.NewNotFound("job", jobName)
-			return nil
 		}
 		return nil
 	})
