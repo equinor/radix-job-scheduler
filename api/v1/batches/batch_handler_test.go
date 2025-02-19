@@ -111,8 +111,8 @@ func TestStopBatch(t *testing.T) {
 		appName, appEnvironment, appJobComponent, appDeployment := "app", "qa", "compute", "app-deploy-1"
 		envNamespace := utils.GetEnvironmentNamespace(appName, appEnvironment)
 		radixClient, kubeClient, _, kubeUtil := testUtil.SetupTest(appName, appEnvironment, appJobComponent, appDeployment, 1)
-		radixBatch1 := test.AddRadixBatch(radixClient, "test-batch1-job1", appJobComponent, kube.RadixBatchTypeJob, envNamespace)
-		radixBatch2 := test.AddRadixBatch(radixClient, "test-batch2-job1", appJobComponent, kube.RadixBatchTypeJob, envNamespace)
+		radixBatch1 := test.AddRadixBatch(radixClient, "test-batch1-job1", appJobComponent, kube.RadixBatchTypeBatch, envNamespace)
+		radixBatch2 := test.AddRadixBatch(radixClient, "test-batch2-job1", appJobComponent, kube.RadixBatchTypeBatch, envNamespace)
 		test.CreateSecretForTest(appName, radixBatch1.Spec.Jobs[0].PayloadSecretRef.Name, "test-batch1-job1", appJobComponent, envNamespace, kubeClient)
 		test.CreateSecretForTest(appName, radixBatch2.Spec.Jobs[0].PayloadSecretRef.Name, "test-batch2-job1", appJobComponent, envNamespace, kubeClient)
 		test.CreateSecretForTest(appName, "secret3", "test-batch3-job1", appJobComponent, envNamespace, kubeClient)
@@ -121,7 +121,7 @@ func TestStopBatch(t *testing.T) {
 
 		handler := New(kubeUtil, modelsEnv.NewEnv(), &radixDeployJobComponent)
 		err := handler.StopBatch(context.TODO(), "test-batch1")
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 		radixBatchList, _ := radixClient.RadixV1().RadixBatches("").List(context.TODO(), metav1.ListOptions{})
 		assert.Len(t, radixBatchList.Items, 2)
 		radixBatch1 = test.GetRadixBatchByNameForTest(radixBatchList.Items, "test-batch1-job1")

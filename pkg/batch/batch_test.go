@@ -640,7 +640,7 @@ func TestStopRadixBatch(t *testing.T) {
 			name:               "Radix batch does not exist",
 			existingRadixBatch: radixBatch1,
 			radixBatchToStop:   radixBatch2,
-			expectedError:      errors.New("failed to patch RadixBatch object: radixbatches.radix.equinor.com \"batch2\" not found"),
+			expectedError:      errors.New("batch batch2 not found"),
 		},
 	}
 	for _, tt := range tests {
@@ -683,14 +683,14 @@ func TestStopRadixBatchJob(t *testing.T) {
 			existingRadixBatch:  radixBatch1,
 			radixBatchToStop:    radixBatch2,
 			radixBatchJobToStop: jobName1,
-			expectedError:       errors.New("failed to patch RadixBatch object: radixbatches.radix.equinor.com \"batch2\" not found"),
+			expectedError:       errors.New("batch batch2 not found"),
 		},
 		{
 			name:                "Radix batch job does not exists",
 			existingRadixBatch:  radixBatch1,
 			radixBatchToStop:    radixBatch1,
 			radixBatchJobToStop: jobName4,
-			expectedError:       errors.New("batch job job4 not found"),
+			expectedError:       errors.New("job job4 not found"),
 		},
 		{
 			name:                "Radix batch job has stopped status",

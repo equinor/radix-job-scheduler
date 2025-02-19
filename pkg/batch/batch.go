@@ -2,7 +2,6 @@ package batch
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -184,18 +183,21 @@ func CopyRadixBatchOrJob(ctx context.Context, radixClient versioned.Interface, s
 
 // StopRadixBatch Stop a batch
 func StopRadixBatch(ctx context.Context, radixClient versioned.Interface, appName, envName, jobComponentName, batchName string) error {
-	return stopRadixBatchJob(ctx, radixClient, appName, envName, jobComponentName, batchName, "")
+	return stopRadixBatchJob(ctx, radixClient, appName, envName, jobComponentName, kube.RadixBatchTypeBatch, batchName, "")
 }
 
-func stopRadixBatchJob(ctx context.Context, radixClient versioned.Interface, appName string, envName string, jobComponentName string, batchName, jobName string) error {
+func stopRadixBatchJob(ctx context.Context, radixClient versioned.Interface, appName, envName, jobComponentName string, batchType kube.RadixBatchType, batchName, jobName string) error {
 	namespace := operatorUtils.GetEnvironmentNamespace(appName, envName)
 	logger := log.Ctx(ctx)
 	logger.Info().Msgf("stop the batch %s for the application %s, environment %s", batchName, appName, envName)
-	foundBatch := false
-	foundJob := false
+	selector := radixLabels.ForComponentName(jobComponentName)
+	if batchType != "" {
+		selector[kube.RadixBatchTypeLabel] = string(batchType)
+	}
+	var foundBatch, foundJob, appliedChanges bool
 	var externalError error
 	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		radixBatches, err := internal.GetRadixBatches(ctx, radixClient, namespace, radixLabels.ForComponentName(jobComponentName))
+		radixBatches, err := internal.GetRadixBatches(ctx, radixClient, namespace, selector)
 		if err != nil {
 			return err
 		}
@@ -224,12 +226,26 @@ func stopRadixBatchJob(ctx context.Context, radixClient versioned.Interface, app
 					return status.Name == radixBatchJob.Name
 				}); ok &&
 					(internal.IsRadixBatchJobSucceeded(jobStatus) || internal.IsRadixBatchJobFailed(jobStatus)) {
+					if len(batchName) > 0 && radixBatch.GetLabels()[kube.RadixBatchTypeLabel] == string(kube.RadixBatchTypeJob) {
+						externalError = apiErrors.NewBadRequest(fmt.Sprintf("cannot stop the job %s with the status %s", radixBatch.GetName(), jobStatus.Phase))
+						return nil
+					}
+					if len(jobName) > 0 {
+						externalError = apiErrors.NewBadRequest(fmt.Sprintf("cannot stop the job %s with the status %s in the batch %s", jobName, jobStatus.Phase, batchName))
+						return nil
+					}
 					continue
 				}
 				newRadixBatch.Spec.Jobs[jobIndex].Stop = pointers.Ptr(true)
+				appliedChanges = true
+				if foundJob {
+					break
+				}
 			}
-			_, err = radixClient.RadixV1().RadixBatches(namespace).Update(ctx, newRadixBatch, metav1.UpdateOptions{})
-			return err
+			if appliedChanges {
+				_, err = radixClient.RadixV1().RadixBatches(namespace).Update(ctx, newRadixBatch, metav1.UpdateOptions{})
+				return err
+			}
 		}
 		if len(batchName) > 0 && !foundBatch {
 			externalError = apiErrors.NewNotFound("batch", batchName)
@@ -252,47 +268,13 @@ func stopRadixBatchJob(ctx context.Context, radixClient versioned.Interface, app
 }
 
 // StopAllRadixBatches Stop all batches
-func StopAllRadixBatches(ctx context.Context, radixClient versioned.Interface, appName, envName, componentName string, batchType kube.RadixBatchType) error {
-	namespace := operatorUtils.GetEnvironmentNamespace(appName, envName)
-	logger := log.Ctx(ctx)
-	batchTypePluralName := getBatchTypePluralName(batchType)
-	logger.Info().Msgf("stop all %s for the application %s, environment %s", batchTypePluralName, appName, envName)
-	radixBatches, err := internal.GetRadixBatches(ctx, radixClient, namespace, radixLabels.ForComponentName(componentName))
-	if err != nil {
-		return err
-	}
-	batchNamesToStop := slice.Reduce(radixBatches, []string{}, func(acc []string, radixBatch *radixv1.RadixBatch) []string {
-		if isBatchStoppable(radixBatch.Status.Condition) {
-			return append(acc, radixBatch.GetName())
-		}
-		return acc
-	})
-	if len(batchNamesToStop) == 0 {
-		logger.Info().Msgf("no %s to stop", batchTypePluralName)
-		return nil
-	}
-	var errs []error
-	for _, batchName := range batchNamesToStop {
-		if err := StopRadixBatch(ctx, radixClient, appName, envName, componentName, batchName); err != nil {
-			errs = append(errs, err)
-		}
-	}
-	if len(errs) > 0 {
-		return fmt.Errorf("failed to stop %d of %d %s: %w", len(errs), len(batchNamesToStop), batchTypePluralName, errors.Join(errs...))
-	}
-	return nil
-}
-
-func getBatchTypePluralName(batchType kube.RadixBatchType) string {
-	if batchType == kube.RadixBatchTypeJob {
-		return "jobs"
-	}
-	return "batches"
+func StopAllRadixBatches(ctx context.Context, radixClient versioned.Interface, appName, envName, jobComponentName string, batchType kube.RadixBatchType) error {
+	return stopRadixBatchJob(ctx, radixClient, appName, envName, jobComponentName, batchType, "", "")
 }
 
 // StopRadixBatchJob Stop a job
 func StopRadixBatchJob(ctx context.Context, radixClient versioned.Interface, appName, envName, jobComponentName, batchName, jobName string) error {
-	return stopRadixBatchJob(ctx, radixClient, appName, envName, jobComponentName, batchName, jobName)
+	return stopRadixBatchJob(ctx, radixClient, appName, envName, jobComponentName, "", batchName, jobName)
 }
 
 // RestartRadixBatch Restart a batch

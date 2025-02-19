@@ -540,7 +540,7 @@ func TestStopJob(t *testing.T) {
 
 		handler := New(kubeUtil, modelsEnv.NewEnv(), &radixDeployJobComponent)
 		err := handler.StopJob(context.TODO(), jobName)
-		assert.NotNil(t, err)
+		assert.Error(t, err)
 		assert.Equal(t, models.StatusReasonNotFound, apiErrors.ReasonForError(err))
 	})
 
