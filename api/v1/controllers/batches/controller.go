@@ -85,34 +85,33 @@ func (controller *batchController) CreateBatch(c *gin.Context) {
 	// ---
 	// summary: Create batch
 	// parameters:
-	//   - name: batchCreation
-	//     in: body
-	//     description: Batch to create
-	//     required: true
-	//     schema:
+	// - name: batchCreation
+	//   in: body
+	//   description: Batch to create
+	//   required: true
+	//   schema:
 	//     "$ref": "#/definitions/BatchScheduleDescription"
 	//
 	// responses:
-	//
-	//	"200":
-	//	  description: "Successful create batch"
-	//	  schema:
+	//	 "200":
+	//	   description: "Successful create batch"
+	//	   schema:
 	//	     "$ref": "#/definitions/BatchStatus"
-	//	"400":
-	//	  description: "Bad request"
-	//	  schema:
+	//	 "400":
+	//	   description: "Bad request"
+	//	   schema:
 	//	     "$ref": "#/definitions/Status"
-	//	"404":
-	//	  description: "Not found"
-	//	  schema:
+	//	 "404":
+	//	   description: "Not found"
+	//	   schema:
 	//	     "$ref": "#/definitions/Status"
-	//	"422":
-	//	  description: "Invalid data in request"
-	//	  schema:
+	//	 "422":
+	//	   description: "Invalid data in request"
+	//	   schema:
 	//	     "$ref": "#/definitions/Status"
-	//	"500":
-	//	  description: "Internal server error"
-	//	  schema:
+	//	 "500":
+	//	   description: "Internal server error"
+	//	   schema:
 	//	     "$ref": "#/definitions/Status"
 	logger := log.Ctx(c.Request.Context())
 	logger.Info().Msg("Create Batch")
@@ -145,16 +144,15 @@ func (controller *batchController) GetBatches(c *gin.Context) {
 	// summary: Gets batches
 	// parameters:
 	// responses:
-	//
-	//	"200":
-	//	  description: "Successful get batches"
-	//	  schema:
-	//	     type: "array"
-	//	     items:
-	//	        "$ref": "#/definitions/BatchStatus"
-	//	"500":
-	//	  description: "Internal server error"
-	//	  schema:
+	//	 "200":
+	//	   description: "Successful get batches"
+	//	   schema:
+	//	    type: "array"
+	//	    items:
+	//	      "$ref": "#/definitions/BatchStatus"
+	//	 "500":
+	//	   description: "Internal server error"
+	//	   schema:
 	//	     "$ref": "#/definitions/Status"
 	logger := log.Ctx(c.Request.Context())
 	logger.Info().Msg("Get batch list")
@@ -173,25 +171,24 @@ func (controller *batchController) GetBatch(c *gin.Context) {
 	// ---
 	// summary: Gets batch
 	// parameters:
-	//   - name: batchName
-	//     in: path
-	//     description: Name of batch
-	//     type: string
-	//     required: true
+	// - name: batchName
+	//   in: path
+	//   description: Name of batch
+	//   type: string
+	//   required: true
 	//
 	// responses:
-	//
-	//	"200":
-	//	  description: "Successful get batch"
-	//	  schema:
+	//	 "200":
+	//	   description: "Successful get batch"
+	//	   schema:
 	//	     "$ref": "#/definitions/BatchStatus"
-	//	"404":
-	//	  description: "Not found"
-	//	  schema:
+	//	 "404":
+	//	   description: "Not found"
+	//	   schema:
 	//	     "$ref": "#/definitions/Status"
-	//	"500":
-	//	  description: "Internal server error"
-	//	  schema:
+	//	 "500":
+	//	   description: "Internal server error"
+	//	   schema:
 	//	     "$ref": "#/definitions/Status"
 	batchName := c.Param(batchNameParam)
 	logger := log.Ctx(c.Request.Context())
@@ -210,30 +207,29 @@ func (controller *batchController) GetBatchJob(c *gin.Context) {
 	// ---
 	// summary: Gets batch job
 	// parameters:
-	//   - name: batchName
-	//     in: path
-	//     description: Name of batch
-	//     type: string
-	//     required: true
-	//   - name: jobName
-	//     in: path
-	//     description: Name of job
-	//     type: string
-	//     required: true
+	// - name: batchName
+	//   in: path
+	//   description: Name of batch
+	//   type: string
+	//   required: true
+	// - name: jobName
+	//   in: path
+	//   description: Name of job
+	//   type: string
+	//   required: true
 	//
 	// responses:
-	//
-	//	"200":
-	//	  description: "Successful get job"
-	//	  schema:
+	//	 "200":
+	//	   description: "Successful get job"
+	//	   schema:
 	//	     "$ref": "#/definitions/JobStatus"
-	//	"404":
-	//	  description: "Not found"
-	//	  schema:
+	//	 "404":
+	//	   description: "Not found"
+	//	   schema:
 	//	     "$ref": "#/definitions/Status"
-	//	"500":
-	//	  description: "Internal server error"
-	//	  schema:
+	//	 "500":
+	//	   description: "Internal server error"
+	//	   schema:
 	//	     "$ref": "#/definitions/Status"
 	batchName := c.Param(batchNameParam)
 	jobName := c.Param(jobNameParam)
@@ -253,25 +249,24 @@ func (controller *batchController) DeleteBatch(c *gin.Context) {
 	// ---
 	// summary: Delete batch
 	// parameters:
-	//   - name: batchName
-	//     in: path
-	//     description: Name of batch
-	//     type: string
-	//     required: true
+	// - name: batchName
+	//   in: path
+	//   description: Name of batch
+	//   type: string
+	//   required: true
 	//
 	// responses:
-	//
-	//	"200":
-	//	  description: "Successful delete batch"
-	//	  schema:
+	//	 "200":
+	//	   description: "Successful delete batch"
+	//	   schema:
 	//	     "$ref": "#/definitions/Status"
-	//	"404":
-	//	  description: "Not found"
-	//	  schema:
+	//	 "404":
+	//	   description: "Not found"
+	//	   schema:
 	//	     "$ref": "#/definitions/Status"
-	//	"500":
-	//	  description: "Internal server error"
-	//	  schema:
+	//	 "500":
+	//	   description: "Internal server error"
+	//	   schema:
 	//	     "$ref": "#/definitions/Status"
 	batchName := c.Param(batchNameParam)
 	logger := log.Ctx(c.Request.Context())
@@ -297,29 +292,28 @@ func (controller *batchController) StopBatch(c *gin.Context) {
 	// ---
 	// summary: Stop batch
 	// parameters:
-	//   - name: batchName
-	//     in: path
-	//     description: Name of batch
-	//     type: string
-	//     required: true
+	// - name: batchName
+	//   in: path
+	//   description: Name of batch
+	//   type: string
+	//   required: true
 	//
 	// responses:
-	//
-	//	"200":
-	//	  description: "Successful stop batch"
-	//	  schema:
+	//	 "200":
+	//	   description: "Successful stop batch"
+	//	   schema:
 	//	     "$ref": "#/definitions/Status"
-	//	"400":
-	//	  description: "Bad request"
-	//	  schema:
+	//	 "400":
+	//	   description: "Bad request"
+	//	   schema:
 	//	     "$ref": "#/definitions/Status"
-	//	"404":
-	//	  description: "Not found"
-	//	  schema:
+	//	 "404":
+	//	   description: "Not found"
+	//	   schema:
 	//	     "$ref": "#/definitions/Status"
-	//	"500":
-	//	  description: "Internal server error"
-	//	  schema:
+	//	 "500":
+	//	   description: "Internal server error"
+	//	   schema:
 	//	     "$ref": "#/definitions/Status"
 	batchName := c.Param(batchNameParam)
 	logger := log.Ctx(c.Request.Context())
@@ -345,34 +339,32 @@ func (controller *batchController) StopBatchJob(c *gin.Context) {
 	// ---
 	// summary: Stop batch job
 	// parameters:
-	//   - name: batchName
-	//     in: path
-	//     description: Name of batch
-	//     type: string
-	//     required: true
-	//   - name: jobName
-	//     in: path
-	//     description: Name of job
-	//     type: string
-	//     required: true
-	//
+	// - name: batchName
+	//   in: path
+	//   description: Name of batch
+	//   type: string
+	//   required: true
+	// - name: jobName
+	//   in: path
+	//   description: Name of job
+	//   type: string
+	//   required: true
 	// responses:
-	//
-	//	"200":
-	//	  description: "Successful stop batch job"
-	//	  schema:
+	//	 "200":
+	//	   description: "Successful stop batch job"
+	//	   schema:
 	//	     "$ref": "#/definitions/Status"
-	//	"400":
-	//	  description: "Bad request"
-	//	  schema:
+	//	 "400":
+	//	   description: "Bad request"
+	//	   schema:
 	//	     "$ref": "#/definitions/Status"
-	//	"404":
-	//	  description: "Not found"
-	//	  schema:
+	//	 "404":
+	//	   description: "Not found"
+	//	   schema:
 	//	     "$ref": "#/definitions/Status"
-	//	"500":
-	//	  description: "Internal server error"
-	//	  schema:
+	//	 "500":
+	//	   description: "Internal server error"
+	//	   schema:
 	//	     "$ref": "#/definitions/Status"
 	batchName := c.Param(batchNameParam)
 	jobName := c.Param(jobNameParam)
@@ -400,22 +392,21 @@ func (controller *batchController) StopAllBatches(c *gin.Context) {
 	// ---
 	// summary: Stop all batches
 	// responses:
-	//
-	//	"200":
-	//	  description: "Successful stop batch job"
-	//	  schema:
+	//	 "200":
+	//	   description: "Successful stop batch job"
+	//	   schema:
 	//	     "$ref": "#/definitions/Status"
-	//	"400":
-	//	  description: "Bad request"
-	//	  schema:
+	//	 "400":
+	//	   description: "Bad request"
+	//	   schema:
 	//	     "$ref": "#/definitions/Status"
-	//	"404":
-	//	  description: "Not found"
-	//	  schema:
+	//	 "404":
+	//	   description: "Not found"
+	//	   schema:
 	//	     "$ref": "#/definitions/Status"
-	//	"500":
-	//	  description: "Internal server error"
-	//	  schema:
+	//	 "500":
+	//	   description: "Internal server error"
+	//	   schema:
 	//	     "$ref": "#/definitions/Status"
 	logger := log.Ctx(c.Request.Context())
 	logger.Info().Msg("Stop all batches")

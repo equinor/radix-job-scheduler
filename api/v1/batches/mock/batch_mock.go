@@ -139,20 +139,6 @@ func (mr *MockBatchHandlerMockRecorder) StopAllBatches(ctx interface{}) *gomock.
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StopAllBatches", reflect.TypeOf((*MockBatchHandler)(nil).StopAllBatches), ctx)
 }
 
-// StopAllSingleJobs mocks base method.
-func (m *MockBatchHandler) StopAllSingleJobs(ctx context.Context) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "StopAllSingleJobs", ctx)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// StopAllSingleJobs indicates an expected call of StopAllSingleJobs.
-func (mr *MockBatchHandlerMockRecorder) StopAllSingleJobs(ctx interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StopAllSingleJobs", reflect.TypeOf((*MockBatchHandler)(nil).StopAllSingleJobs), ctx)
-}
-
 // StopBatch mocks base method.
 func (m *MockBatchHandler) StopBatch(ctx context.Context, batchName string) error {
 	m.ctrl.T.Helper()

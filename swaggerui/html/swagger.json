@@ -29,13 +29,47 @@
         "operationId": "createBatch",
         "parameters": [
           {
-            "$ref": "#/definitions/BatchScheduleDescription",
             "description": "Batch to create",
             "name": "batchCreation",
             "in": "body",
-            "required": true
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/BatchScheduleDescription"
+            }
           }
-        ]
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful create batch",
+            "schema": {
+              "$ref": "#/definitions/BatchStatus"
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          },
+          "422": {
+            "description": "Invalid data in request",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        }
       }
     },
     "/batches/": {
@@ -44,7 +78,24 @@
           "Batch"
         ],
         "summary": "Gets batches",
-        "operationId": "getBatches"
+        "operationId": "getBatches",
+        "responses": {
+          "200": {
+            "description": "Successful get batches",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/BatchStatus"
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        }
       }
     },
     "/batches/stop": {
@@ -53,7 +104,33 @@
           "Batch"
         ],
         "summary": "Stop all batches",
-        "operationId": "stopAllBatches"
+        "operationId": "stopAllBatches",
+        "responses": {
+          "200": {
+            "description": "Successful stop batch job",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        }
       }
     },
     "/batches/{batchName}": {
@@ -71,7 +148,27 @@
             "in": "path",
             "required": true
           }
-        ]
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful get batch",
+            "schema": {
+              "$ref": "#/definitions/BatchStatus"
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        }
       },
       "delete": {
         "tags": [
@@ -87,7 +184,27 @@
             "in": "path",
             "required": true
           }
-        ]
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful delete batch",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        }
       }
     },
     "/batches/{batchName}/jobs/{jobName}": {
@@ -112,7 +229,27 @@
             "in": "path",
             "required": true
           }
-        ]
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful get job",
+            "schema": {
+              "$ref": "#/definitions/JobStatus"
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        }
       }
     },
     "/batches/{batchName}/jobs/{jobName}/stop": {
@@ -137,7 +274,33 @@
             "in": "path",
             "required": true
           }
-        ]
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful stop batch job",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        }
       }
     },
     "/batches/{batchName}/stop": {
@@ -155,7 +318,33 @@
             "in": "path",
             "required": true
           }
-        ]
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful stop batch",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        }
       }
     },
     "/jobs": {
@@ -167,13 +356,47 @@
         "operationId": "createJob",
         "parameters": [
           {
-            "$ref": "#/definitions/JobScheduleDescription",
             "description": "Job to create",
             "name": "jobCreation",
             "in": "body",
-            "required": true
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/JobScheduleDescription"
+            }
           }
-        ]
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful create job",
+            "schema": {
+              "$ref": "#/definitions/JobStatus"
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          },
+          "422": {
+            "description": "Invalid data in request",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        }
       }
     },
     "/jobs/": {
@@ -182,7 +405,24 @@
           "Job"
         ],
         "summary": "Gets jobs",
-        "operationId": "getJobs"
+        "operationId": "getJobs",
+        "responses": {
+          "200": {
+            "description": "Successful get jobs",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/JobStatus"
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        }
       }
     },
     "/jobs/stop": {
@@ -191,7 +431,33 @@
           "Job"
         ],
         "summary": "Stop all jobs",
-        "operationId": "stopAllJobs"
+        "operationId": "stopAllJobs",
+        "responses": {
+          "200": {
+            "description": "Successful delete job",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        }
       }
     },
     "/jobs/{jobName}": {
@@ -209,7 +475,27 @@
             "in": "path",
             "required": true
           }
-        ]
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful get job",
+            "schema": {
+              "$ref": "#/definitions/JobStatus"
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        }
       },
       "delete": {
         "tags": [
@@ -225,7 +511,27 @@
             "in": "path",
             "required": true
           }
-        ]
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful delete job",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        }
       }
     },
     "/jobs/{jobName}/stop": {
@@ -243,7 +549,33 @@
             "in": "path",
             "required": true
           }
-        ]
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful delete job",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        }
       }
     }
   },
