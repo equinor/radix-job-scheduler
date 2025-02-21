@@ -282,6 +282,7 @@ func (controller *jobController) StopJob(c *gin.Context) {
 }
 
 // swagger:operation POST /jobs/stop Job stopAllJobs
+// ---
 // summary: Stop all jobs
 // responses:
 //
