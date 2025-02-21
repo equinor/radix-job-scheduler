@@ -377,6 +377,7 @@ func (controller *batchController) StopBatchJob(c *gin.Context) {
 	batchName := c.Param(batchNameParam)
 	jobName := c.Param(jobNameParam)
 	logger := log.Ctx(c.Request.Context())
+
 	logger.Info().Msgf("Stop the job %s in the batch %s ", jobName, batchName)
 	err := controller.handler.StopBatchJob(c.Request.Context(), batchName, jobName)
 	if err != nil {
