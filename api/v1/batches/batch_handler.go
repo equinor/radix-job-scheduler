@@ -39,10 +39,10 @@ type BatchHandler interface {
 	DeleteBatch(ctx context.Context, batchName string) error
 	// StopBatch Stop a batch
 	StopBatch(ctx context.Context, batchName string) error
-	// StopAllBatches Stop all batches
-	StopAllBatches(ctx context.Context) error
 	// StopBatchJob Stop a batch job
 	StopBatchJob(ctx context.Context, batchName, jobName string) error
+	// StopAllBatches Stop all batches
+	StopAllBatches(ctx context.Context) error
 }
 
 // New Constructor of the batch handler

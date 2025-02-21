@@ -107,7 +107,7 @@
         "operationId": "stopAllBatches",
         "responses": {
           "200": {
-            "description": "Successful stop batch job",
+            "description": "Successfully stopped batches",
             "schema": {
               "$ref": "#/definitions/Status"
             }
@@ -434,7 +434,7 @@
         "operationId": "stopAllJobs",
         "responses": {
           "200": {
-            "description": "Successful delete job",
+            "description": "Successfully stopped jobs",
             "schema": {
               "$ref": "#/definitions/Status"
             }

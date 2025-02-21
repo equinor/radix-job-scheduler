@@ -393,7 +393,7 @@ func (controller *batchController) StopAllBatches(c *gin.Context) {
 	// summary: Stop all batches
 	// responses:
 	//	 "200":
-	//	   description: "Successful stop batch job"
+	//	   description: "Successfully stopped batches"
 	//	   schema:
 	//	     "$ref": "#/definitions/Status"
 	//	 "400":

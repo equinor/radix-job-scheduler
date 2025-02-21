@@ -287,7 +287,7 @@ func (controller *jobController) StopAllJobs(c *gin.Context) {
 	// summary: Stop all jobs
 	// responses:
 	//	 "200":
-	//	   description: "Successful delete job"
+	//	   description: "Successfully stopped jobs"
 	//	   schema:
 	//	     "$ref": "#/definitions/Status"
 	//	 "400":

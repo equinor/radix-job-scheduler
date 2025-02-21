@@ -58,8 +58,12 @@ mocks: bootstrap
 	mockgen -source ./pkg/notifications/notifier.go -destination ./pkg/notifications/notifier_mock.go -package notifications
 	mockgen -source ./pkg/batch/history.go -destination ./pkg/batch/history_mock.go -package batch
 
+.PHONY: tidy
+tidy:
+	go mod tidy
+
 .PHONY: generate
-generate: swagger mocks
+generate: tidy swagger mocks
 
 .PHONY: verify-generate
 verify-generate: generate
