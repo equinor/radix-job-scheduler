@@ -333,46 +333,6 @@ func (controller *batchController) StopBatch(c *gin.Context) {
 	c.JSON(http.StatusOK, &status)
 }
 
-// swagger:operation POST /batches/stop Batch stopAllBatches
-// ---
-// summary: Stop all batches
-//
-// responses:
-//
-//	"200":
-//	  description: "Successful stop batch"
-//	  schema:
-//	     "$ref": "#/definitions/Status"
-//	"400":
-//	  description: "Bad request"
-//	  schema:
-//	     "$ref": "#/definitions/Status"
-//	"404":
-//	  description: "Not found"
-//	  schema:
-//	     "$ref": "#/definitions/Status"
-//	"500":
-//	  description: "Internal server error"
-//	  schema:
-//	     "$ref": "#/definitions/Status"
-func (controller *batchController) StopAllBatches(c *gin.Context) {
-	logger := log.Ctx(c.Request.Context())
-	logger.Info().Msg("Stop all batches")
-	err := controller.handler.StopAllBatches(c.Request.Context())
-	if err != nil {
-		controller.HandleError(c, err)
-		return
-	}
-
-	logger.Info().Msg("Batches have been stopped")
-	status := schedulerModels.Status{
-		Status:  schedulerModels.StatusSuccess,
-		Code:    http.StatusOK,
-		Message: "batches successfully stopped",
-	}
-	c.JSON(http.StatusOK, &status)
-}
-
 // swagger:operation POST /batches/{batchName}/jobs/{jobName}/stop Batch stopBatchJob
 // ---
 // summary: Stop batch job
@@ -422,6 +382,45 @@ func (controller *batchController) StopBatchJob(c *gin.Context) {
 		Status:  schedulerModels.StatusSuccess,
 		Code:    http.StatusOK,
 		Message: fmt.Sprintf("job %s in the batch %s successfully stopped", jobName, batchName),
+	}
+	c.JSON(http.StatusOK, &status)
+}
+
+// swagger:operation POST /batches/stop Batch stopAllBatches
+// ---
+// summary: Stop all batches
+// responses:
+//
+//	"200":
+//	  description: "Successful stop batch job"
+//	  schema:
+//	     "$ref": "#/definitions/Status"
+//	"400":
+//	  description: "Bad request"
+//	  schema:
+//	     "$ref": "#/definitions/Status"
+//	"404":
+//	  description: "Not found"
+//	  schema:
+//	     "$ref": "#/definitions/Status"
+//	"500":
+//	  description: "Internal server error"
+//	  schema:
+//	     "$ref": "#/definitions/Status"
+func (controller *batchController) StopAllBatches(c *gin.Context) {
+	logger := log.Ctx(c.Request.Context())
+	logger.Info().Msg("Stop all batches")
+	err := controller.handler.StopAllBatches(c.Request.Context())
+	if err != nil {
+		controller.HandleError(c, err)
+		return
+	}
+
+	logger.Info().Msg("Batches have been stopped")
+	status := schedulerModels.Status{
+		Status:  schedulerModels.StatusSuccess,
+		Code:    http.StatusOK,
+		Message: "batches successfully stopped",
 	}
 	c.JSON(http.StatusOK, &status)
 }
