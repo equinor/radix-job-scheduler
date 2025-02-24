@@ -36,6 +36,8 @@ type JobHandler interface {
 	DeleteJob(ctx context.Context, jobName string) error
 	// StopJob Stop a job
 	StopJob(ctx context.Context, jobName string) error
+	// StopAllJobs Stop all jobs
+	StopAllJobs(ctx context.Context) error
 }
 
 // New Constructor for job handler
@@ -171,6 +173,11 @@ func (handler *jobHandler) StopJob(ctx context.Context, jobName string) error {
 	logger := log.Ctx(ctx)
 	logger.Debug().Msgf("stop the job %s for namespace: %s", jobName, handler.common.Env.RadixDeploymentNamespace)
 	return apiv1.StopJob(ctx, handler.common.HandlerApiV2, jobName)
+}
+
+// StopAllJobs Stop all jobs
+func (handler *jobHandler) StopAllJobs(ctx context.Context) error {
+	return apiv1.StopAllSingleJobs(ctx, handler.common.HandlerApiV2, handler.common.Env.RadixComponentName)
 }
 
 func getSingleJobStatusFromRadixBatchJob(radixBatch *modelsv2.RadixBatch) (*modelsv1.JobStatus, error) {

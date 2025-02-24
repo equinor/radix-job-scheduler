@@ -40,7 +40,9 @@ type BatchHandler interface {
 	// StopBatch Stop a batch
 	StopBatch(ctx context.Context, batchName string) error
 	// StopBatchJob Stop a batch job
-	StopBatchJob(ctx context.Context, batchName string, jobName string) error
+	StopBatchJob(ctx context.Context, batchName, jobName string) error
+	// StopAllBatches Stop all batches
+	StopAllBatches(ctx context.Context) error
 }
 
 // New Constructor of the batch handler
@@ -143,6 +145,11 @@ func (handler *batchHandler) StopBatch(ctx context.Context, batchName string) er
 	logger := log.Ctx(ctx)
 	logger.Debug().Msgf("delete batch %s for namespace: %s", batchName, handler.common.Env.RadixDeploymentNamespace)
 	return handler.common.HandlerApiV2.StopRadixBatch(ctx, batchName)
+}
+
+// StopAllBatches Stop all batches
+func (handler *batchHandler) StopAllBatches(ctx context.Context) error {
+	return handler.common.HandlerApiV2.StopAllRadixBatches(ctx)
 }
 
 // StopBatchJob Stop a batch job

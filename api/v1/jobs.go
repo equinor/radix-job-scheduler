@@ -55,6 +55,11 @@ func StopJob(ctx context.Context, handlerApiV2 apiv2.Handler, jobName string) er
 	return fmt.Errorf("stop of this job is not supported")
 }
 
+// StopAllSingleJobs Stop alls jobs
+func StopAllSingleJobs(ctx context.Context, handlerApiV2 apiv2.Handler, componentName string) error {
+	return handlerApiV2.StopAllSingleRadixJobs(ctx)
+}
+
 // GetBatchJob Get batch job
 func GetBatchJob(ctx context.Context, handlerApiV2 apiv2.Handler, batchName, jobName string) (*modelsv1.JobStatus, error) {
 	radixBatch, err := handlerApiV2.GetRadixBatch(ctx, batchName)

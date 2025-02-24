@@ -183,6 +183,34 @@ func (mr *MockHandlerMockRecorder) RestartRadixBatchJob(ctx, batchName, jobName 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RestartRadixBatchJob", reflect.TypeOf((*MockHandler)(nil).RestartRadixBatchJob), ctx, batchName, jobName)
 }
 
+// StopAllRadixBatches mocks base method.
+func (m *MockHandler) StopAllRadixBatches(ctx context.Context) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StopAllRadixBatches", ctx)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// StopAllRadixBatches indicates an expected call of StopAllRadixBatches.
+func (mr *MockHandlerMockRecorder) StopAllRadixBatches(ctx interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StopAllRadixBatches", reflect.TypeOf((*MockHandler)(nil).StopAllRadixBatches), ctx)
+}
+
+// StopAllSingleRadixJobs mocks base method.
+func (m *MockHandler) StopAllSingleRadixJobs(ctx context.Context) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StopAllSingleRadixJobs", ctx)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// StopAllSingleRadixJobs indicates an expected call of StopAllSingleRadixJobs.
+func (mr *MockHandlerMockRecorder) StopAllSingleRadixJobs(ctx interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StopAllSingleRadixJobs", reflect.TypeOf((*MockHandler)(nil).StopAllSingleRadixJobs), ctx)
+}
+
 // StopRadixBatch mocks base method.
 func (m *MockHandler) StopRadixBatch(ctx context.Context, batchName string) error {
 	m.ctrl.T.Helper()

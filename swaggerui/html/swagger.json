@@ -98,6 +98,41 @@
         }
       }
     },
+    "/batches/stop": {
+      "post": {
+        "tags": [
+          "Batch"
+        ],
+        "summary": "Stop all batches",
+        "operationId": "stopAllBatches",
+        "responses": {
+          "200": {
+            "description": "Successfully stopped batches",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        }
+      }
+    },
     "/batches/{batchName}": {
       "get": {
         "tags": [
@@ -379,6 +414,41 @@
               "items": {
                 "$ref": "#/definitions/JobStatus"
               }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        }
+      }
+    },
+    "/jobs/stop": {
+      "post": {
+        "tags": [
+          "Job"
+        ],
+        "summary": "Stop all jobs",
+        "operationId": "stopAllJobs",
+        "responses": {
+          "200": {
+            "description": "Successfully stopped jobs",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "schema": {
+              "$ref": "#/definitions/Status"
             }
           },
           "500": {

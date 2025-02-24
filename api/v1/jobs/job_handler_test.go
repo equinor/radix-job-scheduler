@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/equinor/radix-common/utils/pointers"
+	"github.com/equinor/radix-common/utils/slice"
 	apiErrors "github.com/equinor/radix-job-scheduler/api/errors"
 	"github.com/equinor/radix-job-scheduler/api/test"
 	"github.com/equinor/radix-job-scheduler/internal"
@@ -13,7 +14,7 @@ import (
 	modelsEnv "github.com/equinor/radix-job-scheduler/models"
 	models "github.com/equinor/radix-job-scheduler/models/common"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
-	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
+	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/equinor/radix-operator/pkg/apis/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -134,7 +135,7 @@ func TestCreateJob(t *testing.T) {
 		assert.Equal(t, appJobComponent, radixBatch.Labels[kube.RadixComponentLabel])
 		assert.Equal(t, string(kube.RadixBatchTypeJob), radixBatch.Labels[kube.RadixBatchTypeLabel])
 		require.Len(t, radixBatch.Spec.Jobs, 1)
-		expectedJob := v1.RadixBatchJob{Name: batchJobName}
+		expectedJob := radixv1.RadixBatchJob{Name: batchJobName}
 		assert.Equal(t, expectedJob, radixBatch.Spec.Jobs[0])
 	})
 
@@ -165,11 +166,11 @@ func TestCreateJob(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, radixBatch.Spec.Jobs, 1)
 		batchJob := radixBatch.Spec.Jobs[0]
-		expectedBatchJob := v1.RadixBatchJob{
+		expectedBatchJob := radixv1.RadixBatchJob{
 			Name: jobName,
-			PayloadSecretRef: &v1.PayloadSecretKeySelector{
+			PayloadSecretRef: &radixv1.PayloadSecretKeySelector{
 				Key: jobName,
-				LocalObjectReference: v1.LocalObjectReference{
+				LocalObjectReference: radixv1.LocalObjectReference{
 					Name: fmt.Sprintf("%s-payloads-0", batchName),
 				},
 			},
@@ -253,14 +254,14 @@ func TestCreateJob(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, radixBatch.Spec.Jobs, 1)
 		// Test CPU resource set by request
-		expectedJob := v1.RadixBatchJob{
+		expectedJob := radixv1.RadixBatchJob{
 			Name: jobName,
-			Resources: &v1.ResourceRequirements{
-				Requests: v1.ResourceList{
+			Resources: &radixv1.ResourceRequirements{
+				Requests: radixv1.ResourceList{
 					"cpu":    "50m",
 					"memory": "60M",
 				},
-				Limits: v1.ResourceList{
+				Limits: radixv1.ResourceList{
 					"cpu":    "100m",
 					"memory": "120M",
 				},
@@ -343,9 +344,9 @@ func TestCreateJob(t *testing.T) {
 		radixBatch, err := radixClient.RadixV1().RadixBatches(envNamespace).Get(context.TODO(), batchName, metav1.GetOptions{})
 		require.NoError(t, err)
 		assert.Len(t, radixBatch.Spec.Jobs, 1)
-		expectedJob := v1.RadixBatchJob{
+		expectedJob := radixv1.RadixBatchJob{
 			Name: jobName,
-			Node: &v1.RadixNode{
+			Node: &radixv1.RadixNode{
 				Gpu:      "gpu1, gpu2",
 				GpuCount: "2",
 			},
@@ -392,14 +393,14 @@ func TestCreateJob(t *testing.T) {
 		radixBatch, err := radixClient.RadixV1().RadixBatches(envNamespace).Get(context.TODO(), batchName, metav1.GetOptions{})
 		require.NoError(t, err)
 		require.Len(t, radixBatch.Spec.Jobs, 1)
-		expectedJob := v1.RadixBatchJob{
+		expectedJob := radixv1.RadixBatchJob{
 			Name: jobName,
-			FailurePolicy: &v1.RadixJobComponentFailurePolicy{
-				Rules: []v1.RadixJobComponentFailurePolicyRule{
+			FailurePolicy: &radixv1.RadixJobComponentFailurePolicy{
+				Rules: []radixv1.RadixJobComponentFailurePolicyRule{
 					{
-						Action: v1.RadixJobComponentFailurePolicyActionFailJob,
-						OnExitCodes: v1.RadixJobComponentFailurePolicyRuleOnExitCodes{
-							Operator: v1.RadixJobComponentFailurePolicyRuleOnExitCodesOpIn,
+						Action: radixv1.RadixJobComponentFailurePolicyActionFailJob,
+						OnExitCodes: radixv1.RadixJobComponentFailurePolicyRuleOnExitCodes{
+							Operator: radixv1.RadixJobComponentFailurePolicyRuleOnExitCodesOpIn,
 							Values:   []int32{42},
 						},
 					},
@@ -492,20 +493,26 @@ func TestDeleteJob(t *testing.T) {
 	})
 }
 func TestStopJob(t *testing.T) {
-	appJobComponent := "compute"
-	radixDeployJobComponent := utils.NewDeployJobComponentBuilder().WithName(appJobComponent).BuildJobComponent()
+	const (
+		appName       = "app"
+		envName1      = "qa"
+		envName2      = "dev"
+		jobComponent1 = "compute1"
+		jobComponent2 = "compute2"
+		appDeployment = "app-deploy-1"
+	)
+	radixDeployJobComponent := utils.NewDeployJobComponentBuilder().WithName(jobComponent1).BuildJobComponent()
 	t.Run("stop job - cleanup resources for job", func(t *testing.T) {
 		t.Parallel()
-		appName, appEnvironment, appJobComponent, appDeployment := "app", "qa", appJobComponent, "app-deploy-1"
-		envNamespace := utils.GetEnvironmentNamespace(appName, appEnvironment)
-		radixClient, kubeClient, _, kubeUtil := testUtil.SetupTest(appName, appEnvironment, appJobComponent, appDeployment, 1)
-		radixBatch1 := test.AddRadixBatch(radixClient, "test-batch1-job1", appJobComponent, kube.RadixBatchTypeJob, envNamespace)
-		radixBatch2 := test.AddRadixBatch(radixClient, "test-batch2-job1", appJobComponent, kube.RadixBatchTypeJob, envNamespace)
-		test.CreateSecretForTest(appName, radixBatch1.Spec.Jobs[0].PayloadSecretRef.Name, "test-batch1-job1", appJobComponent, envNamespace, kubeClient)
-		test.CreateSecretForTest(appName, radixBatch2.Spec.Jobs[0].PayloadSecretRef.Name, "test-batch2-job1", appJobComponent, envNamespace, kubeClient)
-		test.CreateSecretForTest(appName, "secret3", "test-batch3-job1", appJobComponent, envNamespace, kubeClient)
+		envNamespace := utils.GetEnvironmentNamespace(appName, envName1)
+		radixClient, kubeClient, _, kubeUtil := testUtil.SetupTest(appName, envName1, jobComponent1, appDeployment, 1)
+		radixBatch1 := test.AddRadixBatch(radixClient, "test-batch1-job1", jobComponent1, kube.RadixBatchTypeJob, envNamespace)
+		radixBatch2 := test.AddRadixBatch(radixClient, "test-batch2-job1", jobComponent1, kube.RadixBatchTypeJob, envNamespace)
+		test.CreateSecretForTest(appName, radixBatch1.Spec.Jobs[0].PayloadSecretRef.Name, "test-batch1-job1", jobComponent1, envNamespace, kubeClient)
+		test.CreateSecretForTest(appName, radixBatch2.Spec.Jobs[0].PayloadSecretRef.Name, "test-batch2-job1", jobComponent1, envNamespace, kubeClient)
+		test.CreateSecretForTest(appName, "secret3", "test-batch3-job1", jobComponent1, envNamespace, kubeClient)
 		test.CreateSecretForTest(appName, "secret4", "test-batch4-job1", "other-job-component", envNamespace, kubeClient)
-		test.CreateSecretForTest(appName, "secret5", "test-batch5-job1", appJobComponent, "other-ns", kubeClient)
+		test.CreateSecretForTest(appName, "secret5", "test-batch5-job1", jobComponent1, "other-ns", kubeClient)
 
 		handler := New(kubeUtil, modelsEnv.NewEnv(), &radixDeployJobComponent)
 		err := handler.StopJob(context.TODO(), "test-batch1-job1")
@@ -516,7 +523,7 @@ func TestStopJob(t *testing.T) {
 		assert.NotNil(t, radixBatch1)
 		assert.NotNil(t, test.GetRadixBatchByNameForTest(radixBatchList.Items, "test-batch2-job1"))
 		for _, jobStatus := range radixBatch1.Status.JobStatuses {
-			assert.Equal(t, v1.BatchJobPhaseStopped, jobStatus.Phase)
+			assert.Equal(t, radixv1.BatchJobPhaseStopped, jobStatus.Phase)
 		}
 		for _, job := range radixBatch1.Spec.Jobs {
 			assert.NotNil(t, job.Stop)
@@ -533,52 +540,102 @@ func TestStopJob(t *testing.T) {
 
 	t.Run("stop job - job name does not exist", func(t *testing.T) {
 		t.Parallel()
-		appName, appEnvironment, appJobComponent, appDeployment, jobName := "app", "qa", appJobComponent, "app-deploy-1", "test-batch-job1"
-		envNamespace := utils.GetEnvironmentNamespace(appName, appEnvironment)
-		radixClient, _, _, kubeUtil := testUtil.SetupTest(appName, appEnvironment, appJobComponent, appDeployment, 1)
-		test.AddRadixBatch(radixClient, "test-batch-anotherjob", appJobComponent, kube.RadixBatchTypeJob, envNamespace)
+		envNamespace := utils.GetEnvironmentNamespace(appName, envName1)
+		radixClient, _, _, kubeUtil := testUtil.SetupTest(appName, envName1, jobComponent1, appDeployment, 1)
+		test.AddRadixBatch(radixClient, "test-batch-anotherjob", jobComponent1, kube.RadixBatchTypeJob, envNamespace)
 
 		handler := New(kubeUtil, modelsEnv.NewEnv(), &radixDeployJobComponent)
-		err := handler.StopJob(context.TODO(), jobName)
-		assert.NotNil(t, err)
+		err := handler.StopJob(context.TODO(), "test-batch-job1")
+		assert.Error(t, err)
 		assert.Equal(t, models.StatusReasonNotFound, apiErrors.ReasonForError(err))
 	})
 
 	t.Run("stop job - another job component name", func(t *testing.T) {
 		t.Parallel()
-		appName, appEnvironment, appJobComponent, appDeployment, jobName := "app", "qa", appJobComponent, "app-deploy-1", "test-batch-job1"
-		envNamespace := utils.GetEnvironmentNamespace(appName, appEnvironment)
-		radixClient, _, _, kubeUtil := testUtil.SetupTest(appName, appEnvironment, appJobComponent, appDeployment, 1)
+		envNamespace := utils.GetEnvironmentNamespace(appName, envName1)
+		radixClient, _, _, kubeUtil := testUtil.SetupTest(appName, envName1, jobComponent1, appDeployment, 1)
 		test.AddRadixBatch(radixClient, "test-batch-anotherjob", "anotherjob-component", kube.RadixBatchTypeJob, envNamespace)
 
 		handler := New(kubeUtil, modelsEnv.NewEnv(), &radixDeployJobComponent)
-		err := handler.StopJob(context.TODO(), jobName)
+		err := handler.StopJob(context.TODO(), "test-batch-job1")
 		assert.NotNil(t, err)
 		assert.Equal(t, models.StatusReasonNotFound, apiErrors.ReasonForError(err))
 	})
 
 	t.Run("stop job - another job type", func(t *testing.T) {
 		t.Parallel()
-		appName, appEnvironment, appJobComponent, appDeployment, jobName := "app", "qa", appJobComponent, "app-deploy-1", "test-batch-job1"
-		envNamespace := utils.GetEnvironmentNamespace(appName, appEnvironment)
-		radixClient, _, _, kubeUtil := testUtil.SetupTest(appName, appEnvironment, appJobComponent, appDeployment, 1)
-		test.AddRadixBatch(radixClient, "test-batch-anotherjob", appJobComponent, kube.RadixBatchTypeBatch, envNamespace)
+		envNamespace := utils.GetEnvironmentNamespace(appName, envName1)
+		radixClient, _, _, kubeUtil := testUtil.SetupTest(appName, envName1, jobComponent1, appDeployment, 1)
+		test.AddRadixBatch(radixClient, "test-batch-anotherjob", jobComponent1, kube.RadixBatchTypeBatch, envNamespace)
 
 		handler := New(kubeUtil, modelsEnv.NewEnv(), &radixDeployJobComponent)
-		err := handler.StopJob(context.TODO(), jobName)
+		err := handler.StopJob(context.TODO(), "test-batch-job1")
 		assert.NotNil(t, err)
 		assert.Equal(t, models.StatusReasonNotFound, apiErrors.ReasonForError(err))
 	})
 
 	t.Run("stop job - another namespace", func(t *testing.T) {
 		t.Parallel()
-		appName, appEnvironment, appJobComponent, appDeployment, jobName := "app", "qa", appJobComponent, "app-deploy-1", "test-batch-job1"
-		radixClient, _, _, kubeUtil := testUtil.SetupTest(appName, appEnvironment, appJobComponent, appDeployment, 1)
-		test.AddRadixBatch(radixClient, jobName, appJobComponent, kube.RadixBatchTypeJob, "another-ns")
+		radixClient, _, _, kubeUtil := testUtil.SetupTest(appName, envName1, jobComponent1, appDeployment, 1)
+		test.AddRadixBatch(radixClient, "test-batch-job1", jobComponent1, kube.RadixBatchTypeJob, "another-ns")
 
 		handler := New(kubeUtil, modelsEnv.NewEnv(), &radixDeployJobComponent)
-		err := handler.StopJob(context.TODO(), jobName)
+		err := handler.StopJob(context.TODO(), "test-batch-job1")
 		assert.NotNil(t, err)
 		assert.Equal(t, models.StatusReasonNotFound, apiErrors.ReasonForError(err))
+	})
+
+	t.Run("stop all batches", func(t *testing.T) {
+		t.Parallel()
+		envNamespace1 := utils.GetEnvironmentNamespace(appName, envName1)
+		envNamespace2 := utils.GetEnvironmentNamespace(appName, envName2)
+		radixClient, _, _, kubeUtil := testUtil.SetupTest(appName, envName1, jobComponent1, appDeployment, 1)
+		test.AddRadixBatchWithStatus(radixClient, "test-batch1-job1", jobComponent1, kube.RadixBatchTypeJob, envNamespace1, radixv1.BatchConditionTypeCompleted)
+		test.AddRadixBatchWithStatus(radixClient, "test-batch2-job1", jobComponent1, kube.RadixBatchTypeJob, envNamespace1, radixv1.BatchConditionTypeActive)
+		test.AddRadixBatchWithStatus(radixClient, "test-batch3-job1", jobComponent2, kube.RadixBatchTypeJob, envNamespace1, radixv1.BatchConditionTypeActive)
+		test.AddRadixBatchWithStatus(radixClient, "test-batch4-job1", jobComponent1, kube.RadixBatchTypeBatch, envNamespace1, radixv1.BatchConditionTypeActive)
+		test.AddRadixBatch(radixClient, "test-batch5-job1", jobComponent1, kube.RadixBatchTypeJob, envNamespace1)
+		test.AddRadixBatchWithStatus(radixClient, "test-batch6-job1", jobComponent1, kube.RadixBatchTypeJob, envNamespace1, radixv1.BatchConditionTypeWaiting)
+		test.AddRadixBatch(radixClient, "test-batch1-job1", jobComponent1, kube.RadixBatchTypeJob, envNamespace2)
+
+		env := modelsEnv.NewEnv()
+		env.RadixAppName = appName
+		env.RadixEnvironmentName = envName1
+		env.RadixComponentName = jobComponent1
+		handler := New(kubeUtil, env, &radixDeployJobComponent)
+		err := handler.StopAllJobs(context.TODO())
+		assert.NoError(t, err)
+		batchList, err := radixClient.RadixV1().RadixBatches(metav1.NamespaceAll).List(context.TODO(), metav1.ListOptions{})
+		assert.NoError(t, err)
+		rb1, ok := slice.FindFirst(batchList.Items, func(batch radixv1.RadixBatch) bool {
+			return batch.GetName() == "test-batch1" && batch.GetNamespace() == envNamespace1
+		})
+		assert.True(t, ok, "test-batch2 should be found")
+		assert.Nil(t, rb1.Spec.Jobs[0].Stop, "test-batch1 job should not be stopped")
+		rb2, ok := slice.FindFirst(batchList.Items, func(batch radixv1.RadixBatch) bool {
+			return batch.GetName() == "test-batch2" && batch.GetNamespace() == envNamespace1
+		})
+		assert.True(t, ok, "test-batch2 should be found")
+		assert.Equal(t, pointers.Ptr(true), rb2.Spec.Jobs[0].Stop, "test-batch2 job should be stopped")
+		rb3, ok := slice.FindFirst(batchList.Items, func(batch radixv1.RadixBatch) bool {
+			return batch.GetName() == "test-batch3" && batch.GetNamespace() == envNamespace1 && batch.GetLabels()[kube.RadixComponentLabel] == jobComponent2
+		})
+		assert.True(t, ok, "test-batch3 should be found")
+		assert.Nil(t, rb3.Spec.Jobs[0].Stop, "test-batch3 job should not be stopped")
+		rb4, ok := slice.FindFirst(batchList.Items, func(batch radixv1.RadixBatch) bool {
+			return batch.GetName() == "test-batch4" && batch.GetNamespace() == envNamespace1
+		})
+		assert.True(t, ok, "test-batch4 should be found")
+		assert.Nil(t, rb4.Spec.Jobs[0].Stop, "test-batch4 single job should not be stopped")
+		rb5, ok := slice.FindFirst(batchList.Items, func(batch radixv1.RadixBatch) bool {
+			return batch.GetName() == "test-batch5" && batch.GetNamespace() == envNamespace1
+		})
+		assert.True(t, ok, "test-batch5 should be found")
+		assert.Equal(t, pointers.Ptr(true), rb5.Spec.Jobs[0].Stop, "test-batch5 job should be stopped")
+		rb6, ok := slice.FindFirst(batchList.Items, func(batch radixv1.RadixBatch) bool {
+			return batch.GetName() == "test-batch1" && batch.GetNamespace() == envNamespace2
+		})
+		assert.True(t, ok, "test-batch1 should be found")
+		assert.Nil(t, rb6.Spec.Jobs[0].Stop, "test-batch6 job should not be stopped")
 	})
 }

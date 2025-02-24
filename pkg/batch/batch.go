@@ -2,6 +2,7 @@ package batch
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -15,9 +16,11 @@ import (
 	"github.com/equinor/radix-job-scheduler/utils/radix/jobs"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
+	operatorUtils "github.com/equinor/radix-operator/pkg/apis/utils"
+	radixLabels "github.com/equinor/radix-operator/pkg/apis/utils/labels"
 	"github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 	"github.com/rs/zerolog/log"
-	"k8s.io/apimachinery/pkg/api/errors"
+	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/util/retry"
 )
@@ -59,7 +62,7 @@ func GetRadixBatchStatus(radixBatch *radixv1.RadixBatch, radixDeployJobComponent
 func DeleteRadixBatchByName(ctx context.Context, radixClient versioned.Interface, namespace, batchName string) error {
 	radixBatch, err := internal.GetRadixBatch(ctx, radixClient, namespace, batchName)
 	if err != nil {
-		if errors.IsNotFound(err) {
+		if k8sErrors.IsNotFound(err) {
 			return nil
 		}
 		return err
@@ -68,7 +71,7 @@ func DeleteRadixBatchByName(ctx context.Context, radixClient versioned.Interface
 }
 
 func getRadixBatchJobStatusesFromRadixBatch(radixBatch *radixv1.RadixBatch, radixBatchJobStatuses []radixv1.RadixBatchJobStatus) []modelsv2.RadixBatchJobStatus {
-	radixBatchJobsStatuses := internal.GetRadixBatchJobsStatusesMap(radixBatchJobStatuses)
+	radixBatchJobsStatuses := getRadixBatchJobsStatusesMap(radixBatchJobStatuses)
 	jobStatuses := make([]modelsv2.RadixBatchJobStatus, 0, len(radixBatch.Spec.Jobs))
 	for _, radixBatchJob := range radixBatch.Spec.Jobs {
 		stopJob := radixBatchJob.Stop != nil && *radixBatchJob.Stop
@@ -85,11 +88,9 @@ func getRadixBatchJobStatusesFromRadixBatch(radixBatch *radixv1.RadixBatch, radi
 			if jobStatus.StartTime != nil {
 				radixBatchJobStatus.Started = &jobStatus.StartTime.Time
 			}
-
 			if jobStatus.EndTime != nil {
 				radixBatchJobStatus.Ended = &jobStatus.EndTime.Time
 			}
-
 			radixBatchJobStatus.Status = jobs.GetScheduledJobStatus(jobStatus, stopJob)
 			radixBatchJobStatus.Message = jobStatus.Message
 			radixBatchJobStatus.Failed = jobStatus.Failed
@@ -101,6 +102,15 @@ func getRadixBatchJobStatusesFromRadixBatch(radixBatch *radixv1.RadixBatch, radi
 		jobStatuses = append(jobStatuses, radixBatchJobStatus)
 	}
 	return jobStatuses
+}
+
+func getRadixBatchJobsStatusesMap(radixBatchJobStatuses []radixv1.RadixBatchJobStatus) map[string]radixv1.RadixBatchJobStatus {
+	radixBatchJobsStatuses := make(map[string]radixv1.RadixBatchJobStatus)
+	for _, jobStatus := range radixBatchJobStatuses {
+		jobStatus := jobStatus
+		radixBatchJobsStatuses[jobStatus.Name] = jobStatus
+	}
+	return radixBatchJobsStatuses
 }
 
 func getPodStatusByRadixBatchJobPodStatus(podStatuses []radixv1.RadixBatchJobPodStatus, created time.Time) []modelsv2.RadixBatchJobPodStatus {
@@ -173,47 +183,127 @@ func CopyRadixBatchOrJob(ctx context.Context, radixClient versioned.Interface, s
 }
 
 // StopRadixBatch Stop a batch
-func StopRadixBatch(ctx context.Context, radixClient versioned.Interface, radixBatch *radixv1.RadixBatch) error {
-	logger := log.Ctx(ctx)
-	logger.Info().Msgf("stop batch %s for namespace: %s", radixBatch.GetName(), radixBatch.GetNamespace())
-	if !isBatchStoppable(radixBatch.Status.Condition) {
-		return apiErrors.NewBadRequest(fmt.Sprintf("cannot stop completed batch %s", radixBatch.GetName()))
-	}
+func StopRadixBatch(ctx context.Context, radixClient versioned.Interface, appName, envName, jobComponentName, batchName string) error {
+	return stopRadixBatchJob(ctx, radixClient, appName, envName, jobComponentName, kube.RadixBatchTypeBatch, batchName, "")
+}
 
-	newRadixBatch := radixBatch.DeepCopy()
-	radixBatchJobsStatusMap := internal.GetRadixBatchJobsStatusesMap(newRadixBatch.Status.JobStatuses)
-	for jobIndex, radixBatchJob := range newRadixBatch.Spec.Jobs {
-		if jobStatus, ok := radixBatchJobsStatusMap[radixBatchJob.Name]; ok &&
+func stopRadixBatchJob(ctx context.Context, radixClient versioned.Interface, appName, envName, jobComponentName string, batchType kube.RadixBatchType, batchName, jobName string) error {
+	namespace := operatorUtils.GetEnvironmentNamespace(appName, envName)
+	logger := log.Ctx(ctx)
+	logger.Info().Msgf("stop the batch %s for the application %s, environment %s", batchName, appName, envName)
+	batchesSelector := radixLabels.ForComponentName(jobComponentName)
+	if batchType != "" {
+		batchesSelector = radixLabels.Merge(batchesSelector, radixLabels.ForBatchType(batchType))
+	}
+	var externalError error
+	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		radixBatches, err := internal.GetRadixBatches(ctx, radixClient, namespace, batchesSelector)
+		if err != nil {
+			return err
+		}
+		var foundBatch, foundJob bool
+		foundBatch, foundJob, externalError, err = stopJobsInBatches(radixBatches, batchName, jobName, radixClient, namespace, ctx)
+		if err != nil {
+			return err
+		}
+		if externalError != nil {
+			return nil
+		}
+		if len(batchName) > 0 && !foundBatch {
+			externalError = k8sErrors.NewNotFound(radixv1.Resource("radixbatches"), batchName)
+		} else if len(jobName) > 0 && !foundJob {
+			externalError = k8sErrors.NewNotFound(radixv1.Resource("radixbatches.job"), jobName)
+		}
+		return nil
+	})
+	if err != nil {
+		return apiErrors.NewFromError(fmt.Errorf("failed to update the batch %s: %w", batchName, err))
+	}
+	if externalError != nil {
+		return externalError
+	}
+	logger.Debug().Msgf("Patched RadixBatch: %s in namespace %s", batchName, namespace)
+	return nil
+}
+
+func stopJobsInBatches(radixBatches []*radixv1.RadixBatch, batchName string, jobName string, radixClient versioned.Interface, namespace string, ctx context.Context) (bool, bool, error, error) {
+	var foundBatch, foundJob, appliedChanges bool
+	var updateJobErrors []error
+	for _, radixBatch := range radixBatches {
+		if len(batchName) > 0 {
+			if strings.EqualFold(radixBatch.GetName(), batchName) {
+				foundBatch = true
+			} else {
+				continue
+			}
+		}
+		if !isBatchStoppable(radixBatch.Status.Condition) {
+			if len(batchName) == 0 {
+				continue
+			}
+			if radixBatch.GetLabels()[kube.RadixBatchTypeLabel] == string(kube.RadixBatchTypeJob) {
+				return false, false, apiErrors.NewBadRequest(fmt.Sprintf("cannot stop the job %s with the status %s", radixBatch.GetName(), radixBatch.Status.Condition.Type)), nil
+			}
+			return false, false, apiErrors.NewBadRequest(fmt.Sprintf("cannot stop the batch %s with the status %s", batchName, radixBatch.Status.Condition.Type)), nil
+		}
+		newRadixBatch := radixBatch.DeepCopy()
+		var err error
+		foundJob, appliedChanges, err = stopJobsInBatch(newRadixBatch, batchName, jobName, foundJob)
+		if err != nil {
+			return false, false, err, nil
+		}
+		if appliedChanges {
+			_, err = radixClient.RadixV1().RadixBatches(namespace).Update(ctx, newRadixBatch, metav1.UpdateOptions{})
+			if err != nil {
+				updateJobErrors = append(updateJobErrors, err)
+			}
+		}
+	}
+	if len(updateJobErrors) > 0 {
+		return false, false, nil, errors.Join(updateJobErrors...)
+	}
+	return foundBatch, foundJob, nil, nil
+}
+
+func stopJobsInBatch(radixBatch *radixv1.RadixBatch, batchName string, jobName string, foundJob bool) (bool, bool, error) {
+	var appliedChanges bool
+	for jobIndex, radixBatchJob := range radixBatch.Spec.Jobs {
+		if len(jobName) > 0 {
+			if strings.EqualFold(radixBatchJob.Name, jobName) {
+				foundJob = true
+			} else {
+				continue
+			}
+		}
+		if jobStatus, ok := slice.FindFirst(radixBatch.Status.JobStatuses, func(status radixv1.RadixBatchJobStatus) bool {
+			return status.Name == radixBatchJob.Name
+		}); ok &&
 			(internal.IsRadixBatchJobSucceeded(jobStatus) || internal.IsRadixBatchJobFailed(jobStatus)) {
+			if len(batchName) > 0 && radixBatch.GetLabels()[kube.RadixBatchTypeLabel] == string(kube.RadixBatchTypeJob) {
+				return false, false, apiErrors.NewBadRequest(fmt.Sprintf("cannot stop the job %s with the status %s", radixBatch.GetName(), jobStatus.Phase))
+			}
+			if len(jobName) > 0 {
+				return false, false, apiErrors.NewBadRequest(fmt.Sprintf("cannot stop the job %s with the status %s in the batch %s", jobName, jobStatus.Phase, batchName))
+			}
 			continue
 		}
-		newRadixBatch.Spec.Jobs[jobIndex].Stop = pointers.Ptr(true)
+		radixBatch.Spec.Jobs[jobIndex].Stop = pointers.Ptr(true)
+		appliedChanges = true
+		if foundJob {
+			break
+		}
 	}
-	return updateRadixBatch(ctx, radixClient, radixBatch.GetNamespace(), newRadixBatch)
+	return foundJob, appliedChanges, nil
+}
+
+// StopAllRadixBatches Stop all batches
+func StopAllRadixBatches(ctx context.Context, radixClient versioned.Interface, appName, envName, jobComponentName string, batchType kube.RadixBatchType) error {
+	return stopRadixBatchJob(ctx, radixClient, appName, envName, jobComponentName, batchType, "", "")
 }
 
 // StopRadixBatchJob Stop a job
-func StopRadixBatchJob(ctx context.Context, radixClient versioned.Interface, radixBatch *radixv1.RadixBatch, jobName string) error {
-	logger := log.Ctx(ctx)
-	logger.Info().Msgf("stop a job %s in the batch %s", jobName, radixBatch.GetName())
-	if !isBatchStoppable(radixBatch.Status.Condition) {
-		return apiErrors.NewBadRequest(fmt.Sprintf("cannot stop the job %s in the completed batch %s", jobName, radixBatch.GetName()))
-	}
-
-	newRadixBatch := radixBatch.DeepCopy()
-	radixBatchJobsStatusMap := internal.GetRadixBatchJobsStatusesMap(newRadixBatch.Status.JobStatuses)
-	for jobIndex, radixBatchJob := range newRadixBatch.Spec.Jobs {
-		if !strings.EqualFold(radixBatchJob.Name, jobName) {
-			continue
-		}
-		if jobStatus, ok := radixBatchJobsStatusMap[radixBatchJob.Name]; ok &&
-			(internal.IsRadixBatchJobSucceeded(jobStatus) || internal.IsRadixBatchJobFailed(jobStatus)) {
-			return apiErrors.NewBadRequest(fmt.Sprintf("cannot stop the job %s with the status %s in the batch %s", jobName, string(jobStatus.Phase), radixBatch.GetName()))
-		}
-		newRadixBatch.Spec.Jobs[jobIndex].Stop = pointers.Ptr(true)
-		return updateRadixBatch(ctx, radixClient, radixBatch.GetNamespace(), newRadixBatch)
-	}
-	return apiErrors.NewNotFound("batch job", jobName)
+func StopRadixBatchJob(ctx context.Context, radixClient versioned.Interface, appName, envName, jobComponentName, batchName, jobName string) error {
+	return stopRadixBatchJob(ctx, radixClient, appName, envName, jobComponentName, "", batchName, jobName)
 }
 
 // RestartRadixBatch Restart a batch
@@ -249,7 +339,7 @@ func RestartRadixBatchJob(ctx context.Context, radixClient versioned.Interface, 
 func DeleteRadixBatch(ctx context.Context, radixClient versioned.Interface, radixBatch *radixv1.RadixBatch) error {
 	logger := log.Ctx(ctx)
 	logger.Debug().Msgf("delete batch %s", radixBatch.GetName())
-	if err := radixClient.RadixV1().RadixBatches(radixBatch.GetNamespace()).Delete(ctx, radixBatch.GetName(), metav1.DeleteOptions{PropagationPolicy: pointers.Ptr(metav1.DeletePropagationBackground)}); err != nil && !errors.IsNotFound(err) {
+	if err := radixClient.RadixV1().RadixBatches(radixBatch.GetNamespace()).Delete(ctx, radixBatch.GetName(), metav1.DeleteOptions{PropagationPolicy: pointers.Ptr(metav1.DeletePropagationBackground)}); err != nil && !k8sErrors.IsNotFound(err) {
 		return err
 	}
 	return nil
@@ -264,7 +354,7 @@ func copyBatchJobs(ctx context.Context, sourceRadixBatch *radixv1.RadixBatch, so
 		}
 		job := sourceJob.DeepCopy()
 		job.Name = internal.CreateJobName()
-		logger.Debug().Msgf("Copy Radxi Batch Job %s", job.Name)
+		logger.Debug().Msgf("Copy Radix Batch Job %s", job.Name)
 		radixBatchJobs = append(radixBatchJobs, *job)
 	}
 	return radixBatchJobs
@@ -275,19 +365,6 @@ func isBatchStoppable(condition radixv1.RadixBatchCondition) bool {
 	return condition.Type == "" ||
 		condition.Type == radixv1.BatchConditionTypeActive ||
 		condition.Type == radixv1.BatchConditionTypeWaiting
-}
-
-func updateRadixBatch(ctx context.Context, radixClient versioned.Interface, namespace string, radixBatch *radixv1.RadixBatch) error {
-	logger := log.Ctx(ctx)
-	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		_, err := radixClient.RadixV1().RadixBatches(namespace).Update(ctx, radixBatch, metav1.UpdateOptions{})
-		return err
-	})
-	if err != nil {
-		return apiErrors.NewFromError(fmt.Errorf("failed to patch RadixBatch object: %w", err))
-	}
-	logger.Debug().Msgf("Patched RadixBatch: %s in namespace %s", radixBatch.GetName(), namespace)
-	return nil
 }
 
 func setRestartJobTimeout(batch *radixv1.RadixBatch, jobIdx int, restartTimestamp string) {
