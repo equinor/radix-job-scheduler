@@ -87,7 +87,13 @@ func buildURLFromServer(server *httptest.Server, path string) string {
 	return serverUrl.String()
 }
 
+// AddRadixBatch Adds a radix batch
 func AddRadixBatch(radixClient radixclient.Interface, jobName, componentName string, batchJobType kube.RadixBatchType, namespace string) *v1.RadixBatch {
+	return AddRadixBatchWithStatus(radixClient, jobName, componentName, batchJobType, namespace, "")
+}
+
+// AddRadixBatchWithStatus Adds a radix batch with status
+func AddRadixBatchWithStatus(radixClient radixclient.Interface, jobName, componentName string, batchJobType kube.RadixBatchType, namespace string, batchStatusConditionType v1.RadixBatchConditionType) *v1.RadixBatch {
 	labels := make(map[string]string)
 
 	if len(strings.TrimSpace(componentName)) > 0 {
@@ -99,25 +105,34 @@ func AddRadixBatch(radixClient radixclient.Interface, jobName, componentName str
 	if !ok {
 		panic(fmt.Sprintf("invalid job name %s", jobName))
 	}
-	radixBatch, err := radixClient.RadixV1().RadixBatches(namespace).Create(
-		context.TODO(),
-		&v1.RadixBatch{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:   batchName,
-				Labels: labels,
-			},
-			Spec: v1.RadixBatchSpec{
-				Jobs: []v1.RadixBatchJob{
-					{
-						Name: batchJobName,
-						PayloadSecretRef: &v1.PayloadSecretKeySelector{
-							LocalObjectReference: v1.LocalObjectReference{Name: jobName},
-							Key:                  jobName,
-						},
+	batch := v1.RadixBatch{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      batchName,
+			Namespace: namespace,
+			Labels:    labels,
+		},
+		Spec: v1.RadixBatchSpec{
+			Jobs: []v1.RadixBatchJob{
+				{
+					Name: batchJobName,
+					PayloadSecretRef: &v1.PayloadSecretKeySelector{
+						LocalObjectReference: v1.LocalObjectReference{Name: jobName},
+						Key:                  jobName,
 					},
 				},
 			},
 		},
+	}
+	if len(batchStatusConditionType) != 0 {
+		batch.Status = v1.RadixBatchStatus{
+			Condition: v1.RadixBatchCondition{
+				Type: batchStatusConditionType,
+			},
+		}
+	}
+	radixBatch, err := radixClient.RadixV1().RadixBatches(namespace).Create(
+		context.TODO(),
+		&batch,
 		metav1.CreateOptions{},
 	)
 	if err != nil {

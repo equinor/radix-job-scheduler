@@ -13,7 +13,7 @@ import (
 
 // GetJobComponentPayloadSecretRefNames Get the payload secret ref names for the job components
 func GetJobComponentPayloadSecretRefNames(ctx context.Context, radixClient radixclient.Interface, namespace, radixComponentName string) (map[string]bool, error) {
-	radixBatches, err := GetRadixBatches(ctx, namespace, radixClient, labels.ForComponentName(radixComponentName))
+	radixBatches, err := GetRadixBatches(ctx, radixClient, namespace, labels.ForComponentName(radixComponentName))
 	if err != nil {
 		return nil, err
 	}

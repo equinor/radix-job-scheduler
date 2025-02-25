@@ -20,6 +20,8 @@ type Env struct {
 	RadixJobSchedulersPerEnvironmentHistoryLimit int
 	RadixPort                                    string
 	LogLevel                                     string
+	RadixAppName                                 string
+	RadixEnvironmentName                         string
 }
 
 // NewEnv Constructor
@@ -36,6 +38,8 @@ func NewEnv() *Env {
 		logLevel                                     = os.Getenv("LOG_LEVEL")
 	)
 	env := Env{
+		RadixAppName:             radixAppName,
+		RadixEnvironmentName:     radixEnv,
 		RadixComponentName:       radixComponentName,
 		RadixDeploymentName:      radixDeployment,
 		RadixDeploymentNamespace: utils.GetEnvironmentNamespace(radixAppName, radixEnv),
