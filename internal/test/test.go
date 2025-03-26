@@ -8,17 +8,12 @@ import (
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 	radixclientfake "github.com/equinor/radix-operator/pkg/client/clientset/versioned/fake"
-	kedafake "github.com/kedacore/keda/v2/pkg/generated/clientset/versioned/fake"
-	prometheusclient "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned"
-	prometheusfake "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned/fake"
 	"k8s.io/client-go/kubernetes"
 	kubeclientfake "k8s.io/client-go/kubernetes/fake"
-	secretstoragefake "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned/fake"
 )
 
 // SetupTest Setup test
-func SetupTest(appName, appEnvironment, appComponent, appDeployment string, historyLimit int) (radixclient.Interface,
-	kubernetes.Interface, prometheusclient.Interface, *kube.Kube) {
+func SetupTest(appName, appEnvironment, appComponent, appDeployment string, historyLimit int) (radixclient.Interface, kubernetes.Interface, *kube.Kube) {
 	_ = os.Setenv("RADIX_APP", appName)
 	_ = os.Setenv("RADIX_ENVIRONMENT", appEnvironment)
 	_ = os.Setenv("RADIX_COMPONENT", appComponent)
@@ -29,9 +24,6 @@ func SetupTest(appName, appEnvironment, appComponent, appDeployment string, hist
 	_ = os.Setenv(defaults.OperatorEnvLimitDefaultMemoryEnvironmentVariable, "500M")
 	kubeClient := kubeclientfake.NewSimpleClientset()
 	radixClient := radixclientfake.NewSimpleClientset()
-	kedaClient := kedafake.NewSimpleClientset()
-	prometheusClient := prometheusfake.NewSimpleClientset()
-	secretStoreClient := secretstoragefake.NewSimpleClientset()
-	kubeUtil, _ := kube.New(kubeClient, radixClient, kedaClient, secretStoreClient)
-	return radixClient, kubeClient, prometheusClient, kubeUtil
+	kubeUtil, _ := kube.New(kubeClient, radixClient, nil, nil)
+	return radixClient, kubeClient, kubeUtil
 }

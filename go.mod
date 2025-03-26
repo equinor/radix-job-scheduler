@@ -6,20 +6,17 @@ toolchain go1.23.6
 
 require (
 	dario.cat/mergo v1.0.1
-	github.com/equinor/radix-common v1.9.7
-	github.com/equinor/radix-operator v1.70.2
+	github.com/equinor/radix-common v1.10.0
+	github.com/equinor/radix-operator v1.75.1
 	github.com/gin-gonic/gin v1.10.0
 	github.com/go-swagger/go-swagger v0.31.0
 	github.com/golang/mock v1.6.0
-	github.com/kedacore/keda/v2 v2.16.1
-	github.com/prometheus-operator/prometheus-operator/pkg/client v0.76.0
 	github.com/rs/zerolog v1.33.0
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.10.0
 	k8s.io/api v0.31.2
 	k8s.io/apimachinery v0.31.2
 	k8s.io/client-go v0.31.2
-	sigs.k8s.io/secrets-store-csi-driver v1.4.5
 )
 
 require (
@@ -56,6 +53,7 @@ require (
 	github.com/imdario/mergo v0.3.16 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
+	github.com/kedacore/keda/v2 v2.16.1 // indirect
 	github.com/klauspost/compress v1.17.9 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.7 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
@@ -69,6 +67,7 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.76.0 // indirect
+	github.com/prometheus-operator/prometheus-operator/pkg/client v0.76.0 // indirect
 	github.com/prometheus/client_golang v1.20.5 // indirect
 	github.com/prometheus/client_model v0.6.1 // indirect
 	github.com/prometheus/common v0.61.0 // indirect
@@ -100,6 +99,7 @@ require (
 	sigs.k8s.io/controller-runtime v0.19.1 // indirect
 	sigs.k8s.io/gateway-api v1.1.0 // indirect
 	sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd // indirect
+	sigs.k8s.io/secrets-store-csi-driver v1.4.5 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.4.1 // indirect
 	sigs.k8s.io/yaml v1.4.0 // indirect
 )

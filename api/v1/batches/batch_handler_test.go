@@ -21,7 +21,7 @@ import (
 )
 
 func TestCreateBatch(t *testing.T) {
-	radixClient, kubeClient, _, kubeUtil := testUtil.SetupTest("app", "qa", "compute", "app-deploy-1", 1)
+	radixClient, kubeClient, kubeUtil := testUtil.SetupTest("app", "qa", "compute", "app-deploy-1", 1)
 	env := modelsEnv.NewEnv()
 
 	t.Run("Create Batch", func(t *testing.T) {
@@ -116,7 +116,7 @@ func TestStopBatch(t *testing.T) {
 	t.Run("cleanup resources for job", func(t *testing.T) {
 		t.Parallel()
 		envNamespace := utils.GetEnvironmentNamespace(appName, envName1)
-		radixClient, kubeClient, _, kubeUtil := testUtil.SetupTest(appName, envName1, jobComponent1, appDeployment, 1)
+		radixClient, kubeClient, kubeUtil := testUtil.SetupTest(appName, envName1, jobComponent1, appDeployment, 1)
 		radixBatch1 := test.AddRadixBatch(radixClient, "test-batch1-job1", jobComponent1, kube.RadixBatchTypeBatch, envNamespace)
 		radixBatch2 := test.AddRadixBatch(radixClient, "test-batch2-job1", jobComponent1, kube.RadixBatchTypeBatch, envNamespace)
 		test.CreateSecretForTest(appName, radixBatch1.Spec.Jobs[0].PayloadSecretRef.Name, "test-batch1-job1", jobComponent1, envNamespace, kubeClient)
@@ -152,7 +152,7 @@ func TestStopBatch(t *testing.T) {
 	t.Run("job name does not exist", func(t *testing.T) {
 		t.Parallel()
 		envNamespace := utils.GetEnvironmentNamespace(appName, envName1)
-		radixClient, _, _, kubeUtil := testUtil.SetupTest(appName, envName1, jobComponent1, appDeployment, 1)
+		radixClient, _, kubeUtil := testUtil.SetupTest(appName, envName1, jobComponent1, appDeployment, 1)
 		test.AddRadixBatch(radixClient, "test-batch2-job2", jobComponent1, kube.RadixBatchTypeJob, envNamespace)
 
 		handler := New(kubeUtil, modelsEnv.NewEnv(), &radixDeployJobComponent)
@@ -164,7 +164,7 @@ func TestStopBatch(t *testing.T) {
 	t.Run("another job component name", func(t *testing.T) {
 		t.Parallel()
 		envNamespace := utils.GetEnvironmentNamespace(appName, envName1)
-		radixClient, _, _, kubeUtil := testUtil.SetupTest(appName, envName1, jobComponent1, appDeployment, 1)
+		radixClient, _, kubeUtil := testUtil.SetupTest(appName, envName1, jobComponent1, appDeployment, 1)
 		test.AddRadixBatch(radixClient, "test-batch2-job2", "another-job-component", kube.RadixBatchTypeJob, envNamespace)
 
 		handler := New(kubeUtil, modelsEnv.NewEnv(), &radixDeployJobComponent)
@@ -176,7 +176,7 @@ func TestStopBatch(t *testing.T) {
 	t.Run("another job type", func(t *testing.T) {
 		t.Parallel()
 		envNamespace := utils.GetEnvironmentNamespace(appName, envName1)
-		radixClient, _, _, kubeUtil := testUtil.SetupTest(appName, envName1, jobComponent1, appDeployment, 1)
+		radixClient, _, kubeUtil := testUtil.SetupTest(appName, envName1, jobComponent1, appDeployment, 1)
 		test.AddRadixBatch(radixClient, "test-batch2-job2", jobComponent1, kube.RadixBatchTypeBatch, envNamespace)
 
 		handler := New(kubeUtil, modelsEnv.NewEnv(), &radixDeployJobComponent)
@@ -187,7 +187,7 @@ func TestStopBatch(t *testing.T) {
 
 	t.Run("another namespace", func(t *testing.T) {
 		t.Parallel()
-		radixClient, _, _, kubeUtil := testUtil.SetupTest(appName, envName1, jobComponent1, appDeployment, 1)
+		radixClient, _, kubeUtil := testUtil.SetupTest(appName, envName1, jobComponent1, appDeployment, 1)
 		test.AddRadixBatch(radixClient, "test-batch-job1", jobComponent1, kube.RadixBatchTypeJob, "another-ns")
 
 		handler := New(kubeUtil, modelsEnv.NewEnv(), &radixDeployJobComponent)
@@ -200,7 +200,7 @@ func TestStopBatch(t *testing.T) {
 		t.Parallel()
 		envNamespace1 := utils.GetEnvironmentNamespace(appName, envName1)
 		envNamespace2 := utils.GetEnvironmentNamespace(appName, envName2)
-		radixClient, _, _, kubeUtil := testUtil.SetupTest(appName, envName1, jobComponent1, appDeployment, 1)
+		radixClient, _, kubeUtil := testUtil.SetupTest(appName, envName1, jobComponent1, appDeployment, 1)
 		test.AddRadixBatchWithStatus(radixClient, "test-batch1-job1", jobComponent1, kube.RadixBatchTypeBatch, envNamespace1, radixv1.BatchConditionTypeCompleted)
 		test.AddRadixBatchWithStatus(radixClient, "test-batch2-job1", jobComponent1, kube.RadixBatchTypeBatch, envNamespace1, radixv1.BatchConditionTypeActive)
 		test.AddRadixBatchWithStatus(radixClient, "test-batch3-job1", jobComponent2, kube.RadixBatchTypeBatch, envNamespace1, radixv1.BatchConditionTypeActive)
@@ -262,7 +262,7 @@ func TestStopBatchJob(t *testing.T) {
 	t.Run("cleanup resources for job", func(t *testing.T) {
 		t.Parallel()
 		envNamespace := utils.GetEnvironmentNamespace(appName, appEnvironment)
-		radixClient, kubeClient, _, kubeUtil := testUtil.SetupTest(appName, appEnvironment, appJobComponent, appDeployment, 1)
+		radixClient, kubeClient, kubeUtil := testUtil.SetupTest(appName, appEnvironment, appJobComponent, appDeployment, 1)
 		radixBatch1 := test.AddRadixBatch(radixClient, "test-batch1-job1", appJobComponent, kube.RadixBatchTypeJob, envNamespace)
 		radixBatch2 := test.AddRadixBatch(radixClient, "test-batch2-job1", appJobComponent, kube.RadixBatchTypeJob, envNamespace)
 		test.CreateSecretForTest(appName, radixBatch1.Spec.Jobs[0].PayloadSecretRef.Name, "test-batch1-job1", appJobComponent, envNamespace, kubeClient)
@@ -298,7 +298,7 @@ func TestStopBatchJob(t *testing.T) {
 	t.Run("job name does not exist", func(t *testing.T) {
 		t.Parallel()
 		envNamespace := utils.GetEnvironmentNamespace(appName, appEnvironment)
-		radixClient, _, _, kubeUtil := testUtil.SetupTest(appName, appEnvironment, appJobComponent, appDeployment, 1)
+		radixClient, _, kubeUtil := testUtil.SetupTest(appName, appEnvironment, appJobComponent, appDeployment, 1)
 		test.AddRadixBatch(radixClient, "test-batch2-job2", appJobComponent, kube.RadixBatchTypeJob, envNamespace)
 
 		handler := New(kubeUtil, modelsEnv.NewEnv(), &radixDeployJobComponent)
@@ -310,7 +310,7 @@ func TestStopBatchJob(t *testing.T) {
 	t.Run("another job component name", func(t *testing.T) {
 		t.Parallel()
 		envNamespace := utils.GetEnvironmentNamespace(appName, appEnvironment)
-		radixClient, _, _, kubeUtil := testUtil.SetupTest(appName, appEnvironment, appJobComponent, appDeployment, 1)
+		radixClient, _, kubeUtil := testUtil.SetupTest(appName, appEnvironment, appJobComponent, appDeployment, 1)
 		test.AddRadixBatch(radixClient, "test-batch2-job2", "another-job-component", kube.RadixBatchTypeJob, envNamespace)
 
 		handler := New(kubeUtil, modelsEnv.NewEnv(), &radixDeployJobComponent)
@@ -322,7 +322,7 @@ func TestStopBatchJob(t *testing.T) {
 	t.Run("another job type", func(t *testing.T) {
 		t.Parallel()
 		envNamespace := utils.GetEnvironmentNamespace(appName, appEnvironment)
-		radixClient, _, _, kubeUtil := testUtil.SetupTest(appName, appEnvironment, appJobComponent, appDeployment, 1)
+		radixClient, _, kubeUtil := testUtil.SetupTest(appName, appEnvironment, appJobComponent, appDeployment, 1)
 		test.AddRadixBatch(radixClient, "test-batch2-job2", appJobComponent, kube.RadixBatchTypeBatch, envNamespace)
 
 		handler := New(kubeUtil, modelsEnv.NewEnv(), &radixDeployJobComponent)
@@ -333,7 +333,7 @@ func TestStopBatchJob(t *testing.T) {
 
 	t.Run("another namespace", func(t *testing.T) {
 		t.Parallel()
-		radixClient, _, _, kubeUtil := testUtil.SetupTest(appName, appEnvironment, appJobComponent, appDeployment, 1)
+		radixClient, _, kubeUtil := testUtil.SetupTest(appName, appEnvironment, appJobComponent, appDeployment, 1)
 		test.AddRadixBatch(radixClient, "test-batch-job1", appJobComponent, kube.RadixBatchTypeJob, "another-ns")
 
 		handler := New(kubeUtil, modelsEnv.NewEnv(), &radixDeployJobComponent)
@@ -350,7 +350,7 @@ func TestGetBatchJob(t *testing.T) {
 		t.Parallel()
 		appName, appEnvironment, appComponent, appDeployment := "app", "qa", appJobComponent, "app-deploy-1"
 		appNamespace := utils.GetEnvironmentNamespace(appName, appEnvironment)
-		radixClient, _, _, kubeUtil := testUtil.SetupTest(appName, appEnvironment, appComponent, appDeployment, 1)
+		radixClient, _, kubeUtil := testUtil.SetupTest(appName, appEnvironment, appComponent, appDeployment, 1)
 		test.AddRadixBatch(radixClient, "testbatch1-job1", appComponent, kube.RadixBatchTypeBatch, appNamespace)
 		test.AddRadixBatch(radixClient, "testbatch2-job1", appComponent, kube.RadixBatchTypeBatch, appNamespace)
 
@@ -366,7 +366,7 @@ func TestGetBatchJob(t *testing.T) {
 	t.Run("job in different app namespace", func(t *testing.T) {
 		t.Parallel()
 		appName, appEnvironment, appComponent, appDeployment := "app", "qa", appJobComponent, "app-deploy-1"
-		radixClient, _, _, kubeUtil := testUtil.SetupTest(appName, appEnvironment, appComponent, appDeployment, 1)
+		radixClient, _, kubeUtil := testUtil.SetupTest(appName, appEnvironment, appComponent, appDeployment, 1)
 		test.AddRadixBatch(radixClient, "testbatch1-job1", appComponent, kube.RadixBatchTypeJob, "app-other")
 
 		handler := New(kubeUtil, modelsEnv.NewEnv(), &radixDeployJobComponent)
