@@ -1264,9 +1264,10 @@
       "type": "object",
       "properties": {
         "architecture": {
-          "description": "CPU architecture target for the component or job. Defaults to amd64.\n+kubebuilder:validation:Enum=amd64;arm64",
-          "default": "=amd64",
-          "x-go-name": "Architecture"
+          "description": "CPU architecture",
+          "type": "string",
+          "x-go-name": "Architecture",
+          "example": "amd64"
         },
         "nodeType": {
           "description": "Defines the node type for the component. It is a node-pool label and taint, where the component's or job's pods will be scheduled.\nMore info: https://www.radix.equinor.com/radix-config#nodetype\n+kubebuilder:validation:MaxLength=120\n+kubebuilder:validation:Pattern=^(([a-z0-9][-a-z0-9]*)?[a-z0-9])?$\n+optional",
