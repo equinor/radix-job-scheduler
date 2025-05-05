@@ -2,7 +2,6 @@ package apiv2
 
 import (
 	"context"
-	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"testing"
 
 	"github.com/equinor/radix-common/utils/pointers"
@@ -12,13 +11,14 @@ import (
 	"github.com/equinor/radix-job-scheduler/models/common"
 	modelsv2 "github.com/equinor/radix-job-scheduler/models/v2"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
+	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/equinor/radix-operator/pkg/apis/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func Test_createBatch(t *testing.T) {
+func Test_CreateBatch(t *testing.T) {
 	type scenario struct {
 		name              string
 		batchDescription  common.BatchScheduleDescription
@@ -133,14 +133,12 @@ func Test_createBatch(t *testing.T) {
 	}
 }
 
-func TestMergeJobDescriptionWithDefaultJobDescription(t *testing.T) {
-	type testSpec map[string]struct {
+func Test_MergeJobDescriptionWithDefaultJobDescription(t *testing.T) {
+	tests := map[string]struct {
 		defaultRadixJobComponentConfig  *common.RadixJobComponentConfig
 		jobScheduleDescription          *common.JobScheduleDescription
 		expectedRadixJobComponentConfig *common.RadixJobComponentConfig
-	}
-
-	tests := testSpec{
+	}{
 		"Resources merged from job and default spec": {
 			defaultRadixJobComponentConfig: &common.RadixJobComponentConfig{
 				Resources: &common.Resources{
@@ -417,22 +415,19 @@ func TestMergeJobDescriptionWithDefaultJobDescription(t *testing.T) {
 }
 
 func Test_MergeRuntime(t *testing.T) {
-	scenarios := []struct {
-		name                            string
+	scenarios := map[string]struct {
 		radixJobComponentConfig         common.RadixJobComponentConfig
 		defaultRadixJobComponentConfig  common.RadixJobComponentConfig
 		expectedRadixJobComponentConfig common.RadixJobComponentConfig
 	}{
-		{
-			name:                           "fills missing Architecture and NodeType",
+		"fills missing Architecture and NodeType": {
 			defaultRadixJobComponentConfig: common.RadixJobComponentConfig{Runtime: &common.Runtime{Architecture: string(radixv1.RuntimeArchitectureAmd64)}},
 			radixJobComponentConfig:        common.RadixJobComponentConfig{Runtime: &common.Runtime{}},
 			expectedRadixJobComponentConfig: common.RadixJobComponentConfig{Runtime: &common.Runtime{
 				Architecture: string(radixv1.RuntimeArchitectureAmd64),
 			}},
 		},
-		{
-			name: "preserves existing NodeType",
+		"preserves existing NodeType": {
 			defaultRadixJobComponentConfig: common.RadixJobComponentConfig{Runtime: &common.Runtime{
 				Architecture: string(radixv1.RuntimeArchitectureAmd64),
 			}},
@@ -444,8 +439,7 @@ func Test_MergeRuntime(t *testing.T) {
 				// Architecture should be cleared
 			}},
 		},
-		{
-			name:                           "preserves existing Architecture if NodeType not set",
+		"preserves existing Architecture if NodeType not set": {
 			defaultRadixJobComponentConfig: common.RadixJobComponentConfig{Runtime: &common.Runtime{}},
 			radixJobComponentConfig: common.RadixJobComponentConfig{Runtime: &common.Runtime{
 				Architecture: string(radixv1.RuntimeArchitectureArm64),
@@ -454,8 +448,7 @@ func Test_MergeRuntime(t *testing.T) {
 				Architecture: string(radixv1.RuntimeArchitectureArm64),
 			}},
 		},
-		{
-			name: "preserves job Architecture if NodeType not set",
+		"preserves job Architecture if NodeType not set": {
 			defaultRadixJobComponentConfig: common.RadixJobComponentConfig{Runtime: &common.Runtime{
 				Architecture: string(radixv1.RuntimeArchitectureAmd64),
 			}},
@@ -466,8 +459,7 @@ func Test_MergeRuntime(t *testing.T) {
 				Architecture: string(radixv1.RuntimeArchitectureArm64),
 			}},
 		},
-		{
-			name:                           "preserves job Architecture when there is no default runtime",
+		"preserves job Architecture when there is no default runtime": {
 			defaultRadixJobComponentConfig: common.RadixJobComponentConfig{},
 			radixJobComponentConfig: common.RadixJobComponentConfig{Runtime: &common.Runtime{
 				Architecture: string(radixv1.RuntimeArchitectureArm64),
@@ -476,8 +468,7 @@ func Test_MergeRuntime(t *testing.T) {
 				Architecture: string(radixv1.RuntimeArchitectureArm64),
 			}},
 		},
-		{
-			name: "sets job Architecture by default runtime",
+		"sets job Architecture by default runtime": {
 			defaultRadixJobComponentConfig: common.RadixJobComponentConfig{Runtime: &common.Runtime{
 				Architecture: string(radixv1.RuntimeArchitectureArm64),
 			}},
@@ -486,8 +477,7 @@ func Test_MergeRuntime(t *testing.T) {
 				Architecture: string(radixv1.RuntimeArchitectureArm64),
 			}},
 		},
-		{
-			name: "no job Architecture if no default runtime and job runtime",
+		"no job Architecture if no default runtime and job runtime": {
 			defaultRadixJobComponentConfig: common.RadixJobComponentConfig{Runtime: &common.Runtime{
 				Architecture: string(radixv1.RuntimeArchitectureArm64),
 			}},
@@ -496,8 +486,7 @@ func Test_MergeRuntime(t *testing.T) {
 				Architecture: string(radixv1.RuntimeArchitectureArm64),
 			}},
 		},
-		{
-			name: "clears Architecture if both present after merge",
+		"clears Architecture if both present after merge": {
 			defaultRadixJobComponentConfig: common.RadixJobComponentConfig{Runtime: &common.Runtime{
 				Architecture: string(radixv1.RuntimeArchitectureAmd64),
 			}},
@@ -511,8 +500,8 @@ func Test_MergeRuntime(t *testing.T) {
 		},
 	}
 
-	for _, tt := range scenarios {
-		t.Run(tt.name, func(t *testing.T) {
+	for name, tt := range scenarios {
+		t.Run(name, func(t *testing.T) {
 			jobScheduleDescription := &common.JobScheduleDescription{RadixJobComponentConfig: tt.radixJobComponentConfig}
 			err := applyDefaultJobDescriptionProperties(jobScheduleDescription,
 				&tt.defaultRadixJobComponentConfig)
