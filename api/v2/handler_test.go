@@ -2,6 +2,7 @@ package apiv2
 
 import (
 	"context"
+	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"testing"
 
 	"github.com/equinor/radix-common/utils/pointers"
@@ -411,6 +412,112 @@ func TestMergeJobDescriptionWithDefaultJobDescription(t *testing.T) {
 			err := applyDefaultJobDescriptionProperties(test.jobScheduleDescription, test.defaultRadixJobComponentConfig)
 			require.NoError(t, err)
 			assert.EqualValues(t, *test.expectedRadixJobComponentConfig, test.jobScheduleDescription.RadixJobComponentConfig)
+		})
+	}
+}
+
+func Test_MergeRuntime(t *testing.T) {
+	scenarios := []struct {
+		name                            string
+		radixJobComponentConfig         common.RadixJobComponentConfig
+		defaultRadixJobComponentConfig  common.RadixJobComponentConfig
+		expectedRadixJobComponentConfig common.RadixJobComponentConfig
+	}{
+		{
+			name:                           "fills missing Architecture and NodeType",
+			defaultRadixJobComponentConfig: common.RadixJobComponentConfig{Runtime: &common.Runtime{Architecture: string(radixv1.RuntimeArchitectureAmd64)}},
+			radixJobComponentConfig:        common.RadixJobComponentConfig{Runtime: &common.Runtime{}},
+			expectedRadixJobComponentConfig: common.RadixJobComponentConfig{Runtime: &common.Runtime{
+				Architecture: string(radixv1.RuntimeArchitectureAmd64),
+			}},
+		},
+		{
+			name: "preserves existing NodeType",
+			defaultRadixJobComponentConfig: common.RadixJobComponentConfig{Runtime: &common.Runtime{
+				Architecture: string(radixv1.RuntimeArchitectureAmd64),
+			}},
+			radixJobComponentConfig: common.RadixJobComponentConfig{Runtime: &common.Runtime{
+				NodeType: pointers.Ptr("gpu-nodes"),
+			}},
+			expectedRadixJobComponentConfig: common.RadixJobComponentConfig{Runtime: &common.Runtime{
+				NodeType: pointers.Ptr("gpu-nodes"),
+				// Architecture should be cleared
+			}},
+		},
+		{
+			name:                           "preserves existing Architecture if NodeType not set",
+			defaultRadixJobComponentConfig: common.RadixJobComponentConfig{Runtime: &common.Runtime{}},
+			radixJobComponentConfig: common.RadixJobComponentConfig{Runtime: &common.Runtime{
+				Architecture: string(radixv1.RuntimeArchitectureArm64),
+			}},
+			expectedRadixJobComponentConfig: common.RadixJobComponentConfig{Runtime: &common.Runtime{
+				Architecture: string(radixv1.RuntimeArchitectureArm64),
+			}},
+		},
+		{
+			name: "preserves job Architecture if NodeType not set",
+			defaultRadixJobComponentConfig: common.RadixJobComponentConfig{Runtime: &common.Runtime{
+				Architecture: string(radixv1.RuntimeArchitectureAmd64),
+			}},
+			radixJobComponentConfig: common.RadixJobComponentConfig{Runtime: &common.Runtime{
+				Architecture: string(radixv1.RuntimeArchitectureArm64),
+			}},
+			expectedRadixJobComponentConfig: common.RadixJobComponentConfig{Runtime: &common.Runtime{
+				Architecture: string(radixv1.RuntimeArchitectureArm64),
+			}},
+		},
+		{
+			name:                           "preserves job Architecture when there is no default runtime",
+			defaultRadixJobComponentConfig: common.RadixJobComponentConfig{},
+			radixJobComponentConfig: common.RadixJobComponentConfig{Runtime: &common.Runtime{
+				Architecture: string(radixv1.RuntimeArchitectureArm64),
+			}},
+			expectedRadixJobComponentConfig: common.RadixJobComponentConfig{Runtime: &common.Runtime{
+				Architecture: string(radixv1.RuntimeArchitectureArm64),
+			}},
+		},
+		{
+			name: "sets job Architecture by default runtime",
+			defaultRadixJobComponentConfig: common.RadixJobComponentConfig{Runtime: &common.Runtime{
+				Architecture: string(radixv1.RuntimeArchitectureArm64),
+			}},
+			radixJobComponentConfig: common.RadixJobComponentConfig{},
+			expectedRadixJobComponentConfig: common.RadixJobComponentConfig{Runtime: &common.Runtime{
+				Architecture: string(radixv1.RuntimeArchitectureArm64),
+			}},
+		},
+		{
+			name: "no job Architecture if no default runtime and job runtime",
+			defaultRadixJobComponentConfig: common.RadixJobComponentConfig{Runtime: &common.Runtime{
+				Architecture: string(radixv1.RuntimeArchitectureArm64),
+			}},
+			radixJobComponentConfig: common.RadixJobComponentConfig{},
+			expectedRadixJobComponentConfig: common.RadixJobComponentConfig{Runtime: &common.Runtime{
+				Architecture: string(radixv1.RuntimeArchitectureArm64),
+			}},
+		},
+		{
+			name: "clears Architecture if both present after merge",
+			defaultRadixJobComponentConfig: common.RadixJobComponentConfig{Runtime: &common.Runtime{
+				Architecture: string(radixv1.RuntimeArchitectureAmd64),
+			}},
+			radixJobComponentConfig: common.RadixJobComponentConfig{Runtime: &common.Runtime{
+				NodeType: pointers.Ptr("edge-nodes"),
+			}},
+			expectedRadixJobComponentConfig: common.RadixJobComponentConfig{Runtime: &common.Runtime{
+				NodeType: pointers.Ptr("edge-nodes"),
+				// Architecture must be cleared
+			}},
+		},
+	}
+
+	for _, tt := range scenarios {
+		t.Run(tt.name, func(t *testing.T) {
+			jobScheduleDescription := &common.JobScheduleDescription{RadixJobComponentConfig: tt.radixJobComponentConfig}
+			err := applyDefaultJobDescriptionProperties(jobScheduleDescription,
+				&tt.defaultRadixJobComponentConfig)
+			require.NoError(t, err)
+			assert.EqualValues(t, tt.expectedRadixJobComponentConfig, jobScheduleDescription.RadixJobComponentConfig)
 		})
 	}
 }
