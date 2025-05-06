@@ -32,32 +32,6 @@ func (runtime *Runtime) MapToRadixRuntime() *radixv1.Runtime {
 	}
 }
 
-func (runtime *Runtime) getArchitecture() string {
-	if runtime == nil {
-		return ""
-	}
-	return runtime.Architecture
-}
-
-func (runtime *Runtime) getNodeType() *string {
-	if runtime == nil {
-		return nil
-	}
-	return runtime.NodeType
-}
-
-func (runtime *Runtime) setArchitecture(architecture string) {
-	if runtime != nil {
-		runtime.Architecture = architecture
-	}
-}
-
-func (runtime *Runtime) setNodeType(nodeType *string) {
-	if runtime != nil {
-		runtime.NodeType = nodeType
-	}
-}
-
 // RuntimeTransformer is a mergo transformer for the Runtime struct
 type RuntimeTransformer struct{}
 
