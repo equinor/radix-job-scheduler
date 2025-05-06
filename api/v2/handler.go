@@ -35,6 +35,7 @@ const (
 )
 
 var (
+	//jobDescriptionTransformer mergo.Transformers = mergoutils.CombinedTransformer{Transformers: []mergo.Transformers{mergoutils.BoolPtrTransformer{}}}
 	jobDescriptionTransformer mergo.Transformers = mergoutils.CombinedTransformer{Transformers: []mergo.Transformers{mergoutils.BoolPtrTransformer{}, common.RuntimeTransformer{}}}
 )
 
@@ -457,5 +458,9 @@ func applyDefaultJobDescriptionProperties(jobScheduleDescription *common.JobSche
 	if jobScheduleDescription == nil || defaultRadixJobComponentConfig == nil {
 		return nil
 	}
-	return mergo.Merge(&jobScheduleDescription.RadixJobComponentConfig, defaultRadixJobComponentConfig, mergo.WithTransformers(jobDescriptionTransformer))
+	err := mergo.Merge(&jobScheduleDescription.RadixJobComponentConfig, defaultRadixJobComponentConfig, mergo.WithTransformers(jobDescriptionTransformer))
+	if err != nil {
+		return err
+	}
+	return nil
 }

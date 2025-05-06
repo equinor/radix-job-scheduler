@@ -7,7 +7,7 @@ toolchain go1.24.2
 require (
 	dario.cat/mergo v1.0.1
 	github.com/equinor/radix-common v1.10.0
-	github.com/equinor/radix-operator v1.78.2-0.20250502114621-371b0a10e64c
+	github.com/equinor/radix-operator v1.78.5-0.20250506074323-038b75a64420
 	github.com/gin-gonic/gin v1.10.0
 	github.com/go-swagger/go-swagger v0.31.0
 	github.com/golang/mock v1.6.0
@@ -52,7 +52,7 @@ require (
 	github.com/go-playground/validator/v10 v10.26.0 // indirect
 	github.com/goccy/go-json v0.10.2 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
-	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
+	github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/google/cel-go v0.23.2 // indirect
 	github.com/google/gnostic-models v0.6.9 // indirect
@@ -96,7 +96,7 @@ require (
 	golang.org/x/arch v0.8.0 // indirect
 	golang.org/x/crypto v0.37.0 // indirect
 	golang.org/x/exp v0.0.0-20250210185358-939b2ce775ac // indirect
-	golang.org/x/net v0.38.0 // indirect
+	golang.org/x/net v0.39.0 // indirect
 	golang.org/x/oauth2 v0.29.0 // indirect
 	golang.org/x/sync v0.13.0 // indirect
 	golang.org/x/sys v0.32.0 // indirect

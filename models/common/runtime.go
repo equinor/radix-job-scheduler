@@ -63,40 +63,16 @@ type RuntimeTransformer struct{}
 
 // Transformer implements the mergo.Transformer interface
 func (transformer RuntimeTransformer) Transformer(t reflect.Type) func(dst, src reflect.Value) error {
-	if t != reflect.TypeOf(Runtime{}) {
+	if t != reflect.TypeOf(new(Runtime)) {
 		return nil
 	}
 
 	return func(dst, src reflect.Value) error {
-		var dstRuntime, srcRuntime Runtime
-		if src.Kind() == reflect.Ptr && src.IsNil() {
-			if dst.Kind() == reflect.Ptr && dst.IsNil() {
-				return nil
-			}
-		} else {
-			srcRuntime, _ = src.Interface().(Runtime)
-		}
-		if !dst.CanSet() {
-			dst.Set(reflect.ValueOf(srcRuntime))
+		if dst.Kind() != reflect.Ptr || src.Kind() != reflect.Ptr {
 			return nil
-		} else {
-			dstRuntime, _ = dst.Interface().(Runtime)
 		}
-
-		if dstRuntime.getArchitecture() == "" && srcRuntime.getArchitecture() != "" {
-			dstRuntime.setArchitecture(srcRuntime.Architecture)
-		}
-
-		if dstRuntime.getNodeType() == nil && srcRuntime.getNodeType() != nil {
-			dstRuntime.setNodeType(srcRuntime.NodeType)
-		}
-
-		if dstRuntime.getArchitecture() != "" && dstRuntime.getNodeType() != nil {
-			dstRuntime.setArchitecture("")
-		}
-
-		if dst.CanSet() {
-			dst.Set(reflect.ValueOf(dstRuntime))
+		if dst.IsNil() && !src.IsNil() {
+			dst.Set(src)
 		}
 		return nil
 	}
