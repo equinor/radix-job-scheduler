@@ -35,7 +35,6 @@ const (
 )
 
 var (
-	//jobDescriptionTransformer mergo.Transformers = mergoutils.CombinedTransformer{Transformers: []mergo.Transformers{mergoutils.BoolPtrTransformer{}}}
 	jobDescriptionTransformer mergo.Transformers = mergoutils.CombinedTransformer{Transformers: []mergo.Transformers{mergoutils.BoolPtrTransformer{}, common.RuntimeTransformer{}}}
 )
 
@@ -426,8 +425,7 @@ func buildPayloadSecret(ctx context.Context, appName, radixJobComponentName, bat
 }
 
 func buildRadixBatchJob(jobScheduleDescription *common.JobScheduleDescription, defaultJobScheduleDescription *common.RadixJobComponentConfig) (*radixv1.RadixBatchJob, error) {
-	err := applyDefaultJobDescriptionProperties(jobScheduleDescription, defaultJobScheduleDescription)
-	if err != nil {
+	if err := applyDefaultJobDescriptionProperties(jobScheduleDescription, defaultJobScheduleDescription); err != nil {
 		return nil, apiErrors.NewFromError(err)
 	}
 	return &radixv1.RadixBatchJob{
@@ -458,9 +456,5 @@ func applyDefaultJobDescriptionProperties(jobScheduleDescription *common.JobSche
 	if jobScheduleDescription == nil || defaultRadixJobComponentConfig == nil {
 		return nil
 	}
-	err := mergo.Merge(&jobScheduleDescription.RadixJobComponentConfig, defaultRadixJobComponentConfig, mergo.WithTransformers(jobDescriptionTransformer))
-	if err != nil {
-		return err
-	}
-	return nil
+	return mergo.Merge(&jobScheduleDescription.RadixJobComponentConfig, defaultRadixJobComponentConfig, mergo.WithTransformers(jobDescriptionTransformer))
 }
