@@ -116,7 +116,7 @@ func startServers(servers ...*http.Server) {
 }
 
 func getKubeUtil(ctx context.Context) *kube.Kube {
-	kubeClient, radixClient, kedaClient, _, secretProviderClient, _ := utils.GetKubernetesClient(ctx)
+	kubeClient, radixClient, kedaClient, _, secretProviderClient, _, _ := utils.GetKubernetesClient(ctx)
 	kubeUtil, _ := kube.New(kubeClient, radixClient, kedaClient, secretProviderClient)
 	return kubeUtil
 }

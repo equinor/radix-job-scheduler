@@ -35,7 +35,7 @@ const (
 )
 
 var (
-	authTransformer mergo.Transformers = mergoutils.CombinedTransformer{Transformers: []mergo.Transformers{mergoutils.BoolPtrTransformer{}}}
+	jobDescriptionTransformer mergo.Transformers = mergoutils.CombinedTransformer{Transformers: []mergo.Transformers{mergoutils.BoolPtrTransformer{}, common.RuntimeTransformer{}}}
 )
 
 type handler struct {
@@ -425,15 +425,15 @@ func buildPayloadSecret(ctx context.Context, appName, radixJobComponentName, bat
 }
 
 func buildRadixBatchJob(jobScheduleDescription *common.JobScheduleDescription, defaultJobScheduleDescription *common.RadixJobComponentConfig) (*radixv1.RadixBatchJob, error) {
-	err := applyDefaultJobDescriptionProperties(jobScheduleDescription, defaultJobScheduleDescription)
-	if err != nil {
+	if err := applyDefaultJobDescriptionProperties(jobScheduleDescription, defaultJobScheduleDescription); err != nil {
 		return nil, apiErrors.NewFromError(err)
 	}
 	return &radixv1.RadixBatchJob{
 		Name:             internal.CreateJobName(),
 		JobId:            jobScheduleDescription.JobId,
 		Resources:        jobScheduleDescription.Resources.MapToRadixResourceRequirements(),
-		Node:             jobScheduleDescription.Node.MapToRadixNode(),
+		Node:             jobScheduleDescription.Node.MapToRadixNode(), // nolint:staticcheck // SA1019: Ignore linting deprecated fields
+		Runtime:          jobScheduleDescription.Runtime.MapToRadixRuntime(),
 		TimeLimitSeconds: jobScheduleDescription.TimeLimitSeconds,
 		BackoffLimit:     jobScheduleDescription.BackoffLimit,
 		ImageTagName:     jobScheduleDescription.ImageTagName,
@@ -456,5 +456,5 @@ func applyDefaultJobDescriptionProperties(jobScheduleDescription *common.JobSche
 	if jobScheduleDescription == nil || defaultRadixJobComponentConfig == nil {
 		return nil
 	}
-	return mergo.Merge(&jobScheduleDescription.RadixJobComponentConfig, defaultRadixJobComponentConfig, mergo.WithTransformers(authTransformer))
+	return mergo.Merge(&jobScheduleDescription.RadixJobComponentConfig, defaultRadixJobComponentConfig, mergo.WithTransformers(jobDescriptionTransformer))
 }
