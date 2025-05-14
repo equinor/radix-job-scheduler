@@ -962,6 +962,9 @@
         "resources": {
           "$ref": "#/definitions/Resources"
         },
+        "runtime": {
+          "$ref": "#/definitions/Runtime"
+        },
         "timeLimitSeconds": {
           "description": "TimeLimitSeconds defines maximum job run time. Corresponds to ActiveDeadlineSeconds in K8s.",
           "type": "integer",
@@ -1198,6 +1201,9 @@
         "resources": {
           "$ref": "#/definitions/Resources"
         },
+        "runtime": {
+          "$ref": "#/definitions/Runtime"
+        },
         "timeLimitSeconds": {
           "description": "TimeLimitSeconds defines maximum job run time. Corresponds to ActiveDeadlineSeconds in K8s.",
           "type": "integer",
@@ -1249,6 +1255,24 @@
         },
         "requests": {
           "$ref": "#/definitions/ResourceList"
+        }
+      },
+      "x-go-package": "github.com/equinor/radix-job-scheduler/models/common"
+    },
+    "Runtime": {
+      "description": "Runtime defines the component or job's target runtime requirements",
+      "type": "object",
+      "properties": {
+        "architecture": {
+          "description": "CPU architecture",
+          "type": "string",
+          "x-go-name": "Architecture",
+          "example": "amd64"
+        },
+        "nodeType": {
+          "description": "Defines the node type for the component. It is a node-pool label and taint, where the component's or job's pods will be scheduled.\nMore info: https://www.radix.equinor.com/radix-config#nodetype\n+kubebuilder:validation:MaxLength=120\n+kubebuilder:validation:Pattern=^(([a-z0-9][-a-z0-9]*)?[a-z0-9])?$\n+optional",
+          "type": "string",
+          "x-go-name": "NodeType"
         }
       },
       "x-go-package": "github.com/equinor/radix-job-scheduler/models/common"

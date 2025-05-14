@@ -6,6 +6,8 @@ type RadixJobComponentConfig struct {
 	//
 	// required: false
 	Resources *Resources `json:"resources,omitempty"`
+
+	// Deprecated: use Runtime.NodeType instead.
 	// Node defines node attributes, where container should be scheduled
 	//
 	// required: false
@@ -30,6 +32,10 @@ type RadixJobComponentConfig struct {
 	//
 	// required: false
 	ImageTagName string `json:"imageTagName,omitempty"`
+
+	// Runtime defines the target runtime requirements for the component
+	// +optional
+	Runtime *Runtime `json:"runtime,omitempty"`
 }
 
 // JobScheduleDescription holds description about scheduling job
