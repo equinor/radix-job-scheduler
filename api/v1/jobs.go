@@ -7,7 +7,6 @@ import (
 
 	"github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-common/utils/slice"
-	apiv2 "github.com/equinor/radix-job-scheduler/api/v2"
 	"github.com/equinor/radix-job-scheduler/internal"
 	modelsv1 "github.com/equinor/radix-job-scheduler/models/v1"
 	modelsv2 "github.com/equinor/radix-job-scheduler/models/v2"
@@ -43,12 +42,12 @@ func GetJobStatusFromRadixBatchJobsStatuses(radixBatches ...modelsv2.RadixBatch)
 }
 
 // CopyJob Copy a job
-func CopyJob(ctx context.Context, handlerApiV2 apiv2.Handler, jobName, deploymentName string) (*modelsv2.RadixBatch, error) {
+func CopyJob(ctx context.Context, handlerApiV2 Handler, jobName, deploymentName string) (*modelsv2.RadixBatch, error) {
 	return handlerApiV2.CopyRadixBatchJob(ctx, jobName, deploymentName)
 }
 
 // StopJob Stop a job
-func StopJob(ctx context.Context, handlerApiV2 apiv2.Handler, jobName string) error {
+func StopJob(ctx context.Context, handlerApiV2 Handler, jobName string) error {
 	if batchName, batchJobName, ok := internal.ParseBatchAndJobNameFromScheduledJobName(jobName); ok {
 		return handlerApiV2.StopRadixBatchJob(ctx, batchName, batchJobName)
 	}
@@ -56,12 +55,12 @@ func StopJob(ctx context.Context, handlerApiV2 apiv2.Handler, jobName string) er
 }
 
 // StopAllSingleJobs Stop alls jobs
-func StopAllSingleJobs(ctx context.Context, handlerApiV2 apiv2.Handler, componentName string) error {
+func StopAllSingleJobs(ctx context.Context, handlerApiV2 Handler, componentName string) error {
 	return handlerApiV2.StopAllSingleRadixJobs(ctx)
 }
 
 // GetBatchJob Get batch job
-func GetBatchJob(ctx context.Context, handlerApiV2 apiv2.Handler, batchName, jobName string) (*modelsv1.JobStatus, error) {
+func GetBatchJob(ctx context.Context, handlerApiV2 Handler, batchName, jobName string) (*modelsv1.JobStatus, error) {
 	radixBatch, err := handlerApiV2.GetRadixBatch(ctx, batchName)
 	if err != nil {
 		return nil, err

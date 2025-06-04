@@ -6,10 +6,9 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/equinor/radix-job-scheduler/api"
-	"github.com/equinor/radix-job-scheduler/api/controllers"
 	apiErrors "github.com/equinor/radix-job-scheduler/api/errors"
 	batchapi "github.com/equinor/radix-job-scheduler/api/v1/batches"
+	"github.com/equinor/radix-job-scheduler/api/v1/controllers"
 	schedulerModels "github.com/equinor/radix-job-scheduler/models/common"
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
@@ -26,15 +25,15 @@ type batchController struct {
 }
 
 // New create a new batch controller
-func New(handler batchapi.BatchHandler) api.Controller {
+func New(handler batchapi.BatchHandler) controllers.Controller {
 	return &batchController{
 		handler: handler,
 	}
 }
 
 // GetRoutes List the supported routes of this controller
-func (controller *batchController) GetRoutes() []api.Route {
-	routes := []api.Route{
+func (controller *batchController) GetRoutes() []controllers.Route {
+	routes := []controllers.Route{
 		{
 			Path:    "/batches",
 			Method:  http.MethodPost,

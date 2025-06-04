@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	v2 "github.com/equinor/radix-job-scheduler/api/v1/controllers"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -14,7 +15,6 @@ import (
 
 	radixUtils "github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-common/utils/numbers"
-	"github.com/equinor/radix-job-scheduler/api"
 	"github.com/equinor/radix-job-scheduler/models"
 	modelsv1 "github.com/equinor/radix-job-scheduler/models/v1"
 	"github.com/equinor/radix-job-scheduler/router"
@@ -29,10 +29,10 @@ import (
 )
 
 type ControllerTestUtils struct {
-	controllers []api.Controller
+	controllers []v2.Controller
 }
 
-func New(controllers ...api.Controller) ControllerTestUtils {
+func New(controllers ...v2.Controller) ControllerTestUtils {
 	return ControllerTestUtils{
 		controllers: controllers,
 	}

@@ -1,4 +1,4 @@
-package apiv2
+package v1
 
 import (
 	"context"

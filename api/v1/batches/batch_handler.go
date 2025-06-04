@@ -5,8 +5,7 @@ import (
 
 	"github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-common/utils/slice"
-	apiv1 "github.com/equinor/radix-job-scheduler/api/v1"
-	apiv2 "github.com/equinor/radix-job-scheduler/api/v2"
+	"github.com/equinor/radix-job-scheduler/api/v1"
 	"github.com/equinor/radix-job-scheduler/internal"
 	"github.com/equinor/radix-job-scheduler/models"
 	"github.com/equinor/radix-job-scheduler/models/common"
@@ -21,7 +20,7 @@ import (
 )
 
 type batchHandler struct {
-	common *apiv1.Handler
+	common v1.Handler
 }
 
 type BatchHandler interface {
@@ -48,31 +47,26 @@ type BatchHandler interface {
 // New Constructor of the batch handler
 func New(kube *kube.Kube, env *models.Env, radixDeployJobComponent *radixv1.RadixDeployJobComponent) BatchHandler {
 	return &batchHandler{
-		common: &apiv1.Handler{
-			Kube:                    kube,
-			Env:                     env,
-			HandlerApiV2:            apiv2.New(kube, env, radixDeployJobComponent),
-			RadixDeployJobComponent: radixDeployJobComponent,
-		},
+		common: v1.New(kube, env, radixDeployJobComponent),
 	}
 }
 
 // GetBatches Get status of all batches
 func (handler *batchHandler) GetBatches(ctx context.Context) ([]modelsv1.BatchStatus, error) {
 	logger := log.Ctx(ctx)
-	logger.Debug().Msgf("Get batches for the namespace: %s", handler.common.Env.RadixDeploymentNamespace)
+	logger.Debug().Msgf("Get batches for the namespace: %s", handler.common.GetEnv().RadixDeploymentNamespace)
 
-	radixBatches, err := handler.common.HandlerApiV2.GetRadixBatches(ctx)
+	radixBatches, err := handler.common.GetRadixBatches(ctx)
 	if err != nil {
 		return nil, err
 	}
 	radixBatchStatuses := make([]modelsv1.BatchStatus, 0, len(radixBatches))
 	if len(radixBatches) == 0 {
-		logger.Debug().Msgf("No batches found for namespace %s", handler.common.Env.RadixDeploymentNamespace)
+		logger.Debug().Msgf("No batches found for namespace %s", handler.common.GetEnv().RadixDeploymentNamespace)
 		return radixBatchStatuses, nil
 	}
 
-	labelSelectorForAllRadixBatchesPods := apiv1.GetLabelSelectorForAllRadixBatchesPods(handler.common.Env.RadixComponentName)
+	labelSelectorForAllRadixBatchesPods := v1.GetLabelSelectorForAllRadixBatchesPods(handler.common.GetEnv().RadixComponentName)
 	eventMessageForPods, batchJobPodsMap, err := handler.common.GetRadixBatchJobMessagesAndPodMaps(ctx, labelSelectorForAllRadixBatchesPods)
 	if err != nil {
 		return nil, err
@@ -82,25 +76,25 @@ func (handler *batchHandler) GetBatches(ctx context.Context) ([]modelsv1.BatchSt
 		setBatchJobEventMessages(radixBatchStatus, batchJobPodsMap, eventMessageForPods)
 		radixBatchStatuses = append(radixBatchStatuses, *radixBatchStatus)
 	}
-	logger.Debug().Msgf("Found %v batches for namespace %s", len(radixBatchStatuses), handler.common.Env.RadixDeploymentNamespace)
+	logger.Debug().Msgf("Found %v batches for namespace %s", len(radixBatchStatuses), handler.common.GetEnv().RadixDeploymentNamespace)
 	return radixBatchStatuses, nil
 }
 
 // GetBatchJob Get status of a batch job
 func (handler *batchHandler) GetBatchJob(ctx context.Context, batchName string, jobName string) (*modelsv1.JobStatus, error) {
-	return apiv1.GetBatchJob(ctx, handler.common.HandlerApiV2, batchName, jobName)
+	return v1.GetBatchJob(ctx, handler.common, batchName, jobName)
 }
 
 // GetBatch Get status of a batch
 func (handler *batchHandler) GetBatch(ctx context.Context, batchName string) (*modelsv1.BatchStatus, error) {
 	logger := log.Ctx(ctx)
-	logger.Debug().Msgf("get batches for namespace: %s", handler.common.Env.RadixDeploymentNamespace)
-	radixBatch, err := handler.common.HandlerApiV2.GetRadixBatch(ctx, batchName)
+	logger.Debug().Msgf("get batches for namespace: %s", handler.common.GetEnv().RadixDeploymentNamespace)
+	radixBatch, err := handler.common.GetRadixBatch(ctx, batchName)
 	if err != nil {
 		return nil, err
 	}
 	radixBatchStatus := handler.getBatchStatusFromRadixBatch(radixBatch)
-	labelSelectorForRadixBatchesPods := apiv1.GetLabelSelectorForRadixBatchesPods(handler.common.Env.RadixComponentName, batchName)
+	labelSelectorForRadixBatchesPods := v1.GetLabelSelectorForRadixBatchesPods(handler.common.GetEnv().RadixComponentName, batchName)
 	eventMessageForPods, batchJobPodsMap, err := handler.common.GetRadixBatchJobMessagesAndPodMaps(ctx, labelSelectorForRadixBatchesPods)
 	if err != nil {
 		return nil, err
@@ -112,8 +106,8 @@ func (handler *batchHandler) GetBatch(ctx context.Context, batchName string) (*m
 // CreateBatch Create a batch with parameters
 func (handler *batchHandler) CreateBatch(ctx context.Context, batchScheduleDescription *common.BatchScheduleDescription) (*modelsv1.BatchStatus, error) {
 	logger := log.Ctx(ctx)
-	logger.Debug().Msgf("create batch for namespace: %s", handler.common.Env.RadixDeploymentNamespace)
-	radixBatch, err := handler.common.HandlerApiV2.CreateRadixBatch(ctx, batchScheduleDescription)
+	logger.Debug().Msgf("create batch for namespace: %s", handler.common.GetEnv().RadixDeploymentNamespace)
+	radixBatch, err := handler.common.CreateRadixBatch(ctx, batchScheduleDescription)
 	if err != nil {
 		return nil, err
 	}
@@ -122,7 +116,7 @@ func (handler *batchHandler) CreateBatch(ctx context.Context, batchScheduleDescr
 
 // CopyBatch Copy a batch with  deployment and optional parameters
 func (handler *batchHandler) CopyBatch(ctx context.Context, batchName string, deploymentName string) (*modelsv1.BatchStatus, error) {
-	radixBatch, err := handler.common.HandlerApiV2.CopyRadixBatch(ctx, batchName, deploymentName)
+	radixBatch, err := handler.common.CopyRadixBatch(ctx, batchName, deploymentName)
 	if err != nil {
 		return nil, err
 	}
@@ -132,36 +126,36 @@ func (handler *batchHandler) CopyBatch(ctx context.Context, batchName string, de
 // DeleteBatch Delete a batch
 func (handler *batchHandler) DeleteBatch(ctx context.Context, batchName string) error {
 	logger := log.Ctx(ctx)
-	logger.Debug().Msgf("delete batch %s for namespace: %s", batchName, handler.common.Env.RadixDeploymentNamespace)
-	err := batch.DeleteRadixBatchByName(ctx, handler.common.Kube.RadixClient(), handler.common.Env.RadixDeploymentNamespace, batchName)
+	logger.Debug().Msgf("delete batch %s for namespace: %s", batchName, handler.common.GetEnv().RadixDeploymentNamespace)
+	err := batch.DeleteRadixBatchByName(ctx, handler.common.GetKubeUtil().RadixClient(), handler.common.GetEnv().RadixDeploymentNamespace, batchName)
 	if err != nil {
 		return err
 	}
-	return internal.GarbageCollectPayloadSecrets(ctx, handler.common.Kube, handler.common.Env.RadixDeploymentNamespace, handler.common.Env.RadixComponentName)
+	return internal.GarbageCollectPayloadSecrets(ctx, handler.common.GetKubeUtil(), handler.common.GetEnv().RadixDeploymentNamespace, handler.common.GetEnv().RadixComponentName)
 }
 
 // StopBatch Stop a batch
 func (handler *batchHandler) StopBatch(ctx context.Context, batchName string) error {
 	logger := log.Ctx(ctx)
-	logger.Debug().Msgf("delete batch %s for namespace: %s", batchName, handler.common.Env.RadixDeploymentNamespace)
-	return handler.common.HandlerApiV2.StopRadixBatch(ctx, batchName)
+	logger.Debug().Msgf("delete batch %s for namespace: %s", batchName, handler.common.GetEnv().RadixDeploymentNamespace)
+	return handler.common.StopRadixBatch(ctx, batchName)
 }
 
 // StopAllBatches Stop all batches
 func (handler *batchHandler) StopAllBatches(ctx context.Context) error {
-	return handler.common.HandlerApiV2.StopAllRadixBatches(ctx)
+	return handler.common.StopAllRadixBatches(ctx)
 }
 
 // StopBatchJob Stop a batch job
 func (handler *batchHandler) StopBatchJob(ctx context.Context, batchName string, jobName string) error {
 	logger := log.Ctx(ctx)
-	logger.Debug().Msgf("delete the job %s in the batch %s for namespace: %s", jobName, batchName, handler.common.Env.RadixDeploymentNamespace)
-	return apiv1.StopJob(ctx, handler.common.HandlerApiV2, jobName)
+	logger.Debug().Msgf("delete the job %s in the batch %s for namespace: %s", jobName, batchName, handler.common.GetEnv().RadixDeploymentNamespace)
+	return v1.StopJob(ctx, handler.common, jobName)
 }
 
 func setBatchJobEventMessages(radixBatchStatus *modelsv1.BatchStatus, batchJobPodsMap map[string]corev1.Pod, eventMessageForPods map[string]string) {
 	for i := 0; i < len(radixBatchStatus.JobStatuses); i++ {
-		apiv1.SetBatchJobEventMessageToBatchJobStatus(&radixBatchStatus.JobStatuses[i], batchJobPodsMap, eventMessageForPods)
+		v1.SetBatchJobEventMessageToBatchJobStatus(&radixBatchStatus.JobStatuses[i], batchJobPodsMap, eventMessageForPods)
 	}
 }
 
@@ -177,7 +171,7 @@ func (handler *batchHandler) getBatchStatusFromRadixBatch(radixBatch *modelsv2.R
 			Message:        radixBatch.Message,
 			DeploymentName: radixBatch.DeploymentName,
 		},
-		JobStatuses: apiv1.GetJobStatusFromRadixBatchJobsStatuses(*radixBatch),
+		JobStatuses: v1.GetJobStatusFromRadixBatchJobsStatuses(*radixBatch),
 		BatchType:   radixBatch.BatchType,
 	}
 }
@@ -194,7 +188,7 @@ func (handler *batchHandler) getBatchStatus(radixBatch *modelsv2.RadixBatch) rad
 	jobStatusPhases := slice.Reduce(radixBatch.JobStatuses, make([]radixv1.RadixBatchJobPhase, 0), func(acc []radixv1.RadixBatchJobPhase, jobStatus modelsv2.RadixBatchJobStatus) []radixv1.RadixBatchJobPhase {
 		return append(acc, radixv1.RadixBatchJobPhase(jobStatus.Status))
 	})
-	return jobs.GetStatusFromStatusRules(jobStatusPhases, handler.common.RadixDeployJobComponent, radixBatch.Status)
+	return jobs.GetStatusFromStatusRules(jobStatusPhases, handler.common.GetRadixDeployJobComponent(), radixBatch.Status)
 }
 
 func getBatchId(radixBatch *modelsv2.RadixBatch) string {

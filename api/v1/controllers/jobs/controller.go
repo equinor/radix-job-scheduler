@@ -6,9 +6,8 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/equinor/radix-job-scheduler/api"
-	"github.com/equinor/radix-job-scheduler/api/controllers"
 	apiErrors "github.com/equinor/radix-job-scheduler/api/errors"
+	"github.com/equinor/radix-job-scheduler/api/v1/controllers"
 	jobApi "github.com/equinor/radix-job-scheduler/api/v1/jobs"
 	apiModels "github.com/equinor/radix-job-scheduler/models/common"
 	"github.com/gin-gonic/gin"
@@ -23,15 +22,15 @@ type jobController struct {
 }
 
 // New create a new job controller
-func New(handler jobApi.JobHandler) api.Controller {
+func New(handler jobApi.JobHandler) controllers.Controller {
 	return &jobController{
 		handler: handler,
 	}
 }
 
 // GetRoutes List the supported routes of this controller
-func (controller *jobController) GetRoutes() []api.Route {
-	routes := []api.Route{
+func (controller *jobController) GetRoutes() []controllers.Route {
+	routes := []controllers.Route{
 		{
 			Path:    "/jobs",
 			Method:  http.MethodPost,
