@@ -3,11 +3,11 @@ package jobs
 import (
 	"context"
 	"fmt"
+	apiErrors "github.com/equinor/radix-job-scheduler/pkg/errors"
 	"testing"
 
 	"github.com/equinor/radix-common/utils/pointers"
 	"github.com/equinor/radix-common/utils/slice"
-	apiErrors "github.com/equinor/radix-job-scheduler/api/errors"
 	"github.com/equinor/radix-job-scheduler/api/test"
 	"github.com/equinor/radix-job-scheduler/internal"
 	testUtil "github.com/equinor/radix-job-scheduler/internal/test"

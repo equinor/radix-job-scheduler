@@ -1,8 +1,8 @@
 package controllers
 
 import (
-	"github.com/equinor/radix-job-scheduler/api/errors"
 	"github.com/equinor/radix-job-scheduler/models/common"
+	"github.com/equinor/radix-job-scheduler/pkg/errors"
 	"github.com/equinor/radix-job-scheduler/utils"
 	"github.com/gin-gonic/gin"
 )

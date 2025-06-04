@@ -4,15 +4,11 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/equinor/radix-job-scheduler/pkg/internal"
 	"net/http"
-	"time"
 
-	"github.com/equinor/radix-common/utils"
-	"github.com/equinor/radix-common/utils/pointers"
-	"github.com/equinor/radix-common/utils/slice"
 	"github.com/equinor/radix-job-scheduler/models/v1"
 	"github.com/equinor/radix-job-scheduler/models/v1/events"
-	"github.com/equinor/radix-job-scheduler/utils/radix/jobs"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/rs/zerolog/log"
@@ -50,7 +46,7 @@ func (notifier *webhookNotifier) Notify(event events.Event, radixBatch *radixv1.
 	if !notifier.Enabled() || len(notifier.webhookURL) == 0 || radixBatch.Spec.RadixDeploymentJobRef.Job != notifier.jobComponentName {
 		return nil
 	}
-	// RadixBatch status and only changed job statuses
+	// RadixBatchStatus status and only changed job statuses
 	batchStatus := getRadixBatchEventFromRadixBatch(event, radixBatch, updatedJobStatuses, notifier.radixDeployJobComponent)
 	statusesJson, err := json.Marshal(batchStatus)
 	if err != nil {
@@ -59,7 +55,7 @@ func (notifier *webhookNotifier) Notify(event events.Event, radixBatch *radixv1.
 	log.Trace().Msg(string(statusesJson))
 	buf := bytes.NewReader(statusesJson)
 	if _, err = http.Post(notifier.webhookURL, "application/json", buf); err != nil {
-		return fmt.Errorf("failed to notify on RadixBatch object create or change %s: %v", radixBatch.GetName(), err)
+		return fmt.Errorf("failed to notify on RadixBatchStatus object create or change %s: %v", radixBatch.GetName(), err)
 	}
 	return nil
 }
@@ -69,76 +65,15 @@ func webhookIsNotEmpty(webhook *string) bool {
 }
 
 func getRadixBatchEventFromRadixBatch(event events.Event, radixBatch *radixv1.RadixBatch, radixBatchJobStatuses []radixv1.RadixBatchJobStatus, radixDeployJobComponent *radixv1.RadixDeployJobComponent) events.BatchEvent {
-	batchType := radixBatch.Labels[kube.RadixBatchTypeLabel]
-	var startedTime, endedTime *time.Time
-	if radixBatch.Status.Condition.ActiveTime != nil {
-		startedTime = &radixBatch.Status.Condition.ActiveTime.Time
-	}
-	if radixBatch.Status.Condition.CompletionTime != nil {
-		endedTime = &radixBatch.Status.Condition.CompletionTime.Time
-	}
-
-	batchStatus := v1.JobStatus{
-		Name:    radixBatch.GetName(),
-		BatchId: getBatchId(radixBatch),
-		Created: pointers.Ptr(radixBatch.GetCreationTimestamp().Time),
-		Started: startedTime,
-		Ended:   endedTime,
-		Status:  string(jobs.GetRadixBatchStatus(radixBatch, radixDeployJobComponent)),
-		Message: radixBatch.Status.Condition.Message,
-		Updated: pointers.Ptr(time.Now()),
-	}
-	jobStatuses := getRadixBatchJobStatusesFromRadixBatch(radixBatch, radixBatchJobStatuses)
+	batchStatus, jobStatuses := internal.GetBatchAndJobStatuses(radixBatch, radixDeployJobComponent, radixBatchJobStatuses)
 	return events.BatchEvent{
 		Event: event,
 		BatchStatus: v1.BatchStatus{
 			JobStatus:   batchStatus,
 			JobStatuses: jobStatuses,
-			BatchType:   batchType,
+			BatchType:   radixBatch.Labels[kube.RadixBatchTypeLabel],
 		},
 	}
-}
-
-func getRadixBatchJobStatusesFromRadixBatch(radixBatch *radixv1.RadixBatch, radixBatchJobStatuses []radixv1.RadixBatchJobStatus) []v1.JobStatus {
-	batchName := getBatchName(radixBatch)
-	radixBatchJobsMap := getRadixBatchJobsMap(radixBatch.Spec.Jobs)
-	jobStatuses := make([]v1.JobStatus, 0, len(radixBatchJobStatuses))
-	for _, radixBatchJobStatus := range radixBatchJobStatuses {
-		var started, ended, created *time.Time
-		if radixBatchJobStatus.CreationTime != nil {
-			created = &radixBatchJobStatus.CreationTime.Time
-		}
-		if radixBatchJobStatus.StartTime != nil {
-			started = &radixBatchJobStatus.StartTime.Time
-		}
-
-		if radixBatchJobStatus.EndTime != nil {
-			ended = &radixBatchJobStatus.EndTime.Time
-		}
-
-		radixBatchJob, ok := radixBatchJobsMap[radixBatchJobStatus.Name]
-		if !ok {
-			continue
-		}
-		stopJob := radixBatchJob.Stop != nil && *radixBatchJob.Stop
-		jobName := fmt.Sprintf("%s-%s", radixBatch.Name, radixBatchJobStatus.Name) // composed name in models are always consist of a batchName and original jobName
-		jobStatus := v1.JobStatus{
-			BatchName:   batchName,
-			Name:        jobName,
-			JobId:       radixBatchJob.JobId,
-			Created:     created,
-			Started:     started,
-			Ended:       ended,
-			Status:      string(jobs.GetScheduledJobStatus(radixBatchJobStatus, stopJob)),
-			Failed:      radixBatchJobStatus.Failed,
-			Restart:     radixBatchJobStatus.Restart,
-			Message:     radixBatchJobStatus.Message,
-			Updated:     pointers.Ptr(time.Now()),
-			PodStatuses: getPodStatusByRadixBatchJobPodStatus(radixBatchJobStatus.RadixBatchJobPodStatuses),
-		}
-		jobStatuses = append(jobStatuses, jobStatus)
-	}
-	return jobStatuses
 }
 
 func getRadixBatchJobsMap(radixBatchJobs []radixv1.RadixBatchJob) map[string]radixv1.RadixBatchJob {
@@ -147,44 +82,4 @@ func getRadixBatchJobsMap(radixBatchJobs []radixv1.RadixBatchJob) map[string]rad
 		jobMap[radixBatchJob.Name] = radixBatchJob
 	}
 	return jobMap
-}
-
-func getPodStatusByRadixBatchJobPodStatus(podStatuses []radixv1.RadixBatchJobPodStatus) []v1.PodStatus {
-	return slice.Map(podStatuses, func(status radixv1.RadixBatchJobPodStatus) v1.PodStatus {
-		var started, ended, created *time.Time
-		if status.CreationTime != nil {
-			created = &status.CreationTime.Time
-		}
-		if status.StartTime != nil {
-			started = &status.StartTime.Time
-		}
-
-		if status.EndTime != nil {
-			ended = &status.EndTime.Time
-		}
-
-		return v1.PodStatus{
-			Name:             status.Name,
-			Created:          created,
-			StartTime:        started,
-			EndTime:          ended,
-			ContainerStarted: started,
-			Status:           v1.ReplicaStatus{Status: string(status.Phase)},
-			StatusMessage:    status.Message,
-			RestartCount:     status.RestartCount,
-			Image:            status.Image,
-			ImageId:          status.ImageID,
-			PodIndex:         status.PodIndex,
-			ExitCode:         status.ExitCode,
-			Reason:           status.Reason,
-		}
-	})
-}
-
-func getBatchName(radixBatch *radixv1.RadixBatch) string {
-	return utils.TernaryString(radixBatch.GetLabels()[kube.RadixBatchTypeLabel] == string(kube.RadixBatchTypeJob), "", radixBatch.GetName())
-}
-
-func getBatchId(radixBatch *radixv1.RadixBatch) string {
-	return utils.TernaryString(radixBatch.GetLabels()[kube.RadixBatchTypeLabel] == string(kube.RadixBatchTypeJob), "", radixBatch.Spec.BatchId)
 }

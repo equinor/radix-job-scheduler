@@ -3,10 +3,10 @@ package jobs
 import (
 	"encoding/json"
 	"fmt"
+	apiErrors "github.com/equinor/radix-job-scheduler/pkg/errors"
 	"io"
 	"net/http"
 
-	apiErrors "github.com/equinor/radix-job-scheduler/api/errors"
 	"github.com/equinor/radix-job-scheduler/api/v1/controllers"
 	jobApi "github.com/equinor/radix-job-scheduler/api/v1/jobs"
 	apiModels "github.com/equinor/radix-job-scheduler/models/common"

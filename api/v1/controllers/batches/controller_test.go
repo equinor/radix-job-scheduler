@@ -4,12 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	apiErrors "github.com/equinor/radix-job-scheduler/pkg/errors"
 	"net/http"
 	"testing"
 	"time"
 
 	"github.com/equinor/radix-common/utils/pointers"
-	apiErrors "github.com/equinor/radix-job-scheduler/api/errors"
 	"github.com/equinor/radix-job-scheduler/api/test"
 	api "github.com/equinor/radix-job-scheduler/api/v1/batches"
 	"github.com/equinor/radix-job-scheduler/api/v1/batches/mock"

@@ -3,10 +3,10 @@ package batch
 import (
 	"encoding/json"
 	"fmt"
+	apiErrors "github.com/equinor/radix-job-scheduler/pkg/errors"
 	"io"
 	"net/http"
 
-	apiErrors "github.com/equinor/radix-job-scheduler/api/errors"
 	batchapi "github.com/equinor/radix-job-scheduler/api/v1/batches"
 	"github.com/equinor/radix-job-scheduler/api/v1/controllers"
 	schedulerModels "github.com/equinor/radix-job-scheduler/models/common"

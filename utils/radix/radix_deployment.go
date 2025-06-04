@@ -2,9 +2,9 @@ package radix
 
 import (
 	"context"
+	apiErrors "github.com/equinor/radix-job-scheduler/pkg/errors"
 	"strings"
 
-	apiErrors "github.com/equinor/radix-job-scheduler/api/errors"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 	"k8s.io/apimachinery/pkg/api/errors"

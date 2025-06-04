@@ -2,11 +2,11 @@ package batchesv1
 
 import (
 	"context"
+	apiErrors "github.com/equinor/radix-job-scheduler/pkg/errors"
 	"testing"
 
 	"github.com/equinor/radix-common/utils/pointers"
 	"github.com/equinor/radix-common/utils/slice"
-	apiErrors "github.com/equinor/radix-job-scheduler/api/errors"
 	"github.com/equinor/radix-job-scheduler/api/test"
 	testUtil "github.com/equinor/radix-job-scheduler/internal/test"
 	modelsEnv "github.com/equinor/radix-job-scheduler/models"
