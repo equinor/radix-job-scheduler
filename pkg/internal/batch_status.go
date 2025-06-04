@@ -2,13 +2,12 @@ package internal
 
 import (
 	"fmt"
-	"github.com/equinor/radix-common/utils"
-	"github.com/equinor/radix-operator/pkg/apis/kube"
 	"time"
 
+	"github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-common/utils/pointers"
 	"github.com/equinor/radix-job-scheduler/models/v1"
-	"github.com/equinor/radix-job-scheduler/pkg/notifications"
+	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 )
 
@@ -23,7 +22,7 @@ func GetBatchAndJobStatuses(radixBatch *radixv1.RadixBatch, radixDeployJobCompon
 
 	batchStatus := v1.JobStatus{
 		Name:    radixBatch.GetName(),
-		BatchId: notifications.getBatchId(radixBatch),
+		BatchId: GetBatchId(radixBatch),
 		Created: pointers.Ptr(radixBatch.GetCreationTimestamp().Time),
 		Started: startedTime,
 		Ended:   endedTime,
@@ -35,9 +34,17 @@ func GetBatchAndJobStatuses(radixBatch *radixv1.RadixBatch, radixDeployJobCompon
 	return batchStatus, jobStatuses
 }
 
+func getRadixBatchJobsMap(radixBatchJobs []radixv1.RadixBatchJob) map[string]radixv1.RadixBatchJob {
+	jobMap := make(map[string]radixv1.RadixBatchJob, len(radixBatchJobs))
+	for _, radixBatchJob := range radixBatchJobs {
+		jobMap[radixBatchJob.Name] = radixBatchJob
+	}
+	return jobMap
+}
+
 func getRadixBatchJobStatusesFromRadixBatch(radixBatch *radixv1.RadixBatch, radixBatchJobStatuses []radixv1.RadixBatchJobStatus) []v1.JobStatus {
-	batchName := notifications.getBatchName(radixBatch)
-	radixBatchJobsMap := notifications.getRadixBatchJobsMap(radixBatch.Spec.Jobs)
+	batchName := GetBatchName(radixBatch)
+	radixBatchJobsMap := getRadixBatchJobsMap(radixBatch.Spec.Jobs)
 	jobStatuses := make([]v1.JobStatus, 0, len(radixBatchJobStatuses))
 	for _, radixBatchJobStatus := range radixBatchJobStatuses {
 		var started, ended, created *time.Time

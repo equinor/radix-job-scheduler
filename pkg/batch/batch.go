@@ -25,7 +25,7 @@ import (
 	"k8s.io/client-go/util/retry"
 )
 
-// CompletedRadixBatchNames Completed RadixBatchStatus lists
+// CompletedRadixBatchNames Completed BatchStatus lists
 type CompletedRadixBatchNames struct {
 	SucceededRadixBatches    []string
 	NotSucceededRadixBatches []string
@@ -193,7 +193,7 @@ func stopRadixBatchJob(ctx context.Context, radixClient versioned.Interface, app
 	if externalError != nil {
 		return externalError
 	}
-	logger.Debug().Msgf("Patched RadixBatchStatus: %s in namespace %s", batchName, namespace)
+	logger.Debug().Msgf("Patched BatchStatus: %s in namespace %s", batchName, namespace)
 	return nil
 }
 
@@ -344,24 +344,24 @@ func setRestartJobTimeout(batch *radixv1.RadixBatch, jobIdx int, restartTimestam
 }
 
 // GetJobStatusFromRadixBatchJobsStatus Get Job status from RadixBatchJob
-func GetJobStatusFromRadixBatchJobsStatus(radixBatch *v1.RadixBatchStatus, jobStatus v1.RadixBatchJobStatus) v1.JobStatus {
+func GetJobStatusFromRadixBatchJobsStatus(radixBatch *v1.BatchStatus, jobStatus v1.JobStatus) v1.JobStatus {
 	return v1.JobStatus{
 		JobId:       jobStatus.JobId,
 		BatchName:   getBatchName(radixBatch),
 		Name:        jobStatus.Name,
-		Created:     jobStatus.CreationTime,
+		Created:     jobStatus.Created,
 		Started:     jobStatus.Started,
 		Ended:       jobStatus.Ended,
 		Status:      string(jobStatus.Status),
 		Message:     jobStatus.Message,
 		Failed:      jobStatus.Failed,
 		Restart:     jobStatus.Restart,
-		PodStatuses: GetPodStatus(jobStatus.PodStatuses),
+		PodStatuses: jobStatus.PodStatuses,
 	}
 }
 
-// GetJobStatusFromRadixBatchJobsStatuses Get JobStatuses from RadixBatchStatus job statuses V2
-func GetJobStatusFromRadixBatchJobsStatuses(radixBatches ...v1.RadixBatchStatus) []v1.JobStatus {
+// GetJobStatusFromRadixBatchJobsStatuses Get JobStatuses from BatchStatus job statuses V2
+func GetJobStatusFromRadixBatchJobsStatuses(radixBatches ...v1.BatchStatus) []v1.JobStatus {
 	jobStatuses := make([]v1.JobStatus, 0, len(radixBatches))
 	for _, radixBatch := range radixBatches {
 		for _, jobStatus := range radixBatch.JobStatuses {
@@ -371,27 +371,6 @@ func GetJobStatusFromRadixBatchJobsStatuses(radixBatches ...v1.RadixBatchStatus)
 	return jobStatuses
 }
 
-func getBatchName(radixBatch *v1.RadixBatchStatus) string {
+func getBatchName(radixBatch *v1.BatchStatus) string {
 	return utils.TernaryString(radixBatch.BatchType == string(kube.RadixBatchTypeJob), "", radixBatch.Name)
-}
-
-// GetPodStatus Converts RadixBatchJobPodStatuses to PodStatuses
-func GetPodStatus(podStatuses []v1.RadixBatchJobPodStatus) []v1.PodStatus {
-	return slice.Map(podStatuses, func(status v1.RadixBatchJobPodStatus) v1.PodStatus {
-		return v1.PodStatus{
-			Name:             status.Name,
-			Created:          &status.Created,
-			StartTime:        status.StartTime,
-			EndTime:          status.EndTime,
-			ContainerStarted: status.StartTime,
-			Status:           v1.ReplicaStatus{Status: status.Status.Status},
-			StatusMessage:    status.StatusMessage,
-			RestartCount:     status.RestartCount,
-			Image:            status.Image,
-			ImageId:          status.ImageId,
-			PodIndex:         status.PodIndex,
-			ExitCode:         status.ExitCode,
-			Reason:           status.Reason,
-		}
-	})
 }

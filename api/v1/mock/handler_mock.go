@@ -41,10 +41,10 @@ func (m *MockHandler) EXPECT() *MockHandlerMockRecorder {
 }
 
 // CopyRadixBatch mocks base method.
-func (m *MockHandler) CopyRadixBatch(ctx context.Context, batchName, deploymentName string) (*v3.RadixBatchStatus, error) {
+func (m *MockHandler) CopyRadixBatch(ctx context.Context, batchName, deploymentName string) (*v3.BatchStatus, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CopyRadixBatch", ctx, batchName, deploymentName)
-	ret0, _ := ret[0].(*v3.RadixBatchStatus)
+	ret0, _ := ret[0].(*v3.BatchStatus)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -56,10 +56,10 @@ func (mr *MockHandlerMockRecorder) CopyRadixBatch(ctx, batchName, deploymentName
 }
 
 // CopyRadixBatchJob mocks base method.
-func (m *MockHandler) CopyRadixBatchJob(ctx context.Context, jobName, deploymentName string) (*v3.RadixBatchStatus, error) {
+func (m *MockHandler) CopyRadixBatchJob(ctx context.Context, jobName, deploymentName string) (*v3.BatchStatus, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CopyRadixBatchJob", ctx, jobName, deploymentName)
-	ret0, _ := ret[0].(*v3.RadixBatchStatus)
+	ret0, _ := ret[0].(*v3.BatchStatus)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -71,10 +71,10 @@ func (mr *MockHandlerMockRecorder) CopyRadixBatchJob(ctx, jobName, deploymentNam
 }
 
 // CreateRadixBatch mocks base method.
-func (m *MockHandler) CreateRadixBatch(ctx context.Context, batchScheduleDescription *common.BatchScheduleDescription) (*v3.RadixBatchStatus, error) {
+func (m *MockHandler) CreateRadixBatch(ctx context.Context, batchScheduleDescription *common.BatchScheduleDescription) (*v3.BatchStatus, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateRadixBatch", ctx, batchScheduleDescription)
-	ret0, _ := ret[0].(*v3.RadixBatchStatus)
+	ret0, _ := ret[0].(*v3.BatchStatus)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -86,10 +86,10 @@ func (mr *MockHandlerMockRecorder) CreateRadixBatch(ctx, batchScheduleDescriptio
 }
 
 // CreateRadixBatchSingleJob mocks base method.
-func (m *MockHandler) CreateRadixBatchSingleJob(ctx context.Context, jobScheduleDescription *common.JobScheduleDescription) (*v3.RadixBatchStatus, error) {
+func (m *MockHandler) CreateRadixBatchSingleJob(ctx context.Context, jobScheduleDescription *common.JobScheduleDescription) (*v3.BatchStatus, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateRadixBatchSingleJob", ctx, jobScheduleDescription)
-	ret0, _ := ret[0].(*v3.RadixBatchStatus)
+	ret0, _ := ret[0].(*v3.BatchStatus)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -143,10 +143,10 @@ func (mr *MockHandlerMockRecorder) GetKubeUtil() *gomock.Call {
 }
 
 // GetRadixBatch mocks base method.
-func (m *MockHandler) GetRadixBatchStatus(ctx context.Context, batchName string) (*v3.RadixBatchStatus, error) {
+func (m *MockHandler) GetRadixBatchStatus(ctx context.Context, batchName string) (*v3.BatchStatus, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetRadixBatchStatus", ctx, batchName)
-	ret0, _ := ret[0].(*v3.RadixBatchStatus)
+	ret0, _ := ret[0].(*v3.BatchStatus)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -174,10 +174,10 @@ func (mr *MockHandlerMockRecorder) GetRadixBatchJobMessagesAndPodMaps(ctx, selec
 }
 
 // GetRadixBatchSingleJobs mocks base method.
-func (m *MockHandler) GetRadixBatchStatusSingleJobs(ctx context.Context) ([]v3.RadixBatchStatus, error) {
+func (m *MockHandler) GetRadixBatchStatusSingleJobs(ctx context.Context) ([]v3.BatchStatus, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetRadixBatchStatusSingleJobs", ctx)
-	ret0, _ := ret[0].([]v3.RadixBatchStatus)
+	ret0, _ := ret[0].([]v3.BatchStatus)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -189,10 +189,10 @@ func (mr *MockHandlerMockRecorder) GetRadixBatchSingleJobs(ctx interface{}) *gom
 }
 
 // GetRadixBatches mocks base method.
-func (m *MockHandler) GetRadixBatchStatuses(ctx context.Context) ([]v3.RadixBatchStatus, error) {
+func (m *MockHandler) GetRadixBatchStatuses(ctx context.Context) ([]v3.BatchStatus, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetRadixBatchStatuses", ctx)
-	ret0, _ := ret[0].([]v3.RadixBatchStatus)
+	ret0, _ := ret[0].([]v3.BatchStatus)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

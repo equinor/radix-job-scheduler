@@ -1,11 +1,5 @@
 package v1
 
-import (
-	"time"
-
-	"github.com/equinor/radix-operator/pkg/apis/radix/v1"
-)
-
 // BatchStatus holds general information about batch status
 // swagger:model BatchStatus
 type BatchStatus struct {
@@ -22,8 +16,9 @@ type BatchStatus struct {
 	BatchType string `json:"batchType,omitempty"`
 }
 
-// RadixBatchStatus holds general information about batch status
-type RadixBatchStatus struct {
+/*
+// BatchStatus holds general information about batch status
+type BatchStatus struct {
 	// Name of the Radix batch
 	// required: true
 	Name string `json:"name"`
@@ -61,7 +56,7 @@ type RadixBatchStatus struct {
 
 	// JobStatuses of the Radix batch jobs
 	// required: false
-	JobStatuses []RadixBatchJobStatus `json:"jobStatuses,omitempty"`
+	JobStatuses []JobStatus `json:"jobStatuses,omitempty"`
 
 	// Status message, if any, of the job
 	//
@@ -81,8 +76,8 @@ type RadixBatchStatus struct {
 	DeploymentName string
 }
 
-// RadixBatchJobStatus holds general information about batch job status
-type RadixBatchJobStatus struct {
+// JobStatus holds general information about batch job status
+type JobStatus struct {
 	// Name of the Radix batch job
 	// required: true
 	Name string `json:"name"`
@@ -205,3 +200,4 @@ type RadixBatchJobPodStatus struct {
 	// A brief CamelCase message indicating details about why the job is in this phase
 	Reason string `json:"reason,omitempty"`
 }
+*/

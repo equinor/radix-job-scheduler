@@ -46,7 +46,7 @@ func (notifier *webhookNotifier) Notify(event events.Event, radixBatch *radixv1.
 	if !notifier.Enabled() || len(notifier.webhookURL) == 0 || radixBatch.Spec.RadixDeploymentJobRef.Job != notifier.jobComponentName {
 		return nil
 	}
-	// RadixBatchStatus status and only changed job statuses
+	// BatchStatus status and only changed job statuses
 	batchStatus := getRadixBatchEventFromRadixBatch(event, radixBatch, updatedJobStatuses, notifier.radixDeployJobComponent)
 	statusesJson, err := json.Marshal(batchStatus)
 	if err != nil {
@@ -55,7 +55,7 @@ func (notifier *webhookNotifier) Notify(event events.Event, radixBatch *radixv1.
 	log.Trace().Msg(string(statusesJson))
 	buf := bytes.NewReader(statusesJson)
 	if _, err = http.Post(notifier.webhookURL, "application/json", buf); err != nil {
-		return fmt.Errorf("failed to notify on RadixBatchStatus object create or change %s: %v", radixBatch.GetName(), err)
+		return fmt.Errorf("failed to notify on BatchStatus object create or change %s: %v", radixBatch.GetName(), err)
 	}
 	return nil
 }
@@ -74,12 +74,4 @@ func getRadixBatchEventFromRadixBatch(event events.Event, radixBatch *radixv1.Ra
 			BatchType:   radixBatch.Labels[kube.RadixBatchTypeLabel],
 		},
 	}
-}
-
-func getRadixBatchJobsMap(radixBatchJobs []radixv1.RadixBatchJob) map[string]radixv1.RadixBatchJob {
-	jobMap := make(map[string]radixv1.RadixBatchJob, len(radixBatchJobs))
-	for _, radixBatchJob := range radixBatchJobs {
-		jobMap[radixBatchJob.Name] = radixBatchJob
-	}
-	return jobMap
 }

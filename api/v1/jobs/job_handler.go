@@ -50,6 +50,19 @@ func (handler *jobHandler) GetJobs(ctx context.Context) ([]modelsv1.JobStatus, e
 	logger := log.Ctx(ctx)
 	logger.Debug().Msgf("Get Jobs for namespace: %s", handler.common.GetEnv().RadixDeploymentNamespace)
 
+	combinedBatchStatuses, err := handler.getCombinedBatchStatuses(ctx)
+	if err != nil {
+		return nil, err
+	}
+	jobStatuses, err := handler.getJobStatusesWithEvents(ctx, combinedBatchStatuses)
+	if err != nil {
+		return nil, err
+	}
+	logger.Debug().Msgf("Found %v jobs for namespace %s", len(jobStatuses), handler.common.GetEnv().RadixDeploymentNamespace)
+	return jobStatuses, nil
+}
+
+func (handler *jobHandler) getCombinedBatchStatuses(ctx context.Context) ([]modelsv1.BatchStatus, error) {
 	singleJobBatchStatuses, err := handler.common.GetRadixBatchStatusSingleJobs(ctx)
 	if err != nil {
 		return nil, err
@@ -58,20 +71,26 @@ func (handler *jobHandler) GetJobs(ctx context.Context) ([]modelsv1.JobStatus, e
 	if err != nil {
 		return nil, err
 	}
-	jobStatuses := make([]modelsv1.BatchStatus, 0, len(singleJobBatchStatuses)+len(batchStatuses))
-	jobStatuses = append(jobStatuses, singleJobBatchStatuses...)
-	jobStatuses = append(jobStatuses, batchStatuses...)
+	combinedBatchStatuses := make([]modelsv1.BatchStatus, 0, len(singleJobBatchStatuses)+len(batchStatuses))
+	combinedBatchStatuses = append(combinedBatchStatuses, singleJobBatchStatuses...)
+	combinedBatchStatuses = append(combinedBatchStatuses, batchStatuses...)
+	return combinedBatchStatuses, nil
+}
 
+func (handler *jobHandler) getJobStatusesWithEvents(ctx context.Context, combinedBatchStatuses []modelsv1.BatchStatus) ([]modelsv1.JobStatus, error) {
 	labelSelectorForAllRadixBatchesPods := apiv1.GetLabelSelectorForAllRadixBatchesPods(handler.common.GetEnv().RadixComponentName)
 	eventMessageForPods, batchJobPodsMap, err := handler.common.GetRadixBatchJobMessagesAndPodMaps(ctx, labelSelectorForAllRadixBatchesPods)
 	if err != nil {
 		return nil, err
 	}
-	for i := 0; i < len(jobStatuses); i++ {
-		apiv1.SetBatchJobEventMessageToBatchJobStatus(&jobStatuses[i], batchJobPodsMap, eventMessageForPods)
+	var jobStatuses []modelsv1.JobStatus
+	for i := 0; i < len(combinedBatchStatuses); i++ {
+		for j := 0; j < len(combinedBatchStatuses[i].JobStatuses); j++ {
+			jobStatus := combinedBatchStatuses[i].JobStatuses[j]
+			apiv1.SetBatchJobEventMessageToBatchJobStatus(&jobStatus, batchJobPodsMap, eventMessageForPods)
+			jobStatuses = append(jobStatuses, jobStatus)
+		}
 	}
-
-	logger.Debug().Msgf("Found %v jobs for namespace %s", len(jobStatuses), handler.common.GetEnv().RadixDeploymentNamespace)
 	return jobStatuses, nil
 }
 
@@ -148,7 +167,7 @@ func (handler *jobHandler) DeleteJob(ctx context.Context, jobName string) error 
 	return internal.GarbageCollectPayloadSecrets(ctx, handler.common.GetKubeUtil(), handler.common.GetEnv().RadixDeploymentNamespace, handler.common.GetEnv().RadixComponentName)
 }
 
-func jobExistInBatch(radixBatch *modelsv1.RadixBatchStatus, jobName string) bool {
+func jobExistInBatch(radixBatch *modelsv1.BatchStatus, jobName string) bool {
 	for _, jobStatus := range radixBatch.JobStatuses {
 		if jobStatus.Name == jobName {
 			return true
@@ -169,23 +188,9 @@ func (handler *jobHandler) StopAllJobs(ctx context.Context) error {
 	return apiv1.StopAllSingleJobs(ctx, handler.common, handler.common.GetEnv().RadixComponentName)
 }
 
-func getSingleJobStatusFromRadixBatchJob(radixBatch *modelsv1.RadixBatchStatus) (*modelsv1.JobStatus, error) {
+func getSingleJobStatusFromRadixBatchJob(radixBatch *modelsv1.BatchStatus) (*modelsv1.JobStatus, error) {
 	if len(radixBatch.JobStatuses) != 1 {
 		return nil, fmt.Errorf("batch should have only one job")
 	}
-	radixBatchJobStatus := radixBatch.JobStatuses[0]
-
-	jobStatus := modelsv1.JobStatus{
-		JobId:       radixBatchJobStatus.JobId,
-		Name:        radixBatchJobStatus.Name,
-		Created:     radixBatchJobStatus.CreationTime,
-		Started:     radixBatchJobStatus.Started,
-		Ended:       radixBatchJobStatus.Ended,
-		Status:      string(radixBatchJobStatus.Status),
-		Message:     radixBatchJobStatus.Message,
-		Failed:      radixBatchJobStatus.Failed,
-		Restart:     radixBatchJobStatus.Restart,
-		PodStatuses: batch.GetPodStatus(radixBatchJobStatus.PodStatuses),
-	}
-	return &jobStatus, nil
+	return &radixBatch.JobStatuses[0], nil
 }

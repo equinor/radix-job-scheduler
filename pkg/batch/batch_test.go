@@ -65,7 +65,7 @@ func TestCopyRadixBatchOrJob(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    testArgs
-		want    *v1.RadixBatchStatus
+		want    *v1.BatchStatus
 		wantErr bool
 	}{
 		{
@@ -147,7 +147,7 @@ func TestGetRadixBatchStatus(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    testArgs
-		want    *v1.RadixBatchStatus
+		want    *v1.BatchStatus
 		wantErr bool
 	}{
 		{
@@ -300,7 +300,7 @@ func TestGetRadixBatchStatuses(t *testing.T) {
 	tests := []struct {
 		name        string
 		batchesArgs multiBatchArgs
-		want        *v1.RadixBatchStatus
+		want        *v1.BatchStatus
 		wantErr     bool
 	}{
 		{

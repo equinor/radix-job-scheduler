@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/equinor/radix-common/utils"
-	"github.com/equinor/radix-common/utils/slice"
 	"github.com/equinor/radix-job-scheduler/api/v1"
 	"github.com/equinor/radix-job-scheduler/internal"
 	"github.com/equinor/radix-job-scheduler/models"
@@ -145,21 +144,22 @@ func setBatchJobEventMessages(radixBatchStatus *modelsv1.BatchStatus, batchJobPo
 	}
 }
 
-func (handler *batchHandler) getBatchStatus(radixBatch *modelsv1.RadixBatchStatus) radixv1.RadixBatchJobApiStatus {
-	isSingleJob := radixBatch.BatchType == string(kube.RadixBatchTypeJob)
-	if isSingleJob {
-		if len(radixBatch.JobStatuses) == 1 {
-			return radixBatch.JobStatuses[0].Status
+/*
+	func (handler *batchHandler) getBatchStatus(radixBatch *modelsv1.BatchStatus) radixv1.RadixBatchJobApiStatus {
+		isSingleJob := radixBatch.BatchType == string(kube.RadixBatchTypeJob)
+		if isSingleJob {
+			if len(radixBatch.JobStatuses) == 1 {
+				return radixBatch.JobStatuses[0].Status
+			}
+			return radixBatch.Status
 		}
-		return radixBatch.Status
+
+		jobStatusPhases := slice.Reduce(radixBatch.JobStatuses, make([]radixv1.RadixBatchJobPhase, 0), func(acc []radixv1.RadixBatchJobPhase, jobStatus modelsv1.JobStatus) []radixv1.RadixBatchJobPhase {
+			return append(acc, radixv1.RadixBatchJobPhase(jobStatus.Status))
+		})
+		return internal.GetStatusFromStatusRules(jobStatusPhases, handler.common.GetRadixDeployJobComponent(), radixBatch.Status)
 	}
-
-	jobStatusPhases := slice.Reduce(radixBatch.JobStatuses, make([]radixv1.RadixBatchJobPhase, 0), func(acc []radixv1.RadixBatchJobPhase, jobStatus modelsv1.RadixBatchJobStatus) []radixv1.RadixBatchJobPhase {
-		return append(acc, radixv1.RadixBatchJobPhase(jobStatus.Status))
-	})
-	return internal.GetStatusFromStatusRules(jobStatusPhases, handler.common.GetRadixDeployJobComponent(), radixBatch.Status)
-}
-
-func getBatchId(radixBatch *modelsv1.RadixBatchStatus) string {
+*/
+func getBatchId(radixBatch *modelsv1.BatchStatus) string {
 	return utils.TernaryString(radixBatch.BatchType == string(kube.RadixBatchTypeJob), "", radixBatch.BatchId)
 }
