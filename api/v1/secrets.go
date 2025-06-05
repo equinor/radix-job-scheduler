@@ -2,8 +2,8 @@ package v1
 
 import (
 	"context"
-	apiErrors "github.com/equinor/radix-job-scheduler/pkg/errors"
 
+	apiErrors "github.com/equinor/radix-job-scheduler/pkg/errors"
 	"github.com/equinor/radix-operator/pkg/apis/utils/labels"
 	corev1 "k8s.io/api/core/v1"
 	kubeLabels "k8s.io/apimachinery/pkg/labels"

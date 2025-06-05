@@ -3,14 +3,15 @@ package jobs
 import (
 	"context"
 	"fmt"
-	apiErrors "github.com/equinor/radix-job-scheduler/pkg/errors"
 
 	apiv1 "github.com/equinor/radix-job-scheduler/api/v1"
+	apiInternal "github.com/equinor/radix-job-scheduler/api/v1/internal"
 	"github.com/equinor/radix-job-scheduler/internal"
 	"github.com/equinor/radix-job-scheduler/models"
 	"github.com/equinor/radix-job-scheduler/models/common"
 	modelsv1 "github.com/equinor/radix-job-scheduler/models/v1"
 	"github.com/equinor/radix-job-scheduler/pkg/batch"
+	apiErrors "github.com/equinor/radix-job-scheduler/pkg/errors"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/rs/zerolog/log"
@@ -87,7 +88,7 @@ func (handler *jobHandler) getJobStatusesWithEvents(ctx context.Context, combine
 	for i := 0; i < len(combinedBatchStatuses); i++ {
 		for j := 0; j < len(combinedBatchStatuses[i].JobStatuses); j++ {
 			jobStatus := combinedBatchStatuses[i].JobStatuses[j]
-			apiv1.SetBatchJobEventMessageToBatchJobStatus(&jobStatus, batchJobPodsMap, eventMessageForPods)
+			apiInternal.SetBatchJobEventMessageToBatchJobStatus(&jobStatus, batchJobPodsMap, eventMessageForPods)
 			jobStatuses = append(jobStatuses, jobStatus)
 		}
 	}
@@ -99,7 +100,7 @@ func (handler *jobHandler) GetJob(ctx context.Context, jobName string) (*modelsv
 	logger := log.Ctx(ctx)
 	logger.Debug().Msgf("get job %s for namespace: %s", jobName, handler.common.GetEnv().RadixDeploymentNamespace)
 	if batchName, _, ok := internal.ParseBatchAndJobNameFromScheduledJobName(jobName); ok {
-		jobStatus, err := apiv1.GetBatchJob(ctx, handler.common, batchName, jobName)
+		jobStatus, err := apiInternal.GetBatchJob(ctx, handler.common, batchName, jobName)
 		if err != nil {
 			return nil, err
 		}
@@ -108,7 +109,7 @@ func (handler *jobHandler) GetJob(ctx context.Context, jobName string) (*modelsv
 		if err != nil {
 			return nil, err
 		}
-		apiv1.SetBatchJobEventMessageToBatchJobStatus(jobStatus, batchJobPodsMap, eventMessageForPods)
+		apiInternal.SetBatchJobEventMessageToBatchJobStatus(jobStatus, batchJobPodsMap, eventMessageForPods)
 		return jobStatus, nil
 	}
 	return nil, fmt.Errorf("job %s is not a valid job name", jobName)
@@ -129,7 +130,7 @@ func (handler *jobHandler) CreateJob(ctx context.Context, jobScheduleDescription
 func (handler *jobHandler) CopyJob(ctx context.Context, jobName string, deploymentName string) (*modelsv1.JobStatus, error) {
 	logger := log.Ctx(ctx)
 	logger.Debug().Msgf("stop the job %s for namespace: %s", jobName, handler.common.GetEnv().RadixDeploymentNamespace)
-	radixBatch, err := apiv1.CopyJob(ctx, handler.common, jobName, deploymentName)
+	radixBatch, err := handler.common.CopyRadixBatchJob(ctx, jobName, deploymentName)
 	if err != nil {
 		return nil, err
 	}
@@ -180,12 +181,12 @@ func jobExistInBatch(radixBatch *modelsv1.BatchStatus, jobName string) bool {
 func (handler *jobHandler) StopJob(ctx context.Context, jobName string) error {
 	logger := log.Ctx(ctx)
 	logger.Debug().Msgf("stop the job %s for namespace: %s", jobName, handler.common.GetEnv().RadixDeploymentNamespace)
-	return apiv1.StopJob(ctx, handler.common, jobName)
+	return apiInternal.StopJob(ctx, handler.common, jobName)
 }
 
 // StopAllJobs Stop all jobs
 func (handler *jobHandler) StopAllJobs(ctx context.Context) error {
-	return apiv1.StopAllSingleJobs(ctx, handler.common, handler.common.GetEnv().RadixComponentName)
+	return handler.common.StopAllSingleRadixJobs(ctx)
 }
 
 func getSingleJobStatusFromRadixBatchJob(radixBatch *modelsv1.BatchStatus) (*modelsv1.JobStatus, error) {

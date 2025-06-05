@@ -11,9 +11,9 @@ import (
 	"github.com/equinor/radix-common/utils/pointers"
 	"github.com/equinor/radix-common/utils/slice"
 	"github.com/equinor/radix-job-scheduler/internal"
-	"github.com/equinor/radix-job-scheduler/models/v1"
+	modelsv1 "github.com/equinor/radix-job-scheduler/models/v1"
 	apiErrors "github.com/equinor/radix-job-scheduler/pkg/errors"
-	internal2 "github.com/equinor/radix-job-scheduler/pkg/internal"
+	pkgInternal "github.com/equinor/radix-job-scheduler/pkg/internal"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	operatorUtils "github.com/equinor/radix-operator/pkg/apis/utils"
@@ -34,24 +34,23 @@ type CompletedRadixBatchNames struct {
 }
 
 // GetRadixBatchStatus Get radix batch
-func GetRadixBatchStatus(radixBatch *radixv1.RadixBatch, radixDeployJobComponent *radixv1.RadixDeployJobComponent) *v1.BatchStatus {
+func GetRadixBatchStatus(radixBatch *radixv1.RadixBatch, radixDeployJobComponent *radixv1.RadixDeployJobComponent) *modelsv1.BatchStatus {
 	var started, ended *time.Time
 	if radixBatch.Status.Condition.ActiveTime != nil {
 		started = &radixBatch.Status.Condition.ActiveTime.Time
 	}
-
 	if radixBatch.Status.Condition.CompletionTime != nil {
 		ended = &radixBatch.Status.Condition.CompletionTime.Time
 	}
 	batchType := radixBatch.Labels[kube.RadixBatchTypeLabel]
-	return &v1.BatchStatus{
-		JobStatus: v1.JobStatus{
+	return &modelsv1.BatchStatus{
+		JobStatus: modelsv1.JobStatus{
 			Name:           radixBatch.Name,
 			BatchId:        utils.TernaryString(batchType == string(kube.RadixBatchTypeJob), "", radixBatch.Spec.BatchId),
 			Created:        pointers.Ptr(radixBatch.GetCreationTimestamp().Time),
 			Started:        started,
 			Ended:          ended,
-			Status:         string(internal2.GetRadixBatchStatus(radixBatch, radixDeployJobComponent)),
+			Status:         string(pkgInternal.GetRadixBatchStatus(radixBatch, radixDeployJobComponent)),
 			Message:        radixBatch.Status.Condition.Message,
 			DeploymentName: radixBatch.Spec.RadixDeploymentJobRef.Name,
 		},
@@ -72,13 +71,13 @@ func DeleteRadixBatchByName(ctx context.Context, radixClient versioned.Interface
 	return DeleteRadixBatch(ctx, radixClient, radixBatch)
 }
 
-func getRadixBatchJobStatusesFromRadixBatch(radixBatch *radixv1.RadixBatch, radixBatchJobStatuses []radixv1.RadixBatchJobStatus) []v1.JobStatus {
+func getRadixBatchJobStatusesFromRadixBatch(radixBatch *radixv1.RadixBatch, radixBatchJobStatuses []radixv1.RadixBatchJobStatus) []modelsv1.JobStatus {
 	radixBatchJobsStatuses := getRadixBatchJobsStatusesMap(radixBatchJobStatuses)
-	jobStatuses := make([]v1.JobStatus, 0, len(radixBatch.Spec.Jobs))
+	jobStatuses := make([]modelsv1.JobStatus, 0, len(radixBatch.Spec.Jobs))
 	for _, radixBatchJob := range radixBatch.Spec.Jobs {
 		stopJob := radixBatchJob.Stop != nil && *radixBatchJob.Stop
 		jobName := fmt.Sprintf("%s-%s", radixBatch.Name, radixBatchJob.Name) // composed name in models are always consist of a batchName and original jobName
-		radixBatchJobStatus := v1.JobStatus{
+		radixBatchJobStatus := modelsv1.JobStatus{
 			Name:  jobName,
 			JobId: radixBatchJob.JobId,
 		}
@@ -93,13 +92,13 @@ func getRadixBatchJobStatusesFromRadixBatch(radixBatch *radixv1.RadixBatch, radi
 			if jobStatus.EndTime != nil {
 				radixBatchJobStatus.Ended = &jobStatus.EndTime.Time
 			}
-			radixBatchJobStatus.Status = string(internal2.GetScheduledJobStatus(jobStatus, stopJob))
+			radixBatchJobStatus.Status = string(pkgInternal.GetScheduledJobStatus(jobStatus, stopJob))
 			radixBatchJobStatus.Message = jobStatus.Message
 			radixBatchJobStatus.Failed = jobStatus.Failed
 			radixBatchJobStatus.Restart = jobStatus.Restart
-			radixBatchJobStatus.PodStatuses = internal2.GetPodStatusByRadixBatchJobPodStatus(radixBatch, jobStatus.RadixBatchJobPodStatuses)
+			radixBatchJobStatus.PodStatuses = pkgInternal.GetPodStatusByRadixBatchJobPodStatus(radixBatch, jobStatus.RadixBatchJobPodStatuses)
 		} else {
-			radixBatchJobStatus.Status = string(internal2.GetScheduledJobStatus(radixv1.RadixBatchJobStatus{Phase: radixv1.RadixBatchJobApiStatusWaiting}, stopJob))
+			radixBatchJobStatus.Status = string(pkgInternal.GetScheduledJobStatus(radixv1.RadixBatchJobStatus{Phase: radixv1.RadixBatchJobApiStatusWaiting}, stopJob))
 		}
 		jobStatuses = append(jobStatuses, radixBatchJobStatus)
 	}
@@ -116,15 +115,15 @@ func getRadixBatchJobsStatusesMap(radixBatchJobStatuses []radixv1.RadixBatchJobS
 }
 
 // GetRadixBatchStatuses Convert to radix batch statuses
-func GetRadixBatchStatuses(radixBatches []*radixv1.RadixBatch, radixDeployJobComponent *radixv1.RadixDeployJobComponent) []v1.BatchStatus {
-	return slice.Reduce(radixBatches, make([]v1.BatchStatus, 0, len(radixBatches)), func(acc []v1.BatchStatus, radixBatch *radixv1.RadixBatch) []v1.BatchStatus {
+func GetRadixBatchStatuses(radixBatches []*radixv1.RadixBatch, radixDeployJobComponent *radixv1.RadixDeployJobComponent) []modelsv1.BatchStatus {
+	return slice.Reduce(radixBatches, make([]modelsv1.BatchStatus, 0, len(radixBatches)), func(acc []modelsv1.BatchStatus, radixBatch *radixv1.RadixBatch) []modelsv1.BatchStatus {
 		return append(acc, *GetRadixBatchStatus(radixBatch, radixDeployJobComponent))
 	})
 }
 
 // CopyRadixBatchOrJob Copy the Radix batch or job
 func CopyRadixBatchOrJob(ctx context.Context, radixClient versioned.Interface, sourceRadixBatch *radixv1.RadixBatch, sourceJobName string,
-	radixDeployJobComponent *radixv1.RadixDeployJobComponent, radixDeploymentName string) (*v1.BatchStatus, error) {
+	radixDeployJobComponent *radixv1.RadixDeployJobComponent, radixDeploymentName string) (*modelsv1.BatchStatus, error) {
 	radixComponentName := radixDeployJobComponent.GetName()
 	logger := log.Ctx(ctx)
 	logger.Info().Msgf("copy a jobs %s of the batch %s", sourceJobName, sourceRadixBatch.GetName())
@@ -344,8 +343,8 @@ func setRestartJobTimeout(batch *radixv1.RadixBatch, jobIdx int, restartTimestam
 }
 
 // GetJobStatusFromRadixBatchJobsStatus Get Job status from RadixBatchJob
-func GetJobStatusFromRadixBatchJobsStatus(radixBatch *v1.BatchStatus, jobStatus v1.JobStatus) v1.JobStatus {
-	return v1.JobStatus{
+func GetJobStatusFromRadixBatchJobsStatus(radixBatch *modelsv1.BatchStatus, jobStatus modelsv1.JobStatus) modelsv1.JobStatus {
+	return modelsv1.JobStatus{
 		JobId:       jobStatus.JobId,
 		BatchName:   getBatchName(radixBatch),
 		Name:        jobStatus.Name,
@@ -361,8 +360,8 @@ func GetJobStatusFromRadixBatchJobsStatus(radixBatch *v1.BatchStatus, jobStatus 
 }
 
 // GetJobStatusFromRadixBatchJobsStatuses Get JobStatuses from BatchStatus job statuses V2
-func GetJobStatusFromRadixBatchJobsStatuses(radixBatches ...v1.BatchStatus) []v1.JobStatus {
-	jobStatuses := make([]v1.JobStatus, 0, len(radixBatches))
+func GetJobStatusFromRadixBatchJobsStatuses(radixBatches ...modelsv1.BatchStatus) []modelsv1.JobStatus {
+	jobStatuses := make([]modelsv1.JobStatus, 0, len(radixBatches))
 	for _, radixBatch := range radixBatches {
 		for _, jobStatus := range radixBatch.JobStatuses {
 			jobStatuses = append(jobStatuses, GetJobStatusFromRadixBatchJobsStatus(&radixBatch, jobStatus))
@@ -371,6 +370,6 @@ func GetJobStatusFromRadixBatchJobsStatuses(radixBatches ...v1.BatchStatus) []v1
 	return jobStatuses
 }
 
-func getBatchName(radixBatch *v1.BatchStatus) string {
+func getBatchName(radixBatch *modelsv1.BatchStatus) string {
 	return utils.TernaryString(radixBatch.BatchType == string(kube.RadixBatchTypeJob), "", radixBatch.Name)
 }

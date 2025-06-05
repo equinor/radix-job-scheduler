@@ -472,8 +472,7 @@ func (h *handler) getRadixBatchStatuses(ctx context.Context, radixBatchType kube
 		return nil, err
 	}
 	logger.Debug().Msgf("Found %v batches", len(radixBatches))
-	radixBatchStatuses := batch.GetRadixBatchStatuses(radixBatches, h.radixDeployJobComponent)
-	return radixBatchStatuses, nil
+	return batch.GetRadixBatchStatuses(radixBatches, h.radixDeployJobComponent), nil
 }
 
 func applyDefaultJobDescriptionProperties(jobScheduleDescription *common.JobScheduleDescription, defaultRadixJobComponentConfig *common.RadixJobComponentConfig) error {
@@ -556,16 +555,4 @@ func (h *handler) GetRadixBatchJobMessagesAndPodMaps(ctx context.Context, select
 		return acc
 	})
 	return eventMessageForPods, batchJobPodsMap, nil
-}
-
-// SetBatchJobEventMessageToBatchJobStatus sets the event message for the batch job status
-func SetBatchJobEventMessageToBatchJobStatus(jobStatus *modelsv1.JobStatus, batchJobPodsMap map[string]corev1.Pod, eventMessageForPods map[string]string) {
-	if jobStatus == nil || len(jobStatus.Message) > 0 {
-		return
-	}
-	if batchJobPod, ok := batchJobPodsMap[jobStatus.Name]; ok {
-		if eventMessage, ok := eventMessageForPods[batchJobPod.Name]; ok {
-			jobStatus.Message = eventMessage
-		}
-	}
 }
