@@ -91,3 +91,8 @@ func GetBatchName(radixBatch *radixv1.RadixBatch) string {
 func GetBatchId(radixBatch *radixv1.RadixBatch) string {
 	return utils.TernaryString(radixBatch.GetLabels()[kube.RadixBatchTypeLabel] == string(kube.RadixBatchTypeJob), "", radixBatch.Spec.BatchId)
 }
+
+// IsRadixBatchJobSucceeded Check if Radix batch job is succeeded
+func IsRadixBatchJobSucceeded(jobStatus radixv1.RadixBatchJobStatus) bool {
+	return jobStatus.Phase == radixv1.BatchJobPhaseSucceeded || jobStatus.Phase == radixv1.BatchJobPhaseStopped
+}

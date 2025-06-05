@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/equinor/radix-job-scheduler/internal"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -101,7 +102,7 @@ func AddRadixBatchWithStatus(radixClient radixclient.Interface, jobName, compone
 	}
 	labels[kube.RadixBatchTypeLabel] = string(batchJobType)
 
-	batchName, batchJobName, ok := ParseBatchAndJobNameFromScheduledJobName(jobName)
+	batchName, batchJobName, ok := internal.ParseBatchAndJobNameFromScheduledJobName(jobName)
 	if !ok {
 		panic(fmt.Sprintf("invalid job name %s", jobName))
 	}

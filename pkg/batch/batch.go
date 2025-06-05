@@ -248,7 +248,7 @@ func stopJobsInBatch(radixBatch *radixv1.RadixBatch, batchName string, jobName s
 		if jobStatus, ok := slice.FindFirst(radixBatch.Status.JobStatuses, func(status radixv1.RadixBatchJobStatus) bool {
 			return status.Name == radixBatchJob.Name
 		}); ok &&
-			(internal.IsRadixBatchJobSucceeded(jobStatus) || internal.IsRadixBatchJobFailed(jobStatus)) {
+			(pkgInternal.IsRadixBatchJobSucceeded(jobStatus) || isRadixBatchJobFailed(jobStatus)) {
 			if len(batchName) > 0 && radixBatch.GetLabels()[kube.RadixBatchTypeLabel] == string(kube.RadixBatchTypeJob) {
 				return false, false, apiErrors.NewBadRequest(fmt.Sprintf("cannot stop the job %s with the status %s", radixBatch.GetName(), jobStatus.Phase))
 			}
@@ -342,34 +342,6 @@ func setRestartJobTimeout(batch *radixv1.RadixBatch, jobIdx int, restartTimestam
 	batch.Spec.Jobs[jobIdx].Restart = restartTimestamp
 }
 
-// GetJobStatusFromRadixBatchJobsStatus Get Job status from RadixBatchJob
-func GetJobStatusFromRadixBatchJobsStatus(radixBatch *modelsv1.BatchStatus, jobStatus modelsv1.JobStatus) modelsv1.JobStatus {
-	return modelsv1.JobStatus{
-		JobId:       jobStatus.JobId,
-		BatchName:   getBatchName(radixBatch),
-		Name:        jobStatus.Name,
-		Created:     jobStatus.Created,
-		Started:     jobStatus.Started,
-		Ended:       jobStatus.Ended,
-		Status:      string(jobStatus.Status),
-		Message:     jobStatus.Message,
-		Failed:      jobStatus.Failed,
-		Restart:     jobStatus.Restart,
-		PodStatuses: jobStatus.PodStatuses,
-	}
-}
-
-// GetJobStatusFromRadixBatchJobsStatuses Get JobStatuses from BatchStatus job statuses V2
-func GetJobStatusFromRadixBatchJobsStatuses(radixBatches ...modelsv1.BatchStatus) []modelsv1.JobStatus {
-	jobStatuses := make([]modelsv1.JobStatus, 0, len(radixBatches))
-	for _, radixBatch := range radixBatches {
-		for _, jobStatus := range radixBatch.JobStatuses {
-			jobStatuses = append(jobStatuses, GetJobStatusFromRadixBatchJobsStatus(&radixBatch, jobStatus))
-		}
-	}
-	return jobStatuses
-}
-
-func getBatchName(radixBatch *modelsv1.BatchStatus) string {
-	return utils.TernaryString(radixBatch.BatchType == string(kube.RadixBatchTypeJob), "", radixBatch.Name)
+func isRadixBatchJobFailed(jobStatus radixv1.RadixBatchJobStatus) bool {
+	return jobStatus.Phase == radixv1.BatchJobPhaseFailed
 }

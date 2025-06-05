@@ -100,7 +100,11 @@ func (handler *jobHandler) GetJob(ctx context.Context, jobName string) (*modelsv
 	logger := log.Ctx(ctx)
 	logger.Debug().Msgf("get job %s for namespace: %s", jobName, handler.common.GetEnv().RadixDeploymentNamespace)
 	if batchName, _, ok := internal.ParseBatchAndJobNameFromScheduledJobName(jobName); ok {
-		jobStatus, err := apiInternal.GetBatchJob(ctx, handler.common, batchName, jobName)
+		batchStatus, err := handler.common.GetRadixBatchStatus(ctx, batchName)
+		if err != nil {
+			return nil, err
+		}
+		jobStatus, err := apiInternal.GetBatchJobStatus(ctx, batchStatus, batchName, jobName)
 		if err != nil {
 			return nil, err
 		}
@@ -181,7 +185,7 @@ func jobExistInBatch(radixBatch *modelsv1.BatchStatus, jobName string) bool {
 func (handler *jobHandler) StopJob(ctx context.Context, jobName string) error {
 	logger := log.Ctx(ctx)
 	logger.Debug().Msgf("stop the job %s for namespace: %s", jobName, handler.common.GetEnv().RadixDeploymentNamespace)
-	return apiInternal.StopJob(ctx, handler.common, jobName)
+	return handler.common.StopRadixBatchJob(ctx, jobName)
 }
 
 // StopAllJobs Stop all jobs

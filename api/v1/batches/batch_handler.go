@@ -76,7 +76,12 @@ func (handler *batchHandler) GetBatches(ctx context.Context) ([]modelsv1.BatchSt
 
 // GetBatchJob Get status of a batch job
 func (handler *batchHandler) GetBatchJob(ctx context.Context, batchName string, jobName string) (*modelsv1.JobStatus, error) {
-	return apiInternal.GetBatchJob(ctx, handler.common, batchName, jobName)
+	batchStatus, err := handler.common.GetRadixBatchStatus(ctx, batchName)
+	if err != nil {
+		return nil, err
+	}
+
+	return apiInternal.GetBatchJobStatus(ctx, batchStatus, batchName, jobName)
 }
 
 // GetBatch Get status of a batch
@@ -135,7 +140,7 @@ func (handler *batchHandler) StopAllBatches(ctx context.Context) error {
 func (handler *batchHandler) StopBatchJob(ctx context.Context, batchName string, jobName string) error {
 	logger := log.Ctx(ctx)
 	logger.Debug().Msgf("delete the job %s in the batch %s for namespace: %s", jobName, batchName, handler.common.GetEnv().RadixDeploymentNamespace)
-	return apiInternal.StopJob(ctx, handler.common, jobName)
+	return handler.common.StopRadixBatchJob(ctx, jobName)
 }
 
 func setBatchJobEventMessages(radixBatchStatus *modelsv1.BatchStatus, batchJobPodsMap map[string]corev1.Pod, eventMessageForPods map[string]string) {

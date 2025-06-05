@@ -10,6 +10,7 @@ import (
 	"github.com/equinor/radix-common/utils/slice"
 	"github.com/equinor/radix-job-scheduler/internal"
 	"github.com/equinor/radix-job-scheduler/models"
+	pkgInternal "github.com/equinor/radix-job-scheduler/pkg/internal"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	radixLabels "github.com/equinor/radix-operator/pkg/apis/utils/labels"
@@ -98,7 +99,7 @@ func (h *history) getCompletedRadixBatchesSortedByCompletionTimeAsc(ctx context.
 
 func (h *history) getNotSucceededRadixBatches(radixBatches []*radixv1.RadixBatch, completedBefore time.Time) []string {
 	return slice.Reduce(radixBatches, []string{}, func(acc []string, radixBatch *radixv1.RadixBatch) []string {
-		if radixBatchHasType(radixBatch, kube.RadixBatchTypeBatch) && internal.IsRadixBatchNotSucceeded(radixBatch) && radixBatchIsCompletedBefore(completedBefore, radixBatch) {
+		if radixBatchHasType(radixBatch, kube.RadixBatchTypeBatch) && isRadixBatchNotSucceeded(radixBatch) && radixBatchIsCompletedBefore(completedBefore, radixBatch) {
 			acc = append(acc, radixBatch.Name)
 		}
 		return acc
@@ -107,7 +108,7 @@ func (h *history) getNotSucceededRadixBatches(radixBatches []*radixv1.RadixBatch
 
 func (h *history) getSucceededRadixBatches(radixBatches []*radixv1.RadixBatch, completedBefore time.Time) []string {
 	return slice.Reduce(radixBatches, []string{}, func(acc []string, radixBatch *radixv1.RadixBatch) []string {
-		if radixBatchHasType(radixBatch, kube.RadixBatchTypeBatch) && internal.IsRadixBatchSucceeded(radixBatch) && radixBatchIsCompletedBefore(completedBefore, radixBatch) {
+		if radixBatchHasType(radixBatch, kube.RadixBatchTypeBatch) && isRadixBatchSucceeded(radixBatch) && radixBatchIsCompletedBefore(completedBefore, radixBatch) {
 			acc = append(acc, radixBatch.Name)
 		}
 		return acc
@@ -120,7 +121,7 @@ func radixBatchIsCompletedBefore(completedBefore time.Time, radixBatch *radixv1.
 
 func (h *history) getNotSucceededSingleJobs(radixBatches []*radixv1.RadixBatch, completedBefore time.Time) []string {
 	return slice.Reduce(radixBatches, []string{}, func(acc []string, radixBatch *radixv1.RadixBatch) []string {
-		if radixBatchHasType(radixBatch, kube.RadixBatchTypeJob) && internal.IsRadixBatchNotSucceeded(radixBatch) && radixBatchIsCompletedBefore(completedBefore, radixBatch) {
+		if radixBatchHasType(radixBatch, kube.RadixBatchTypeJob) && isRadixBatchNotSucceeded(radixBatch) && radixBatchIsCompletedBefore(completedBefore, radixBatch) {
 			acc = append(acc, radixBatch.Name)
 		}
 		return acc
@@ -129,7 +130,7 @@ func (h *history) getNotSucceededSingleJobs(radixBatches []*radixv1.RadixBatch, 
 
 func (h *history) getSucceededSingleJobs(radixBatches []*radixv1.RadixBatch, completedBefore time.Time) []string {
 	return slice.Reduce(radixBatches, []string{}, func(acc []string, radixBatch *radixv1.RadixBatch) []string {
-		if radixBatchHasType(radixBatch, kube.RadixBatchTypeJob) && internal.IsRadixBatchSucceeded(radixBatch) && radixBatchIsCompletedBefore(completedBefore, radixBatch) {
+		if radixBatchHasType(radixBatch, kube.RadixBatchTypeJob) && isRadixBatchSucceeded(radixBatch) && radixBatchIsCompletedBefore(completedBefore, radixBatch) {
 			acc = append(acc, radixBatch.Name)
 		}
 		return acc
@@ -184,4 +185,16 @@ func getCompletionTimeFrom(radixBatch *radixv1.RadixBatch) *metav1.Time {
 		return pointers.Ptr(radixBatch.GetCreationTimestamp())
 	}
 	return radixBatch.Status.Condition.CompletionTime
+}
+
+func isRadixBatchNotSucceeded(batch *radixv1.RadixBatch) bool {
+	return batch.Status.Condition.Type == radixv1.BatchConditionTypeCompleted && slice.Any(batch.Status.JobStatuses, func(jobStatus radixv1.RadixBatchJobStatus) bool {
+		return !pkgInternal.IsRadixBatchJobSucceeded(jobStatus)
+	})
+}
+
+func isRadixBatchSucceeded(batch *radixv1.RadixBatch) bool {
+	return batch.Status.Condition.Type == radixv1.BatchConditionTypeCompleted && slice.All(batch.Status.JobStatuses, func(jobStatus radixv1.RadixBatchJobStatus) bool {
+		return pkgInternal.IsRadixBatchJobSucceeded(jobStatus)
+	})
 }

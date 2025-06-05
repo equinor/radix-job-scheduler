@@ -5,7 +5,6 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	apiErrors "github.com/equinor/radix-job-scheduler/pkg/errors"
 	"sort"
 	"strings"
 
@@ -17,6 +16,7 @@ import (
 	"github.com/equinor/radix-job-scheduler/models/common"
 	modelsv1 "github.com/equinor/radix-job-scheduler/models/v1"
 	"github.com/equinor/radix-job-scheduler/pkg/batch"
+	apiErrors "github.com/equinor/radix-job-scheduler/pkg/errors"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	radixLabels "github.com/equinor/radix-operator/pkg/apis/utils/labels"
@@ -68,7 +68,7 @@ type Handler interface {
 	// StopAllRadixBatches Stop all batches
 	StopAllRadixBatches(ctx context.Context) error
 	// StopRadixBatchJob Stop a batch job
-	StopRadixBatchJob(ctx context.Context, batchName, jobName string) error
+	StopRadixBatchJob(ctx context.Context, jobName string) error
 	// StopAllSingleRadixJobs Stop all single jobs
 	StopAllSingleRadixJobs(ctx context.Context) error
 	// RestartRadixBatch Restart a batch
@@ -261,8 +261,11 @@ func (h *handler) StopAllRadixBatches(ctx context.Context) error {
 }
 
 // StopRadixBatchJob Stop a batch job
-func (h *handler) StopRadixBatchJob(ctx context.Context, batchName, jobName string) error {
-	return batch.StopRadixBatchJob(ctx, h.kubeUtil.RadixClient(), h.env.RadixAppName, h.env.RadixEnvironmentName, h.env.RadixComponentName, batchName, jobName)
+func (h *handler) StopRadixBatchJob(ctx context.Context, jobName string) error {
+	if batchName, batchJobName, ok := internal.ParseBatchAndJobNameFromScheduledJobName(jobName); ok {
+		return batch.StopRadixBatchJob(ctx, h.kubeUtil.RadixClient(), h.env.RadixAppName, h.env.RadixEnvironmentName, h.env.RadixComponentName, batchName, batchJobName)
+	}
+	return fmt.Errorf("stop of this job is not supported")
 }
 
 // StopAllSingleRadixJobs Stop all single jobs

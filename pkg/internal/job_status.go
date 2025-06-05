@@ -2,7 +2,6 @@ package internal
 
 import (
 	"github.com/equinor/radix-common/utils/slice"
-	"github.com/equinor/radix-job-scheduler/internal"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 )
@@ -52,5 +51,38 @@ func GetRadixBatchStatus(radixBatch *radixv1.RadixBatch, radixDeployJobComponent
 		}
 		return radixv1.RadixBatchJobApiStatus(radixBatch.Status.JobStatuses[0].Phase)
 	}
-	return internal.GetStatusFromStatusRules(getBatchJobStatusPhases(radixBatch), radixDeployJobComponent, radixv1.RadixBatchJobApiStatus(radixBatch.Status.Condition.Type))
+	return getStatusFromStatusRules(getBatchJobStatusPhases(radixBatch), radixDeployJobComponent, radixv1.RadixBatchJobApiStatus(radixBatch.Status.Condition.Type))
+}
+
+func getStatusFromStatusRules(radixBatchJobPhases []radixv1.RadixBatchJobPhase, activeRadixDeployJobComponent *radixv1.RadixDeployJobComponent, defaultBatchStatus radixv1.RadixBatchJobApiStatus) radixv1.RadixBatchJobApiStatus {
+	if activeRadixDeployJobComponent != nil {
+		for _, rule := range activeRadixDeployJobComponent.BatchStatusRules {
+			ruleJobStatusesMap := slice.Reduce(rule.JobStatuses, make(map[radixv1.RadixBatchJobPhase]struct{}), func(acc map[radixv1.RadixBatchJobPhase]struct{}, jobStatus radixv1.RadixBatchJobPhase) map[radixv1.RadixBatchJobPhase]struct{} {
+				acc[jobStatus] = struct{}{}
+				return acc
+			})
+			evaluateJobStatusByRule := func(jobStatusPhase radixv1.RadixBatchJobPhase) bool {
+				return evaluateCondition(jobStatusPhase, rule.Operator, ruleJobStatusesMap)
+			}
+			switch rule.Condition {
+			case radixv1.ConditionAny:
+				if slice.Any(radixBatchJobPhases, evaluateJobStatusByRule) {
+					return rule.BatchStatus
+				}
+			case radixv1.ConditionAll:
+				if slice.All(radixBatchJobPhases, evaluateJobStatusByRule) {
+					return rule.BatchStatus
+				}
+			}
+		}
+	}
+	if len(defaultBatchStatus) == 0 {
+		return radixv1.RadixBatchJobApiStatusWaiting
+	}
+	return defaultBatchStatus
+}
+
+func evaluateCondition(jobStatus radixv1.RadixBatchJobPhase, ruleOperator radixv1.Operator, ruleJobStatusesMap map[radixv1.RadixBatchJobPhase]struct{}) bool {
+	_, statusExistInRule := ruleJobStatusesMap[jobStatus]
+	return (ruleOperator == radixv1.OperatorNotIn && !statusExistInRule) || (ruleOperator == radixv1.OperatorIn && statusExistInRule)
 }
