@@ -79,7 +79,7 @@ func (handler *jobHandler) getCombinedBatchStatuses(ctx context.Context) ([]mode
 }
 
 func (handler *jobHandler) getJobStatusesWithEvents(ctx context.Context, combinedBatchStatuses []modelsv1.BatchStatus) ([]modelsv1.JobStatus, error) {
-	labelSelectorForAllRadixBatchesPods := apiv1.GetLabelSelectorForAllRadixBatchesPods(handler.common.GetEnv().RadixComponentName)
+	labelSelectorForAllRadixBatchesPods := apiInternal.GetLabelSelectorForAllRadixBatchesPods(handler.common.GetEnv().RadixComponentName)
 	eventMessageForPods, batchJobPodsMap, err := handler.common.GetRadixBatchJobMessagesAndPodMaps(ctx, labelSelectorForAllRadixBatchesPods)
 	if err != nil {
 		return nil, err
@@ -104,7 +104,7 @@ func (handler *jobHandler) GetJob(ctx context.Context, jobName string) (*modelsv
 		if err != nil {
 			return nil, err
 		}
-		labelSelectorForRadixBatchesPods := apiv1.GetLabelSelectorForRadixBatchesPods(handler.common.GetEnv().RadixComponentName, batchName)
+		labelSelectorForRadixBatchesPods := apiInternal.GetLabelSelectorForRadixBatchesPods(handler.common.GetEnv().RadixComponentName, batchName)
 		eventMessageForPods, batchJobPodsMap, err := handler.common.GetRadixBatchJobMessagesAndPodMaps(ctx, labelSelectorForRadixBatchesPods)
 		if err != nil {
 			return nil, err

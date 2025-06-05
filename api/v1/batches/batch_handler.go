@@ -62,7 +62,7 @@ func (handler *batchHandler) GetBatches(ctx context.Context) ([]modelsv1.BatchSt
 		return nil, nil
 	}
 
-	labelSelectorForAllRadixBatchesPods := v1.GetLabelSelectorForAllRadixBatchesPods(handler.common.GetEnv().RadixComponentName)
+	labelSelectorForAllRadixBatchesPods := apiInternal.GetLabelSelectorForAllRadixBatchesPods(handler.common.GetEnv().RadixComponentName)
 	eventMessageForPods, batchJobPodsMap, err := handler.common.GetRadixBatchJobMessagesAndPodMaps(ctx, labelSelectorForAllRadixBatchesPods)
 	if err != nil {
 		return nil, err
@@ -87,7 +87,7 @@ func (handler *batchHandler) GetBatch(ctx context.Context, batchName string) (*m
 	if err != nil {
 		return nil, err
 	}
-	labelSelectorForRadixBatchesPods := v1.GetLabelSelectorForRadixBatchesPods(handler.common.GetEnv().RadixComponentName, batchName)
+	labelSelectorForRadixBatchesPods := apiInternal.GetLabelSelectorForRadixBatchesPods(handler.common.GetEnv().RadixComponentName, batchName)
 	eventMessageForPods, batchJobPodsMap, err := handler.common.GetRadixBatchJobMessagesAndPodMaps(ctx, labelSelectorForRadixBatchesPods)
 	if err != nil {
 		return nil, err
