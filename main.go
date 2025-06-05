@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/equinor/radix-job-scheduler/api/v1/controllers"
 	"net"
 	"net/http"
 	_ "net/http/pprof"
@@ -15,6 +14,7 @@ import (
 	"time"
 
 	batchApi "github.com/equinor/radix-job-scheduler/api/v1/batches"
+	"github.com/equinor/radix-job-scheduler/api/v1/controllers"
 	batchControllers "github.com/equinor/radix-job-scheduler/api/v1/controllers/batches"
 	jobControllers "github.com/equinor/radix-job-scheduler/api/v1/controllers/jobs"
 	jobApi "github.com/equinor/radix-job-scheduler/api/v1/jobs"

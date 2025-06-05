@@ -4,11 +4,11 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/equinor/radix-job-scheduler/pkg/internal"
 	"net/http"
 
-	"github.com/equinor/radix-job-scheduler/models/v1"
+	modelsv1 "github.com/equinor/radix-job-scheduler/models/v1"
 	"github.com/equinor/radix-job-scheduler/models/v1/events"
+	"github.com/equinor/radix-job-scheduler/pkg/internal"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/rs/zerolog/log"
@@ -68,7 +68,7 @@ func getRadixBatchEventFromRadixBatch(event events.Event, radixBatch *radixv1.Ra
 	batchStatus, jobStatuses := internal.GetBatchAndJobStatuses(radixBatch, radixDeployJobComponent, radixBatchJobStatuses)
 	return events.BatchEvent{
 		Event: event,
-		BatchStatus: v1.BatchStatus{
+		BatchStatus: modelsv1.BatchStatus{
 			JobStatus:   batchStatus,
 			JobStatuses: jobStatuses,
 			BatchType:   radixBatch.Labels[kube.RadixBatchTypeLabel],

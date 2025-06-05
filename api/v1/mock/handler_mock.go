@@ -6,15 +6,15 @@ package mock
 
 import (
 	context "context"
-	v3 "github.com/equinor/radix-job-scheduler/models/v1"
 	reflect "reflect"
 
 	models "github.com/equinor/radix-job-scheduler/models"
 	common "github.com/equinor/radix-job-scheduler/models/common"
+	v1 "github.com/equinor/radix-job-scheduler/models/v1"
 	kube "github.com/equinor/radix-operator/pkg/apis/kube"
-	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
+	v10 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	gomock "github.com/golang/mock/gomock"
-	v10 "k8s.io/api/core/v1"
+	v11 "k8s.io/api/core/v1"
 )
 
 // MockHandler is a mock of Handler interface.
@@ -41,10 +41,10 @@ func (m *MockHandler) EXPECT() *MockHandlerMockRecorder {
 }
 
 // CopyRadixBatch mocks base method.
-func (m *MockHandler) CopyRadixBatch(ctx context.Context, batchName, deploymentName string) (*v3.BatchStatus, error) {
+func (m *MockHandler) CopyRadixBatch(ctx context.Context, batchName, deploymentName string) (*v1.BatchStatus, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CopyRadixBatch", ctx, batchName, deploymentName)
-	ret0, _ := ret[0].(*v3.BatchStatus)
+	ret0, _ := ret[0].(*v1.BatchStatus)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -56,10 +56,10 @@ func (mr *MockHandlerMockRecorder) CopyRadixBatch(ctx, batchName, deploymentName
 }
 
 // CopyRadixBatchJob mocks base method.
-func (m *MockHandler) CopyRadixBatchJob(ctx context.Context, jobName, deploymentName string) (*v3.BatchStatus, error) {
+func (m *MockHandler) CopyRadixBatchJob(ctx context.Context, jobName, deploymentName string) (*v1.BatchStatus, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CopyRadixBatchJob", ctx, jobName, deploymentName)
-	ret0, _ := ret[0].(*v3.BatchStatus)
+	ret0, _ := ret[0].(*v1.BatchStatus)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -71,10 +71,10 @@ func (mr *MockHandlerMockRecorder) CopyRadixBatchJob(ctx, jobName, deploymentNam
 }
 
 // CreateRadixBatch mocks base method.
-func (m *MockHandler) CreateRadixBatch(ctx context.Context, batchScheduleDescription *common.BatchScheduleDescription) (*v3.BatchStatus, error) {
+func (m *MockHandler) CreateRadixBatch(ctx context.Context, batchScheduleDescription *common.BatchScheduleDescription) (*v1.BatchStatus, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateRadixBatch", ctx, batchScheduleDescription)
-	ret0, _ := ret[0].(*v3.BatchStatus)
+	ret0, _ := ret[0].(*v1.BatchStatus)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -86,10 +86,10 @@ func (mr *MockHandlerMockRecorder) CreateRadixBatch(ctx, batchScheduleDescriptio
 }
 
 // CreateRadixBatchSingleJob mocks base method.
-func (m *MockHandler) CreateRadixBatchSingleJob(ctx context.Context, jobScheduleDescription *common.JobScheduleDescription) (*v3.BatchStatus, error) {
+func (m *MockHandler) CreateRadixBatchSingleJob(ctx context.Context, jobScheduleDescription *common.JobScheduleDescription) (*v1.BatchStatus, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateRadixBatchSingleJob", ctx, jobScheduleDescription)
-	ret0, _ := ret[0].(*v3.BatchStatus)
+	ret0, _ := ret[0].(*v1.BatchStatus)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -142,27 +142,12 @@ func (mr *MockHandlerMockRecorder) GetKubeUtil() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetKubeUtil", reflect.TypeOf((*MockHandler)(nil).GetKubeUtil))
 }
 
-// GetRadixBatch mocks base method.
-func (m *MockHandler) GetRadixBatchStatus(ctx context.Context, batchName string) (*v3.BatchStatus, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetRadixBatchStatus", ctx, batchName)
-	ret0, _ := ret[0].(*v3.BatchStatus)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetRadixBatch indicates an expected call of GetRadixBatch.
-func (mr *MockHandlerMockRecorder) GetRadixBatch(ctx, batchName interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRadixBatchStatus", reflect.TypeOf((*MockHandler)(nil).GetRadixBatchStatus), ctx, batchName)
-}
-
 // GetRadixBatchJobMessagesAndPodMaps mocks base method.
-func (m *MockHandler) GetRadixBatchJobMessagesAndPodMaps(ctx context.Context, selectorForRadixBatchPods string) (map[string]string, map[string]v10.Pod, error) {
+func (m *MockHandler) GetRadixBatchJobMessagesAndPodMaps(ctx context.Context, selectorForRadixBatchPods string) (map[string]string, map[string]v11.Pod, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetRadixBatchJobMessagesAndPodMaps", ctx, selectorForRadixBatchPods)
 	ret0, _ := ret[0].(map[string]string)
-	ret1, _ := ret[1].(map[string]v10.Pod)
+	ret1, _ := ret[1].(map[string]v11.Pod)
 	ret2, _ := ret[2].(error)
 	return ret0, ret1, ret2
 }
@@ -173,41 +158,56 @@ func (mr *MockHandlerMockRecorder) GetRadixBatchJobMessagesAndPodMaps(ctx, selec
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRadixBatchJobMessagesAndPodMaps", reflect.TypeOf((*MockHandler)(nil).GetRadixBatchJobMessagesAndPodMaps), ctx, selectorForRadixBatchPods)
 }
 
-// GetRadixBatchSingleJobs mocks base method.
-func (m *MockHandler) GetRadixBatchStatusSingleJobs(ctx context.Context) ([]v3.BatchStatus, error) {
+// GetRadixBatchStatus mocks base method.
+func (m *MockHandler) GetRadixBatchStatus(ctx context.Context, batchName string) (*v1.BatchStatus, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetRadixBatchStatusSingleJobs", ctx)
-	ret0, _ := ret[0].([]v3.BatchStatus)
+	ret := m.ctrl.Call(m, "GetRadixBatchStatus", ctx, batchName)
+	ret0, _ := ret[0].(*v1.BatchStatus)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// GetRadixBatchSingleJobs indicates an expected call of GetRadixBatchSingleJobs.
-func (mr *MockHandlerMockRecorder) GetRadixBatchSingleJobs(ctx interface{}) *gomock.Call {
+// GetRadixBatchStatus indicates an expected call of GetRadixBatchStatus.
+func (mr *MockHandlerMockRecorder) GetRadixBatchStatus(ctx, batchName interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRadixBatchStatus", reflect.TypeOf((*MockHandler)(nil).GetRadixBatchStatus), ctx, batchName)
+}
+
+// GetRadixBatchStatusSingleJobs mocks base method.
+func (m *MockHandler) GetRadixBatchStatusSingleJobs(ctx context.Context) ([]v1.BatchStatus, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetRadixBatchStatusSingleJobs", ctx)
+	ret0, _ := ret[0].([]v1.BatchStatus)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetRadixBatchStatusSingleJobs indicates an expected call of GetRadixBatchStatusSingleJobs.
+func (mr *MockHandlerMockRecorder) GetRadixBatchStatusSingleJobs(ctx interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRadixBatchStatusSingleJobs", reflect.TypeOf((*MockHandler)(nil).GetRadixBatchStatusSingleJobs), ctx)
 }
 
-// GetRadixBatches mocks base method.
-func (m *MockHandler) GetRadixBatchStatuses(ctx context.Context) ([]v3.BatchStatus, error) {
+// GetRadixBatchStatuses mocks base method.
+func (m *MockHandler) GetRadixBatchStatuses(ctx context.Context) ([]v1.BatchStatus, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetRadixBatchStatuses", ctx)
-	ret0, _ := ret[0].([]v3.BatchStatus)
+	ret0, _ := ret[0].([]v1.BatchStatus)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// GetRadixBatches indicates an expected call of GetRadixBatches.
-func (mr *MockHandlerMockRecorder) GetRadixBatches(ctx interface{}) *gomock.Call {
+// GetRadixBatchStatuses indicates an expected call of GetRadixBatchStatuses.
+func (mr *MockHandlerMockRecorder) GetRadixBatchStatuses(ctx interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRadixBatchStatuses", reflect.TypeOf((*MockHandler)(nil).GetRadixBatchStatuses), ctx)
 }
 
 // GetRadixDeployJobComponent mocks base method.
-func (m *MockHandler) GetRadixDeployJobComponent() *v1.RadixDeployJobComponent {
+func (m *MockHandler) GetRadixDeployJobComponent() *v10.RadixDeployJobComponent {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetRadixDeployJobComponent")
-	ret0, _ := ret[0].(*v1.RadixDeployJobComponent)
+	ret0, _ := ret[0].(*v10.RadixDeployJobComponent)
 	return ret0
 }
 
