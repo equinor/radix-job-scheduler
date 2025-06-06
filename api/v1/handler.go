@@ -61,8 +61,6 @@ type Handler interface {
 	CreateRadixBatchSingleJob(ctx context.Context, jobScheduleDescription *common.JobScheduleDescription) (*modelsv1.BatchStatus, error)
 	// CopyRadixBatchJob Copy a batch job parameter
 	CopyRadixBatchJob(ctx context.Context, jobName, deploymentName string) (*modelsv1.BatchStatus, error)
-	// DeleteRadixBatchJob Delete a single job
-	DeleteRadixBatchJob(ctx context.Context, jobName string) error
 	// StopRadixBatch Stop a batch
 	StopRadixBatch(ctx context.Context, batchName string) error
 	// StopAllRadixBatches Stop all batches
@@ -71,18 +69,12 @@ type Handler interface {
 	StopRadixBatchJob(ctx context.Context, jobName string) error
 	// StopAllSingleRadixJobs Stop all single jobs
 	StopAllSingleRadixJobs(ctx context.Context) error
-	// RestartRadixBatch Restart a batch
-	RestartRadixBatch(ctx context.Context, batchName string) error
-	// RestartRadixBatchJob Restart a batch job
-	RestartRadixBatchJob(ctx context.Context, batchName, jobName string) error
 	// GetEnv Get environment information
 	GetEnv() *models.Env
 	// GetRadixBatchJobMessagesAndPodMaps returns the event messages for the batch job statuses
 	GetRadixBatchJobMessagesAndPodMaps(ctx context.Context, selectorForRadixBatchPods string) (map[string]string, map[string]corev1.Pod, error)
 	// GetKubeUtil Get kube utility
 	GetKubeUtil() *kube.Kube
-	// GetRadixDeployJobComponent Get Radix Deploy Job Component
-	GetRadixDeployJobComponent() *radixv1.RadixDeployJobComponent
 }
 
 // New Constructor of the batch handler
@@ -108,11 +100,6 @@ func (h *handler) GetEnv() *models.Env {
 // GetKubeUtil Get kube utility
 func (h *handler) GetKubeUtil() *kube.Kube {
 	return h.kubeUtil
-}
-
-// GetRadixDeployJobComponent Get Radix Deploy Job Component
-func (h *handler) GetRadixDeployJobComponent() *radixv1.RadixDeployJobComponent {
-	return h.radixDeployJobComponent
 }
 
 // GetRadixBatchStatuses Get statuses of all batches
@@ -234,22 +221,6 @@ func (h *handler) CopyRadixBatchJob(ctx context.Context, sourceJobName, deployme
 	return batch.CopyRadixBatchOrJob(ctx, h.kubeUtil.RadixClient(), sourceRadixBatch, jobName, h.radixDeployJobComponent, deploymentName)
 }
 
-// DeleteRadixBatchJob Delete a batch job
-func (h *handler) DeleteRadixBatchJob(ctx context.Context, jobName string) error {
-	batchName, _, ok := internal.ParseBatchAndJobNameFromScheduledJobName(jobName)
-	if !ok {
-		return fmt.Errorf("deleting of this job is not supported or invalid job name")
-	}
-	radixBatch, err := internal.GetRadixBatch(ctx, h.kubeUtil.RadixClient(), h.env.RadixDeploymentNamespace, batchName)
-	if err != nil {
-		return err
-	}
-	if radixBatch.Labels[kube.RadixBatchTypeLabel] != string(kube.RadixBatchTypeJob) {
-		return errors.New("not a single job")
-	}
-	return batch.DeleteRadixBatch(ctx, h.kubeUtil.RadixClient(), radixBatch)
-}
-
 // StopRadixBatch Stop a batch
 func (h *handler) StopRadixBatch(ctx context.Context, batchName string) error {
 	return batch.StopRadixBatch(ctx, h.kubeUtil.RadixClient(), h.env.RadixAppName, h.env.RadixEnvironmentName, h.env.RadixComponentName, batchName)
@@ -271,24 +242,6 @@ func (h *handler) StopRadixBatchJob(ctx context.Context, jobName string) error {
 // StopAllSingleRadixJobs Stop all single jobs
 func (h *handler) StopAllSingleRadixJobs(ctx context.Context) error {
 	return batch.StopAllRadixBatches(ctx, h.kubeUtil.RadixClient(), h.env.RadixAppName, h.env.RadixEnvironmentName, h.env.RadixComponentName, kube.RadixBatchTypeJob)
-}
-
-// RestartRadixBatch Restart a batch
-func (h *handler) RestartRadixBatch(ctx context.Context, batchName string) error {
-	radixBatch, err := internal.GetRadixBatch(ctx, h.kubeUtil.RadixClient(), h.env.RadixDeploymentNamespace, batchName)
-	if err != nil {
-		return apiErrors.NewFromError(err)
-	}
-	return batch.RestartRadixBatch(ctx, h.kubeUtil.RadixClient(), radixBatch)
-}
-
-// RestartRadixBatchJob Restart a batch job
-func (h *handler) RestartRadixBatchJob(ctx context.Context, batchName, jobName string) error {
-	radixBatch, err := internal.GetRadixBatch(ctx, h.kubeUtil.RadixClient(), h.env.RadixDeploymentNamespace, batchName)
-	if err != nil {
-		return err
-	}
-	return batch.RestartRadixBatchJob(ctx, h.kubeUtil.RadixClient(), radixBatch, jobName)
 }
 
 func (h *handler) createRadixBatch(ctx context.Context, namespace, appName, radixDeploymentName string, radixJobComponent radixv1.RadixDeployJobComponent, batchScheduleDescription common.BatchScheduleDescription, radixBatchType kube.RadixBatchType) (*radixv1.RadixBatch, error) {

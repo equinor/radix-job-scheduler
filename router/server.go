@@ -1,10 +1,10 @@
 package router
 
 import (
-	"github.com/equinor/radix-job-scheduler/api/v1/controllers"
 	"net/http"
 
 	commongin "github.com/equinor/radix-common/pkg/gin"
+	"github.com/equinor/radix-job-scheduler/api/v1/controllers"
 	"github.com/equinor/radix-job-scheduler/models"
 	"github.com/equinor/radix-job-scheduler/swaggerui"
 	"github.com/gin-gonic/gin"

@@ -3,16 +3,16 @@ package jobs
 import (
 	"context"
 	"fmt"
-	"github.com/equinor/radix-job-scheduler/internal"
-	apiErrors "github.com/equinor/radix-job-scheduler/pkg/errors"
 	"testing"
 
 	"github.com/equinor/radix-common/utils/pointers"
 	"github.com/equinor/radix-common/utils/slice"
 	"github.com/equinor/radix-job-scheduler/api/test"
+	"github.com/equinor/radix-job-scheduler/internal"
 	testUtil "github.com/equinor/radix-job-scheduler/internal/test"
 	modelsEnv "github.com/equinor/radix-job-scheduler/models"
 	models "github.com/equinor/radix-job-scheduler/models/common"
+	apiErrors "github.com/equinor/radix-job-scheduler/pkg/errors"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/equinor/radix-operator/pkg/apis/utils"

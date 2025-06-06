@@ -4,10 +4,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/equinor/radix-common/utils/pointers"
 	"net/http"
 	"time"
 
+	"github.com/equinor/radix-common/utils/pointers"
 	modelsv1 "github.com/equinor/radix-job-scheduler/models/v1"
 	"github.com/equinor/radix-job-scheduler/models/v1/events"
 	"github.com/equinor/radix-job-scheduler/pkg/internal"
