@@ -28,15 +28,15 @@ func getBatchJobStatusPhases(radixBatch *radixv1.RadixBatch) []radixv1.RadixBatc
 }
 
 // GetRadixBatchStatus Gets the batch status
-func GetRadixBatchStatus(radixBatch *radixv1.RadixBatch, radixDeployJobComponent *radixv1.RadixDeployJobComponent) (status radixv1.RadixBatchJobApiStatus) {
+func GetRadixBatchStatus(radixBatch *radixv1.RadixBatch, radixDeployJobComponent *radixv1.RadixDeployJobComponent) string {
 	isSingleJob := radixBatch.Labels[kube.RadixBatchTypeLabel] == string(kube.RadixBatchTypeJob) && len(radixBatch.Spec.Jobs) == 1
 	if isSingleJob {
 		if len(radixBatch.Status.JobStatuses) == 0 {
 			return radixv1.RadixBatchJobApiStatusWaiting
 		}
-		return radixv1.RadixBatchJobApiStatus(radixBatch.Status.JobStatuses[0].Phase)
+		return string(radixBatch.Status.JobStatuses[0].Phase)
 	}
-	return getStatusFromStatusRules(getBatchJobStatusPhases(radixBatch), radixDeployJobComponent, radixv1.RadixBatchJobApiStatus(radixBatch.Status.Condition.Type))
+	return string(getStatusFromStatusRules(getBatchJobStatusPhases(radixBatch), radixDeployJobComponent, radixv1.RadixBatchJobApiStatus(radixBatch.Status.Condition.Type)))
 }
 
 func getStatusFromStatusRules(radixBatchJobPhases []radixv1.RadixBatchJobPhase, activeRadixDeployJobComponent *radixv1.RadixDeployJobComponent, defaultBatchStatus radixv1.RadixBatchJobApiStatus) radixv1.RadixBatchJobApiStatus {

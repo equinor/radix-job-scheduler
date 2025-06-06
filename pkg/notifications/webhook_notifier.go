@@ -93,7 +93,7 @@ func getBatchAndJobStatuses(radixBatch *radixv1.RadixBatch, radixDeployJobCompon
 		Created: pointers.Ptr(radixBatch.GetCreationTimestamp().Time),
 		Started: startedTime,
 		Ended:   endedTime,
-		Status:  string(internal.GetRadixBatchStatus(radixBatch, radixDeployJobComponent)),
+		Status:  internal.GetRadixBatchStatus(radixBatch, radixDeployJobComponent),
 		Message: radixBatch.Status.Condition.Message,
 		Updated: pointers.Ptr(time.Now()),
 	}

@@ -50,7 +50,7 @@ func GetRadixBatchStatus(radixBatch *radixv1.RadixBatch, radixDeployJobComponent
 			Created:        pointers.Ptr(radixBatch.GetCreationTimestamp().Time),
 			Started:        started,
 			Ended:          ended,
-			Status:         string(pkgInternal.GetRadixBatchStatus(radixBatch, radixDeployJobComponent)),
+			Status:         pkgInternal.GetRadixBatchStatus(radixBatch, radixDeployJobComponent),
 			Message:        radixBatch.Status.Condition.Message,
 			DeploymentName: radixBatch.Spec.RadixDeploymentJobRef.Name,
 		},
