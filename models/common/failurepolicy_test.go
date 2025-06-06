@@ -3,32 +3,32 @@ package common_test
 import (
 	"testing"
 
-	"github.com/equinor/radix-job-scheduler/models/common"
+	models "github.com/equinor/radix-job-scheduler/models/common"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/stretchr/testify/assert"
 )
 
 func Test_MapToRadixFailurePolicy(t *testing.T) {
-	sut := common.FailurePolicy{
-		Rules: []common.FailurePolicyRule{
+	sut := models.FailurePolicy{
+		Rules: []models.FailurePolicyRule{
 			{
-				Action: common.FailurePolicyRuleActionCount,
-				OnExitCodes: common.FailurePolicyRuleOnExitCodes{
-					Operator: common.FailurePolicyRuleOnExitCodesOpIn,
+				Action: models.FailurePolicyRuleActionCount,
+				OnExitCodes: models.FailurePolicyRuleOnExitCodes{
+					Operator: models.FailurePolicyRuleOnExitCodesOpIn,
 					Values:   []int32{1, 2, 3},
 				},
 			},
 			{
-				Action: common.FailurePolicyRuleActionFailJob,
-				OnExitCodes: common.FailurePolicyRuleOnExitCodes{
-					Operator: common.FailurePolicyRuleOnExitCodesOpIn,
+				Action: models.FailurePolicyRuleActionFailJob,
+				OnExitCodes: models.FailurePolicyRuleOnExitCodes{
+					Operator: models.FailurePolicyRuleOnExitCodesOpIn,
 					Values:   []int32{4},
 				},
 			},
 			{
-				Action: common.FailurePolicyRuleActionIgnore,
-				OnExitCodes: common.FailurePolicyRuleOnExitCodes{
-					Operator: common.FailurePolicyRuleOnExitCodesOpNotIn,
+				Action: models.FailurePolicyRuleActionIgnore,
+				OnExitCodes: models.FailurePolicyRuleOnExitCodes{
+					Operator: models.FailurePolicyRuleOnExitCodesOpNotIn,
 					Values:   []int32{5},
 				},
 			},

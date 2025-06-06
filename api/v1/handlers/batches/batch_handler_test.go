@@ -269,7 +269,7 @@ func TestStopBatchJob(t *testing.T) {
 		test.CreateSecretForTest(appName, "secret5", "test-batch5-job1", appJobComponent, "other-ns", kubeClient)
 
 		handler := New(kubeUtil, modelsEnv.NewEnv(), &radixDeployJobComponent)
-		err := handler.StopBatchJob(context.TODO(), "test-batch1", "test-batch1-job1")
+		err := handler.StopBatchJob(context.TODO(), "test-batch1", "job1")
 		assert.NoError(t, err)
 		radixBatchList, _ := radixClient.RadixV1().RadixBatches("").List(context.TODO(), metav1.ListOptions{})
 		assert.Len(t, radixBatchList.Items, 2)

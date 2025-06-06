@@ -1,4 +1,4 @@
-package v1
+package internal
 
 import (
 	"context"
@@ -89,7 +89,7 @@ func Test_CreateBatch(t *testing.T) {
 			_, _, kubeUtil := testUtil.SetupTest(t, "app", "qa", appJobComponent, "app-deploy-1", 1)
 			env := models.NewEnv()
 
-			h := &handler{
+			h := &Handler{
 				kubeUtil:                kubeUtil,
 				env:                     env,
 				radixDeployJobComponent: &radixDeployJobComponent,
@@ -101,7 +101,7 @@ func Test_CreateBatch(t *testing.T) {
 			var err error
 			var createdRadixBatch *v1.BatchStatus
 			if ts.expectedBatchType == kube.RadixBatchTypeBatch {
-				createdRadixBatch, err = h.CreateRadixBatch(context.TODO(), &ts.batchDescription)
+				createdRadixBatch, err = h.CreateBatch(context.TODO(), &ts.batchDescription)
 			} else {
 				var jobScheduleDescription *common.JobScheduleDescription
 				if len(ts.batchDescription.JobScheduleDescriptions) > 0 {

@@ -3,13 +3,13 @@ package common_test
 import (
 	"testing"
 
-	"github.com/equinor/radix-job-scheduler/models/common"
+	models "github.com/equinor/radix-job-scheduler/models/common"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestXxx(t *testing.T) {
-	sut := common.Node{
+func Test_GpuNode(t *testing.T) {
+	sut := models.Node{
 		Gpu:      "gpu1, gpu2",
 		GpuCount: "2",
 	}

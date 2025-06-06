@@ -13,11 +13,11 @@ import (
 	"syscall"
 	"time"
 
-	batchApi "github.com/equinor/radix-job-scheduler/api/v1/batches"
 	"github.com/equinor/radix-job-scheduler/api/v1/controllers"
 	batchControllers "github.com/equinor/radix-job-scheduler/api/v1/controllers/batches"
 	jobControllers "github.com/equinor/radix-job-scheduler/api/v1/controllers/jobs"
-	jobApi "github.com/equinor/radix-job-scheduler/api/v1/jobs"
+	batchApi "github.com/equinor/radix-job-scheduler/api/v1/handlers/batches"
+	jobApi "github.com/equinor/radix-job-scheduler/api/v1/handlers/jobs"
 	"github.com/equinor/radix-job-scheduler/models"
 	"github.com/equinor/radix-job-scheduler/pkg/batch"
 	"github.com/equinor/radix-job-scheduler/pkg/notifications"

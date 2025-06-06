@@ -7,8 +7,8 @@ import (
 	"net/http"
 
 	"github.com/equinor/radix-job-scheduler/api/v1/controllers"
-	jobApi "github.com/equinor/radix-job-scheduler/api/v1/jobs"
-	apiModels "github.com/equinor/radix-job-scheduler/models/common"
+	handlers "github.com/equinor/radix-job-scheduler/api/v1/handlers/jobs"
+	models "github.com/equinor/radix-job-scheduler/models/common"
 	apiErrors "github.com/equinor/radix-job-scheduler/pkg/errors"
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
@@ -18,11 +18,11 @@ const jobNameParam = "jobName"
 
 type jobController struct {
 	*controllers.ControllerBase
-	handler jobApi.JobHandler
+	handler handlers.JobHandler
 }
 
 // New create a new job controller
-func New(handler jobApi.JobHandler) controllers.Controller {
+func New(handler handlers.JobHandler) controllers.Controller {
 	return &jobController{
 		handler: handler,
 	}
@@ -103,7 +103,7 @@ func (controller *jobController) CreateJob(c *gin.Context) {
 	logger.Info().Msg("Create Job")
 	logger.Debug().Msgf("Read the request body. Request content length %d", c.Request.ContentLength)
 
-	var jobScheduleDescription apiModels.JobScheduleDescription
+	var jobScheduleDescription models.JobScheduleDescription
 	if body, _ := io.ReadAll(c.Request.Body); len(body) > 0 {
 		logger.Debug().Msgf("Read %d bytes", len(body))
 
@@ -223,8 +223,8 @@ func (controller *jobController) DeleteJob(c *gin.Context) {
 	}
 
 	logger.Info().Msgf("Job %s has been deleted", jobName)
-	status := apiModels.Status{
-		Status:  apiModels.StatusSuccess,
+	status := models.Status{
+		Status:  models.StatusSuccess,
 		Code:    http.StatusOK,
 		Message: fmt.Sprintf("job %s successfully deleted", jobName),
 	}
@@ -271,8 +271,8 @@ func (controller *jobController) StopJob(c *gin.Context) {
 	}
 
 	logger.Info().Msgf("Job %s has been stopped", jobName)
-	status := apiModels.Status{
-		Status:  apiModels.StatusSuccess,
+	status := models.Status{
+		Status:  models.StatusSuccess,
 		Code:    http.StatusOK,
 		Message: fmt.Sprintf("job %s was successfully stopped", jobName),
 	}
@@ -310,8 +310,8 @@ func (controller *jobController) StopAllJobs(c *gin.Context) {
 	}
 
 	logger.Info().Msg("All jobs have been stopped")
-	status := apiModels.Status{
-		Status:  apiModels.StatusSuccess,
+	status := models.Status{
+		Status:  models.StatusSuccess,
 		Code:    http.StatusOK,
 		Message: "all jobs where successfully stopped",
 	}
