@@ -11,28 +11,11 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 )
 
-// GetJobComponentPayloadSecretRefNames Get the payload secret ref names for the job components
-func GetJobComponentPayloadSecretRefNames(ctx context.Context, radixClient radixclient.Interface, namespace, radixComponentName string) (map[string]bool, error) {
-	radixBatches, err := GetRadixBatches(ctx, radixClient, namespace, labels.ForComponentName(radixComponentName))
-	if err != nil {
-		return nil, err
-	}
-	payloadSecretRefNames := make(map[string]bool)
-	for _, radixBatch := range radixBatches {
-		for _, job := range radixBatch.Spec.Jobs {
-			if job.PayloadSecretRef != nil {
-				payloadSecretRefNames[job.PayloadSecretRef.Name] = true
-			}
-		}
-	}
-	return payloadSecretRefNames, nil
-}
-
 // GarbageCollectPayloadSecrets Delete orphaned payload secrets
 func GarbageCollectPayloadSecrets(ctx context.Context, kubeUtil *kube.Kube, namespace, radixComponentName string) error {
 	logger := log.Ctx(ctx)
 	logger.Debug().Msgf("Garbage collecting payload secrets")
-	payloadSecretRefNames, err := GetJobComponentPayloadSecretRefNames(ctx, kubeUtil.RadixClient(), namespace, radixComponentName)
+	payloadSecretRefNames, err := getJobComponentPayloadSecretRefNames(ctx, kubeUtil.RadixClient(), namespace, radixComponentName)
 	if err != nil {
 		return err
 	}
@@ -56,4 +39,20 @@ func GarbageCollectPayloadSecrets(ctx context.Context, kubeUtil *kube.Kube, name
 		}
 	}
 	return nil
+}
+
+func getJobComponentPayloadSecretRefNames(ctx context.Context, radixClient radixclient.Interface, namespace, radixComponentName string) (map[string]bool, error) {
+	radixBatches, err := GetRadixBatches(ctx, radixClient, namespace, labels.ForComponentName(radixComponentName))
+	if err != nil {
+		return nil, err
+	}
+	payloadSecretRefNames := make(map[string]bool)
+	for _, radixBatch := range radixBatches {
+		for _, job := range radixBatch.Spec.Jobs {
+			if job.PayloadSecretRef != nil {
+				payloadSecretRefNames[job.PayloadSecretRef.Name] = true
+			}
+		}
+	}
+	return payloadSecretRefNames, nil
 }

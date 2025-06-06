@@ -3,13 +3,13 @@ package internal
 import (
 	"context"
 	"fmt"
-	"github.com/equinor/radix-job-scheduler/pkg/errors"
 	"math/rand"
 	"strings"
 	"time"
 
 	"github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-common/utils/slice"
+	"github.com/equinor/radix-job-scheduler/pkg/errors"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	radixLabels "github.com/equinor/radix-operator/pkg/apis/utils/labels"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
