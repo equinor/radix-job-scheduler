@@ -16,7 +16,11 @@ func GetScheduledJobStatus(jobStatus radixv1.RadixBatchJobStatus, stopJob bool) 
 	}) {
 		return radixv1.RadixBatchJobApiStatusFailed
 	}
-	return string(jobStatus.Phase)
+	status := string(jobStatus.Phase)
+	if status == "" {
+		status = "Waiting"
+	}
+	return status
 }
 
 func getBatchJobStatusPhases(radixBatch *radixv1.RadixBatch) []radixv1.RadixBatchJobPhase {
