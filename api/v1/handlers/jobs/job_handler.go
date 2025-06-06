@@ -3,8 +3,8 @@ package jobs
 import (
 	"context"
 	"fmt"
-	internal2 "github.com/equinor/radix-job-scheduler/api/v1/handlers/internal"
 
+	handlerInternal "github.com/equinor/radix-job-scheduler/api/v1/handlers/internal"
 	"github.com/equinor/radix-job-scheduler/internal"
 	"github.com/equinor/radix-job-scheduler/models"
 	"github.com/equinor/radix-job-scheduler/models/common"
@@ -18,7 +18,7 @@ import (
 )
 
 type jobHandler struct {
-	internal2.Handler
+	handlerInternal.Handler
 }
 
 type JobHandler interface {
@@ -40,7 +40,7 @@ type JobHandler interface {
 
 // New Constructor for job handler
 func New(kube *kube.Kube, env *models.Env, radixDeployJobComponent *radixv1.RadixDeployJobComponent) JobHandler {
-	return &jobHandler{internal2.New(kube, env, radixDeployJobComponent)}
+	return &jobHandler{handlerInternal.New(kube, env, radixDeployJobComponent)}
 }
 
 // GetJobs Get status of all jobs
@@ -76,7 +76,7 @@ func (handler *jobHandler) getCombinedBatchStatuses(ctx context.Context) ([]mode
 }
 
 func (handler *jobHandler) getJobStatusesWithEvents(ctx context.Context, combinedBatchStatuses []modelsv1.BatchStatus) ([]modelsv1.JobStatus, error) {
-	labelSelectorForAllRadixBatchesPods := internal2.GetLabelSelectorForAllRadixBatchesPods(handler.GetEnv().RadixComponentName)
+	labelSelectorForAllRadixBatchesPods := handlerInternal.GetLabelSelectorForAllRadixBatchesPods(handler.GetEnv().RadixComponentName)
 	eventMessageForPods, batchJobPodsMap, err := handler.GetRadixBatchJobMessagesAndPodMaps(ctx, labelSelectorForAllRadixBatchesPods)
 	if err != nil {
 		return nil, err
@@ -85,7 +85,7 @@ func (handler *jobHandler) getJobStatusesWithEvents(ctx context.Context, combine
 	for i := 0; i < len(combinedBatchStatuses); i++ {
 		for j := 0; j < len(combinedBatchStatuses[i].JobStatuses); j++ {
 			jobStatus := combinedBatchStatuses[i].JobStatuses[j]
-			internal2.SetBatchJobEventMessageToBatchJobStatus(&jobStatus, batchJobPodsMap, eventMessageForPods)
+			handlerInternal.SetBatchJobEventMessageToBatchJobStatus(&jobStatus, batchJobPodsMap, eventMessageForPods)
 			jobStatuses = append(jobStatuses, jobStatus)
 		}
 	}
@@ -101,16 +101,16 @@ func (handler *jobHandler) GetJob(ctx context.Context, jobName string) (*modelsv
 		if err != nil {
 			return nil, err
 		}
-		jobStatus, err := internal2.GetBatchJobStatus(ctx, batchStatus, batchName, jobName)
+		jobStatus, err := handlerInternal.GetBatchJobStatus(ctx, batchStatus, batchName, jobName)
 		if err != nil {
 			return nil, err
 		}
-		labelSelectorForRadixBatchesPods := internal2.GetLabelSelectorForRadixBatchesPods(handler.GetEnv().RadixComponentName, batchName)
+		labelSelectorForRadixBatchesPods := handlerInternal.GetLabelSelectorForRadixBatchesPods(handler.GetEnv().RadixComponentName, batchName)
 		eventMessageForPods, batchJobPodsMap, err := handler.GetRadixBatchJobMessagesAndPodMaps(ctx, labelSelectorForRadixBatchesPods)
 		if err != nil {
 			return nil, err
 		}
-		internal2.SetBatchJobEventMessageToBatchJobStatus(jobStatus, batchJobPodsMap, eventMessageForPods)
+		handlerInternal.SetBatchJobEventMessageToBatchJobStatus(jobStatus, batchJobPodsMap, eventMessageForPods)
 		return jobStatus, nil
 	}
 	return nil, fmt.Errorf("job %s is not a valid job name", jobName)
