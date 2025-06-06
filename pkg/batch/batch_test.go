@@ -108,7 +108,8 @@ func TestCopyRadixBatchOrJob(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			radixClient, _, _ := testUtil.SetupTest(props.appName, props.envName, props.radixJobComponentName, radixDeploymentName1, 1)
+			defer testUtil.Cleanup(t)
+			radixClient, _, _ := testUtil.SetupTest(t, props.appName, props.envName, props.radixJobComponentName, radixDeploymentName1, 1)
 			tt.args.batchRadixDeploy.WithActiveFrom(yesterday)
 			var activeRadixDeployment *radixv1.RadixDeployment
 			if tt.args.activeRadixDeploy != nil {
@@ -260,7 +261,8 @@ func TestGetRadixBatchStatus(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			radixClient, _, _ := testUtil.SetupTest(props.appName, props.envName, props.radixJobComponentName, radixDeploymentName1, 1)
+			defer testUtil.Cleanup(t)
+			radixClient, _, _ := testUtil.SetupTest(t, props.appName, props.envName, props.radixJobComponentName, radixDeploymentName1, 1)
 			tt.args.batchRadixDeploy.WithActiveFrom(yesterday)
 			var activeRadixDeployment *radixv1.RadixDeployment
 			if tt.args.activeRadixDeploy != nil {
@@ -461,7 +463,8 @@ func TestGetRadixBatchStatuses(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			someTime := now.Add(time.Hour * -20)
-			radixClient, _, _ := testUtil.SetupTest(props.appName, props.envName, props.radixJobComponentName, radixDeploymentName1, 1)
+			defer testUtil.Cleanup(t)
+			radixClient, _, _ := testUtil.SetupTest(t, props.appName, props.envName, props.radixJobComponentName, radixDeploymentName1, 1)
 			var activeRadixDeployment *radixv1.RadixDeployment
 			for radixDeploymentName, deploymentBuilder := range tt.batchesArgs.batchRadixDeploymentBuilders {
 				deploymentBuilder.WithActiveFrom(someTime)
@@ -524,7 +527,8 @@ func TestDeleteRadixBatch(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			radixClient, _, _ := testUtil.SetupTest(props.appName, props.envName, props.radixJobComponentName, radixDeploymentName1, 1)
+			defer testUtil.Cleanup(t)
+			radixClient, _, _ := testUtil.SetupTest(t, props.appName, props.envName, props.radixJobComponentName, radixDeploymentName1, 1)
 			_, err := radixClient.RadixV1().RadixBatches(utils.GetEnvironmentNamespace(props.appName, props.envName)).Create(context.Background(), tt.existingRadixBatch, metav1.CreateOptions{})
 			require.NoError(t, err)
 			err = DeleteRadixBatch(context.Background(), radixClient, &radixv1.RadixBatch{ObjectMeta: metav1.ObjectMeta{Name: tt.radixBatchToDelete, Namespace: utils.GetEnvironmentNamespace(props.appName, props.envName)}})
@@ -561,7 +565,8 @@ func TestRestartRadixBatch(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			radixClient, _, _ := testUtil.SetupTest(props.appName, props.envName, props.radixJobComponentName, radixDeploymentName1, 1)
+			defer testUtil.Cleanup(t)
+			radixClient, _, _ := testUtil.SetupTest(t, props.appName, props.envName, props.radixJobComponentName, radixDeploymentName1, 1)
 			_, err := radixClient.RadixV1().RadixBatches(utils.GetEnvironmentNamespace(props.appName, props.envName)).Create(context.Background(), tt.existingRadixBatch, metav1.CreateOptions{})
 			require.NoError(t, err)
 			err = RestartRadixBatch(context.Background(), radixClient, tt.radixBatchToRestart)
@@ -608,7 +613,8 @@ func TestRestartRadixBatchJob(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			radixClient, _, _ := testUtil.SetupTest(props.appName, props.envName, props.radixJobComponentName, radixDeploymentName1, 1)
+			defer testUtil.Cleanup(t)
+			radixClient, _, _ := testUtil.SetupTest(t, props.appName, props.envName, props.radixJobComponentName, radixDeploymentName1, 1)
 			_, err := radixClient.RadixV1().RadixBatches(utils.GetEnvironmentNamespace(props.appName, props.envName)).Create(context.Background(), tt.existingRadixBatch, metav1.CreateOptions{})
 			require.NoError(t, err)
 			err = RestartRadixBatchJob(context.Background(), radixClient, tt.radixBatchToRestart, tt.radixBatchJobToRestart)
@@ -645,7 +651,8 @@ func TestStopRadixBatch(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			radixClient, _, _ := testUtil.SetupTest(props.appName, props.envName, props.radixJobComponentName, radixDeploymentName1, 1)
+			defer testUtil.Cleanup(t)
+			radixClient, _, _ := testUtil.SetupTest(t, props.appName, props.envName, props.radixJobComponentName, radixDeploymentName1, 1)
 			_, err := radixClient.RadixV1().RadixBatches(utils.GetEnvironmentNamespace(props.appName, props.envName)).Create(context.Background(), tt.existingRadixBatch, metav1.CreateOptions{})
 			require.NoError(t, err)
 			err = StopRadixBatch(context.Background(), radixClient, props.appName, props.envName, props.radixJobComponentName, tt.radixBatchToStop.GetName())
@@ -716,7 +723,8 @@ func TestStopRadixBatchJob(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			radixClient, _, _ := testUtil.SetupTest(props.appName, props.envName, props.radixJobComponentName, radixDeploymentName1, 1)
+			defer testUtil.Cleanup(t)
+			radixClient, _, _ := testUtil.SetupTest(t, props.appName, props.envName, props.radixJobComponentName, radixDeploymentName1, 1)
 			_, err := radixClient.RadixV1().RadixBatches(utils.GetEnvironmentNamespace(props.appName, props.envName)).Create(context.Background(), tt.existingRadixBatch, metav1.CreateOptions{})
 			require.NoError(t, err)
 			err = StopRadixBatchJob(context.Background(), radixClient, props.appName, props.envName, props.radixJobComponentName, tt.radixBatchToStop.GetName(), tt.radixBatchJobToStop)

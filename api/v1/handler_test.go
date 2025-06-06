@@ -82,18 +82,18 @@ func Test_CreateBatch(t *testing.T) {
 	}
 
 	for _, ts := range scenarios {
-		appJobComponent := "compute"
-		radixDeployJobComponent := utils.NewDeployJobComponentBuilder().WithName(appJobComponent).BuildJobComponent()
-		_, _, kubeUtil := testUtil.SetupTest("app", "qa", appJobComponent, "app-deploy-1", 1)
-		env := models.NewEnv()
-
-		h := &handler{
-			kubeUtil:                kubeUtil,
-			env:                     env,
-			radixDeployJobComponent: &radixDeployJobComponent,
-		}
 		t.Run(ts.name, func(t *testing.T) {
-			// t.Parallel()
+			appJobComponent := "compute"
+			radixDeployJobComponent := utils.NewDeployJobComponentBuilder().WithName(appJobComponent).BuildJobComponent()
+			defer testUtil.Cleanup(t)
+			_, _, kubeUtil := testUtil.SetupTest(t, "app", "qa", appJobComponent, "app-deploy-1", 1)
+			env := models.NewEnv()
+
+			h := &handler{
+				kubeUtil:                kubeUtil,
+				env:                     env,
+				radixDeployJobComponent: &radixDeployJobComponent,
+			}
 			params := test.GetTestParams()
 			rd := params.ApplyRd(kubeUtil)
 			assert.NotNil(t, rd)

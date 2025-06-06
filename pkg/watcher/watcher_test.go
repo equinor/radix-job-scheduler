@@ -189,9 +189,8 @@ func Test_RadixBatchWatcher(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt // Must capture outer loop variable when t.Run func calls t.Parallel()
+		tt := tt // Must capture outer loop variable when t.Run func calls
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
 			radixClient := radixclientfake.NewSimpleClientset()
 			namespace := "app-qa"
 			var createdRadixBatch *radixv1.RadixBatch
