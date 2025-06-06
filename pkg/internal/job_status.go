@@ -8,7 +8,11 @@ import (
 
 // GetScheduledJobStatus Gets job status
 func GetScheduledJobStatus(jobStatus radixv1.RadixBatchJobStatus, stopJob bool) string {
-	if stopJob && (jobStatus.Phase == radixv1.BatchJobPhaseWaiting || jobStatus.Phase == radixv1.BatchJobPhaseActive || jobStatus.Phase == radixv1.BatchJobPhaseRunning) {
+	status := jobStatus.Phase
+	if len(status) == 0 {
+		status = radixv1.BatchJobPhaseWaiting
+	}
+	if stopJob && (status == radixv1.BatchJobPhaseWaiting || status == radixv1.BatchJobPhaseActive || status == radixv1.BatchJobPhaseRunning) {
 		return "Stopping"
 	}
 	if len(jobStatus.RadixBatchJobPodStatuses) > 0 && slice.All(jobStatus.RadixBatchJobPodStatuses, func(jobPodStatus radixv1.RadixBatchJobPodStatus) bool {
@@ -16,11 +20,7 @@ func GetScheduledJobStatus(jobStatus radixv1.RadixBatchJobStatus, stopJob bool) 
 	}) {
 		return radixv1.RadixBatchJobApiStatusFailed
 	}
-	status := string(jobStatus.Phase)
-	if status == "" {
-		status = "Waiting"
-	}
-	return status
+	return string(status)
 }
 
 func getBatchJobStatusPhases(radixBatch *radixv1.RadixBatch) []radixv1.RadixBatchJobPhase {
