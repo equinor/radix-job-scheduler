@@ -65,8 +65,8 @@ func (handler *batchHandler) GetBatches(ctx context.Context) ([]modelsv1.BatchSt
 	if err != nil {
 		return nil, err
 	}
-	for _, radixBatchStatus := range batchesStatuses {
-		setBatchJobEventMessages(&radixBatchStatus, batchJobPodsMap, eventMessageForPods)
+	for i := range batchesStatuses {
+		setBatchJobEventMessages(&batchesStatuses[i], batchJobPodsMap, eventMessageForPods)
 	}
 	logger.Debug().Msgf("Found %v batches for namespace %s", len(batchesStatuses), handler.GetEnv().RadixDeploymentNamespace)
 	return batchesStatuses, nil
