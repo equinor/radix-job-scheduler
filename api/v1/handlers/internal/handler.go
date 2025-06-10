@@ -203,7 +203,7 @@ func (h *Handler) StopAllBatches(ctx context.Context) error {
 // StopJob Stop a batch job
 func (h *Handler) StopJob(ctx context.Context, jobName string) error {
 	logger := log.Ctx(ctx)
-	logger.Debug().Msgf("stop the job %s for namespace: %s", jobName, h.env.RadixEnvironmentName)
+	logger.Debug().Msgf("stop the job %s for namespace: %s", jobName, h.env.RadixDeploymentNamespace)
 	if batchName, batchJobName, ok := internal.ParseBatchAndJobNameFromScheduledJobName(jobName); ok {
 		return batch.StopRadixBatchJob(ctx, h.kubeUtil.RadixClient(), h.env.RadixAppName, h.env.RadixEnvironmentName, h.env.RadixComponentName, batchName, batchJobName)
 	}
