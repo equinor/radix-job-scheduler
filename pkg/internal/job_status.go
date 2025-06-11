@@ -7,20 +7,20 @@ import (
 )
 
 // GetScheduledJobStatus Gets job status
-func GetScheduledJobStatus(jobStatus radixv1.RadixBatchJobStatus, stopJob bool) string {
-	status := jobStatus.Phase
+func GetScheduledJobStatus(jobStatus radixv1.RadixBatchJobStatus, stopJob bool) radixv1.RadixBatchJobApiStatus {
+	status := radixv1.RadixBatchJobApiStatus(jobStatus.Phase)
 	if len(status) == 0 {
-		status = radixv1.BatchJobPhaseWaiting
+		status = radixv1.RadixBatchJobApiStatusWaiting
 	}
-	if stopJob && (status == radixv1.BatchJobPhaseWaiting || status == radixv1.BatchJobPhaseActive || status == radixv1.BatchJobPhaseRunning) {
-		return "Stopping"
+	if stopJob && (status == radixv1.RadixBatchJobApiStatusWaiting || status == radixv1.RadixBatchJobApiStatusActive || status == radixv1.RadixBatchJobApiStatusRunning) {
+		return radixv1.RadixBatchJobApiStatusStopping
 	}
 	if len(jobStatus.RadixBatchJobPodStatuses) > 0 && slice.All(jobStatus.RadixBatchJobPodStatuses, func(jobPodStatus radixv1.RadixBatchJobPodStatus) bool {
 		return jobPodStatus.Phase == radixv1.PodFailed
 	}) {
 		return radixv1.RadixBatchJobApiStatusFailed
 	}
-	return string(status)
+	return status
 }
 
 func getBatchJobStatusPhases(radixBatch *radixv1.RadixBatch) []radixv1.RadixBatchJobPhase {

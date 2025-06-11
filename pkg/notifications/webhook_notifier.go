@@ -139,7 +139,7 @@ func getRadixBatchJobStatusesFromRadixBatch(radixBatch *radixv1.RadixBatch, radi
 			Created:     created,
 			Started:     started,
 			Ended:       ended,
-			Status:      internal.GetScheduledJobStatus(radixBatchJobStatus, stopJob),
+			Status:      string(internal.GetScheduledJobStatus(radixBatchJobStatus, stopJob)),
 			Failed:      radixBatchJobStatus.Failed,
 			Restart:     radixBatchJobStatus.Restart,
 			Message:     radixBatchJobStatus.Message,

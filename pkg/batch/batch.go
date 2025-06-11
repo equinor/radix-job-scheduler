@@ -92,13 +92,13 @@ func getRadixBatchJobStatusesFromRadixBatch(radixBatch *radixv1.RadixBatch, radi
 			if jobStatus.EndTime != nil {
 				radixBatchJobStatus.Ended = &jobStatus.EndTime.Time
 			}
-			radixBatchJobStatus.Status = pkgInternal.GetScheduledJobStatus(jobStatus, stopJob)
+			radixBatchJobStatus.Status = string(pkgInternal.GetScheduledJobStatus(jobStatus, stopJob))
 			radixBatchJobStatus.Message = jobStatus.Message
 			radixBatchJobStatus.Failed = jobStatus.Failed
 			radixBatchJobStatus.Restart = jobStatus.Restart
 			radixBatchJobStatus.PodStatuses = pkgInternal.GetPodStatusByRadixBatchJobPodStatus(radixBatch, jobStatus.RadixBatchJobPodStatuses)
 		} else {
-			radixBatchJobStatus.Status = pkgInternal.GetScheduledJobStatus(radixv1.RadixBatchJobStatus{Phase: radixv1.RadixBatchJobApiStatusWaiting}, stopJob)
+			radixBatchJobStatus.Status = string(pkgInternal.GetScheduledJobStatus(radixv1.RadixBatchJobStatus{Phase: radixv1.RadixBatchJobApiStatusWaiting}, stopJob))
 		}
 		jobStatuses = append(jobStatuses, radixBatchJobStatus)
 	}
