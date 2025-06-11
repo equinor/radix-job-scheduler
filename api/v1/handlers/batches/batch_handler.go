@@ -78,7 +78,7 @@ func (handler *batchHandler) GetBatchJob(ctx context.Context, batchName string, 
 	if err != nil {
 		return nil, err
 	}
-	return handlerInternal.GetBatchJobStatus(ctx, batchStatus, batchName, jobName)
+	return handlerInternal.GetBatchJobStatus(batchStatus, jobName)
 }
 
 // GetBatch Get status of a batch

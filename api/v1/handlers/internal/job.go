@@ -1,7 +1,6 @@
 package internal
 
 import (
-	"context"
 	"fmt"
 	"strings"
 
@@ -9,12 +8,12 @@ import (
 )
 
 // GetBatchJobStatus Get batch job
-func GetBatchJobStatus(ctx context.Context, batchStatus *modelsv1.BatchStatus, batchName, jobName string) (*modelsv1.JobStatus, error) {
-	for _, jobStatus := range batchStatus.JobStatuses {
-		if !strings.EqualFold(jobStatus.Name, jobName) {
+func GetBatchJobStatus(batchStatus *modelsv1.BatchStatus, jobName string) (*modelsv1.JobStatus, error) {
+	for i := range batchStatus.JobStatuses {
+		if !strings.EqualFold(batchStatus.JobStatuses[i].Name, jobName) {
 			continue
 		}
-		return &jobStatus, nil
+		return &batchStatus.JobStatuses[i], nil
 	}
 	return nil, fmt.Errorf("not found")
 }

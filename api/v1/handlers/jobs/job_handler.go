@@ -101,7 +101,7 @@ func (handler *jobHandler) GetJob(ctx context.Context, jobName string) (*modelsv
 		if err != nil {
 			return nil, err
 		}
-		jobStatus, err := handlerInternal.GetBatchJobStatus(ctx, batchStatus, batchName, jobName)
+		jobStatus, err := handlerInternal.GetBatchJobStatus(batchStatus, jobName)
 		if err != nil {
 			return nil, err
 		}
