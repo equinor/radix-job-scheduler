@@ -9,12 +9,12 @@ import (
 	"time"
 
 	"github.com/equinor/radix-common/utils/pointers"
-	apiErrors "github.com/equinor/radix-job-scheduler/api/errors"
 	"github.com/equinor/radix-job-scheduler/api/test"
-	api "github.com/equinor/radix-job-scheduler/api/v1/batches"
-	"github.com/equinor/radix-job-scheduler/api/v1/batches/mock"
+	api "github.com/equinor/radix-job-scheduler/api/v1/handlers/batches"
+	"github.com/equinor/radix-job-scheduler/api/v1/handlers/batches/mock"
 	models "github.com/equinor/radix-job-scheduler/models/common"
 	modelsV1 "github.com/equinor/radix-job-scheduler/models/v1"
+	apiErrors "github.com/equinor/radix-job-scheduler/pkg/errors"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
@@ -29,7 +29,6 @@ func setupTest(handler api.BatchHandler) *test.ControllerTestUtils {
 
 func TestGetBatches(t *testing.T) {
 	t.Run("Get batches - success", func(t *testing.T) {
-		t.Parallel()
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 		batchHandler := mock.NewMockBatchHandler(ctrl)
@@ -68,7 +67,6 @@ func TestGetBatches(t *testing.T) {
 	})
 
 	t.Run("Get batches - status code 500", func(t *testing.T) {
-		t.Parallel()
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 		batchHandler := mock.NewMockBatchHandler(ctrl)
@@ -98,7 +96,6 @@ func TestGetBatches(t *testing.T) {
 
 func TestGetBatch(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
-		t.Parallel()
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 		batchName := "batchname"
@@ -137,7 +134,6 @@ func TestGetBatch(t *testing.T) {
 	})
 
 	t.Run("not found", func(t *testing.T) {
-		t.Parallel()
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 		batchName, kind := "anybatch", "batch"
@@ -167,7 +163,6 @@ func TestGetBatch(t *testing.T) {
 	})
 
 	t.Run("internal error", func(t *testing.T) {
-		t.Parallel()
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 		batchHandler := mock.NewMockBatchHandler(ctrl)
@@ -197,7 +192,6 @@ func TestGetBatch(t *testing.T) {
 
 func TestCreateBatch(t *testing.T) {
 	t.Run("empty body - successful", func(t *testing.T) {
-		t.Parallel()
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 		batchScheduleDescription := models.BatchScheduleDescription{}
@@ -235,7 +229,6 @@ func TestCreateBatch(t *testing.T) {
 	})
 
 	t.Run("valid payload body - successful", func(t *testing.T) {
-		t.Parallel()
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 		batchScheduleDescription := models.BatchScheduleDescription{
@@ -295,7 +288,6 @@ func TestCreateBatch(t *testing.T) {
 	})
 
 	t.Run("invalid request body - unprocessable", func(t *testing.T) {
-		t.Parallel()
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
@@ -323,7 +315,6 @@ func TestCreateBatch(t *testing.T) {
 	})
 
 	t.Run("handler returning NotFound error - 404 not found", func(t *testing.T) {
-		t.Parallel()
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 		batchScheduleDescription := models.BatchScheduleDescription{}
@@ -353,7 +344,6 @@ func TestCreateBatch(t *testing.T) {
 	})
 
 	t.Run("handler returning unhandled error - 500 internal server error", func(t *testing.T) {
-		t.Parallel()
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 		batchScheduleDescription := models.BatchScheduleDescription{}
@@ -383,7 +373,6 @@ func TestCreateBatch(t *testing.T) {
 
 func TestDeleteBatch(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
-		t.Parallel()
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 		batchName := "anybatch"
@@ -411,7 +400,6 @@ func TestDeleteBatch(t *testing.T) {
 	})
 
 	t.Run("handler returning not found - 404 not found", func(t *testing.T) {
-		t.Parallel()
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 		batchName := "anybatch"
@@ -440,7 +428,6 @@ func TestDeleteBatch(t *testing.T) {
 	})
 
 	t.Run("handler returning unhandled error - 500 internal server error", func(t *testing.T) {
-		t.Parallel()
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 		batchName := "anybatch"
@@ -470,7 +457,6 @@ func TestDeleteBatch(t *testing.T) {
 
 func TestStopBatch(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
-		t.Parallel()
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 		batchName := "anybatch"
@@ -498,7 +484,6 @@ func TestStopBatch(t *testing.T) {
 	})
 
 	t.Run("handler returning not found - 404 not found", func(t *testing.T) {
-		t.Parallel()
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 		batchName := "anybatch"
@@ -527,7 +512,6 @@ func TestStopBatch(t *testing.T) {
 	})
 
 	t.Run("handler returning unhandled error - 500 internal server error", func(t *testing.T) {
-		t.Parallel()
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 		batchName := "anybatch"
@@ -557,7 +541,6 @@ func TestStopBatch(t *testing.T) {
 
 func TestStopBatchJob(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
-		t.Parallel()
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 		batchName := "anybatch"
@@ -586,7 +569,6 @@ func TestStopBatchJob(t *testing.T) {
 	})
 
 	t.Run("handler returning not found - 404 not found", func(t *testing.T) {
-		t.Parallel()
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 		batchName := "anybatch"
@@ -616,7 +598,6 @@ func TestStopBatchJob(t *testing.T) {
 	})
 
 	t.Run("handler returning unhandled error - 500 internal server error", func(t *testing.T) {
-		t.Parallel()
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 		batchName := "anybatch"
@@ -647,7 +628,6 @@ func TestStopBatchJob(t *testing.T) {
 
 func TestGetBatchJob(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
-		t.Parallel()
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 		batchName := "batch-name1"
@@ -685,7 +665,6 @@ func TestGetBatchJob(t *testing.T) {
 	})
 
 	t.Run("not found", func(t *testing.T) {
-		t.Parallel()
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 		jobName, kind := "anyjob", "job"
@@ -715,7 +694,6 @@ func TestGetBatchJob(t *testing.T) {
 	})
 
 	t.Run("internal error", func(t *testing.T) {
-		t.Parallel()
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 		jobHandler := mock.NewMockBatchHandler(ctrl)

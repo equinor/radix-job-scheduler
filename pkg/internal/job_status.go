@@ -1,4 +1,4 @@
-package jobs
+package internal
 
 import (
 	"github.com/equinor/radix-common/utils/slice"
@@ -7,20 +7,9 @@ import (
 )
 
 // GetScheduledJobStatus Gets job status
-func GetScheduledJobStatus(jobStatus radixv1.RadixBatchJobStatus, stopJob bool) (status radixv1.RadixBatchJobApiStatus) {
-	status = radixv1.RadixBatchJobApiStatusWaiting
-	switch jobStatus.Phase {
-	case radixv1.BatchJobPhaseActive:
-		status = radixv1.RadixBatchJobApiStatusActive
-	case radixv1.BatchJobPhaseRunning:
-		status = radixv1.RadixBatchJobApiStatusRunning
-	case radixv1.BatchJobPhaseSucceeded:
-		status = radixv1.RadixBatchJobApiStatusSucceeded
-	case radixv1.BatchJobPhaseFailed:
-		status = radixv1.RadixBatchJobApiStatusFailed
-	case radixv1.BatchJobPhaseStopped:
-		status = radixv1.RadixBatchJobApiStatusStopped
-	case radixv1.BatchJobPhaseWaiting:
+func GetScheduledJobStatus(jobStatus radixv1.RadixBatchJobStatus, stopJob bool) radixv1.RadixBatchJobApiStatus {
+	status := radixv1.RadixBatchJobApiStatus(jobStatus.Phase)
+	if len(status) == 0 {
 		status = radixv1.RadixBatchJobApiStatusWaiting
 	}
 	if stopJob && (status == radixv1.RadixBatchJobApiStatusWaiting || status == radixv1.RadixBatchJobApiStatusActive || status == radixv1.RadixBatchJobApiStatusRunning) {
@@ -34,33 +23,36 @@ func GetScheduledJobStatus(jobStatus radixv1.RadixBatchJobStatus, stopJob bool) 
 	return status
 }
 
+func getBatchJobStatusPhases(radixBatch *radixv1.RadixBatch) []radixv1.RadixBatchJobPhase {
+	return slice.Reduce(radixBatch.Status.JobStatuses, make([]radixv1.RadixBatchJobPhase, 0),
+		func(acc []radixv1.RadixBatchJobPhase, jobStatus radixv1.RadixBatchJobStatus) []radixv1.RadixBatchJobPhase {
+			return append(acc, jobStatus.Phase)
+		},
+	)
+}
+
 // GetRadixBatchStatus Gets the batch status
-func GetRadixBatchStatus(radixBatch *radixv1.RadixBatch, radixDeployJobComponent *radixv1.RadixDeployJobComponent) (status radixv1.RadixBatchJobApiStatus) {
+func GetRadixBatchStatus(radixBatch *radixv1.RadixBatch, radixDeployJobComponent *radixv1.RadixDeployJobComponent) string {
 	isSingleJob := radixBatch.Labels[kube.RadixBatchTypeLabel] == string(kube.RadixBatchTypeJob) && len(radixBatch.Spec.Jobs) == 1
 	if isSingleJob {
 		if len(radixBatch.Status.JobStatuses) == 0 {
 			return radixv1.RadixBatchJobApiStatusWaiting
 		}
-		return radixv1.RadixBatchJobApiStatus(radixBatch.Status.JobStatuses[0].Phase)
+		return string(radixBatch.Status.JobStatuses[0].Phase)
 	}
-	return GetStatusFromStatusRules(getBatchJobStatusPhases(radixBatch), radixDeployJobComponent, radixv1.RadixBatchJobApiStatus(radixBatch.Status.Condition.Type))
+	return string(getStatusFromStatusRules(getBatchJobStatusPhases(radixBatch), radixDeployJobComponent, radixv1.RadixBatchJobApiStatus(radixBatch.Status.Condition.Type)))
 }
 
-func getBatchJobStatusPhases(radixBatch *radixv1.RadixBatch) []radixv1.RadixBatchJobPhase {
-	return slice.Reduce(radixBatch.Status.JobStatuses, make([]radixv1.RadixBatchJobPhase, 0),
-		func(acc []radixv1.RadixBatchJobPhase, jobStatus radixv1.RadixBatchJobStatus) []radixv1.RadixBatchJobPhase { return append(acc, jobStatus.Phase) },
-	)
-}
-
-// GetStatusFromStatusRules Gets BatchStatus by rules
-func GetStatusFromStatusRules(radixBatchJobPhases []radixv1.RadixBatchJobPhase, activeRadixDeployJobComponent *radixv1.RadixDeployJobComponent, defaultBatchStatus radixv1.RadixBatchJobApiStatus) radixv1.RadixBatchJobApiStatus {
+func getStatusFromStatusRules(radixBatchJobPhases []radixv1.RadixBatchJobPhase, activeRadixDeployJobComponent *radixv1.RadixDeployJobComponent, defaultBatchStatus radixv1.RadixBatchJobApiStatus) radixv1.RadixBatchJobApiStatus {
 	if activeRadixDeployJobComponent != nil {
 		for _, rule := range activeRadixDeployJobComponent.BatchStatusRules {
 			ruleJobStatusesMap := slice.Reduce(rule.JobStatuses, make(map[radixv1.RadixBatchJobPhase]struct{}), func(acc map[radixv1.RadixBatchJobPhase]struct{}, jobStatus radixv1.RadixBatchJobPhase) map[radixv1.RadixBatchJobPhase]struct{} {
 				acc[jobStatus] = struct{}{}
 				return acc
 			})
-			evaluateJobStatusByRule := func(jobStatusPhase radixv1.RadixBatchJobPhase) bool { return evaluateCondition(jobStatusPhase, rule.Operator, ruleJobStatusesMap) }
+			evaluateJobStatusByRule := func(jobStatusPhase radixv1.RadixBatchJobPhase) bool {
+				return evaluateCondition(jobStatusPhase, rule.Operator, ruleJobStatusesMap)
+			}
 			switch rule.Condition {
 			case radixv1.ConditionAny:
 				if slice.Any(radixBatchJobPhases, evaluateJobStatusByRule) {
