@@ -4,7 +4,7 @@ import (
 	"context"
 	"strings"
 
-	apiErrors "github.com/equinor/radix-job-scheduler/api/errors"
+	apiErrors "github.com/equinor/radix-job-scheduler/pkg/errors"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 	"k8s.io/apimachinery/pkg/api/errors"

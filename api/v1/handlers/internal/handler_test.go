@@ -1,4 +1,4 @@
-package apiv2
+package internal
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 	testUtil "github.com/equinor/radix-job-scheduler/internal/test"
 	"github.com/equinor/radix-job-scheduler/models"
 	"github.com/equinor/radix-job-scheduler/models/common"
-	modelsv2 "github.com/equinor/radix-job-scheduler/models/v2"
+	"github.com/equinor/radix-job-scheduler/models/v1"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/equinor/radix-operator/pkg/apis/utils"
@@ -82,26 +82,26 @@ func Test_CreateBatch(t *testing.T) {
 	}
 
 	for _, ts := range scenarios {
-		appJobComponent := "compute"
-		radixDeployJobComponent := utils.NewDeployJobComponentBuilder().WithName(appJobComponent).BuildJobComponent()
-		_, _, kubeUtil := testUtil.SetupTest("app", "qa", appJobComponent, "app-deploy-1", 1)
-		env := models.NewEnv()
-
-		h := &handler{
-			kubeUtil:                kubeUtil,
-			env:                     env,
-			radixDeployJobComponent: &radixDeployJobComponent,
-		}
 		t.Run(ts.name, func(t *testing.T) {
-			// t.Parallel()
+			appJobComponent := "compute"
+			radixDeployJobComponent := utils.NewDeployJobComponentBuilder().WithName(appJobComponent).BuildJobComponent()
+			defer testUtil.Cleanup(t)
+			_, _, kubeUtil := testUtil.SetupTest(t, "app", "qa", appJobComponent, "app-deploy-1", 1)
+			env := models.NewEnv()
+
+			h := &Handler{
+				kubeUtil:                kubeUtil,
+				env:                     env,
+				radixDeployJobComponent: &radixDeployJobComponent,
+			}
 			params := test.GetTestParams()
 			rd := params.ApplyRd(kubeUtil)
 			assert.NotNil(t, rd)
 
 			var err error
-			var createdRadixBatch *modelsv2.RadixBatch
+			var createdRadixBatch *v1.BatchStatus
 			if ts.expectedBatchType == kube.RadixBatchTypeBatch {
-				createdRadixBatch, err = h.CreateRadixBatch(context.TODO(), &ts.batchDescription)
+				createdRadixBatch, err = h.CreateBatch(context.TODO(), &ts.batchDescription)
 			} else {
 				var jobScheduleDescription *common.JobScheduleDescription
 				if len(ts.batchDescription.JobScheduleDescriptions) > 0 {

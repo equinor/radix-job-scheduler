@@ -13,11 +13,11 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/equinor/radix-job-scheduler/api"
-	batchApi "github.com/equinor/radix-job-scheduler/api/v1/batches"
+	"github.com/equinor/radix-job-scheduler/api/v1/controllers"
 	batchControllers "github.com/equinor/radix-job-scheduler/api/v1/controllers/batches"
 	jobControllers "github.com/equinor/radix-job-scheduler/api/v1/controllers/jobs"
-	jobApi "github.com/equinor/radix-job-scheduler/api/v1/jobs"
+	batchApi "github.com/equinor/radix-job-scheduler/api/v1/handlers/batches"
+	jobApi "github.com/equinor/radix-job-scheduler/api/v1/handlers/jobs"
 	"github.com/equinor/radix-job-scheduler/models"
 	"github.com/equinor/radix-job-scheduler/pkg/batch"
 	"github.com/equinor/radix-job-scheduler/pkg/notifications"
@@ -121,8 +121,8 @@ func getKubeUtil(ctx context.Context) *kube.Kube {
 	return kubeUtil
 }
 
-func getControllers(kubeUtil *kube.Kube, env *models.Env, radixDeployJobComponent *radixv1.RadixDeployJobComponent) []api.Controller {
-	return []api.Controller{
+func getControllers(kubeUtil *kube.Kube, env *models.Env, radixDeployJobComponent *radixv1.RadixDeployJobComponent) []controllers.Controller {
+	return []controllers.Controller{
 		jobControllers.New(jobApi.New(kubeUtil, env, radixDeployJobComponent)),
 		batchControllers.New(batchApi.New(kubeUtil, env, radixDeployJobComponent)),
 	}

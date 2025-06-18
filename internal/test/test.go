@@ -2,7 +2,7 @@ package test
 
 import (
 	"fmt"
-	"os"
+	"testing"
 
 	"github.com/equinor/radix-operator/pkg/apis/defaults"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
@@ -13,17 +13,22 @@ import (
 )
 
 // SetupTest Setup test
-func SetupTest(appName, appEnvironment, appComponent, appDeployment string, historyLimit int) (radixclient.Interface, kubernetes.Interface, *kube.Kube) {
-	_ = os.Setenv("RADIX_APP", appName)
-	_ = os.Setenv("RADIX_ENVIRONMENT", appEnvironment)
-	_ = os.Setenv("RADIX_COMPONENT", appComponent)
-	_ = os.Setenv("RADIX_DEPLOYMENT", appDeployment)
-	_ = os.Setenv("RADIX_JOB_SCHEDULERS_PER_ENVIRONMENT_HISTORY_LIMIT", fmt.Sprint(historyLimit))
-	_ = os.Setenv(defaults.OperatorRollingUpdateMaxUnavailable, "25%")
-	_ = os.Setenv(defaults.OperatorRollingUpdateMaxSurge, "25%")
-	_ = os.Setenv(defaults.OperatorEnvLimitDefaultMemoryEnvironmentVariable, "500M")
+func SetupTest(t *testing.T, appName, appEnvironment, appComponent, appDeployment string, historyLimit int) (radixclient.Interface, kubernetes.Interface, *kube.Kube) {
+	t.Setenv("RADIX_APP", appName)
+	t.Setenv("RADIX_ENVIRONMENT", appEnvironment)
+	t.Setenv("RADIX_COMPONENT", appComponent)
+	t.Setenv("RADIX_DEPLOYMENT", appDeployment)
+	t.Setenv("RADIX_JOB_SCHEDULERS_PER_ENVIRONMENT_HISTORY_LIMIT", fmt.Sprint(historyLimit))
+	t.Setenv(defaults.OperatorRollingUpdateMaxUnavailable, "25%")
+	t.Setenv(defaults.OperatorRollingUpdateMaxSurge, "25%")
+	t.Setenv(defaults.OperatorEnvLimitDefaultMemoryEnvironmentVariable, "500M")
 	kubeClient := kubeclientfake.NewSimpleClientset()
 	radixClient := radixclientfake.NewSimpleClientset()
 	kubeUtil, _ := kube.New(kubeClient, radixClient, nil, nil)
 	return radixClient, kubeClient, kubeUtil
+}
+
+// Cleanup Cleanup test
+func Cleanup(t *testing.T) {
+	t.Cleanup(func() {})
 }

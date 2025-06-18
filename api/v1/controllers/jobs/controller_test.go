@@ -9,12 +9,12 @@ import (
 	"time"
 
 	"github.com/equinor/radix-common/utils/pointers"
-	apiErrors "github.com/equinor/radix-job-scheduler/api/errors"
 	"github.com/equinor/radix-job-scheduler/api/test"
-	"github.com/equinor/radix-job-scheduler/api/v1/jobs"
-	"github.com/equinor/radix-job-scheduler/api/v1/jobs/mock"
+	"github.com/equinor/radix-job-scheduler/api/v1/handlers/jobs"
+	"github.com/equinor/radix-job-scheduler/api/v1/handlers/jobs/mock"
 	models "github.com/equinor/radix-job-scheduler/models/common"
 	modelsV1 "github.com/equinor/radix-job-scheduler/models/v1"
+	apiErrors "github.com/equinor/radix-job-scheduler/pkg/errors"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -28,7 +28,6 @@ func setupTest(handler jobs.JobHandler) *test.ControllerTestUtils {
 
 func TestGetJobs(t *testing.T) {
 	t.Run("Get jobs - success", func(t *testing.T) {
-		t.Parallel()
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 		jobHandler := mock.NewMockJobHandler(ctrl)
@@ -65,7 +64,6 @@ func TestGetJobs(t *testing.T) {
 	})
 
 	t.Run("Get jobs - status code 500", func(t *testing.T) {
-		t.Parallel()
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 		jobHandler := mock.NewMockJobHandler(ctrl)
@@ -95,7 +93,6 @@ func TestGetJobs(t *testing.T) {
 
 func TestGetJob(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
-		t.Parallel()
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 		jobName := "jobname"
@@ -132,7 +129,6 @@ func TestGetJob(t *testing.T) {
 	})
 
 	t.Run("not found", func(t *testing.T) {
-		t.Parallel()
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 		jobName, kind := "anyjob", "job"
@@ -162,7 +158,6 @@ func TestGetJob(t *testing.T) {
 	})
 
 	t.Run("internal error", func(t *testing.T) {
-		t.Parallel()
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 		jobHandler := mock.NewMockJobHandler(ctrl)
@@ -192,7 +187,6 @@ func TestGetJob(t *testing.T) {
 
 func TestCreateJob(t *testing.T) {
 	t.Run("empty body - successful", func(t *testing.T) {
-		t.Parallel()
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 		jobScheduleDescription := models.JobScheduleDescription{}
@@ -228,7 +222,6 @@ func TestCreateJob(t *testing.T) {
 	})
 
 	t.Run("valid payload body - successful", func(t *testing.T) {
-		t.Parallel()
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 		jobScheduleDescription := models.JobScheduleDescription{
@@ -282,7 +275,6 @@ func TestCreateJob(t *testing.T) {
 	})
 
 	t.Run("invalid request body - unprocessable", func(t *testing.T) {
-		t.Parallel()
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
@@ -310,7 +302,6 @@ func TestCreateJob(t *testing.T) {
 	})
 
 	t.Run("handler returning NotFound error - 404 not found", func(t *testing.T) {
-		t.Parallel()
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 		jobScheduleDescription := models.JobScheduleDescription{}
@@ -340,7 +331,6 @@ func TestCreateJob(t *testing.T) {
 	})
 
 	t.Run("handler returning unhandled error - 500 internal server error", func(t *testing.T) {
-		t.Parallel()
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 		jobScheduleDescription := models.JobScheduleDescription{}
@@ -370,7 +360,6 @@ func TestCreateJob(t *testing.T) {
 
 func TestDeleteJob(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
-		t.Parallel()
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 		jobName := "anyjob"
@@ -398,7 +387,6 @@ func TestDeleteJob(t *testing.T) {
 	})
 
 	t.Run("handler returning not found - 404 not found", func(t *testing.T) {
-		t.Parallel()
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 		jobName := "anyjob"
@@ -427,7 +415,6 @@ func TestDeleteJob(t *testing.T) {
 	})
 
 	t.Run("handler returning unhandled error - 500 internal server error", func(t *testing.T) {
-		t.Parallel()
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 		jobName := "anyjob"
@@ -457,7 +444,6 @@ func TestDeleteJob(t *testing.T) {
 
 func TestStopJob(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
-		t.Parallel()
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 		jobName := "anyjob"
@@ -485,7 +471,6 @@ func TestStopJob(t *testing.T) {
 	})
 
 	t.Run("handler returning not found - 404 not found", func(t *testing.T) {
-		t.Parallel()
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 		jobName := "anyjob"
@@ -514,7 +499,6 @@ func TestStopJob(t *testing.T) {
 	})
 
 	t.Run("handler returning unhandled error - 500 internal server error", func(t *testing.T) {
-		t.Parallel()
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 		jobName := "anyjob"

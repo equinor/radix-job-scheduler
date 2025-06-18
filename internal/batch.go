@@ -9,7 +9,7 @@ import (
 
 	"github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-common/utils/slice"
-	"github.com/equinor/radix-job-scheduler/api/errors"
+	"github.com/equinor/radix-job-scheduler/pkg/errors"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	radixLabels "github.com/equinor/radix-operator/pkg/apis/utils/labels"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
@@ -65,7 +65,7 @@ func GetRadixBatch(ctx context.Context, radixClient radixclient.Interface, names
 	return radixBatch, nil
 }
 
-// ParseBatchAndJobNameFromScheduledJobName Decompose V2 batch name and jobs name from V1 job-name
+// ParseBatchAndJobNameFromScheduledJobName Decompose batch name and jobs name from job-name
 func ParseBatchAndJobNameFromScheduledJobName(scheduleJobName string) (batchName, batchJobName string, ok bool) {
 	scheduleJobNameParts := strings.Split(scheduleJobName, "-")
 	if len(scheduleJobNameParts) < 2 {
@@ -75,28 +75,4 @@ func ParseBatchAndJobNameFromScheduledJobName(scheduleJobName string) (batchName
 	batchJobName = scheduleJobNameParts[len(scheduleJobNameParts)-1]
 	ok = true
 	return
-}
-
-// IsRadixBatchSucceeded Check if Radix batch is succeeded
-func IsRadixBatchSucceeded(batch *radixv1.RadixBatch) bool {
-	return batch.Status.Condition.Type == radixv1.BatchConditionTypeCompleted && slice.All(batch.Status.JobStatuses, func(jobStatus radixv1.RadixBatchJobStatus) bool {
-		return IsRadixBatchJobSucceeded(jobStatus)
-	})
-}
-
-// IsRadixBatchJobSucceeded Check if Radix batch job is succeeded
-func IsRadixBatchJobSucceeded(jobStatus radixv1.RadixBatchJobStatus) bool {
-	return jobStatus.Phase == radixv1.BatchJobPhaseSucceeded || jobStatus.Phase == radixv1.BatchJobPhaseStopped
-}
-
-// IsRadixBatchJobFailed Check if Radix batch job is failed
-func IsRadixBatchJobFailed(jobStatus radixv1.RadixBatchJobStatus) bool {
-	return jobStatus.Phase == radixv1.BatchJobPhaseFailed
-}
-
-// IsRadixBatchNotSucceeded Check if Radix batch is not succeeded
-func IsRadixBatchNotSucceeded(batch *radixv1.RadixBatch) bool {
-	return batch.Status.Condition.Type == radixv1.BatchConditionTypeCompleted && slice.Any(batch.Status.JobStatuses, func(jobStatus radixv1.RadixBatchJobStatus) bool {
-		return !IsRadixBatchJobSucceeded(jobStatus)
-	})
 }

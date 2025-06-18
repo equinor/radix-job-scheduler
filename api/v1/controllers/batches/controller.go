@@ -6,11 +6,10 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/equinor/radix-job-scheduler/api"
-	"github.com/equinor/radix-job-scheduler/api/controllers"
-	apiErrors "github.com/equinor/radix-job-scheduler/api/errors"
-	batchapi "github.com/equinor/radix-job-scheduler/api/v1/batches"
-	schedulerModels "github.com/equinor/radix-job-scheduler/models/common"
+	"github.com/equinor/radix-job-scheduler/api/v1/controllers"
+	handlers "github.com/equinor/radix-job-scheduler/api/v1/handlers/batches"
+	models "github.com/equinor/radix-job-scheduler/models/common"
+	apiErrors "github.com/equinor/radix-job-scheduler/pkg/errors"
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
 )
@@ -22,19 +21,19 @@ const (
 
 type batchController struct {
 	*controllers.ControllerBase
-	handler batchapi.BatchHandler
+	handler handlers.BatchHandler
 }
 
 // New create a new batch controller
-func New(handler batchapi.BatchHandler) api.Controller {
+func New(handler handlers.BatchHandler) controllers.Controller {
 	return &batchController{
 		handler: handler,
 	}
 }
 
 // GetRoutes List the supported routes of this controller
-func (controller *batchController) GetRoutes() []api.Route {
-	routes := []api.Route{
+func (controller *batchController) GetRoutes() []controllers.Route {
+	routes := []controllers.Route{
 		{
 			Path:    "/batches",
 			Method:  http.MethodPost,
@@ -116,7 +115,7 @@ func (controller *batchController) CreateBatch(c *gin.Context) {
 	logger := log.Ctx(c.Request.Context())
 	logger.Info().Msg("Create Batch")
 
-	var batchScheduleDescription schedulerModels.BatchScheduleDescription
+	var batchScheduleDescription models.BatchScheduleDescription
 	logger.Debug().Msgf("Read the request body. Request content length %d", c.Request.ContentLength)
 	if body, _ := io.ReadAll(c.Request.Body); len(body) > 0 {
 		logger.Debug().Msgf("Read %d bytes", len(body))
@@ -278,8 +277,8 @@ func (controller *batchController) DeleteBatch(c *gin.Context) {
 	}
 
 	logger.Info().Msgf("Batch %s has been deleted", batchName)
-	status := schedulerModels.Status{
-		Status:  schedulerModels.StatusSuccess,
+	status := models.Status{
+		Status:  models.StatusSuccess,
 		Code:    http.StatusOK,
 		Message: fmt.Sprintf("batch %s successfully deleted", batchName),
 	}
@@ -325,8 +324,8 @@ func (controller *batchController) StopBatch(c *gin.Context) {
 	}
 
 	logger.Info().Msgf("Batch %s has been stopped", batchName)
-	status := schedulerModels.Status{
-		Status:  schedulerModels.StatusSuccess,
+	status := models.Status{
+		Status:  models.StatusSuccess,
 		Code:    http.StatusOK,
 		Message: fmt.Sprintf("batch %s successfully stopped", batchName),
 	}
@@ -378,8 +377,8 @@ func (controller *batchController) StopBatchJob(c *gin.Context) {
 	}
 
 	logger.Info().Msgf("Job %s in the batch %s has been stopped", jobName, batchName)
-	status := schedulerModels.Status{
-		Status:  schedulerModels.StatusSuccess,
+	status := models.Status{
+		Status:  models.StatusSuccess,
 		Code:    http.StatusOK,
 		Message: fmt.Sprintf("job %s in the batch %s successfully stopped", jobName, batchName),
 	}
@@ -417,8 +416,8 @@ func (controller *batchController) StopAllBatches(c *gin.Context) {
 	}
 
 	logger.Info().Msg("Batches have been stopped")
-	status := schedulerModels.Status{
-		Status:  schedulerModels.StatusSuccess,
+	status := models.Status{
+		Status:  models.StatusSuccess,
 		Code:    http.StatusOK,
 		Message: "batches successfully stopped",
 	}

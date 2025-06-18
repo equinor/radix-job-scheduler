@@ -1,11 +1,21 @@
 package controllers
 
 import (
-	apiErrors "github.com/equinor/radix-job-scheduler/api/errors"
 	models "github.com/equinor/radix-job-scheduler/models/common"
+	"github.com/equinor/radix-job-scheduler/pkg/errors"
 	"github.com/equinor/radix-job-scheduler/utils"
 	"github.com/gin-gonic/gin"
 )
+
+type Route struct {
+	Path    string
+	Method  string
+	Handler gin.HandlerFunc
+}
+
+type Controller interface {
+	GetRoutes() []Route
+}
 
 type ControllerBase struct {
 }
@@ -15,10 +25,10 @@ func (controller *ControllerBase) HandleError(c *gin.Context, err error) {
 
 	var status *models.Status
 	switch t := err.(type) {
-	case apiErrors.APIStatus:
+	case errors.APIStatus:
 		status = t.Status()
 	default:
-		status = apiErrors.NewFromError(err).Status()
+		status = errors.NewFromError(err).Status()
 	}
 
 	utils.StatusResponse(c.Writer, status)

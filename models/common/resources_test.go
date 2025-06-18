@@ -3,18 +3,18 @@ package common_test
 import (
 	"testing"
 
-	"github.com/equinor/radix-job-scheduler/models/common"
+	models "github.com/equinor/radix-job-scheduler/models/common"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/stretchr/testify/assert"
 )
 
 func Test_MapToRadixResourceRequirements(t *testing.T) {
-	sut := common.Resources{
-		Limits: common.ResourceList{
+	sut := models.Resources{
+		Limits: models.ResourceList{
 			"cpu":    "10m",
 			"memory": "10M",
 		},
-		Requests: common.ResourceList{
+		Requests: models.ResourceList{
 			"cpu":    "20m",
 			"memory": "20M",
 		},
