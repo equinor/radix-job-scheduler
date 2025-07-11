@@ -845,6 +845,14 @@
       },
       "x-go-package": "github.com/equinor/radix-job-scheduler/models/v1"
     },
+    "EnvVarsMap": {
+      "type": "object",
+      "title": "EnvVarsMap Map of environment variables in the form '\u003cenvvarname\u003e: \u003cvalue\u003e'",
+      "additionalProperties": {
+        "type": "string"
+      },
+      "x-go-package": "github.com/equinor/radix-job-scheduler/models/common"
+    },
     "Event": {
       "type": "string",
       "x-go-package": "github.com/equinor/radix-job-scheduler/models/v1/events"
@@ -939,6 +947,11 @@
         "failurePolicy": {
           "$ref": "#/definitions/FailurePolicy"
         },
+        "image": {
+          "description": "Name of an existing container image to use when running the job. Overrides an image in the RadixDeployment\nMore info: https://www.radix.equinor.com/radix-config#image-2\n+optional",
+          "type": "string",
+          "x-go-name": "Image"
+        },
         "imageTagName": {
           "description": "ImageTagName defines the image tag name to use for the job image",
           "type": "string",
@@ -970,6 +983,9 @@
           "type": "integer",
           "format": "int64",
           "x-go-name": "TimeLimitSeconds"
+        },
+        "variables": {
+          "$ref": "#/definitions/EnvVarsMap"
         }
       },
       "x-go-package": "github.com/equinor/radix-job-scheduler/models/common"
@@ -1190,6 +1206,11 @@
         "failurePolicy": {
           "$ref": "#/definitions/FailurePolicy"
         },
+        "image": {
+          "description": "Name of an existing container image to use when running the job. Overrides an image in the RadixDeployment\nMore info: https://www.radix.equinor.com/radix-config#image-2\n+optional",
+          "type": "string",
+          "x-go-name": "Image"
+        },
         "imageTagName": {
           "description": "ImageTagName defines the image tag name to use for the job image",
           "type": "string",
@@ -1209,6 +1230,9 @@
           "type": "integer",
           "format": "int64",
           "x-go-name": "TimeLimitSeconds"
+        },
+        "variables": {
+          "$ref": "#/definitions/EnvVarsMap"
         }
       },
       "x-go-package": "github.com/equinor/radix-job-scheduler/models/common"

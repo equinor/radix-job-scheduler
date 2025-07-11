@@ -28,6 +28,11 @@ type RadixJobComponentConfig struct {
 	// required: false
 	FailurePolicy *FailurePolicy `json:"failurePolicy,omitempty"`
 
+	// Name of an existing container image to use when running the job. Overrides an image in the RadixDeployment
+	// More info: https://www.radix.equinor.com/radix-config#image-2
+	// +optional
+	Image string `json:"image,omitempty"`
+
 	// ImageTagName defines the image tag name to use for the job image
 	//
 	// required: false
@@ -36,6 +41,11 @@ type RadixJobComponentConfig struct {
 	// Runtime defines the target runtime requirements for the component
 	// +optional
 	Runtime *Runtime `json:"runtime,omitempty"`
+
+	// List of environment variables and values. Combines with RadixDeployment Variables.
+	// More info: https://www.radix.equinor.com/radix-config#variables-common-2
+	// +optional
+	Variables EnvVarsMap `json:"variables,omitempty"`
 }
 
 // JobScheduleDescription holds description about scheduling job

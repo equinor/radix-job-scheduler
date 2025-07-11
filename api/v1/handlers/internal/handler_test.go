@@ -404,6 +404,41 @@ func Test_MergeJobDescriptionWithDefaultJobDescription(t *testing.T) {
 				},
 			},
 		},
+		"Image from job spec": {
+			defaultRadixJobComponentConfig: &common.RadixJobComponentConfig{
+				Image: "my-default-image:latest",
+			},
+			jobScheduleDescription: &common.JobScheduleDescription{
+				RadixJobComponentConfig: common.RadixJobComponentConfig{
+					Image: "my-job-image:latest",
+				},
+			},
+			expectedRadixJobComponentConfig: &common.RadixJobComponentConfig{
+				Image: "my-job-image:latest",
+			},
+		},
+		"No default image, image from job spec": {
+			defaultRadixJobComponentConfig: &common.RadixJobComponentConfig{},
+			jobScheduleDescription: &common.JobScheduleDescription{
+				RadixJobComponentConfig: common.RadixJobComponentConfig{
+					Image: "my-job-image:latest",
+				},
+			},
+			expectedRadixJobComponentConfig: &common.RadixJobComponentConfig{
+				Image: "my-job-image:latest",
+			},
+		},
+		"Image from default spec": {
+			defaultRadixJobComponentConfig: &common.RadixJobComponentConfig{
+				Image: "my-default-image:latest",
+			},
+			jobScheduleDescription: &common.JobScheduleDescription{
+				RadixJobComponentConfig: common.RadixJobComponentConfig{},
+			},
+			expectedRadixJobComponentConfig: &common.RadixJobComponentConfig{
+				Image: "my-default-image:latest",
+			},
+		},
 	}
 	for testName, test := range tests {
 		t.Run(testName, func(t *testing.T) {
@@ -557,6 +592,51 @@ func Test_MergeRuntime(t *testing.T) {
 			err := applyDefaultJobDescriptionProperties(jobScheduleDescription,
 				&tt.defaultRadixJobComponentConfig)
 			require.NoError(t, err)
+			assert.EqualValues(t, tt.expectedRadixJobComponentConfig, jobScheduleDescription.RadixJobComponentConfig)
+		})
+	}
+}
+
+func Test_MergeEnvVarsMap(t *testing.T) {
+	scenarios := map[string]struct {
+		radixJobComponentConfig         common.RadixJobComponentConfig
+		defaultRadixJobComponentConfig  common.RadixJobComponentConfig
+		expectedRadixJobComponentConfig common.RadixJobComponentConfig
+	}{
+		"no default env-vars, no job env-vars": {
+			defaultRadixJobComponentConfig:  common.RadixJobComponentConfig{},
+			radixJobComponentConfig:         common.RadixJobComponentConfig{},
+			expectedRadixJobComponentConfig: common.RadixJobComponentConfig{},
+		},
+		"no default env-vars, job env-vars": {
+			defaultRadixJobComponentConfig:  common.RadixJobComponentConfig{},
+			radixJobComponentConfig:         common.RadixJobComponentConfig{Variables: common.EnvVarsMap{"VAR1": "value1", "VAR2": "value2"}},
+			expectedRadixJobComponentConfig: common.RadixJobComponentConfig{Variables: common.EnvVarsMap{"VAR1": "value1", "VAR2": "value2"}},
+		},
+		"default env-vars, no job env-vars": {
+			defaultRadixJobComponentConfig:  common.RadixJobComponentConfig{Variables: common.EnvVarsMap{"VAR1": "value1", "VAR2": "value2"}},
+			radixJobComponentConfig:         common.RadixJobComponentConfig{},
+			expectedRadixJobComponentConfig: common.RadixJobComponentConfig{Variables: common.EnvVarsMap{"VAR1": "value1", "VAR2": "value2"}},
+		},
+		"default env-vars, job env-vars": {
+			defaultRadixJobComponentConfig:  common.RadixJobComponentConfig{Variables: common.EnvVarsMap{"VAR1": "value1", "VAR2": "value2"}},
+			radixJobComponentConfig:         common.RadixJobComponentConfig{Variables: common.EnvVarsMap{"VAR2": "value22", "VAR3": "value3"}},
+			expectedRadixJobComponentConfig: common.RadixJobComponentConfig{Variables: common.EnvVarsMap{"VAR1": "value1", "VAR2": "value22", "VAR3": "value3"}},
+		},
+	}
+
+	for name, tt := range scenarios {
+		t.Run(name, func(t *testing.T) {
+			jobScheduleDescription := &common.JobScheduleDescription{RadixJobComponentConfig: tt.radixJobComponentConfig}
+			err := applyDefaultJobDescriptionProperties(jobScheduleDescription,
+				&tt.defaultRadixJobComponentConfig)
+			require.NoError(t, err)
+			if assert.Len(t, jobScheduleDescription.RadixJobComponentConfig.Variables, len(tt.expectedRadixJobComponentConfig.Variables), "should return expected number of environment variables") {
+				for varName, varValue := range jobScheduleDescription.RadixJobComponentConfig.Variables {
+					assert.Equal(t, tt.expectedRadixJobComponentConfig.Variables[varName], varValue, "should return expected environment variable for key %s", varName)
+				}
+			}
+
 			assert.EqualValues(t, tt.expectedRadixJobComponentConfig, jobScheduleDescription.RadixJobComponentConfig)
 		})
 	}
