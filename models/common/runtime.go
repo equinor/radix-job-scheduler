@@ -21,9 +21,6 @@ type Runtime struct {
 	NodeType *string `json:"nodeType,omitempty"`
 }
 
-// EnvVars Map of environment variables in the form '<envvarname>: <value>'
-type EnvVars map[string]string
-
 // MapToRadixRuntime maps the object to a RadixV1 Runtime object
 func (runtime *Runtime) MapToRadixRuntime() *radixv1.Runtime {
 	if runtime == nil {
@@ -33,18 +30,6 @@ func (runtime *Runtime) MapToRadixRuntime() *radixv1.Runtime {
 		Architecture: radixv1.RuntimeArchitecture(runtime.Architecture),
 		NodeType:     runtime.NodeType,
 	}
-}
-
-// MapToRadixEnvVarsMap maps the object to a RadixV1 EnvVarsMap
-func (envVars EnvVars) MapToRadixEnvVarsMap() radixv1.EnvVarsMap {
-	if envVars == nil {
-		return nil
-	}
-	radixEnvVarMap := make(radixv1.EnvVarsMap, len(envVars))
-	for name, value := range envVars {
-		radixEnvVarMap[name] = value
-	}
-	return radixEnvVarMap
 }
 
 // RuntimeTransformer is a mergo transformer for the Runtime struct
