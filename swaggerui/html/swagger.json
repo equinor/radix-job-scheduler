@@ -1153,11 +1153,6 @@
           "x-go-name": "ImageId",
           "example": "radixdev.azurecr.io/app-server@sha256:d40cda01916ef63da3607c03785efabc56eb2fc2e0dab0726b1a843e9ded093f"
         },
-        "imageInSpec": {
-          "description": "The name of container image that is specified in PodSpec.\nMore info: https://kubernetes.io/docs/concepts/containers/images.\n+optional",
-          "type": "string",
-          "x-go-name": "ImageInSpec"
-        },
         "name": {
           "description": "Pod name",
           "type": "string",

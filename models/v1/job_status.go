@@ -144,11 +144,6 @@ type PodStatus struct {
 	// example: radixdev.azurecr.io/app-server:cdgkg
 	Image string `json:"image,omitempty"`
 
-	// The name of container image that is specified in PodSpec.
-	// More info: https://kubernetes.io/docs/concepts/containers/images.
-	// +optional
-	ImageInSpec string `json:"imageInSpec"`
-
 	// ImageID of the container's image.
 	//
 	// required: false

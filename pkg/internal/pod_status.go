@@ -34,7 +34,6 @@ func GetPodStatusByRadixBatchJobPodStatus(radixBatch *radixv1.RadixBatch, podSta
 			StatusMessage:    status.Message,
 			RestartCount:     status.RestartCount,
 			Image:            status.Image,
-			ImageInSpec:      status.ImageInSpec,
 			ImageId:          status.ImageID,
 			PodIndex:         status.PodIndex,
 			ExitCode:         status.ExitCode,
