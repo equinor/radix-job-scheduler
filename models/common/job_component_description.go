@@ -45,7 +45,7 @@ type RadixJobComponentConfig struct {
 	// List of environment variables and values. Combines with RadixDeployment Variables.
 	// More info: https://www.radix.equinor.com/radix-config#variables-common-2
 	// +optional
-	Variables EnvVarsMap `json:"variables,omitempty"`
+	Variables EnvVars `json:"variables,omitempty"`
 }
 
 // JobScheduleDescription holds description about scheduling job

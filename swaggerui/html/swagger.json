@@ -845,9 +845,9 @@
       },
       "x-go-package": "github.com/equinor/radix-job-scheduler/models/v1"
     },
-    "EnvVarsMap": {
+    "EnvVars": {
       "type": "object",
-      "title": "EnvVarsMap Map of environment variables in the form '\u003cenvvarname\u003e: \u003cvalue\u003e'",
+      "title": "EnvVars Map of environment variables in the form '\u003cenvvarname\u003e: \u003cvalue\u003e'",
       "additionalProperties": {
         "type": "string"
       },
@@ -985,7 +985,7 @@
           "x-go-name": "TimeLimitSeconds"
         },
         "variables": {
-          "$ref": "#/definitions/EnvVarsMap"
+          "$ref": "#/definitions/EnvVars"
         }
       },
       "x-go-package": "github.com/equinor/radix-job-scheduler/models/common"
@@ -1232,7 +1232,7 @@
           "x-go-name": "TimeLimitSeconds"
         },
         "variables": {
-          "$ref": "#/definitions/EnvVarsMap"
+          "$ref": "#/definitions/EnvVars"
         }
       },
       "x-go-package": "github.com/equinor/radix-job-scheduler/models/common"

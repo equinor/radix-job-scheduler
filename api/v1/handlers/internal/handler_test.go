@@ -597,7 +597,7 @@ func Test_MergeRuntime(t *testing.T) {
 	}
 }
 
-func Test_MergeEnvVarsMap(t *testing.T) {
+func Test_MergeEnvVars(t *testing.T) {
 	scenarios := map[string]struct {
 		radixJobComponentConfig         common.RadixJobComponentConfig
 		defaultRadixJobComponentConfig  common.RadixJobComponentConfig
@@ -610,18 +610,18 @@ func Test_MergeEnvVarsMap(t *testing.T) {
 		},
 		"no default env-vars, job env-vars": {
 			defaultRadixJobComponentConfig:  common.RadixJobComponentConfig{},
-			radixJobComponentConfig:         common.RadixJobComponentConfig{Variables: common.EnvVarsMap{"VAR1": "value1", "VAR2": "value2"}},
-			expectedRadixJobComponentConfig: common.RadixJobComponentConfig{Variables: common.EnvVarsMap{"VAR1": "value1", "VAR2": "value2"}},
+			radixJobComponentConfig:         common.RadixJobComponentConfig{Variables: common.EnvVars{"VAR1": "value1", "VAR2": "value2"}},
+			expectedRadixJobComponentConfig: common.RadixJobComponentConfig{Variables: common.EnvVars{"VAR1": "value1", "VAR2": "value2"}},
 		},
 		"default env-vars, no job env-vars": {
-			defaultRadixJobComponentConfig:  common.RadixJobComponentConfig{Variables: common.EnvVarsMap{"VAR1": "value1", "VAR2": "value2"}},
+			defaultRadixJobComponentConfig:  common.RadixJobComponentConfig{Variables: common.EnvVars{"VAR1": "value1", "VAR2": "value2"}},
 			radixJobComponentConfig:         common.RadixJobComponentConfig{},
-			expectedRadixJobComponentConfig: common.RadixJobComponentConfig{Variables: common.EnvVarsMap{"VAR1": "value1", "VAR2": "value2"}},
+			expectedRadixJobComponentConfig: common.RadixJobComponentConfig{Variables: common.EnvVars{"VAR1": "value1", "VAR2": "value2"}},
 		},
 		"default env-vars, job env-vars": {
-			defaultRadixJobComponentConfig:  common.RadixJobComponentConfig{Variables: common.EnvVarsMap{"VAR1": "value1", "VAR2": "value2"}},
-			radixJobComponentConfig:         common.RadixJobComponentConfig{Variables: common.EnvVarsMap{"VAR2": "value22", "VAR3": "value3"}},
-			expectedRadixJobComponentConfig: common.RadixJobComponentConfig{Variables: common.EnvVarsMap{"VAR1": "value1", "VAR2": "value22", "VAR3": "value3"}},
+			defaultRadixJobComponentConfig:  common.RadixJobComponentConfig{Variables: common.EnvVars{"VAR1": "value1", "VAR2": "value2"}},
+			radixJobComponentConfig:         common.RadixJobComponentConfig{Variables: common.EnvVars{"VAR2": "value22", "VAR3": "value3"}},
+			expectedRadixJobComponentConfig: common.RadixJobComponentConfig{Variables: common.EnvVars{"VAR1": "value1", "VAR2": "value22", "VAR3": "value3"}},
 		},
 	}
 

@@ -21,8 +21,8 @@ type Runtime struct {
 	NodeType *string `json:"nodeType,omitempty"`
 }
 
-// EnvVarsMap Map of environment variables in the form '<envvarname>: <value>'
-type EnvVarsMap map[string]string
+// EnvVars Map of environment variables in the form '<envvarname>: <value>'
+type EnvVars map[string]string
 
 // MapToRadixRuntime maps the object to a RadixV1 Runtime object
 func (runtime *Runtime) MapToRadixRuntime() *radixv1.Runtime {
@@ -35,14 +35,14 @@ func (runtime *Runtime) MapToRadixRuntime() *radixv1.Runtime {
 	}
 }
 
-// MapToRadixEnvVarsMap maps the object to a RadixV1 Runtime object
-func (envVarMap EnvVarsMap) MapToRadixEnvVarsMap() radixv1.EnvVarsMap {
-	if envVarMap == nil {
+// MapToRadixEnvVarsMap maps the object to a RadixV1 EnvVarsMap
+func (envVars EnvVars) MapToRadixEnvVarsMap() radixv1.EnvVarsMap {
+	if envVars == nil {
 		return nil
 	}
-	radixEnvVarMap := make(radixv1.EnvVarsMap, len(envVarMap))
-	for key, value := range envVarMap {
-		radixEnvVarMap[key] = value
+	radixEnvVarMap := make(radixv1.EnvVarsMap, len(envVars))
+	for name, value := range envVars {
+		radixEnvVarMap[name] = value
 	}
 	return radixEnvVarMap
 }
