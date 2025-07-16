@@ -385,8 +385,10 @@ func buildRadixBatchJob(jobScheduleDescription *common.JobScheduleDescription, d
 		Resources:        jobScheduleDescription.Resources.MapToRadixResourceRequirements(),
 		Node:             jobScheduleDescription.Node.MapToRadixNode(), // nolint:staticcheck // SA1019: Ignore linting deprecated fields
 		Runtime:          jobScheduleDescription.Runtime.MapToRadixRuntime(),
+		Variables:        jobScheduleDescription.Variables.MapToRadixEnvVarsMap(),
 		TimeLimitSeconds: jobScheduleDescription.TimeLimitSeconds,
 		BackoffLimit:     jobScheduleDescription.BackoffLimit,
+		Image:            jobScheduleDescription.Image,
 		ImageTagName:     jobScheduleDescription.ImageTagName,
 		FailurePolicy:    jobScheduleDescription.FailurePolicy.MapToRadixFailurePolicy(),
 	}, nil
