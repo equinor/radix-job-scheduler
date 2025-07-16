@@ -439,6 +439,172 @@ func Test_MergeJobDescriptionWithDefaultJobDescription(t *testing.T) {
 				Image: "my-default-image:latest",
 			},
 		},
+		"Command and Args from job spec": {
+			defaultRadixJobComponentConfig: &common.RadixJobComponentConfig{},
+			jobScheduleDescription: &common.JobScheduleDescription{
+				RadixJobComponentConfig: common.RadixJobComponentConfig{
+					Command: []string{"sh", "-c"},
+					Args:    []string{"echo hello"},
+				},
+			},
+			expectedRadixJobComponentConfig: &common.RadixJobComponentConfig{
+				Command: []string{"sh", "-c"},
+				Args:    []string{"echo hello"},
+			},
+		},
+		"Command and Args from default spec": {
+			defaultRadixJobComponentConfig: &common.RadixJobComponentConfig{
+				Command: []string{"sh", "-c"},
+				Args:    []string{"echo hello"},
+			},
+			jobScheduleDescription: &common.JobScheduleDescription{
+				RadixJobComponentConfig: common.RadixJobComponentConfig{},
+			},
+			expectedRadixJobComponentConfig: &common.RadixJobComponentConfig{
+				Command: []string{"sh", "-c"},
+				Args:    []string{"echo hello"},
+			},
+		},
+		"job command and args are not set": {
+			defaultRadixJobComponentConfig: &common.RadixJobComponentConfig{},
+			jobScheduleDescription: &common.JobScheduleDescription{
+				RadixJobComponentConfig: common.RadixJobComponentConfig{},
+			},
+			expectedRadixJobComponentConfig: &common.RadixJobComponentConfig{},
+		},
+		"job single command is set": {
+			defaultRadixJobComponentConfig: &common.RadixJobComponentConfig{},
+			jobScheduleDescription: &common.JobScheduleDescription{
+				RadixJobComponentConfig: common.RadixJobComponentConfig{
+					Command: []string{"bash"},
+				},
+			},
+			expectedRadixJobComponentConfig: &common.RadixJobComponentConfig{
+				Command: []string{"bash"},
+			},
+		},
+		"job command with arguments is set": {
+			defaultRadixJobComponentConfig: &common.RadixJobComponentConfig{},
+			jobScheduleDescription: &common.JobScheduleDescription{
+				RadixJobComponentConfig: common.RadixJobComponentConfig{
+					Command: []string{"sh", "-c", "echo hello"},
+				},
+			},
+			expectedRadixJobComponentConfig: &common.RadixJobComponentConfig{
+				Command: []string{"sh", "-c", "echo hello"},
+			},
+		},
+		"job command is set and args are set": {
+			defaultRadixJobComponentConfig: &common.RadixJobComponentConfig{},
+			jobScheduleDescription: &common.JobScheduleDescription{
+				RadixJobComponentConfig: common.RadixJobComponentConfig{
+					Command: []string{"sh", "-c"},
+					Args:    []string{"echo hello"},
+				},
+			},
+			expectedRadixJobComponentConfig: &common.RadixJobComponentConfig{
+				Command: []string{"sh", "-c"},
+				Args:    []string{"echo hello"},
+			},
+		},
+		"job only args are set": {
+			defaultRadixJobComponentConfig: &common.RadixJobComponentConfig{},
+			jobScheduleDescription: &common.JobScheduleDescription{
+				RadixJobComponentConfig: common.RadixJobComponentConfig{
+					Args: []string{"--verbose", "--output=json"},
+				},
+			},
+			expectedRadixJobComponentConfig: &common.RadixJobComponentConfig{
+				Args: []string{"--verbose", "--output=json"},
+			},
+		},
+		"job and component command and args are set, job takes precedence": {
+			defaultRadixJobComponentConfig: &common.RadixJobComponentConfig{
+				Command: []string{"comp-cmd"},
+				Args:    []string{"comp-arg1", "comp-arg2"},
+			},
+			jobScheduleDescription: &common.JobScheduleDescription{
+				RadixJobComponentConfig: common.RadixJobComponentConfig{
+					Command: []string{"job-cmd"},
+					Args:    []string{"job-arg1", "job-arg2"},
+				},
+			},
+			expectedRadixJobComponentConfig: &common.RadixJobComponentConfig{
+				Command: []string{"job-cmd"},
+				Args:    []string{"job-arg1", "job-arg2"},
+			},
+		},
+		"job command set, component args set, job command takes precedence, args from component": {
+			defaultRadixJobComponentConfig: &common.RadixJobComponentConfig{
+				Args: []string{"comp-arg1", "comp-arg2"},
+			},
+			jobScheduleDescription: &common.JobScheduleDescription{
+				RadixJobComponentConfig: common.RadixJobComponentConfig{
+					Command: []string{"job-cmd"},
+				},
+			},
+			expectedRadixJobComponentConfig: &common.RadixJobComponentConfig{
+				Command: []string{"job-cmd"},
+				Args:    []string{"comp-arg1", "comp-arg2"},
+			},
+		},
+		"job args set, component command set, job args take precedence, command from component": {
+			defaultRadixJobComponentConfig: &common.RadixJobComponentConfig{
+				Command: []string{"comp-cmd"},
+			},
+			jobScheduleDescription: &common.JobScheduleDescription{
+				RadixJobComponentConfig: common.RadixJobComponentConfig{
+					Args: []string{"job-arg1", "job-arg2"},
+				},
+			},
+			expectedRadixJobComponentConfig: &common.RadixJobComponentConfig{
+				Command: []string{"comp-cmd"},
+				Args:    []string{"job-arg1", "job-arg2"},
+			},
+		},
+		"only component command and args set": {
+			defaultRadixJobComponentConfig: &common.RadixJobComponentConfig{
+				Command: []string{"comp-cmd"},
+				Args:    []string{"comp-arg1", "comp-arg2"},
+			},
+			jobScheduleDescription: &common.JobScheduleDescription{
+				RadixJobComponentConfig: common.RadixJobComponentConfig{},
+			},
+			expectedRadixJobComponentConfig: &common.RadixJobComponentConfig{
+				Command: []string{"comp-cmd"},
+				Args:    []string{"comp-arg1", "comp-arg2"},
+			},
+		},
+		"job command set, component command and args set, job command takes precedence, args from component": {
+			defaultRadixJobComponentConfig: &common.RadixJobComponentConfig{
+				Command: []string{"comp-cmd"},
+				Args:    []string{"comp-arg1", "comp-arg2"},
+			},
+			jobScheduleDescription: &common.JobScheduleDescription{
+				RadixJobComponentConfig: common.RadixJobComponentConfig{
+					Command: []string{"job-cmd"},
+				},
+			},
+			expectedRadixJobComponentConfig: &common.RadixJobComponentConfig{
+				Command: []string{"job-cmd"},
+				Args:    []string{"comp-arg1", "comp-arg2"},
+			},
+		},
+		"job args set, component command and args set, job args take precedence, command from component": {
+			defaultRadixJobComponentConfig: &common.RadixJobComponentConfig{
+				Command: []string{"comp-cmd"},
+				Args:    []string{"comp-arg1", "comp-arg2"},
+			},
+			jobScheduleDescription: &common.JobScheduleDescription{
+				RadixJobComponentConfig: common.RadixJobComponentConfig{
+					Args: []string{"job-arg1", "job-arg2"},
+				},
+			},
+			expectedRadixJobComponentConfig: &common.RadixJobComponentConfig{
+				Command: []string{"comp-cmd"},
+				Args:    []string{"job-arg1", "job-arg2"},
+			},
+		},
 	}
 	for testName, test := range tests {
 		t.Run(testName, func(t *testing.T) {
