@@ -410,7 +410,15 @@ func applyDefaultJobDescriptionProperties(jobScheduleDescription *common.JobSche
 	if jobScheduleDescription == nil || defaultRadixJobComponentConfig == nil {
 		return nil
 	}
-	return mergo.Merge(&jobScheduleDescription.RadixJobComponentConfig, defaultRadixJobComponentConfig, mergo.WithTransformers(jobDescriptionTransformer))
+	jobComponentConfig := common.RadixJobComponentConfig{}
+	if err := mergo.Merge(&jobComponentConfig, defaultRadixJobComponentConfig, mergo.WithTransformers(jobDescriptionTransformer), mergo.WithOverride, mergo.WithOverrideEmptySlice); err != nil {
+		return fmt.Errorf("failed to merge default job description properties: %w", err)
+	}
+	if err := mergo.Merge(&jobComponentConfig, jobScheduleDescription.RadixJobComponentConfig, mergo.WithTransformers(jobDescriptionTransformer), mergo.WithOverride, mergo.WithOverrideEmptySlice); err != nil {
+		return fmt.Errorf("failed to merge job description properties: %w", err)
+	}
+	jobScheduleDescription.RadixJobComponentConfig = jobComponentConfig
+	return nil
 }
 
 func (h *Handler) GetPodsForLabelSelector(ctx context.Context, labelSelector string) ([]corev1.Pod, error) {
