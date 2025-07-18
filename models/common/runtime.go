@@ -45,7 +45,7 @@ func (transformer RuntimeTransformer) Transformer(t reflect.Type) func(dst, src 
 		if dst.Kind() != reflect.Ptr || src.Kind() != reflect.Ptr {
 			return nil
 		}
-		if dst.IsNil() && !src.IsNil() {
+		if !src.IsNil() {
 			dst.Set(src)
 		}
 		return nil
