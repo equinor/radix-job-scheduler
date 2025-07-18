@@ -258,18 +258,19 @@ func (h *Handler) buildRadixBatchJobs(ctx context.Context, namespace, appName, r
 	var errs []error
 	logger.Debug().Msg("Build Radix Batch")
 	for _, jobScheduleDescription := range batchScheduleDescription.JobScheduleDescriptions {
-		jobScheduleDescription := jobScheduleDescription
+		jobScheduleDescription := jobScheduleDescription.DeepCopy()
 		logger.Debug().Msgf("Build Radix Batch Job. JobId: '%s', Payload length: %d", jobScheduleDescription.JobId, len(jobScheduleDescription.Payload))
-		radixBatchJob, err := buildRadixBatchJob(&jobScheduleDescription, batchScheduleDescription.DefaultRadixJobComponentConfig)
+		radixBatchJob, err := buildRadixBatchJob(jobScheduleDescription, batchScheduleDescription.DefaultRadixJobComponentConfig.DeepCopy())
 		if err != nil {
 			errs = append(errs, err)
 			continue
 		}
 		logger.Debug().Msgf("Built  Radix Batch Job %s", radixBatchJob.Name)
-		radixBatchJobWithDescriptions = append(radixBatchJobWithDescriptions, radixBatchJobWithDescription{
+		description := radixBatchJobWithDescription{
 			radixBatchJob:          radixBatchJob,
-			jobScheduleDescription: &jobScheduleDescription,
-		})
+			jobScheduleDescription: jobScheduleDescription,
+		}
+		radixBatchJobWithDescriptions = append(radixBatchJobWithDescriptions, description)
 	}
 	if len(errs) > 0 {
 		return nil, apiErrors.NewFromError(errors.Join(errs...))
@@ -379,7 +380,7 @@ func buildRadixBatchJob(jobScheduleDescription *common.JobScheduleDescription, d
 	if err := applyDefaultJobDescriptionProperties(jobScheduleDescription, defaultJobScheduleDescription); err != nil {
 		return nil, apiErrors.NewFromError(err)
 	}
-	return &radixv1.RadixBatchJob{
+	batchJob := radixv1.RadixBatchJob{
 		Name:             internal.CreateJobName(),
 		JobId:            jobScheduleDescription.JobId,
 		Resources:        jobScheduleDescription.Resources.MapToRadixResourceRequirements(),
@@ -393,7 +394,8 @@ func buildRadixBatchJob(jobScheduleDescription *common.JobScheduleDescription, d
 		FailurePolicy:    jobScheduleDescription.FailurePolicy.MapToRadixFailurePolicy(),
 		Command:          jobScheduleDescription.Command,
 		Args:             jobScheduleDescription.Args,
-	}, nil
+	}
+	return &batchJob, nil
 }
 
 func (h *Handler) getRadixBatchStatuses(ctx context.Context, radixBatchType kube.RadixBatchType) ([]modelsv1.BatchStatus, error) {

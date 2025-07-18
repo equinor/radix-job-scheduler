@@ -1,5 +1,7 @@
 package common
 
+// +kubebuilder:object:generate=true
+
 type StatusReason string
 
 const (
