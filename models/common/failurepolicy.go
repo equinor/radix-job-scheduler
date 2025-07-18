@@ -1,5 +1,7 @@
 package common
 
+// +kubebuilder:object:generate=true
+
 import (
 	"github.com/equinor/radix-common/utils/slice"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"

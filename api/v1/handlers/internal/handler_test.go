@@ -20,10 +20,11 @@ import (
 
 func Test_CreateBatch(t *testing.T) {
 	type scenario struct {
-		name              string
-		batchDescription  common.BatchScheduleDescription
-		expectedBatchType kube.RadixBatchType
-		expectedError     bool
+		name                   string
+		batchDescription       common.BatchScheduleDescription
+		expectedBatchType      kube.RadixBatchType
+		expectedError          bool
+		expectedRadixBatchSpec *radixv1.RadixBatchSpec
 	}
 	scenarios := []scenario{
 		{
@@ -42,6 +43,16 @@ func Test_CreateBatch(t *testing.T) {
 			}},
 			expectedBatchType: kube.RadixBatchTypeBatch,
 			expectedError:     false,
+			expectedRadixBatchSpec: &radixv1.RadixBatchSpec{
+				Jobs: []radixv1.RadixBatchJob{
+					{
+						JobId: "job1",
+					},
+					{
+						JobId: "job2",
+					},
+				},
+			},
 		},
 		{
 			name: "batch with one job",
@@ -54,6 +65,31 @@ func Test_CreateBatch(t *testing.T) {
 			}},
 			expectedBatchType: kube.RadixBatchTypeBatch,
 			expectedError:     false,
+			expectedRadixBatchSpec: &radixv1.RadixBatchSpec{
+				Jobs: []radixv1.RadixBatchJob{
+					{
+						JobId: "job1",
+					},
+				},
+			},
+		},
+		{
+			name: "batch with one job, no payload",
+			batchDescription: common.BatchScheduleDescription{JobScheduleDescriptions: []common.JobScheduleDescription{
+				{
+					JobId:                   "job1",
+					RadixJobComponentConfig: common.RadixJobComponentConfig{},
+				},
+			}},
+			expectedBatchType: kube.RadixBatchTypeBatch,
+			expectedError:     false,
+			expectedRadixBatchSpec: &radixv1.RadixBatchSpec{
+				Jobs: []radixv1.RadixBatchJob{
+					{
+						JobId: "job1",
+					},
+				},
+			},
 		},
 		{
 			name:              "batch with no job failed",
@@ -72,12 +108,70 @@ func Test_CreateBatch(t *testing.T) {
 			}},
 			expectedBatchType: kube.RadixBatchTypeJob,
 			expectedError:     false,
+			expectedRadixBatchSpec: &radixv1.RadixBatchSpec{
+				Jobs: []radixv1.RadixBatchJob{
+					{
+						JobId: "job1",
+					},
+				},
+			},
 		},
 		{
 			name:              "single job with no job failed",
 			batchDescription:  common.BatchScheduleDescription{JobScheduleDescriptions: []common.JobScheduleDescription{}},
 			expectedBatchType: kube.RadixBatchTypeJob,
 			expectedError:     true,
+		},
+		{
+			name: "batch with commands and args",
+			batchDescription: common.BatchScheduleDescription{
+				JobScheduleDescriptions: []common.JobScheduleDescription{
+					{
+						JobId: "job1",
+						RadixJobComponentConfig: common.RadixJobComponentConfig{
+							Command: pointers.Ptr([]string{"some-command", "arg0"}),
+						},
+					},
+					{
+						JobId: "job2",
+						RadixJobComponentConfig: common.RadixJobComponentConfig{
+							Args: pointers.Ptr([]string{"job-arg1", "job-arg2"}),
+						},
+					},
+					{
+						JobId: "job3",
+						RadixJobComponentConfig: common.RadixJobComponentConfig{
+							Command: pointers.Ptr([]string{}),
+							Args:    pointers.Ptr([]string{}),
+						},
+					},
+				},
+				DefaultRadixJobComponentConfig: &common.RadixJobComponentConfig{
+					Command: pointers.Ptr([]string{"some-command", "def-arg0"}),
+					Args:    pointers.Ptr([]string{"def-arg1", "def-arg2"}),
+				},
+			},
+			expectedBatchType: kube.RadixBatchTypeBatch,
+			expectedError:     false,
+			expectedRadixBatchSpec: &radixv1.RadixBatchSpec{
+				Jobs: []radixv1.RadixBatchJob{
+					{
+						JobId:   "job1",
+						Command: pointers.Ptr([]string{"some-command", "arg0"}),
+						Args:    pointers.Ptr([]string{"def-arg1", "def-arg2"}),
+					},
+					{
+						JobId:   "job2",
+						Command: pointers.Ptr([]string{"some-command", "def-arg0"}),
+						Args:    pointers.Ptr([]string{"job-arg1", "job-arg2"}),
+					},
+					{
+						JobId:   "job3",
+						Command: pointers.Ptr([]string{}),
+						Args:    pointers.Ptr([]string{}),
+					},
+				},
+			},
 		},
 	}
 
@@ -129,6 +223,29 @@ func Test_CreateBatch(t *testing.T) {
 			assert.Equal(t, len(ts.batchDescription.JobScheduleDescriptions), len(scheduledBatch.Spec.Jobs))
 			assert.Equal(t, string(ts.expectedBatchType),
 				scheduledBatch.ObjectMeta.Labels[kube.RadixBatchTypeLabel])
+			assert.Len(t, scheduledBatch.Spec.Jobs, len(ts.expectedRadixBatchSpec.Jobs), "expected number of jobs in batch")
+			for i, job := range ts.expectedRadixBatchSpec.Jobs {
+				assert.Equal(t, job.JobId, scheduledBatch.Spec.Jobs[i].JobId, "expected job id in batch job #%d", i)
+				if len(ts.batchDescription.JobScheduleDescriptions[i].Payload) > 0 {
+					assert.NotEmpty(t, scheduledBatch.Spec.Jobs[i].PayloadSecretRef, "expected payload secret ref in batch job #%d", i)
+				} else {
+					assert.Empty(t, scheduledBatch.Spec.Jobs[i].PayloadSecretRef, "expected no payload secret ref in batch job #%d", i)
+				}
+				if ts.expectedRadixBatchSpec.Jobs[i].Command != nil {
+					if assert.NotNil(t, scheduledBatch.Spec.Jobs[i].Command, "expected command in batch job #%d", i) {
+						assert.ElementsMatch(t, *ts.expectedRadixBatchSpec.Jobs[i].Command, *scheduledBatch.Spec.Jobs[i].Command, "mismatched command in batch job #%d", i)
+					}
+				} else {
+					assert.Nil(t, scheduledBatch.Spec.Jobs[i].Command, "expected no command in batch job #%d", i)
+				}
+				if ts.expectedRadixBatchSpec.Jobs[i].Args != nil {
+					if assert.NotNil(t, scheduledBatch.Spec.Jobs[i].Args, "expected args in batch job #%d", i) {
+						assert.ElementsMatch(t, *ts.expectedRadixBatchSpec.Jobs[i].Args, *scheduledBatch.Spec.Jobs[i].Args, "mismatched args in batch job #%d", i)
+					}
+				} else {
+					assert.Nil(t, scheduledBatch.Spec.Jobs[i].Args, "expected no args in batch job #%d", i)
+				}
+			}
 		})
 	}
 }
