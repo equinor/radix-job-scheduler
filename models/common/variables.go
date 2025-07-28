@@ -1,5 +1,7 @@
 package common
 
+// +kubebuilder:object:generate=true
+
 import "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 
 // EnvVars Map of environment variables in the form '<envvarname>: <value>'

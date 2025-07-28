@@ -61,16 +61,22 @@ mocks: bootstrap
 tidy:
 	go mod tidy
 
+.PHONY: code-gen
+code-gen: bootstrap
+	controller-gen object:headerFile="hack/boilerplate.go.txt" paths="./models/common/..."
+
 .PHONY: generate
-generate: tidy swagger mocks
+generate: tidy code-gen swagger mocks
 
 .PHONY: verify-generate
 verify-generate: generate
 	git diff --exit-code
 
+
 HAS_SWAGGER       := $(shell command -v swagger;)
 HAS_GOLANGCI_LINT := $(shell command -v golangci-lint;)
 HAS_MOCKGEN       := $(shell command -v mockgen;)
+HAS_CONTROLLER_GEN := $(shell command -v controller-gen;)
 
 bootstrap:
 ifndef HAS_SWAGGER
@@ -81,4 +87,7 @@ ifndef HAS_GOLANGCI_LINT
 endif
 ifndef HAS_MOCKGEN
 	go install github.com/golang/mock/mockgen@v1.6.0
+endif
+ifndef HAS_CONTROLLER_GEN
+	go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.16.2
 endif
