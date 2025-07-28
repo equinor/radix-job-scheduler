@@ -1,5 +1,7 @@
 package common
 
+// +kubebuilder:object:generate=true
+
 // BatchScheduleDescription holds description about batch scheduling job
 // swagger:model BatchScheduleDescription
 type BatchScheduleDescription struct {

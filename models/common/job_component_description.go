@@ -1,5 +1,7 @@
 package common
 
+// +kubebuilder:object:generate=true
+
 // RadixJobComponentConfig holds description of RadixJobComponent
 type RadixJobComponentConfig struct {
 	// Resource describes the compute resource requirements.
@@ -46,6 +48,30 @@ type RadixJobComponentConfig struct {
 	// More info: https://www.radix.equinor.com/radix-config#variables-common-2
 	// +optional
 	Variables EnvVars `json:"variables,omitempty"`
+
+	// Entrypoint array. Not executed within a shell.
+	// The container image's ENTRYPOINT is used if this is not provided.
+	// Variable references $(VAR_NAME) are expanded using the container's environment. If a variable
+	// cannot be resolved, the reference in the input string will be unchanged. Double $$ are reduced
+	// to a single $, which allows for escaping the $(VAR_NAME) syntax: i.e. "$$(VAR_NAME)" will
+	// produce the string literal "$(VAR_NAME)". Escaped references will never be expanded, regardless
+	// of whether the variable exists or not. Cannot be updated.
+	// More info: https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#running-a-command-in-a-shell
+	// +optional
+	// +listType=atomic
+	Command *[]string `json:"command,omitempty"`
+
+	// Arguments to the entrypoint.
+	// The container image's CMD is used if this is not provided.
+	// Variable references $(VAR_NAME) are expanded using the container's environment. If a variable
+	// cannot be resolved, the reference in the input string will be unchanged. Double $$ are reduced
+	// to a single $, which allows for escaping the $(VAR_NAME) syntax: i.e. "$$(VAR_NAME)" will
+	// produce the string literal "$(VAR_NAME)". Escaped references will never be expanded, regardless
+	// of whether the variable exists or not. Cannot be updated.
+	// More info: https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#running-a-command-in-a-shell
+	// +optional
+	// +listType=atomic
+	Args *[]string `json:"args,omitempty"`
 }
 
 // JobScheduleDescription holds description about scheduling job
