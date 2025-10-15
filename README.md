@@ -1,6 +1,11 @@
 ![Build status](https://github.com/equinor/radix-job-scheduler/actions/workflows/build-push.yml/badge.svg)  
 
 # Radix Job Scheduler
+
+> [!IMPORTANT]  
+> **Update , October 2025:** This repository is no longer maintained. Code is moved into [radix-operator](https://github.com/equinor/radix-operator).
+
+
 The job scheduler server for application jobs
 
 ## Usage
